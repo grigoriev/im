@@ -31,7 +31,7 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "role_id_generator")
     @SequenceGenerator(name="role_id_generator", sequenceName = "im_role_id_seq", allocationSize = 1)
     @Column(name = "id", nullable = false)
-    private Long id;
+    private Integer id;
 
     @Column(name = "name", nullable = false)
     @Enumerated(EnumType.STRING)

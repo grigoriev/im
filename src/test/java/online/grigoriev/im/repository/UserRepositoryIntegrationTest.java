@@ -1,9 +1,13 @@
 package online.grigoriev.im.repository;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
+import org.h2.tools.Server;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,11 +38,20 @@ class UserRepositoryIntegrationTest {
     @Autowired
     AuditLogRepository auditLogRepository;
 
+    @BeforeAll
+    public static void beforeAll() throws SQLException {
+        Server.createWebServer("-web", "-webAllowOthers", "-webPort", "8082")
+                .start();
+    }
+
     @Test
     void findByIdWithAuditLogs() {
-        final Role role = Role.builder()
-                .name(UserRole.ADMIN)
-                .build();
+        final List<Role> roles = roleRepository.findAll();
+        assertEquals(2, roles.size());
+
+        final Role roleAdmin = roleRepository.findByName(UserRole.ADMIN)
+                .orElseThrow(NullPointerException::new);
+
         final AuditLog auditLog1 = AuditLog.builder()
                 .action(Action.LOGIN)
                 .time(LocalDateTime.now())
@@ -54,27 +67,26 @@ class UserRepositoryIntegrationTest {
                 .lastName("Mustermann")
                 .username("maxmustermann")
                 .email("max.mustermann@gmx.de")
-                .roles(Collections.singleton(role))
+                .roles(Collections.singleton(roleAdmin))
                 .build();
         user.addAuditLog(auditLog1);
         user.addAuditLog(auditLog2);
 
         userRepository.save(user);
 
-        final Long id = user.getId();
+        final Integer id = user.getId();
 
         final User userById = userRepository.findById(id)
                 .orElseThrow(NullPointerException::new);
+
+        final List<AuditLog> auditLogs = auditLogRepository.findAll();
+        assertEquals(2, auditLogs.size());
 
         final User userByIdWithActions = userRepository.findByIdWithAuditLogs(id)
                 .orElseThrow(NullPointerException::new);
 
         assertEquals(userById, userByIdWithActions);
 
-        final List<Role> roles = roleRepository.findAll();
-        assertEquals(1, roles.size());
-        final List<AuditLog> auditLogs = auditLogRepository.findAll();
-        assertEquals(2, auditLogs.size());
     }
 
     @Test

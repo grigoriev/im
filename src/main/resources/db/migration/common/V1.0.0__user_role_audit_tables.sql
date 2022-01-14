@@ -32,6 +32,3 @@ CREATE TABLE im_audit_log
     log     TEXT NOT NULL,
     user_id INTEGER REFERENCES im_user (id)
 );
-
-INSERT INTO im_role VALUES (nextval('im_role_id_seq'), 'ADMIN');
-INSERT INTO im_role VALUES (nextval('im_role_id_seq'), 'USER');

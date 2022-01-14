@@ -13,10 +13,10 @@ import online.grigoriev.im.entity.User;
 import online.grigoriev.im.model.UserRole;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, Integer> {
 
     @Query("select u from User u left join fetch u.auditLogs d where u.id = :id")
-    Optional<User> findByIdWithAuditLogs(@Param("id") Long id);
+    Optional<User> findByIdWithAuditLogs(@Param("id") Integer id);
 
     @Query("select distinct u from User u left join fetch u.auditLogs")
     List<User> findAllWithAuditLogs();

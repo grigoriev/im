@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 import online.grigoriev.im.entity.AuditLog;
 
 @Repository
-public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
+public interface AuditLogRepository extends JpaRepository<AuditLog, Integer> {
 }

@@ -36,7 +36,7 @@ public class AuditLog {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "audit_log_id_generator")
     @SequenceGenerator(name="audit_log_id_generator", sequenceName = "im_audit_log_id_seq", allocationSize = 1)
     @Column(name = "id", nullable = false)
-    private Long id;
+    private Integer id;
 
     @Column(name = "action", nullable = false)
     @Enumerated(EnumType.STRING)
