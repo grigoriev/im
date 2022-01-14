@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  im:
+    depends_on:
+      - im-postgres
+    image: 'im'
+    container_name: im
+    networks:
+      - im-network
+    volumes:
+      - im-data:/im
+    ports:
+      - 8080:8080
+    env_file:
+      - im.env
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '10'
+
+  itc-im-postgres:
+    image: postgres:14
+    container_name: im-postgres
+    networks:
+      - im-network
+    volumes:
+      - im-postgres-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    env_file:
+      - im-postgres.env
+    restart: unless-stopped
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '10'
+
+networks:
+  im-network:
+    external: true
+
+volumes:
+  im-data:
+    external: true
+  im-postgres-data:
+    external: true
