@@ -7,6 +7,3 @@ ALTER SEQUENCE im_user_id_seq OWNED BY im_user.id;
 ALTER SEQUENCE im_role_id_seq OWNED BY im_role.id;
 ALTER SEQUENCE im_user_role_id_seq OWNED BY im_user_role.id;
 ALTER SEQUENCE im_audit_log_id_seq OWNED BY im_audit_log.id;
-
-INSERT INTO im_role VALUES (nextval('im_role_id_seq'), 'ADMIN');
-INSERT INTO im_role VALUES (nextval('im_role_id_seq'), 'USER');
