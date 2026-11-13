@@ -8,4 +8,5 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Implementation plan (`docs/PLAN.md`) and clickable UI mockup (`docs/mockup`).
 - Repository baseline: security policy, contribution guide, Claude Code review, Scorecard, Renovate.
