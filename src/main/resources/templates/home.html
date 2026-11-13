@@ -4,11 +4,29 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rechnungen</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css">
+  <script th:src="@{/js/theme.js}" src="/js/theme.js" defer></script>
 </head>
-<body>
-  <main>
-    <h1>Rechnungen</h1>
-    <p>Der Rechnungsmanager wird gerade aufgebaut.</p>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+  <header class="navbar bg-base-100 border-b border-base-300 gap-2 px-4">
+    <div class="flex-1 min-w-0">
+      <span class="font-semibold text-lg tracking-tight">Rechnungen</span>
+    </div>
+    <fieldset class="join">
+      <legend class="sr-only">Darstellung</legend>
+      <button type="button" class="btn btn-xs join-item aria-pressed:btn-active" data-theme-set="system" aria-pressed="true">System</button>
+      <button type="button" class="btn btn-xs join-item aria-pressed:btn-active" data-theme-set="light" aria-pressed="false">Hell</button>
+      <button type="button" class="btn btn-xs join-item aria-pressed:btn-active" data-theme-set="dark" aria-pressed="false">Dunkel</button>
+    </fieldset>
+  </header>
+  <main class="px-4 py-8">
+    <div class="max-w-3xl mx-auto grid gap-4">
+      <h1 class="text-2xl font-semibold tracking-tight">Willkommen</h1>
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2">
+        <h2 class="font-semibold">Der Rechnungsmanager wird gerade aufgebaut.</h2>
+        <p class="text-sm opacity-80">Ab 2027 erstellen Sie hier E-Rechnungen im Format ZUGFeRD und XRechnung.</p>
+      </section>
+    </div>
   </main>
 </body>
 </html>
