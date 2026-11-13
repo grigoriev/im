@@ -142,7 +142,7 @@ DRAFT -> ISSUED -> SENT -> PAID
 | `EXEMPT_4_21` | Steuerfrei gemäß § 4 Nr. 21 UStG. | E | no |
 | `REVERSE_CHARGE_EU` | Steuerschuldnerschaft des Leistungsempfängers. | AE | no |
 | `NOT_TAXABLE_ABROAD` | Nicht im Inland steuerbare Leistung. | O | no |
-| `STANDARD_7`, `STANDARD_19` | Later, after the Kleinunternehmer status ends | S | n/a |
+| `STANDARD_19`, `STANDARD_7` | none, the PDF shows the VAT per rate | S | n/a |
 
 The category is set per line. One invoice can mix categories, with these rules:
 
@@ -151,7 +151,11 @@ The category is set per line. One invoice can mix categories, with these rules:
    A mixed invoice gets one E breakdown. Its exemption reason (BT-120) joins both tax notes. The PDF shows both notes.
 3. The system keeps the category per line, so the §19 revenue counts only the `KLEINUNTERNEHMER` lines.
 4. `REVERSE_CHARGE_EU` needs the VAT ID of seller and buyer on the invoice (§14a Abs. 1 UStG). The editor rejects a draft without them.
-The model includes the standard rates now, so the end of the Kleinunternehmer status needs no redesign.
+5. `KLEINUNTERNEHMER` never mixes with a standard rate: a Kleinunternehmer charges no VAT.
+6. The VAT of a rate is computed once on the sum of its net line amounts and rounded half up (BR-CO-17).
+   The PDF shows the net total, the VAT per rate with its base, and the gross total.
+The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
+They also cover the end of the Kleinunternehmer status without a redesign.
 The admin edits the default tax notes. A template and an invoice can override them.
 
 ## 7. Features

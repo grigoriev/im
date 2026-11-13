@@ -108,6 +108,16 @@ public class InvoicePdfRenderer {
         }
 
         /**
+         * Formats a VAT rate, for example {@code 19 %} or {@code 7 %}.
+         *
+         * @param rate the rate in percent
+         * @return the formatted rate
+         */
+        public String percent(BigDecimal rate) {
+            return quantity(rate) + "\u00a0%";
+        }
+
+        /**
          * Formats a quantity without trailing zeros, for example {@code 1,5}.
          *
          * @param quantity the quantity

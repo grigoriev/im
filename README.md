@@ -12,6 +12,7 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
 
 - ZUGFeRD (PDF/A-3 with embedded XML) and XRechnung, validated with the official KoSIT validator.
 - Kleinunternehmer rules (§19 UStG) with tax-exempt teaching (§4 Nr. 21 UStG), and threshold tracking.
+- Regular VAT at 19 % and 7 % for every other business, for example the sale of goods, with the VAT per rate.
 - Customer templates, immutable issued invoices, sending by e-mail or a manual dispatch record.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
 - Runs as a container with PostgreSQL in a home network.

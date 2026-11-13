@@ -126,6 +126,17 @@ class MustangInvoiceMapperTest {
     }
 
     @Test
+    void mapsStandardRatesWithoutExemptionReason() {
+        Invoice invoice = mapper.toMustang(SampleInvoices.sale(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(product(invoice, 0).getTaxCategoryCode()).isEqualTo("S");
+        assertThat(product(invoice, 0).getVATPercent()).isEqualByComparingTo("7");
+        assertThat(product(invoice, 1).getVATPercent()).isEqualByComparingTo("19");
+        assertThat(product(invoice, 1).getTaxExemptionReason()).isNull();
+        assertThat(product(invoice, 1).getTaxExemptionReasonCode()).isNull();
+        assertThat(invoice.getSender().getVATID()).isEqualTo("DE111111111");
+    }
+
+    @Test
     void mapsALumpSumAsOneUnitLs() {
         Invoice invoice = mapper.toMustang(invoice(PUBLISHER, null, InvoiceFormat.ZUGFERD_EN16931,
                 SampleInvoices.lump("Lesung am 16.03.2027, 90 Min.", "400.00", KLEINUNTERNEHMER)));

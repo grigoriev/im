@@ -21,6 +21,7 @@
     .lines th { font-weight: 600; text-align: left; border-bottom: 0.75pt solid #9aa5b1; padding: 1.5mm 2mm 1.5mm 0; }
     .lines td { border-bottom: 0.5pt solid #e4e7eb; padding: 1.5mm 2mm 1.5mm 0; vertical-align: top; }
     .num, .lines th.num { text-align: right; white-space: nowrap; }
+    .sum td { border-bottom: 0; padding-top: 1mm; padding-bottom: 0; }
     .total td { border-bottom: 0; font-weight: 600; padding-top: 2.5mm; }
     .note { white-space: pre-line; margin-top: 4mm; }
     .strong { font-weight: 600; }
@@ -64,7 +65,7 @@
 
   <table class="lines">
     <thead>
-      <tr><th>Leistung</th><th:block th:if="${invoice.showsQuantities()}"><th class="num">Menge</th><th class="num">Einzelpreis</th></th:block><th class="num">Betrag</th></tr>
+      <tr><th>Leistung</th><th:block th:if="${invoice.showsQuantities()}"><th class="num">Menge</th><th class="num">Einzelpreis</th></th:block><th class="num" th:text="${invoice.vatAmounts().isEmpty() ? 'Betrag' : 'Netto'}">Betrag</th></tr>
     </thead>
     <tbody>
       <tr th:each="line : ${invoice.lines}">
@@ -75,11 +76,15 @@
         </th:block>
         <td class="num" th:text="${fmt.money(line.netAmount())}">0,00 €</td>
       </tr>
+      <th:block th:unless="${invoice.vatAmounts().isEmpty()}">
+        <tr class="sum"><td th:colspan="${invoice.showsQuantities() ? 3 : 1}" class="num">Nettobetrag</td><td class="num" th:text="${fmt.money(invoice.netTotal())}">0,00 €</td></tr>
+        <tr class="sum" th:each="vat : ${invoice.vatAmounts()}"><td th:colspan="${invoice.showsQuantities() ? 3 : 1}" class="num" th:text="'USt ' + ${fmt.percent(vat.rate)} + ' auf ' + ${fmt.money(vat.base)}">USt</td><td class="num" th:text="${fmt.money(vat.vat)}">0,00 €</td></tr>
+      </th:block>
       <tr class="total"><td th:colspan="${invoice.showsQuantities() ? 3 : 1}" class="num">Gesamtbetrag</td><td class="num" th:text="${fmt.money(invoice.total())}">0,00 €</td></tr>
     </tbody>
   </table>
 
-  <div class="note" th:text="${invoice.effectiveTaxNote()}">Steuerhinweis</div>
+  <div class="note" th:unless="${invoice.effectiveTaxNote().isEmpty()}" th:text="${invoice.effectiveTaxNote()}">Steuerhinweis</div>
   <p th:text="'Bitte überweisen Sie den Betrag bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
   <p th:if="${invoice.closing != null}" th:text="${invoice.closing}">Schlusstext</p>
 </body>

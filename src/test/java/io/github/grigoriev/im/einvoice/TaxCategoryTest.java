@@ -13,11 +13,27 @@ class TaxCategoryTest {
         "KLEINUNTERNEHMER, E, true",
         "EXEMPT_4_21, E, false",
         "REVERSE_CHARGE_EU, AE, false",
-        "NOT_TAXABLE_ABROAD, O, false"
+        "NOT_TAXABLE_ABROAD, O, false",
+        "STANDARD_19, S, false",
+        "STANDARD_7, S, false"
     })
     void mapsToEn16931CodeAndThresholdRule(TaxCategory category, String code, boolean counts) {
         assertThat(category.code()).isEqualTo(code);
         assertThat(category.countsForThreshold()).isEqualTo(counts);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "KLEINUNTERNEHMER, 0, false",
+        "EXEMPT_4_21, 0, false",
+        "REVERSE_CHARGE_EU, 0, false",
+        "NOT_TAXABLE_ABROAD, 0, false",
+        "STANDARD_19, 19, true",
+        "STANDARD_7, 7, true"
+    })
+    void knowsItsVatRate(TaxCategory category, String rate, boolean charges) {
+        assertThat(category.rate()).isEqualByComparingTo(rate);
+        assertThat(category.chargesVat()).isEqualTo(charges);
     }
 
     @Test
@@ -26,5 +42,7 @@ class TaxCategoryTest {
         assertThat(TaxCategory.EXEMPT_4_21.defaultNote()).isEqualTo("Steuerfrei gemäß § 4 Nr. 21 UStG.");
         assertThat(TaxCategory.REVERSE_CHARGE_EU.defaultNote()).isEqualTo("Steuerschuldnerschaft des Leistungsempfängers.");
         assertThat(TaxCategory.NOT_TAXABLE_ABROAD.defaultNote()).isEqualTo("Nicht im Inland steuerbare Leistung.");
+        assertThat(TaxCategory.STANDARD_19.defaultNote()).isEmpty();
+        assertThat(TaxCategory.STANDARD_7.defaultNote()).isEmpty();
     }
 }

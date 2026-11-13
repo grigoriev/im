@@ -1,6 +1,10 @@
 package io.github.grigoriev.im.einvoice;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.TreeMap;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -67,6 +71,9 @@ public record InvoiceDocument(
         if (used.contains(TaxCategory.NOT_TAXABLE_ABROAD) && used.size() > 1) {
             throw new IllegalArgumentException("Category O never mixes with another category (BR-O-12)");
         }
+        if (used.contains(TaxCategory.KLEINUNTERNEHMER) && used.stream().anyMatch(TaxCategory::chargesVat)) {
+            throw new IllegalArgumentException("A Kleinunternehmer charges no VAT (§19 UStG)");
+        }
         if (used.contains(TaxCategory.REVERSE_CHARGE_EU) && (seller.vatId() == null || buyer.vatId() == null)) {
             throw new IllegalArgumentException("Reverse charge needs the VAT ID of seller and buyer (§14a UStG)");
         }
@@ -97,7 +104,8 @@ public record InvoiceDocument(
         if (taxNote != null && !taxNote.isBlank()) {
             return taxNote;
         }
-        return categories().stream().map(TaxCategory::defaultNote).collect(Collectors.joining("\n"));
+        return categories().stream().map(TaxCategory::defaultNote).filter(note -> !note.isEmpty())
+                .collect(Collectors.joining("\n"));
     }
 
     /**
@@ -111,11 +119,46 @@ public record InvoiceDocument(
     }
 
     /**
-     * Returns the invoice total. A Kleinunternehmerin charges no VAT, so net and gross are equal.
+     * Returns the sum of the net line amounts.
      *
-     * @return the sum of the line amounts
+     * @return the net total
+     */
+    public BigDecimal netTotal() {
+        return lines.stream().map(InvoiceLine::netAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * Returns the VAT per rate, highest rate first. Lines without VAT do not appear.
+     *
+     * <p>EN 16931 computes the VAT of a rate on the sum of its line amounts and rounds once (BR-CO-17).
+     *
+     * @return the VAT amounts, empty when no line charges VAT
+     */
+    public List<VatAmount> vatAmounts() {
+        Map<BigDecimal, BigDecimal> bases = new TreeMap<>(Comparator.reverseOrder());
+        lines.stream().filter(line -> line.category().chargesVat())
+                .forEach(line -> bases.merge(line.category().rate(), line.netAmount(), BigDecimal::add));
+        return bases.entrySet().stream()
+                .map(entry -> new VatAmount(entry.getKey(), entry.getValue(),
+                        entry.getValue().multiply(entry.getKey()).movePointLeft(2).setScale(2, RoundingMode.HALF_UP)))
+                .toList();
+    }
+
+    /**
+     * Returns the VAT total.
+     *
+     * @return the sum of the VAT amounts, zero without VAT
+     */
+    public BigDecimal vatTotal() {
+        return vatAmounts().stream().map(VatAmount::vat).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * Returns the amount due: net total plus VAT.
+     *
+     * @return the gross total
      */
     public BigDecimal total() {
-        return lines.stream().map(InvoiceLine::netAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return netTotal().add(vatTotal());
     }
 }

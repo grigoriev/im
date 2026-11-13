@@ -15,6 +15,9 @@ final class SampleInvoices {
     /** The seller with a VAT ID, as reverse charge needs it (§14a UStG). */
     static final Party SELLER_EU = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
             "kontakt@sommer.example", "+49 89 1234567", "Elena Sommer", "143/123/45678", "DE123456789");
+    /** A shop that charges VAT: the open-source use beyond the freelancer. */
+    static final Party SHOP = new Party("Musterhandel GmbH", "Marktstraße 1", "10115", "Berlin", "DE",
+            "rechnung@musterhandel.example", "+49 30 1234567", "Max Mustermann", "30/123/45678", "DE111111111");
     static final Party PUBLISHER = new Party("Verlag am Fluss GmbH", "Hafenweg 3", "20457", "Hamburg", "DE",
             "buchhaltung@verlag-am-fluss.example", null, null, null, null);
     static final Party SCHOOL = new Party("Volkshochschule Musterstadt", "Marktplatz 1", "86150", "Musterstadt", "DE",
@@ -52,6 +55,17 @@ final class SampleInvoices {
         return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,
                 lump("Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.", "400.00", TaxCategory.KLEINUNTERNEHMER),
                 lump("Reisekosten", "80.00", TaxCategory.KLEINUNTERNEHMER));
+    }
+
+    /**
+     * A sale of goods with both VAT rates: 3 × 24,90 € at 7 %, 10 × 4,99 € and 5,90 € shipping at 19 %.
+     * Net 130,50 €, VAT 5,23 € and 10,60 €, total 146,33 €.
+     */
+    static InvoiceDocument sale(InvoiceFormat format) {
+        return invoice(SHOP, PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                line("Fachbuch „E-Rechnung in der Praxis“", "3", "24.90", TaxCategory.STANDARD_7),
+                line("Lesezeichen aus Leder", "10", "4.99", TaxCategory.STANDARD_19),
+                lump("Versand", "5.90", TaxCategory.STANDARD_19));
     }
 
     static SpringTemplateEngine templates() {

@@ -1,6 +1,5 @@
 package io.github.grigoriev.im.einvoice;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
@@ -83,11 +82,11 @@ public class MustangInvoiceMapper {
 
     private static Item item(InvoiceLine line, InvoiceDocument document, String exemptReason) {
         TaxCategory category = line.category();
-        Product product = new Product(line.text(), "", line.unitCode(), BigDecimal.ZERO)
+        Product product = new Product(line.text(), "", line.unitCode(), category.rate())
                 .setTaxCategoryCode(category.code());
         if ("E".equals(category.code())) {
             product.setTaxExemptionReason(exemptReason);
-        } else {
+        } else if (!category.chargesVat()) {
             product.setTaxExemptionReason(noteFor(category, document))
                     .setTaxExemptionReasonCode(EXEMPTION_CODES.get(category));
         }
