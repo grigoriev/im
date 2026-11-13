@@ -793,13 +793,16 @@ function renderChecks(c, f) {
   const cats = [...new Set(state.lines.map(l => l.cat))];
   const noteOk = f.note.trim().length > 10;
   const mixOk = !(cats.includes('out') && cats.length > 1);
-  state.valid = noteOk && mixOk && Boolean(f.due) && state.lines.length > 0;
+  const needsRef = state.format !== 'zugferd';
+  const refOk = !needsRef || Boolean(c.leitweg);
+  state.valid = noteOk && mixOk && refOk && Boolean(f.due) && state.lines.length > 0;
   const kuNew = lineSum(state.lines.filter(l => l.cat === 'ku'));
   const threshold = kuNew ? 'Nach Zahlung: ' + eur.format(counted + kuNew) + ' von 100.000 € (§ 19)' : 'Zählt nicht zur Kleinunternehmergrenze';
   document.getElementById('checks').innerHTML = '<h2 class="font-semibold">Vor dem Ausstellen</h2>'
     + checkRow(noteOk, 'Steuerhinweis vorhanden', 'Steuerhinweis fehlt für steuerfreie Positionen')
     + checkRow(Boolean(f.due), 'Pflichtangaben nach § 14 UStG vollständig', 'Rechnungsdatum fehlt')
     + (mixOk ? '' : checkRow(false, '', '„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)'))
+    + (needsRef ? checkRow(refOk, 'Käuferreferenz vorhanden (BR-DE-15)', 'XRechnung braucht eine Käuferreferenz beim Kunden, z. B. die Leitweg-ID (BR-DE-15)') : '')
     + checkRow(state.valid, 'Prüfung ' + FORMATS[state.format].label + ' erfolgreich (Probelauf)', 'Prüfung erst nach Behebung der Fehler', 'circle-minus', 'opacity-50')
     + '<div class="flex items-center gap-2"><i data-lucide="gauge" class="size-4 opacity-70"></i>' + threshold + '</div>';
 }

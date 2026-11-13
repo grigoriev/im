@@ -104,7 +104,7 @@ Not chosen:
 | `AppUser` | Login, role, password hash |
 | `Passkey` | WebAuthn credential of a user |
 | `SellerProfile` | Name, address, tax number, IBAN, contact data, logo |
-| `Customer` | Address, country, e-mail, USt-IdNr, Leitweg-ID, format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
+| `Customer` | Address, country, e-mail, USt-IdNr, buyer reference (the Leitweg-ID for a public buyer), format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
 | `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), e-mail text |
 | `Invoice` | Number, status, format, dates, service period, texts, payment terms, snapshots of seller and buyer |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
@@ -162,7 +162,8 @@ The admin edits the default tax notes. A template and an invoice can override th
 5. The user edits every field of the draft: texts, tax note, lines, dates.
 6. A preview shows the final PDF before issue.
 7. A template change does not affect existing invoices.
-8. Validation before issue: a VAT-exempt line needs a tax note. The validation of the format must pass.
+8. Validation before issue: a VAT-exempt line needs a tax note. Both XRechnung formats need a buyer reference (BR-DE-15).
+   The validation of the format must pass.
 
 ### Invoice numbers
 
