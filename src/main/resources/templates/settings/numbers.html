@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Nummernkreis · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Einstellungen', 'settings', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+    <div th:replace="~{fragments/settings :: tabs('numbers')}"></div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4">
+      <div>
+        <h2 class="font-semibold">Rechnungsnummern</h2>
+        <p class="text-sm text-base-content/75">Die Nummer wird erst beim Ausstellen vergeben. Lückenlos, ohne Dubletten.
+          Der Zähler beginnt jedes Jahr neu.</p>
+      </div>
+      <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/nummernkreis/muster}" method="post">
+        <label class="floating-label grow"><span>Muster</span>
+          <input id="number-pattern" name="pattern" class="input w-full font-mono" th:value="${pattern}" maxlength="32" required>
+        </label>
+        <button type="submit" class="btn btn-primary">Speichern</button>
+      </form>
+      <p class="text-xs text-base-content/75">
+        Platzhalter: <code>{YYYY}</code> Jahr, <code>{YY}</code> Jahr zweistellig, <code>{N}</code> bis <code>{NNNNNN}</code>
+        Zähler mit mindestens so vielen Stellen. Fester Text: Buchstaben, Ziffern und <code>- _ . /</code>.
+        Eine Änderung gilt ab der nächsten Nummer.
+      </p>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4 @container">
+      <h2 class="font-semibold">Zähler</h2>
+      <div class="grid gap-3 @xl:grid-cols-2">
+        <div th:each="entry : ${years}" th:with="sequence=${entry.key}" class="border border-base-300 rounded-field p-4 grid gap-3">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="font-medium" th:text="${sequence.year}" data-volatile>2027</h3>
+            <span class="text-sm">Nächste Nummer: <span class="font-semibold font-mono [overflow-wrap:anywhere]"
+                  th:id="'next-' + ${sequence.year}" th:text="${entry.value}" data-volatile>2027-01</span></span>
+          </div>
+          <p class="text-xs text-base-content/75" th:if="${sequence.used}">
+            <i data-lucide="lock" class="size-3.5 inline"></i> Für dieses Jahr sind schon Nummern vergeben. Der Zähler ist gesperrt.
+          </p>
+          <form class="flex flex-wrap gap-2 items-end" th:unless="${sequence.used}" th:action="@{/admin/nummernkreis/start}" method="post">
+            <input type="hidden" name="year" th:value="${sequence.year}">
+            <label class="floating-label grow"><span th:text="'Startnummer ' + ${sequence.year}" data-volatile>Startnummer</span>
+              <input th:id="'start-' + ${sequence.year}" name="start" type="number" min="1" max="999999" class="input w-full"
+                     th:value="${sequence.nextNumber}" required>
+            </label>
+            <button type="submit" class="btn">Setzen</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</body>
+</html>
