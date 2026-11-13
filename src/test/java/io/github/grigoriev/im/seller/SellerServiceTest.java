@@ -3,6 +3,7 @@ package io.github.grigoriev.im.seller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,13 +13,21 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.springframework.data.jdbc.core.JdbcAggregateOperations;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
 
 class SellerServiceTest {
 
     private final StoredProfileRepository profiles = mock(StoredProfileRepository.class);
-    private final JdbcAggregateOperations aggregates = mock(JdbcAggregateOperations.class);
-    private final SellerService service = new SellerService(profiles, aggregates);
+    private final JdbcClient jdbc = mock(JdbcClient.class);
+    private final StatementSpec statement = mock(StatementSpec.class);
+    private final SellerService service = new SellerService(profiles, jdbc);
+
+    @org.junit.jupiter.api.BeforeEach
+    void statement() {
+        when(jdbc.sql(anyString())).thenReturn(statement);
+        when(statement.param(anyString(), any())).thenReturn(statement);
+    }
 
     private static SellerProfile with(String field, String value) {
         SellerProfile p = SellerTestData.profile();
@@ -47,15 +56,25 @@ class SellerServiceTest {
     }
 
     @Test
-    void insertsTheFirstProfileAndUpdatesItLater() {
+    void writesTheProfileInOneUpsert() {
         SellerProfile saved = service.save(SellerTestData.profile());
         assertThat(saved).isEqualTo(SellerTestData.profile());
-        verify(aggregates).insert(new StoredProfile(1, saved));
-        verify(aggregates, never()).update(any());
-
-        when(profiles.existsById(SellerService.ID)).thenReturn(true);
-        service.save(SellerTestData.profile());
-        verify(aggregates).update(new StoredProfile(1, saved));
+        verify(jdbc).sql(SellerService.UPSERT);
+        verify(statement).param("name", "Erika Mustermann");
+        verify(statement).param("street", "Musterweg 1");
+        verify(statement).param("postcode", "12345");
+        verify(statement).param("city", "Musterstadt");
+        verify(statement).param("countryCode", "DE");
+        verify(statement).param("contactName", null);
+        verify(statement).param("email", "erika@example.org");
+        verify(statement).param("phone", "+49 30 1234567");
+        verify(statement).param("taxNumber", "12/345/67890");
+        verify(statement).param("vatId", null);
+        verify(statement).param("iban", SellerTestData.IBAN);
+        verify(statement).param("bic", "COBADEFFXXX");
+        verify(statement).param("taxStatus", "KLEINUNTERNEHMER");
+        verify(statement).update();
+        assertThat(SellerService.UPSERT).contains("ON CONFLICT (id) DO UPDATE");
     }
 
     @Test
@@ -89,13 +108,15 @@ class SellerServiceTest {
         "iban      | DE89370400440532013001            | Die IBAN ist ungültig.",
         "iban      | DE8937040044                      | Die IBAN ist ungültig.",
         "iban      | ''                                | Die IBAN ist ungültig.",
+        "iban      | DE813704004405320130000           | Eine IBAN aus DE hat 22 Zeichen.",
+        "phone     | +12345678901234567890123456789012345678901234567890 | Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567.",
         "bic       | COBADEF                           | Die BIC hat 8 oder 11 Zeichen."
     })
     void refusesAWrongField(String field, String value, String problem) {
         SellerProfile wrong = with(field, value);
         SettingsException e = catchThrowableOfType(SettingsException.class, () -> service.save(wrong));
         assertThat(e.problems()).containsExactly(problem);
-        verify(aggregates, never()).insert(any());
+        verify(statement, never()).update();
     }
 
     @ParameterizedTest
@@ -123,6 +144,22 @@ class SellerServiceTest {
         "DE89370400440532013001, false", "GB82WEST12345698765433, false"})
     void checksTheIbanChecksum(String iban, boolean valid) {
         assertThat(SellerService.checksumOk(iban)).isEqualTo(valid);
+    }
+
+    @Test
+    void limitsPhoneAndEmailToTheirColumns() {
+        assertThat(SellerService.check(with("phone", "+" + "1".repeat(49)))).isEmpty();
+        String local = "e".repeat(64);
+        String domain = "d".repeat(177) + ".example.org"; // 64 + 1 + 189 = 254 characters
+        assertThat(SellerService.check(with("email", local + "@" + domain))).isEmpty();
+        assertThat(SellerService.check(with("email", local + "@d" + domain)))
+                .containsExactly("E-Mail hat höchstens 254 Zeichen.");
+    }
+
+    @Test
+    void acceptsAnIbanOfAnyLengthFromACountryOutsideSepa() {
+        // Saint Lucia (LC), 32 characters: valid checksum, not in the SEPA table.
+        assertThat(SellerService.check(with("iban", "LC55HEMM000100010012001200023015"))).isEmpty();
     }
 
     @Test

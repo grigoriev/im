@@ -6,7 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.data.jdbc.core.JdbcAggregateOperations;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,18 +24,23 @@ public class TaxNoteService {
     public static final List<TaxCategory> CATEGORIES = Arrays.stream(TaxCategory.values())
             .filter(category -> !category.defaultNote().isEmpty()).toList();
 
+    /** Inserts or replaces a note, atomic even if two admins save at once. */
+    static final String UPSERT = """
+            INSERT INTO tax_note (category, text) VALUES (:category, :text)
+            ON CONFLICT (category) DO UPDATE SET text = EXCLUDED.text""";
+
     private final TaxNoteRepository notes;
-    private final JdbcAggregateOperations aggregates;
+    private final JdbcClient jdbc;
 
     /**
      * Creates the service.
      *
      * @param notes reads and removes the changed notes
-     * @param aggregates inserts the changed notes
+     * @param jdbc writes the changed notes
      */
-    public TaxNoteService(TaxNoteRepository notes, JdbcAggregateOperations aggregates) {
+    public TaxNoteService(TaxNoteRepository notes, JdbcClient jdbc) {
         this.notes = notes;
-        this.aggregates = aggregates;
+        this.jdbc = jdbc;
     }
 
     /**
@@ -78,10 +83,11 @@ public class TaxNoteService {
         }
         changes.forEach((category, text) -> {
             if (CATEGORIES.contains(category)) {
-                notes.deleteById(category.name());
                 String note = text == null ? "" : text.strip();
-                if (!note.isEmpty() && !note.equals(category.defaultNote())) {
-                    aggregates.insert(new TaxNote(category.name(), note));
+                if (note.isEmpty() || note.equals(category.defaultNote())) {
+                    notes.deleteById(category.name());
+                } else {
+                    jdbc.sql(UPSERT).param("category", category.name()).param("text", note).update();
                 }
             }
         });

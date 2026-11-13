@@ -9,7 +9,13 @@ import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -54,6 +60,26 @@ class SellerIT {
                 + "bic, tax_status, tax_number) VALUES (?, 'n', 's', 'p', 'c', 'DE', 'e', 'p', 'i', 'b', 'REGULAR', ?)";
         assertThatThrownBy(() -> jdbc.update(insert, 2, "1")).isInstanceOf(DataIntegrityViolationException.class);
         assertThatThrownBy(() -> jdbc.update(insert, 1, null)).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void parallelFirstSavesNeverCollide() throws Exception {
+        jdbc.update("DELETE FROM seller_profile");
+        Map<TaxCategory, String> note = Map.of(TaxCategory.REVERSE_CHARGE_EU, "Reverse Charge, § 13b UStG.");
+        try (ExecutorService pool = Executors.newFixedThreadPool(8)) {
+            List<Callable<Object>> saves = IntStream.range(0, 16).<Callable<Object>>mapToObj(n -> n % 2 == 0
+                    ? () -> sellers.save(SellerTestData.profile())
+                    : () -> {
+                        notes.save(note);
+                        return null;
+                    }).toList();
+            for (Future<Object> save : pool.invokeAll(saves)) {
+                save.get();
+            }
+        }
+        assertThat(sellers.find()).contains(SellerTestData.profile());
+        assertThat(notes.note(TaxCategory.REVERSE_CHARGE_EU)).isEqualTo("Reverse Charge, § 13b UStG.");
+        notes.save(Map.of(TaxCategory.REVERSE_CHARGE_EU, ""));
     }
 
     @Test
