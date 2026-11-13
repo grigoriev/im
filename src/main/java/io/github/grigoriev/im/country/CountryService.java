@@ -68,14 +68,17 @@ public class CountryService {
     }
 
     /**
-     * Returns the countries of a form: the short list, and the current value even if the admin removed it.
+     * Returns the countries of a form: the short list, and the stored country of the record even if the admin
+     * removed it. A stored code that is no ISO country shows as it is, so saving never changes it unseen: the
+     * check then asks for a country from the list.
      *
-     * @param current the code of the record, may be {@code null} or empty
+     * @param stored the country stored for the record, {@code null} for a new record
      * @return the countries by German name
      */
-    public List<Country> options(String current) {
+    public List<Country> options(String stored) {
         List<String> codes = codes();
-        Stream<String> extra = isKnown(current) && !codes.contains(current) ? Stream.of(current) : Stream.empty();
+        boolean keep = stored != null && !stored.isBlank() && !codes.contains(stored);
+        Stream<String> extra = keep ? Stream.of(stored) : Stream.empty();
         return sorted(Stream.concat(codes.stream(), extra));
     }
 

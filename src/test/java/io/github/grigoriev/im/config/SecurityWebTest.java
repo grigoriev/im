@@ -30,6 +30,7 @@ import io.github.grigoriev.im.user.UserTestData;
 import io.github.grigoriev.im.user.Passkey;
 import io.github.grigoriev.im.user.PasskeyService;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.seller.SettingsException;
@@ -38,6 +39,7 @@ import io.github.grigoriev.im.seller.TaxStatus;
 import io.github.grigoriev.im.numbering.NumberPattern;
 import io.github.grigoriev.im.numbering.NumberSequence;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
@@ -420,16 +422,36 @@ class SecurityWebTest {
     }
 
     @Test
-    void offersTheCountriesInTheForms() throws Exception {
-        when(countries.options("DE")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("CH", "Schweiz")));
+    void offersTheListToNewRecordsAndKeepsTheStoredCountry() throws Exception {
+        List<Country> list = List.of(new Country("DE", "Deutschland"), new Country("CH", "Schweiz"));
+        when(countries.options(null)).thenReturn(list);
         when(sellers.find()).thenReturn(Optional.empty());
         mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\">Schweiz</option>")));
         mvc.perform(get("/kunden/neu").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
+
+        SellerProfile p = SellerTestData.profile();
+        SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
+                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus());
+        when(sellers.find()).thenReturn(Optional.of(kosovo));
+        when(countries.options("XK")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
+        mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
+
+        Customer swiss = CustomerTestData.verlag();
+        swiss = new Customer(5L, swiss.name(), swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
+                null, swiss.format());
+        when(customers.find(5)).thenReturn(Optional.of(swiss));
+        when(countries.options("CH")).thenReturn(list);
+        mvc.perform(get("/kunden/5").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\" selected=\"selected\">Schweiz</option>")));
+        when(customers.update(eq(5L), any())).thenThrow(new CustomerException(List.of("Bitte ein Land aus der Liste wählen.")));
+        mvc.perform(post("/kunden/5").param("countryCode", "JP").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte ein Land aus der Liste wählen.")));
+        verify(countries, times(2)).options("CH");
         mvc.perform(get("/kunden").with(user("elena").roles("USER"))).andExpect(status().isOk());
-        verify(countries).options(null);
     }
 
     @Test

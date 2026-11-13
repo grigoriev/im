@@ -57,7 +57,7 @@ public class CountryController {
         try {
             Country country = countries.add(code);
             flash.addFlashAttribute(SUCCESS, country.name() + " hinzugefügt.");
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
             flash.addFlashAttribute("error", "Dieses Land gibt es nicht.");
         }
         return BACK;

@@ -68,7 +68,7 @@ public class SettingsController {
     private String form(Model model, SellerProfile profile) {
         model.addAttribute("profile", profile);
         model.addAttribute("statuses", TaxStatus.values());
-        model.addAttribute("countries", countries.options(profile.countryCode()));
+        model.addAttribute("countries", countries.options(sellers.find().map(SellerProfile::countryCode).orElse(null)));
         return VIEW;
     }
 }

@@ -55,11 +55,16 @@ class CountryServiceTest {
     }
 
     @Test
-    void offersTheCurrentCountryEvenIfTheAdminRemovedIt() {
+    void offersTheStoredCountryEvenIfTheAdminRemovedIt() {
         assertThat(service.options("JP")).extracting(Country::code).containsExactly("DE", "JP", "AT", "CH");
         assertThat(service.options("DE")).hasSize(3);
         assertThat(service.options(null)).hasSize(3);
-        assertThat(service.options("ZZ")).hasSize(3);
+        assertThat(service.options(" ")).hasSize(3);
+    }
+
+    @Test
+    void showsAStoredCodeThatIsNoIsoCountryAsItIs() {
+        assertThat(service.options("XK")).contains(new Country("XK", "XK")).hasSize(4);
     }
 
     @Test

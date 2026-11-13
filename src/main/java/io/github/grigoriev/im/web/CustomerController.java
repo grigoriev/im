@@ -141,12 +141,20 @@ public class CustomerController {
         return "redirect:/kunden";
     }
 
+    /** The country stored for the customer: a new customer has none, its default comes from the list. */
+    private String stored(Customer customer) {
+        if (customer == null || customer.id() == null) {
+            return null;
+        }
+        return customers.find(customer.id()).map(Customer::countryCode).orElse(null);
+    }
+
     private String page(Model model, Customer customer) {
         model.addAttribute("customerList", customers.list());
         model.addAttribute("customer", customer);
         model.addAttribute("formats", FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());
-        model.addAttribute("countries", countries.options(customer == null ? null : customer.countryCode()));
+        model.addAttribute("countries", countries.options(stored(customer)));
         return VIEW;
     }
 }
