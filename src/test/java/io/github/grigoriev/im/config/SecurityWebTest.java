@@ -42,7 +42,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class})
-@Import({SecurityConfig.class, CurrentUserAdvice.class})
+@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 class SecurityWebTest {
 
     private static final String PASSWORD = "lang-genug-123";
@@ -105,11 +105,19 @@ class SecurityWebTest {
     }
 
     @Test
-    void sendsAPostWithoutValidCsrfTokenBackToTheLogin() throws Exception {
+    void handlesAFormWithoutValidCsrfToken() throws Exception {
         mvc.perform(post("/login").param("username", "elena").param("password", PASSWORD))
                 .andExpect(redirectedUrl("/login?abgelaufen"));
         mvc.perform(post("/logout").with(user("elena")).with(csrf().useInvalidToken()))
-                .andExpect(redirectedUrl("/login?abgelaufen"));
+                .andExpect(redirectedUrl("/login?abgemeldet"));
+        when(tokens.getTokenForSeries("serie")).thenReturn(new org.springframework.security.web.authentication
+                .rememberme.PersistentRememberMeToken("elena", "serie", "wert", new java.util.Date()));
+        String cookie = java.util.Base64.getEncoder().withoutPadding().encodeToString("serie:wert".getBytes());
+        mvc.perform(post("/logout").with(csrf().useInvalidToken())
+                        .cookie(new jakarta.servlet.http.Cookie("remember-me", cookie)))
+                .andExpect(redirectedUrl("/login?abgemeldet"))
+                .andExpect(cookie().maxAge("remember-me", 0));
+        verify(tokens).removeUserTokens("elena");
         mvc.perform(get("/login").param("abgelaufen", ""))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Die Sitzung ist abgelaufen.")));
     }

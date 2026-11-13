@@ -120,6 +120,28 @@ class LoginIT {
     }
 
     @Test
+    void aStaleLogoutStillEndsRememberMe() throws Exception {
+        service.create("tablet", "Tablet", "tablet-passwort-123", Role.USER);
+        CookieManager jar = new CookieManager();
+        HttpClient device = HttpClient.newBuilder().cookieHandler(jar).build();
+        String token = csrf(get(device, "/login").body());
+        post(device, "/login", "username=tablet&password=tablet-passwort-123&angemeldet-bleiben=on&_csrf=" + token);
+        String count = "SELECT count(*) FROM persistent_logins WHERE username = 'tablet'";
+        assertThat(jdbc.queryForObject(count, Integer.class)).isEqualTo(1);
+
+        // The session times out: only the remember-me cookie is left, the open page posts an old token.
+        java.net.CookieStore store = jar.getCookieStore();
+        store.getCookies().stream().filter(cookie -> cookie.getName().equals("JSESSIONID")).toList()
+                .forEach(cookie -> store.remove(null, cookie));
+        HttpResponse<String> logout = post(device, "/logout", "_csrf=veraltet");
+        assertThat(logout.headers().firstValue("Location"))
+                .hasValueSatisfying(url -> assertThat(url).endsWith("/login?abgemeldet"));
+        assertThat(jdbc.queryForObject(count, Integer.class)).isZero();
+        HttpResponse<String> start = get(device, "/");
+        assertThat(start.statusCode()).as("no silent login after the logout").isEqualTo(302);
+    }
+
+    @Test
     void refusesAWrongPasswordAndADuplicateUsername() throws Exception {
         HttpClient client = browser();
         HttpResponse<String> failed = post(client, "/login",

@@ -1,24 +1,17 @@
 package io.github.grigoriev.im.config;
 
 import io.github.grigoriev.im.user.AppUserDetailsService;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandlerImpl;
-import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
@@ -42,13 +35,14 @@ public class SecurityConfig {
      * @param tokens store of the remember-me tokens
      * @param users loads the users
      * @param rememberMeKey key that signs the remember-me cookie
+     * @param staleForms handles forms that outlived their session
      * @return the filter chain
      * @throws Exception if the configuration is invalid
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, PersistentTokenRepository tokens,
-            AppUserDetailsService users, @Value("${im.remember-me.key:im-remember-me}") String rememberMeKey)
-            throws Exception {
+            AppUserDetailsService users, @Value("${im.remember-me.key:im-remember-me}") String rememberMeKey,
+            StaleFormHandler staleForms) throws Exception {
         return http
                 .userDetailsService(users)
                 .authorizeHttpRequests(auth -> auth
@@ -63,23 +57,11 @@ public class SecurityConfig {
                         .tokenRepository(tokens)
                         .userDetailsService(users)
                         .rememberMeParameter("angemeldet-bleiben")
+                        .rememberMeCookieName(StaleFormHandler.REMEMBER_ME_COOKIE)
                         .tokenValiditySeconds((int) REMEMBER_ME.toSeconds()))
-                .exceptionHandling(errors -> errors.accessDeniedHandler(SecurityConfig::accessDenied))
+                .exceptionHandling(errors -> errors.accessDeniedHandler(staleForms))
                 .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(CSP)))
                 .build();
-    }
-
-    /**
-     * Sends a stale form to the login page instead of the 403 page. The CSRF token lives in the session,
-     * so after the session timeout an open page posts an old token.
-     */
-    static void accessDenied(HttpServletRequest request, HttpServletResponse response, AccessDeniedException denied)
-            throws IOException, ServletException {
-        if (denied instanceof CsrfException) {
-            response.sendRedirect(request.getContextPath() + "/login?abgelaufen");
-        } else {
-            new AccessDeniedHandlerImpl().handle(request, response, denied);
-        }
     }
 
     /**
