@@ -58,7 +58,8 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | Validation | KoSIT Validator + XRechnung configuration | Official validator, the same check that buyers run |
 | PDF layout | Thymeleaf HTML, rendered by Flying Saucer as PDF/A-3B | Own layout. Mustang then embeds the XML |
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |
-| UI | Thymeleaf + htmx | Server-side CRUD. No SPA build for 10 invoices per month |
+| UI | Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons | Server-side CRUD. CSS classes only, no SPA |
+| Design | Light and dark theme, Inter font in app and PDF, German formats | Mac and iPhone |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
 | Tests | JUnit 5, jqwik, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
 | Packaging | Container image on GHCR, multi-arch, attested | Same pattern as sb-stack |
@@ -265,7 +266,34 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 1. Send test invoices to free online validators.
 2. Send test invoices to a test recipient.
 
-## 11. Milestones
+## 11. Dependency updates (Renovate)
+
+The repository extends the shared preset `github>grigoriev/renovate-config`.
+Every dependency lives in a file that Renovate reads. No version hides in code.
+
+| Dependency | Where | Manager | Policy |
+|---|---|---|---|
+| Spring Boot, Mustang, veraPDF, KoSIT, test libraries | `pom.xml` | maven | Minor and patch automerge after green CI |
+| Maven plugins, PIT, JaCoCo | `pom.xml` | maven | Automerge, as above |
+| Tailwind, daisyUI, htmx, Alpine.js, Lucide, Inter | `package.json` | npm | Automerge, as above. Visual tests guard the look |
+| Playwright | `e2e/package.json` and the Playwright image tag | npm, docker | One group. Manual review, the baselines can change |
+| Node version for the CSS build | `.node-version`, read by `frontend-maven-plugin` | nodenv | Automerge |
+| Java base image | `Dockerfile`, tag and digest | dockerfile | Digest and patch automerge. Major manual |
+| Testcontainers PostgreSQL image | one constant, with a `# renovate:` comment | regex | Same major as production |
+| XRechnung validator configuration | `pom.xml` property, with a `# renovate:` comment | regex, GitHub releases | Manual review. A new version can change the rules |
+| GitHub Actions | `.github/workflows` | github-actions | SHA pinned, grouped, automerge |
+| `im` image on lemming | intranet repository, compose file | docker | Automerge. The nightly `update.sh` deploys it |
+| PostgreSQL image on lemming | intranet repository, compose file | docker | Minor automerge. Major manual: dump and restore needed |
+
+### Rules
+
+1. Automerge needs the full CI: unit, integration, mutation, E2E and visual tests.
+2. Libraries that touch the legal output never automerge: Mustang, KoSIT, the XRechnung configuration.
+3. A visual change after an update fails the build. A human checks the diff and updates the baselines.
+4. The PostgreSQL version in tests matches production.
+5. The frontend libraries come from npm and go into the jar at build time. No CDN at runtime.
+
+## 12. Milestones
 
 | # | Milestone | Content | Target |
 |---|---|---|---|
@@ -278,7 +306,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 | M6 | Acceptance | Test with realistic invoices, fixes, final legal check | 2026-12 |
 | GO | Go-live | Clean database, real seller profile, baseline 2026, first invoice `2027-01` | 2027-01-01 |
 
-## 12. Open questions
+## 13. Open questions
 
 1. Does the Goethe-Institut need XRechnung and a Leitweg-ID? Ask the contact person.
    XRechnung is in scope either way.
@@ -286,7 +314,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 3. Field mapping of the yearly report: check against the Anlage EÜR 2027 form before M4.
 4. Final wording of the default tax notes.
 
-## 13. Sources
+## 14. Sources
 
 - [e-Rechnung Bund: buyer reference (Leitweg-ID)](https://e-rechnung-bund.de/en/faq_category/buyer-reference/)
 - [§19 UStG, Haufe](https://www.haufe.de/id/norm/umsatzsteuergesetz-19-besteuerung-der-kleinunternehmer-HI847581_p19.html)
