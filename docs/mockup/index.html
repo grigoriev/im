@@ -85,6 +85,33 @@ h1, h2, h3 { text-wrap: balance; }
 @media (prefers-reduced-motion: reduce) { .toast-msg { animation: none; } }
 .nav-active { background: color-mix(in oklch, var(--color-primary) 14%, transparent); color: var(--color-primary); font-weight: 600; }
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+/* Tables never scroll sideways. They adapt to the width of their card, not of the window. */
+.fit { container-type: inline-size; min-width: 0; }
+.fit table { width: 100%; table-layout: auto; }
+.fit td, .fit th { overflow-wrap: anywhere; }
+/* Amounts and dates never break inside the number. */
+.fit .num { overflow-wrap: normal; white-space: nowrap; }
+/* Long e-mail addresses and IDs break instead of widening the page. */
+main dd, main .badge { overflow-wrap: anywhere; }
+/* A grid without explicit columns gets one track that may shrink below its content. */
+main .grid:not([class*="grid-cols"]) { grid-template-columns: minmax(0, 1fr); }
+main .badge { height: auto; min-height: var(--size); }
+.line-grid { grid-template-columns: minmax(0, 1fr) 4.5rem 4.5rem 6.5rem 8.5rem 6rem 2rem; gap: 0.5rem; align-items: center; }
+.line-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; align-items: end; }
+.line-row .l-text { grid-column: 1 / -1; }
+@container (min-width: 48rem) {
+  .line-row { grid-template-columns: minmax(0, 1fr) 4.5rem 4.5rem 6.5rem 8.5rem 6rem 2rem; align-items: center; }
+  .line-row .l-text { grid-column: auto; }
+  .line-row .l-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+@container (width < 34rem) {
+  .inv-table thead { display: none; }
+  .inv-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.25rem 0.75rem; padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--color-base-300); }
+  .inv-table td { display: block; padding: 0; border: 0; }
+  .inv-table .c-no, .inv-table .c-date, .inv-table .c-due { display: none; }
+  .inv-table .c-cust { grid-row: span 2; }
+  .inv-table .c-amount, .inv-table .c-status { justify-self: end; }
+}
 </style>
 
 </head>
@@ -292,20 +319,26 @@ function invoiceRows(list) {
   return list.map(i => {
     const c = cust(i.c), s = statusOf(i);
     const href = i.no ? '#rechnung-' + i.no : '#rechnung-neu';
-    const sent = SENT_ICONS[i.sent] ?? '<span class="opacity-30">-</span>';
+    const sent = SENT_ICONS[i.sent] ?? '';
+    const no = i.no ?? '<span class="opacity-50 italic">ohne Nr.</span>';
+    const dueCls = s === 'overdue' ? 'text-error font-medium' : '';
+    const dueText = i.due ? 'fällig ' + de(i.due) : '';
     return `<tr class="hover:bg-base-200 cursor-pointer" data-href="${href}">
-      <td class="num font-medium whitespace-nowrap"><a href="${href}" class="link link-hover">${i.no ?? '<span class="opacity-50 italic">ohne Nr.</span>'}</a></td>
-      <td class="min-w-40"><div class="font-medium">${c.name}</div><div class="text-xs opacity-60 md:hidden">${de(i.date)}</div></td>
-      <td class="num hidden md:table-cell whitespace-nowrap">${de(i.date)}</td>
-      <td class="num hidden lg:table-cell whitespace-nowrap ${s === 'overdue' ? 'text-error font-medium' : ''}">${de(i.due)}</td>
-      <td class="hidden sm:table-cell"><div class="flex flex-wrap gap-1">${catsOf(i).map(catBadge).join('')}</div></td>
-      <td class="num text-right whitespace-nowrap font-medium">${eur.format(i.total)}</td>
-      <td class="hidden md:table-cell text-center">${sent}</td>
-      <td>${badge(s)}</td>
+      <td class="c-no num font-medium"><a href="${href}" class="link link-hover">${no}</a></td>
+      <td class="c-cust">
+        <div class="font-medium"><a href="${href}" class="@min-[34rem]:hidden link link-hover num mr-1">${no}</a>${c.name}</div>
+        <div class="flex flex-wrap items-center gap-1 mt-1">${catsOf(i).map(catBadge).join('')}
+          <span class="text-xs opacity-60 num @2xl:hidden">${de(i.date)}</span>
+          <span class="text-xs num @3xl:hidden ${dueCls || 'opacity-60'}">${dueText}</span></div>
+      </td>
+      <td class="c-date num hidden @2xl:table-cell">${de(i.date)}</td>
+      <td class="c-due num hidden @3xl:table-cell ${dueCls}">${de(i.due)}</td>
+      <td class="c-amount num text-right font-medium">${eur.format(i.total)}</td>
+      <td class="c-status"><div class="flex flex-wrap items-center gap-1.5">${badge(s)}${sent}</div></td>
     </tr>`;
   }).join('');
 }
-const tableHead = `<thead><tr class="text-xs"><th>Nr.</th><th>Kunde</th><th class="hidden md:table-cell">Datum</th><th class="hidden lg:table-cell">Fällig</th><th class="hidden sm:table-cell">Steuer</th><th class="text-right">Betrag</th><th class="hidden md:table-cell text-center">Versand</th><th>Status</th></tr></thead>`;
+const tableHead = `<thead><tr class="text-xs"><th>Nr.</th><th>Kunde</th><th class="hidden @2xl:table-cell">Datum</th><th class="hidden @3xl:table-cell">Fällig</th><th class="text-right">Betrag</th><th>Status</th></tr></thead>`;
 
 function dispatchEvent(i, c) {
   if (i.sent === 'manuell') return ['hand', 'Manuell versendet', de(i.date), 'Eigenes Mailprogramm an ' + c.mail];
@@ -357,7 +390,7 @@ const VIEWS = {
             <h2 class="font-semibold">Aktuelle Rechnungen</h2>
             <a href="#rechnungen" class="link link-hover text-sm text-primary">Alle anzeigen</a>
           </div>
-          <div class="overflow-x-auto"><table class="table table-sm">${tableHead}<tbody>${invoiceRows([...DRAFTS, ...INVOICES.slice(0, 5)])}</tbody></table></div>
+          <div class="fit"><table class="table table-sm inv-table">${tableHead}<tbody>${invoiceRows([...DRAFTS, ...INVOICES.slice(0, 5)])}</tbody></table></div>
         </section>
 
         <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-4 content-start">
@@ -405,8 +438,8 @@ const VIEWS = {
         <label class="input input-sm w-full sm:w-64 sm:ml-auto"><i data-lucide="search" class="size-4 opacity-60"></i><input id="inv-search" type="search" placeholder="Kunde oder Nummer" value="${esc(state.invQuery)}"></label>
         <select id="inv-year" class="select select-sm w-28"><option>2027</option></select>
       </div>
-      <section class="bg-base-100 rounded-box border border-base-300 overflow-x-auto">
-        <table class="table table-sm">${tableHead}<tbody id="inv-body"></tbody></table>
+      <section class="bg-base-100 rounded-box border border-base-300 fit">
+        <table class="table table-sm inv-table">${tableHead}<tbody id="inv-body"></tbody></table>
       </section>
     </div>`;
   },
@@ -438,11 +471,9 @@ const VIEWS = {
 
           <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-3">
             <label class="floating-label"><span>Einleitung</span><textarea id="f-intro" class="textarea w-full h-16"></textarea></label>
-            <div class="overflow-x-auto">
-              <table class="table table-sm" id="lines">
-                <thead><tr class="text-xs"><th class="min-w-56">Leistung</th><th class="w-20 text-right">Menge</th><th class="w-24">Einheit</th><th class="w-28 text-right">Preis €</th><th class="w-40">Steuer</th><th class="w-24 text-right">Summe</th><th class="w-8"></th></tr></thead>
-                <tbody></tbody>
-              </table>
+            <div class="fit">
+              <div class="hidden @3xl:grid line-grid text-xs font-semibold opacity-60 px-1 pb-1"><span>Leistung</span><span class="text-right">Menge</span><span>Einheit</span><span class="text-right">Preis €</span><span>Steuer</span><span class="text-right">Summe</span><span></span></div>
+              <div id="lines" class="grid gap-3 @3xl:gap-1.5"></div>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-2">
               <button class="btn btn-sm btn-ghost" id="add-line"><i data-lucide="plus" class="size-4"></i>Position hinzufügen</button>
@@ -474,7 +505,7 @@ const VIEWS = {
         <h1 class="text-2xl font-semibold tracking-tight">Kunden &amp; Vorlagen</h1>
         <button class="btn btn-ghost" data-toast="Neuer Kunde angelegt (Prototyp)"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</button>
       </div>
-      <div class="grid gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
+      <div class="grid gap-4 grid-cols-[minmax(0,1fr)] md:grid-cols-[18rem_minmax(0,1fr)]">
         <ul class="menu bg-base-100 rounded-box border border-base-300 w-full p-2 content-start">
           ${CUSTOMERS.map(k => `<li><button type="button" data-cust="${k.id}" class="text-left ${k.id === c.id ? 'nav-active' : ''}" aria-pressed="${k.id === c.id}"><div class="min-w-0"><div class="truncate">${k.name}</div><div class="text-xs opacity-60">${k.city} · ${k.country}</div></div></button></li>`).join('')}
         </ul>
@@ -516,7 +547,7 @@ const VIEWS = {
       </div>
       <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
         <div><h2 class="font-semibold">Anlage EÜR 2027, Betriebseinnahmen</h2><p class="text-xs opacity-70">Nach Zahlungseingang. Werte zum Übertragen in WISO Steuer. Zeilennummern werden mit dem Formular 2027 abgeglichen.</p></div>
-        <div class="overflow-x-auto"><table class="table table-sm">
+        <div class="fit"><table class="table table-sm">
           <thead><tr class="text-xs"><th>Feld</th><th class="text-right">Betrag</th></tr></thead>
           <tbody>
             <tr><td>Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer</td><td class="num text-right font-medium">${eur.format(paidSum)}</td></tr>
@@ -633,7 +664,7 @@ function matchesFilter(i, f) {
 function renderInvoiceList() {
   const q = state.invQuery.toLowerCase();
   const list = [...DRAFTS, ...INVOICES].filter(i => matchesFilter(i, state.invFilter) && ((i.no || '').includes(q) || cust(i.c).name.toLowerCase().includes(q)));
-  document.getElementById('inv-body').innerHTML = list.length ? invoiceRows(list) : '<tr><td colspan="8" class="text-center opacity-60 py-6">Keine Rechnungen gefunden.</td></tr>';
+  document.getElementById('inv-body').innerHTML = list.length ? invoiceRows(list) : '<tr><td colspan="6" class="text-center opacity-60 py-6">Keine Rechnungen gefunden.</td></tr>';
   lucide.createIcons();
 }
 
@@ -667,9 +698,9 @@ const SETTINGS = {
       <div class="flex gap-2"><button class="btn btn-primary" data-toast="Einstellungen gespeichert">Speichern</button><button class="btn btn-ghost" data-toast="Testmail versendet">Testmail senden</button></div></div>`,
   users: () => `<div class="grid gap-4">
       <div class="flex items-center justify-between"><h2 class="font-semibold">Benutzer</h2><button class="btn btn-sm btn-ghost" data-toast="Benutzer angelegt (Prototyp)"><i data-lucide="user-plus" class="size-4"></i>Neu</button></div>
-      <div class="overflow-x-auto"><table class="table table-sm"><thead><tr class="text-xs"><th>Name</th><th>Rolle</th><th>Passkeys</th><th>Letzte Anmeldung</th><th></th></tr></thead><tbody>
-        <tr><td>Elena Sommer<div class="text-xs opacity-60">elena</div></td><td><span class="badge badge-sm badge-soft badge-primary">Benutzerin</span></td><td class="num">2</td><td class="num">18.03.2027</td><td class="text-right"><button class="btn btn-xs btn-ghost" data-toast="Passwort zurückgesetzt">Passwort zurücksetzen</button></td></tr>
-        <tr><td>Administrator<div class="text-xs opacity-60">admin</div></td><td><span class="badge badge-sm badge-soft badge-accent">Admin</span></td><td class="num">1</td><td class="num">17.03.2027</td><td></td></tr>
+      <div class="fit"><table class="table table-sm"><thead><tr class="text-xs"><th>Name</th><th>Rolle</th><th class="hidden @lg:table-cell">Passkeys</th><th class="hidden @xl:table-cell">Letzte Anmeldung</th><th></th></tr></thead><tbody>
+        <tr><td>Elena Sommer<div class="text-xs opacity-60">elena</div></td><td><span class="badge badge-sm badge-soft badge-primary">Benutzerin</span></td><td class="num hidden @lg:table-cell">2</td><td class="num hidden @xl:table-cell">18.03.2027</td><td class="text-right"><button class="btn btn-xs btn-ghost h-auto py-1" data-toast="Passwort zurückgesetzt">Passwort zurücksetzen</button></td></tr>
+        <tr><td>Administrator<div class="text-xs opacity-60">admin</div></td><td><span class="badge badge-sm badge-soft badge-accent">Admin</span></td><td class="num hidden @lg:table-cell">1</td><td class="num hidden @xl:table-cell">17.03.2027</td><td></td></tr>
       </tbody></table></div>
       <div class="border-t border-base-300 pt-4"><h3 class="font-semibold text-sm mb-2">Protokoll</h3>
         <ul class="text-xs grid gap-1 opacity-80 num"><li>18.03.2027 09:12 · elena · Rechnung 2027-09 ausgestellt</li><li>17.03.2027 21:30 · admin · Nummernkreis geprüft</li><li>14.03.2027 10:02 · elena · Zahlung zu 2027-05 erfasst</li></ul></div></div>`,
@@ -720,16 +751,22 @@ function syncNote() {
   state.noteCats = cats;
   document.getElementById('f-note').value = [...new Set(state.lines.map(l => l.cat))].map(k => CAT[k].note).join('\n');
 }
+function lineField(n, f, label, input, cls = '') {
+  return '<label class="grid gap-0.5 min-w-0 ' + cls + '"><span class="l-label text-xs opacity-60">' + label + '</span>' + input + '</label>';
+}
 function renderLines() {
-  const body = document.querySelector('#lines tbody');
-  body.innerHTML = state.lines.map((l, n) => `<tr data-line="${n}">
-    <td><input id="l-text-${n}" class="input input-sm w-full" data-f="text" value="${esc(l.text)}"></td>
-    <td><input id="l-qty-${n}" class="input input-sm w-full text-right num" data-f="qty" value="${String(l.qty).replace('.', ',')}"></td>
-    <td><input id="l-unit-${n}" class="input input-sm w-full" data-f="unit" value="${esc(l.unit)}"></td>
-    <td><input id="l-price-${n}" class="input input-sm w-full text-right num" data-f="price" value="${l.price.toFixed(2).replace('.', ',')}"></td>
-    <td><select id="l-cat-${n}" class="select select-sm w-full" data-f="cat">${Object.entries(CAT).map(([k, c]) => `<option value="${k}" ${k === l.cat ? 'selected' : ''}>${c.label}</option>`).join('')}</select></td>
-    <td class="text-right num whitespace-nowrap">${eur.format(l.qty * l.price)}</td>
-    <td><button class="btn btn-ghost btn-xs btn-square" data-del="${n}" aria-label="Position entfernen"><i data-lucide="x" class="size-3.5"></i></button></td></tr>`).join('');
+  document.getElementById('lines').innerHTML = state.lines.map((l, n) => {
+    const opts = Object.entries(CAT).map(([k, c]) => '<option value="' + k + '"' + (k === l.cat ? ' selected' : '') + '>' + c.label + '</option>').join('');
+    return '<div class="line-row border-b border-base-300 pb-3 @3xl:border-0 @3xl:pb-0" data-line="' + n + '">'
+      + lineField(n, 'text', 'Leistung', '<input id="l-text-' + n + '" class="input input-sm w-full" data-f="text" value="' + esc(l.text) + '">', 'l-text')
+      + lineField(n, 'qty', 'Menge', '<input id="l-qty-' + n + '" class="input input-sm w-full text-right num" data-f="qty" value="' + String(l.qty).replace('.', ',') + '">')
+      + lineField(n, 'unit', 'Einheit', '<input id="l-unit-' + n + '" class="input input-sm w-full" data-f="unit" value="' + esc(l.unit) + '">')
+      + lineField(n, 'price', 'Preis €', '<input id="l-price-' + n + '" class="input input-sm w-full text-right num" data-f="price" value="' + l.price.toFixed(2).replace('.', ',') + '">')
+      + lineField(n, 'cat', 'Steuer', '<select id="l-cat-' + n + '" class="select select-sm w-full" data-f="cat">' + opts + '</select>')
+      + '<div class="line-sum text-right num font-medium self-center">' + eur.format(l.qty * l.price) + '</div>'
+      + '<button class="btn btn-ghost btn-xs btn-square justify-self-end self-center" data-del="' + n + '" aria-label="Position entfernen"><i data-lucide="x" class="size-3.5"></i></button>'
+      + '</div>';
+  }).join('');
   lucide.createIcons();
   renderPreview();
 }
@@ -758,9 +795,9 @@ function buyerBlock(c) {
 
 function previewLines() {
   return state.lines.map(l => '<tr class="border-b rule align-top"><td class="py-1 pr-2">' + esc(l.text) + '</td>'
-    + '<td class="text-right whitespace-nowrap">' + String(l.qty).replace('.', ',') + ' ' + esc(l.unit) + '</td>'
-    + '<td class="text-right whitespace-nowrap">' + eur.format(l.price) + '</td>'
-    + '<td class="text-right whitespace-nowrap">' + eur.format(l.qty * l.price) + '</td></tr>').join('');
+    + '<td class="text-right">' + String(l.qty).replace('.', ',') + ' ' + esc(l.unit) + '</td>'
+    + '<td class="text-right">' + eur.format(l.price) + '</td>'
+    + '<td class="text-right">' + eur.format(l.qty * l.price) + '</td></tr>').join('');
 }
 
 function previewHtml(c, f) {
@@ -940,12 +977,12 @@ document.addEventListener('input', e => {
   if (e.target.id === 'inv-search') {
     state.invQuery = e.target.value; renderInvoiceList(); return;
   }
-  const tr = e.target.closest('tr[data-line]');
+  const tr = e.target.closest('[data-line]');
   if (tr && e.target.dataset.f) {
     const l = state.lines[+tr.dataset.line], f = e.target.dataset.f;
     l[f] = (f === 'qty' || f === 'price') ? (Number.parseFloat(e.target.value.replaceAll('.', '').replace(',', '.')) || 0) : e.target.value;
     if (f === 'cat') { syncNote(); renderLines(); return; }
-    if (f === 'qty' || f === 'price') tr.lastElementChild.previousElementSibling.textContent = eur.format(l.qty * l.price);
+    if (f === 'qty' || f === 'price') tr.querySelector('.line-sum').textContent = eur.format(l.qty * l.price);
     renderPreview(); return;
   }
   if (e.target.id === 'f-note') state.noteEdited = true;
