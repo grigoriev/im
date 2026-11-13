@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // Screenshots of pages with saved data. Other tests add data in parallel, so these capture single
 // elements, never a whole list. The viewports are tall: the element fits without scrolling, so the
@@ -9,7 +9,7 @@ const VIEWPORTS = [
 ];
 const LONG_NAME = 'Gemeinnützige Gesellschaft für Sprachförderung und interkulturelle Bildung Musterstadt mbH';
 
-test('a saved customer with a long name', async ({ page, browser }) => {
+test('a saved customer with a long name', async ({ page, browser, adminState }) => {
   await page.goto('/kunden/neu');
   await page.getByLabel('Name', { exact: true }).fill(LONG_NAME);
   await page.getByLabel('Straße und Hausnummer').fill('Lange Straße 123');
@@ -24,7 +24,11 @@ test('a saved customer with a long name', async ({ page, browser }) => {
 
   for (const viewport of VIEWPORTS) {
     for (const scheme of ['light', 'dark'] as const) {
-      const context = await browser.newContext({ colorScheme: scheme, viewport: { width: viewport.width, height: viewport.height } });
+      const context = await browser.newContext({
+        colorScheme: scheme,
+        viewport: { width: viewport.width, height: viewport.height },
+        storageState: adminState,
+      });
       const view = await context.newPage();
       await view.goto(url);
       await view.evaluate(() => document.fonts.ready);

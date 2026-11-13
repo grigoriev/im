@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { randomUUID } from 'node:crypto';
 
 test('creates a public customer with XRechnung, changes and deletes it', async ({ page }) => {

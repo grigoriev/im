@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { ANONYMOUS, uniqueUsername } from './accounts';
 
 // The seller profile is one record for the whole app: only this test writes it.

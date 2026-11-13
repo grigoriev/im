@@ -1,7 +1,6 @@
-import { chromium } from '@playwright/test';
-import { ADMIN } from './tests/accounts';
+import fs from 'node:fs';
 
-// Waits until the application reports UP, then logs in as the admin and keeps the session.
+// Waits until the application reports UP.
 export default async function globalSetup(): Promise<void> {
   const base = process.env.BASE_URL ?? 'http://localhost:8080';
   const deadline = Date.now() + 120_000;
@@ -15,13 +14,7 @@ export default async function globalSetup(): Promise<void> {
     if (Date.now() > deadline) throw new Error(`${base} did not report UP within two minutes`);
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ baseURL: base });
-  await page.goto('/login');
-  await page.getByLabel('Benutzername').fill(ADMIN.username);
-  await page.getByLabel('Passwort').fill(ADMIN.password);
-  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
-  await page.waitForURL(`${base}/`);
-  await page.context().storageState({ path: '.auth/admin.json' });
-  await browser.close();
+  // Each worker logs in as the admin on its own (tests/fixtures.ts). Old sessions of an earlier run go.
+  fs.rmSync('.auth', { recursive: true, force: true });
+  fs.mkdirSync('.auth', { recursive: true });
 }

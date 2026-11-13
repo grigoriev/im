@@ -1,14 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { ANONYMOUS } from './accounts';
 import { ROUTES, WIDTHS } from './routes';
 
 // No element scrolls sideways and the page never gets wider than the window.
 for (const route of ROUTES) {
   for (const width of WIDTHS) {
-    test(`${route.name} has no horizontal scroll at ${width}px`, async ({ browser }) => {
+    test(`${route.name} has no horizontal scroll at ${width}px`, async ({ browser, adminState }) => {
       const context = await browser.newContext({
         viewport: { width, height: 900 },
-        ...(route.anonymous ? { storageState: ANONYMOUS } : {}),
+        storageState: route.anonymous ? ANONYMOUS : adminState,
       });
       const page = await context.newPage();
       await page.goto(route.path);

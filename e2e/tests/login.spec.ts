@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { ADMIN, ANONYMOUS, uniqueUsername } from './accounts';
 
 test.describe('without session', () => {

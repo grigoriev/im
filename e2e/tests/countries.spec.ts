@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // The list starts with Germany only. Only this test adds Japan, and it removes it again.
 test('the admin adds a country that the customer form then offers', async ({ page }) => {

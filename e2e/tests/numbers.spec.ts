@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 // The pattern is one setting for the whole app: only this test changes it, and it restores the default.
 test('the admin sets the number pattern and the start of next year', async ({ page }) => {
