@@ -3,10 +3,11 @@
   <meta charset="utf-8"/>
   <title th:text="'Rechnung ' + ${invoice.number}">Rechnung</title>
   <style>
-    @page { size: A4; margin: 22mm 20mm 26mm 22mm;
-      @bottom-left { content: element(footer); } }
+    @page { size: A4; margin: 22mm 20mm 30mm 22mm;
+      @bottom-left { content: element(footer); vertical-align: top; }
+      @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-family: "Inter"; font-size: 7pt; color: #616e7c; vertical-align: top; padding-top: 2.6mm; } }
     body { font-family: "Inter"; font-size: 9.5pt; line-height: 1.45; color: #1f2933; }
-    .footer { position: running(footer); width: 100%; font-size: 7pt; color: #616e7c; border-top: 0.5pt solid #cbd2d9; padding-top: 2mm; }
+    .footer { position: running(footer); width: 140mm; font-size: 7pt; color: #616e7c; border-top: 0.5pt solid #cbd2d9; padding-top: 2mm; }
     .footer td { vertical-align: top; width: 33%; }
     .sender { font-size: 7pt; color: #616e7c; margin-bottom: 2mm; }
     .head { width: 100%; margin-bottom: 12mm; }
@@ -14,7 +15,8 @@
     .meta { text-align: right; font-size: 8.5pt; }
     .meta td { padding: 0 0 0.6mm 4mm; }
     h1 { font-size: 14pt; font-weight: 600; margin: 0 0 5mm 0; }
-    .lines { width: 100%; border-collapse: collapse; margin: 5mm 0; }
+    .lines { width: 100%; border-collapse: collapse; margin: 5mm 0; -fs-table-paginate: paginate; }
+    .lines tr { page-break-inside: avoid; }
     .lines th { font-weight: 600; text-align: left; border-bottom: 0.75pt solid #9aa5b1; padding: 1.5mm 2mm 1.5mm 0; }
     .lines td { border-bottom: 0.5pt solid #e4e7eb; padding: 1.5mm 2mm 1.5mm 0; vertical-align: top; }
     .num, .lines th.num { text-align: right; white-space: nowrap; }
