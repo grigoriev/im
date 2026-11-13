@@ -63,6 +63,13 @@
         "org.kosit:validator"
       ],
       "allowedVersions": "!/-tp\\d+$/"
+    },
+    {
+      "description": "The test database stays on the production major. A major upgrade runs first on lemming (dump and restore, intranet repository), then this limit moves in the same step.",
+      "matchDepNames": [
+        "postgres"
+      ],
+      "allowedVersions": "<19"
     }
   ]
 }

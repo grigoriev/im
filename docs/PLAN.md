@@ -296,7 +296,7 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | Playwright and its image, as one group | `e2e/package.json`, `e2e/docker-compose.yml` | npm, docker-compose |
 | Node for the CSS build, as one group | `.node-version`, `pom.xml` | nodenv, regex |
 | Java base image, tag and digest | `Dockerfile` | dockerfile |
-| PostgreSQL image of the tests | one constant with a `// renovate:` comment | regex |
+| PostgreSQL image of the tests, limited to the production major | one constant with a `// renovate:` comment | regex |
 | XRechnung validator configuration | `pom.xml` property with a `renovate:` comment | regex, GitHub releases |
 | GitHub Actions, SHA pinned | `.github/workflows` | github-actions |
 | `im` image on lemming | intranet repository, compose file | docker |
@@ -308,8 +308,11 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 3. A visual change after an update fails the build. The pull request stays open until the baselines are reviewed.
 4. A red pull request stays open. It gets a fix in its own pull request.
 5. A new XRechnung configuration needs the file name and SHA-256 in `pom.xml`. Renovate changes only the version.
-6. `.npmrc` sets `allow-remote=all`: npm 12 otherwise refuses a bundled Tailwind package, and Renovate cannot update the lock file.
-7. The frontend libraries come from npm and go into the jar at build time. No CDN at runtime.
+6. The root `.npmrc` sets `allow-remote=all`: npm 12 otherwise refuses a bundled Tailwind package, and Renovate cannot update the lock file.
+   `e2e/` has no such package and keeps the npm default.
+7. The PostgreSQL image of the tests stays on the production major. A major upgrade runs first on lemming (dump and restore),
+   then the limit in `renovate.json` moves in the same step.
+8. The frontend libraries come from npm and go into the jar at build time. No CDN at runtime.
 
 ## 12. Milestones
 
