@@ -56,6 +56,13 @@
         "mcr.microsoft.com/playwright"
       ],
       "groupName": "playwright"
+    },
+    {
+      "description": "KoSIT publishes technical previews as 2.0.0-tpN. Maven versioning reads them as releases, and their jar is missing on Central.",
+      "matchPackageNames": [
+        "org.kosit:validator"
+      ],
+      "allowedVersions": "!/-tp\\d+$/"
     }
   ]
 }
