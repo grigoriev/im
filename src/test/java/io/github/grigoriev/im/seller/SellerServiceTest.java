@@ -174,7 +174,8 @@ class SellerServiceTest {
 
     @ParameterizedTest
     @CsvSource({"www.erika.example, true", "https://erika.example/kurse, true", "http://a-b.example.de, true",
-        "erika, false", "https://, false", "www.erika example.de, false", "mailto:erika@example.org, false"})
+        "erika, false", "https://, false", "www.erika example.de, false", "mailto:erika@example.org, false",
+        ".example.de, false", "example.de., false", "www..example.de, false", "https://example.de/a b, false"})
     void checksTheWebsite(String website, boolean valid) {
         assertThat(SellerService.check(with("website", website))).isEqualTo(valid ? List.of()
                 : List.of("Bitte eine Website wie www.example.de angeben."));

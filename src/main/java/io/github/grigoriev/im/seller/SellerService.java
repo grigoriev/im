@@ -57,8 +57,8 @@ public class SellerService {
                 tax_number = EXCLUDED.tax_number, vat_id = EXCLUDED.vat_id, iban = EXCLUDED.iban,
                 bic = EXCLUDED.bic, tax_status = EXCLUDED.tax_status, tagline = EXCLUDED.tagline,
                 website = EXCLUDED.website, bank_name = EXCLUDED.bank_name, account_holder = EXCLUDED.account_holder""";
-    /** A host name with a dot, with or without {@code https://} and a path. */
-    static final Pattern WEBSITE = Pattern.compile("(https?://)?[\\w-]+(\\.[\\w-]+)+(/\\S*)?");
+    /** A host name, with or without {@code https://} and a path. {@link #websiteOk} checks the dots. */
+    static final Pattern WEBSITE = Pattern.compile("(?:https?://)?[\\w.-]+(?:/\\S*)?");
 
     static final Pattern BIC = Pattern.compile("[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?");
 
@@ -142,7 +142,7 @@ public class SellerService {
         matches(problems, profile.bic(), BIC, "Die BIC hat 8 oder 11 Zeichen.");
         optional(problems, profile.tagline(), "Zusatz", 200);
         optional(problems, profile.website(), "Website", 200);
-        if (profile.website() != null && !WEBSITE.matcher(profile.website()).matches()) {
+        if (profile.website() != null && !websiteOk(profile.website())) {
             problems.add("Bitte eine Website wie www.example.de angeben.");
         }
         optional(problems, profile.bankName(), "Kreditinstitut", 100);
@@ -163,6 +163,15 @@ public class SellerService {
         if (length != null && iban.length() != length) {
             problems.add("Eine IBAN aus " + country + " hat " + length + " Zeichen.");
         }
+    }
+
+    /** A website needs a host with a dot inside, such as {@code www.example.de}, and no empty part. */
+    static boolean websiteOk(String website) {
+        if (!WEBSITE.matcher(website).matches()) {
+            return false;
+        }
+        String host = website.replaceFirst("^https?://", "").split("/", 2)[0];
+        return host.contains(".") && !host.startsWith(".") && !host.endsWith(".") && !host.contains("..");
     }
 
     /** ISO 13616: the IBAN with its first four characters moved to the end, letters as numbers, mod 97 is 1. */
