@@ -89,6 +89,8 @@ h1, h2, h3 { text-wrap: balance; }
 .fit { container-type: inline-size; min-width: 0; }
 .fit table { width: 100%; table-layout: auto; }
 .fit td, .fit th { overflow-wrap: anywhere; }
+/* Amounts and dates never break inside the number. */
+.fit .num { overflow-wrap: normal; white-space: nowrap; }
 /* Long e-mail addresses and IDs break instead of widening the page. */
 main dd, main .badge { overflow-wrap: anywhere; }
 /* A grid without explicit columns gets one track that may shrink below its content. */
@@ -102,7 +104,7 @@ main .badge { height: auto; min-height: var(--size); }
   .line-row .l-text { grid-column: auto; }
   .line-row .l-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
-@container (max-width: 34rem) {
+@container (width < 34rem) {
   .inv-table thead { display: none; }
   .inv-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.25rem 0.75rem; padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--color-base-300); }
   .inv-table td { display: block; padding: 0; border: 0; }
