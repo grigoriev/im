@@ -41,7 +41,7 @@ class InvoicePdfRendererTest {
                 .contains("Rechnung")
                 .contains("2027-10")
                 .contains("Verlag am Fluss GmbH")
-                .contains("Lesung aus „Der stille Hafen“, 90 Min.")
+                .contains("Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.")
                 .contains("400,00\u00a0€")
                 .contains("480,00\u00a0€")
                 .contains("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.")
@@ -51,6 +51,23 @@ class InvoicePdfRendererTest {
                 .contains("Mit freundlichen Grüßen")
                 .doesNotContain("Käuferreferenz")
                 .doesNotContain("USt-IdNr.");
+    }
+
+    @Test
+    void printsOnlyTextAndAmountForLumpSums() throws IOException {
+        String text = text(renderer.render(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931)));
+        assertThat(text).contains("Leistung Betrag").doesNotContain("Menge").doesNotContain("Einzelpreis")
+                .doesNotContain("pauschal").contains("Reisekosten 80,00\u00a0€");
+    }
+
+    @Test
+    void leavesTheQuantityOfALumpSumEmptyNextToCountedLines() throws IOException {
+        InvoiceDocument mixed = SampleInvoices.invoice(SampleInvoices.SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
+                SampleInvoices.line("Deutschkurs B2, je 45 Min.", "16", "45.00", TaxCategory.EXEMPT_4_21),
+                SampleInvoices.lump("Lesung", "400.00", TaxCategory.KLEINUNTERNEHMER));
+        String text = text(renderer.render(mixed));
+        assertThat(text).contains("Leistung Menge Einzelpreis Betrag").contains("Deutschkurs B2, je 45 Min. 16 45,00\u00a0€ 720,00\u00a0€")
+                .contains("Lesung 400,00\u00a0€").doesNotContain("pauschal");
     }
 
     @Test

@@ -101,6 +101,16 @@ public record InvoiceDocument(
     }
 
     /**
+     * Tells whether the PDF shows the quantity and unit price columns. They appear only when at least
+     * one line is not a lump sum.
+     *
+     * @return {@code true} if a line has its own quantity
+     */
+    public boolean showsQuantities() {
+        return lines.stream().anyMatch(line -> !line.lumpSum());
+    }
+
+    /**
      * Returns the invoice total. A Kleinunternehmerin charges no VAT, so net and gross are equal.
      *
      * @return the sum of the line amounts

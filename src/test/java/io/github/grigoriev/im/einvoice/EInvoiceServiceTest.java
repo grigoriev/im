@@ -44,6 +44,7 @@ class EInvoiceServiceTest {
             cases.add(Arguments.of(format, "§19+§4", invoice(SCHOOL, ref, format,
                     line("Unterricht", "16", "45.00", EXEMPT_4_21), line("Lesung", "1", "400.00", KLEINUNTERNEHMER))));
             cases.add(Arguments.of(format, "AE", invoice(SELLER_EU, DUTCH, ref, format, line("Workshop", "1", "600.00", REVERSE_CHARGE_EU))));
+            cases.add(Arguments.of(format, "lump sums", SampleInvoices.reading(format)));
             cases.add(Arguments.of(format, "O", invoice(SWISS, ref, format, line("Lesung", "1", "350.00", NOT_TAXABLE_ABROAD))));
         }
         return cases.stream();

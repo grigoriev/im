@@ -126,6 +126,16 @@ class MustangInvoiceMapperTest {
     }
 
     @Test
+    void mapsALumpSumAsOneUnitLs() {
+        Invoice invoice = mapper.toMustang(invoice(PUBLISHER, null, InvoiceFormat.ZUGFERD_EN16931,
+                SampleInvoices.lump("Lesung am 16.03.2027, 90 Min.", "400.00", KLEINUNTERNEHMER)));
+        Item item = (Item) invoice.getZFItems()[0];
+        assertThat(item.getProduct().getUnit()).isEqualTo("LS");
+        assertThat(item.getQuantity()).isEqualByComparingTo("1");
+        assertThat(item.getPrice()).isEqualByComparingTo("400.00");
+    }
+
+    @Test
     void joinsBothExemptNotesIntoOneReasonForMixedCategoryE() {
         Invoice invoice = mapper.toMustang(invoice(PUBLISHER, null, InvoiceFormat.ZUGFERD_EN16931,
                 line("Unterricht", "16", "45.00", EXEMPT_4_21), line("Lesung", "1", "400.00", KLEINUNTERNEHMER)));

@@ -30,7 +30,11 @@ final class SampleInvoices {
     }
 
     static InvoiceLine line(String text, String quantity, String price, TaxCategory category) {
-        return new InvoiceLine(text, new BigDecimal(quantity), "C62", "Stk", new BigDecimal(price), category);
+        return InvoiceLine.counted(text, new BigDecimal(quantity), new BigDecimal(price), category);
+    }
+
+    static InvoiceLine lump(String text, String amount, TaxCategory category) {
+        return InvoiceLine.lumpSum(text, new BigDecimal(amount), category);
     }
 
     static InvoiceDocument invoice(Party buyer, String buyerReference, InvoiceFormat format, InvoiceLine... lines) {
@@ -46,8 +50,8 @@ final class SampleInvoices {
 
     static InvoiceDocument reading(InvoiceFormat format) {
         return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,
-                line("Lesung aus „Der stille Hafen“, 90 Min.", "1", "400.00", TaxCategory.KLEINUNTERNEHMER),
-                line("Reisekosten, pauschal", "1", "80.00", TaxCategory.KLEINUNTERNEHMER));
+                lump("Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.", "400.00", TaxCategory.KLEINUNTERNEHMER),
+                lump("Reisekosten", "80.00", TaxCategory.KLEINUNTERNEHMER));
     }
 
     static SpringTemplateEngine templates() {
