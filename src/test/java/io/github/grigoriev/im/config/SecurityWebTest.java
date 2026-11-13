@@ -2,8 +2,10 @@ package io.github.grigoriev.im.config;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -27,12 +29,21 @@ import io.github.grigoriev.im.user.UserService;
 import io.github.grigoriev.im.user.UserTestData;
 import io.github.grigoriev.im.user.Passkey;
 import io.github.grigoriev.im.user.PasskeyService;
+import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.SellerService;
+import io.github.grigoriev.im.seller.SellerTestData;
+import io.github.grigoriev.im.seller.SettingsException;
+import io.github.grigoriev.im.seller.TaxNoteService;
+import io.github.grigoriev.im.seller.TaxStatus;
 import io.github.grigoriev.im.web.AccountController;
+import io.github.grigoriev.im.web.SettingsController;
+import io.github.grigoriev.im.web.TaxNoteController;
 import io.github.grigoriev.im.web.AdminUserController;
 import io.github.grigoriev.im.web.CurrentUserAdvice;
 import io.github.grigoriev.im.web.HomeController;
 import io.github.grigoriev.im.web.LoginController;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +56,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
-@WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class})
+@WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
+        SettingsController.class, TaxNoteController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -72,6 +84,12 @@ class SecurityWebTest {
 
     @MockitoBean
     private PasskeyService passkeys;
+
+    @MockitoBean
+    private SellerService sellers;
+
+    @MockitoBean
+    private TaxNoteService taxNotes;
 
     private void knownUsers() {
         when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
@@ -237,6 +255,55 @@ class SecurityWebTest {
                 .andExpect(flash().attribute("error", "Diesen Benutzer gibt es nicht."));
         mvc.perform(post("/admin/benutzer/2/passkeys/loeschen").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void showsAnEmptyProfileAndThenTheSavedOne() throws Exception {
+        when(sellers.find()).thenReturn(Optional.empty());
+        mvc.perform(get("/einstellungen").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kleinunternehmer nach § 19 UStG")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Steuerhinweise"))));
+        when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile()));
+        mvc.perform(get("/einstellungen").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"DE89 3704 0044 0532 0130 00\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuerhinweise")));
+    }
+
+    @Test
+    void savesTheProfileOrShowsTheFormWithTheProblems() throws Exception {
+        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE89 3704")
+                        .param("taxStatus", "REGULAR").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/einstellungen")).andExpect(flash().attribute("success", "Profil gespeichert."));
+        verify(sellers).save(argThat(profile -> profile.name().equals("Erika Mustermann")
+                && profile.taxStatus() == TaxStatus.REGULAR));
+        when(sellers.save(any())).thenThrow(new SettingsException(List.of("Die IBAN ist ungültig.", "Bitte Ort angeben.")));
+        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE00")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Die IBAN ist ungültig.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte Ort angeben.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")));
+        mvc.perform(post("/einstellungen").param("name", "x").with(csrf())).andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login"));
+        verify(sellers, times(2)).save(any());
+    }
+
+    @Test
+    void keepsTheTaxNotesForTheAdmin() throws Exception {
+        when(taxNotes.notes()).thenReturn(Map.of(TaxCategory.EXEMPT_4_21, "Steuerfrei gemäß § 4 Nr. 21 UStG."));
+        mvc.perform(get("/admin/steuerhinweise").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuerfreie Bildungsleistung (§ 4 Nr. 21 UStG)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"note-EXEMPT_4_21\"")));
+        mvc.perform(get("/admin/steuerhinweise").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/steuerhinweise").param("note-EXEMPT_4_21", "Neu.").param("note-STANDARD_19", "x")
+                        .param("other", "y").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/steuerhinweise"))
+                .andExpect(flash().attribute("success", "Steuerhinweise gespeichert."));
+        verify(taxNotes).save(Map.of(TaxCategory.EXEMPT_4_21, "Neu."));
+        doThrow(new SettingsException(List.of("Zu lang."))).when(taxNotes).save(Map.of());
+        mvc.perform(post("/admin/steuerhinweise").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Zu lang."));
     }
 
     @Test

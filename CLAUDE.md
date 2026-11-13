@@ -42,6 +42,7 @@ Package `io.github.grigoriev.im`:
   `XRechnungValidator`: KoSIT) and `EInvoiceService`, which issues and validates per format
 - `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`,
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
+- `seller`: the seller profile (`SellerService`, one row, IBAN checksum) and the default tax notes (`TaxNoteService`)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
 - `web`: controllers and Thymeleaf pages, styled with Tailwind and daisyUI (`src/main/frontend/app.css`).
   Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
