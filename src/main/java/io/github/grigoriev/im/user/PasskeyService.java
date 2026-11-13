@@ -44,8 +44,8 @@ public class PasskeyService {
     public List<Passkey> list(String username) {
         return records(username).stream()
                 .sorted(Comparator.comparing(CredentialRecord::getCreated, Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(record -> new Passkey(record.getCredentialId().toBase64UrlString(), record.getLabel(),
-                        record.getCreated(), record.getLastUsed()))
+                .map(stored -> new Passkey(stored.getCredentialId().toBase64UrlString(), stored.getLabel(),
+                        stored.getCreated(), stored.getLastUsed()))
                 .toList();
     }
 
@@ -75,8 +75,8 @@ public class PasskeyService {
         if (label.strip().length() > MAX_LABEL) {
             throw new UserException("Der Name hat höchstens " + MAX_LABEL + " Zeichen.");
         }
-        CredentialRecord record = owned(username, id);
-        credentials.save(ImmutableCredentialRecord.fromCredentialRecord(record).label(label.strip()).build());
+        CredentialRecord stored = owned(username, id);
+        credentials.save(ImmutableCredentialRecord.fromCredentialRecord(stored).label(label.strip()).build());
     }
 
     /**
@@ -100,7 +100,7 @@ public class PasskeyService {
     @Transactional
     public int removeAll(String username) {
         List<CredentialRecord> records = records(username);
-        records.forEach(record -> credentials.delete(record.getCredentialId()));
+        records.forEach(stored -> credentials.delete(stored.getCredentialId()));
         return records.size();
     }
 
@@ -111,11 +111,11 @@ public class PasskeyService {
 
     private CredentialRecord owned(String username, String id) {
         PublicKeyCredentialUserEntity entity = entities.findByUsername(username);
-        CredentialRecord record = credentialById(id);
-        if (entity == null || record == null || !record.getUserEntityUserId().equals(entity.getId())) {
+        CredentialRecord stored = credentialById(id);
+        if (entity == null || stored == null || !stored.getUserEntityUserId().equals(entity.getId())) {
             throw new UserException("Diesen Passkey gibt es nicht.");
         }
-        return record;
+        return stored;
     }
 
     private CredentialRecord credentialById(String id) {

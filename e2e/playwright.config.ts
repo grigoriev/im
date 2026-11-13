@@ -19,7 +19,8 @@ export default defineConfig({
     storageState: '.auth/admin.json',
   },
   expect: {
-    toHaveScreenshot: { maxDiffPixelRatio: 0.001, animations: 'disabled' },
+    // Strict on purpose: the default threshold 0.2 misses dark theme changes, and a ratio misses one new menu item.
+    toHaveScreenshot: { threshold: 0.05, maxDiffPixels: 20, animations: 'disabled' },
   },
   // The screenshots run first, while the database holds only the admin: tests that add data come after.
   projects: [

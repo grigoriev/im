@@ -74,7 +74,8 @@ class PasskeyServiceTest {
         CredentialRecord mac = passkey(credentials, elena, "MacBook Air", JAN, null);
         String id = mac.getCredentialId().toBase64UrlString();
         service.rename("elena", id, "x".repeat(64));
-        assertThatThrownBy(() -> service.rename("elena", id, "x".repeat(65))).isInstanceOf(UserException.class)
+        String tooLong = "x".repeat(65);
+        assertThatThrownBy(() -> service.rename("elena", id, tooLong)).isInstanceOf(UserException.class)
                 .hasMessage("Der Name hat höchstens 64 Zeichen.");
     }
 

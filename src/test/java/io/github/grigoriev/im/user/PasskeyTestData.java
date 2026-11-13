@@ -43,7 +43,7 @@ public final class PasskeyTestData {
      */
     public static CredentialRecord passkey(UserCredentialRepository credentials, PublicKeyCredentialUserEntity owner,
             String label, Instant created, Instant lastUsed) {
-        CredentialRecord record = ImmutableCredentialRecord.builder()
+        CredentialRecord stored = ImmutableCredentialRecord.builder()
                 .credentialType(PublicKeyCredentialType.PUBLIC_KEY)
                 .credentialId(Bytes.random())
                 .userEntityUserId(owner.getId())
@@ -56,7 +56,7 @@ public final class PasskeyTestData {
                 .lastUsed(lastUsed)
                 .label(label)
                 .build();
-        credentials.save(record);
-        return record;
+        credentials.save(stored);
+        return stored;
     }
 }

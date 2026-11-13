@@ -3,11 +3,11 @@
 (() => {
   const b64 = {
     encode(buffer) {
-      return btoa(String.fromCharCode(...new Uint8Array(buffer))).replaceAll('=', '').replaceAll('+', '-').replaceAll('/', '_');
+      return btoa(String.fromCodePoint(...new Uint8Array(buffer))).replaceAll('=', '').replaceAll('+', '-').replaceAll('/', '_');
     },
     decode(text) {
       const binary = atob(text.replaceAll('-', '+').replaceAll('_', '/'));
-      return Uint8Array.from(binary, (char) => char.charCodeAt(0)).buffer;
+      return Uint8Array.from(binary, (char) => char.codePointAt(0)).buffer;
     },
   };
 
@@ -36,7 +36,7 @@
   };
 
   const explain = (error) =>
-    error && error.name === 'NotAllowedError'
+    error?.name === 'NotAllowedError'
       ? 'Der Vorgang wurde abgebrochen oder ist abgelaufen.'
       : 'Das hat nicht geklappt. Bitte versuchen Sie es noch einmal.';
 

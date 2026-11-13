@@ -21,6 +21,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/konto")
 public class AccountController {
 
+    private static final String SUCCESS = "success";
+    private static final String ERROR = "error";
+
     static final String VIEW = "account";
     static final String BACK = "redirect:/konto";
 
@@ -65,9 +68,9 @@ public class AccountController {
             RedirectAttributes flash) {
         try {
             passkeys.rename(principal.getName(), id, label);
-            flash.addFlashAttribute("success", "Passkey umbenannt.");
+            flash.addFlashAttribute(SUCCESS, "Passkey umbenannt.");
         } catch (UserException e) {
-            flash.addFlashAttribute("error", e.getMessage());
+            flash.addFlashAttribute(ERROR, e.getMessage());
         }
         return BACK;
     }
@@ -84,9 +87,9 @@ public class AccountController {
     public String remove(Principal principal, @PathVariable String id, RedirectAttributes flash) {
         try {
             passkeys.remove(principal.getName(), id);
-            flash.addFlashAttribute("success", "Passkey entfernt.");
+            flash.addFlashAttribute(SUCCESS, "Passkey entfernt.");
         } catch (UserException e) {
-            flash.addFlashAttribute("error", e.getMessage());
+            flash.addFlashAttribute(ERROR, e.getMessage());
         }
         return BACK;
     }
@@ -105,9 +108,9 @@ public class AccountController {
             RedirectAttributes flash) {
         try {
             users.changePassword(principal.getName(), current, password);
-            flash.addFlashAttribute("success", "Passwort geändert.");
+            flash.addFlashAttribute(SUCCESS, "Passwort geändert.");
         } catch (UserException e) {
-            flash.addFlashAttribute("error", e.getMessage());
+            flash.addFlashAttribute(ERROR, e.getMessage());
         }
         return BACK;
     }

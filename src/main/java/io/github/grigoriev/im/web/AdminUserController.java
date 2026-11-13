@@ -22,6 +22,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/admin/benutzer")
 public class AdminUserController {
 
+    private static final String SUCCESS = "success";
+    private static final String ERROR = "error";
+
     static final String VIEW = "admin/users";
     static final String BACK = "redirect:/admin/benutzer";
 
@@ -71,9 +74,9 @@ public class AdminUserController {
             @RequestParam String password, @RequestParam Role role, RedirectAttributes flash) {
         try {
             users.create(username, displayName, password, role);
-            flash.addFlashAttribute("success", "Benutzer „" + username + "“ angelegt.");
+            flash.addFlashAttribute(SUCCESS, "Benutzer „" + username + "“ angelegt.");
         } catch (UserException e) {
-            flash.addFlashAttribute("error", e.getMessage());
+            flash.addFlashAttribute(ERROR, e.getMessage());
             flash.addFlashAttribute("username", username);
             flash.addFlashAttribute("displayName", displayName);
         }
@@ -92,9 +95,9 @@ public class AdminUserController {
         try {
             String username = users.get(id).username();
             int removed = passkeys.removeAll(username);
-            flash.addFlashAttribute("success", removed + " Passkey(s) von „" + username + "“ entfernt.");
+            flash.addFlashAttribute(SUCCESS, removed + " Passkey(s) von „" + username + "“ entfernt.");
         } catch (UserException e) {
-            flash.addFlashAttribute("error", e.getMessage());
+            flash.addFlashAttribute(ERROR, e.getMessage());
         }
         return BACK;
     }
@@ -111,9 +114,9 @@ public class AdminUserController {
     public String resetPassword(@PathVariable long id, @RequestParam String password, RedirectAttributes flash) {
         try {
             String username = users.resetPassword(id, password).username();
-            flash.addFlashAttribute("success", "Neues Passwort für „" + username + "“ gesetzt.");
+            flash.addFlashAttribute(SUCCESS, "Neues Passwort für „" + username + "“ gesetzt.");
         } catch (UserException e) {
-            flash.addFlashAttribute("error", e.getMessage());
+            flash.addFlashAttribute(ERROR, e.getMessage());
         }
         return BACK;
     }

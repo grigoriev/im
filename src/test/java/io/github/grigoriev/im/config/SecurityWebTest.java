@@ -3,6 +3,7 @@ package io.github.grigoriev.im.config;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -204,13 +205,13 @@ class SecurityWebTest {
         mvc.perform(post("/konto/passkeys/id1/name").param("label", "Neu").with(user("elena")).with(csrf()))
                 .andExpect(redirectedUrl("/konto")).andExpect(flash().attribute("success", "Passkey umbenannt."));
         verify(passkeys).rename("elena", "id1", "Neu");
-        org.mockito.Mockito.doThrow(new UserException("Fremd.")).when(passkeys).rename("elena", "x", "Neu");
+        doThrow(new UserException("Fremd.")).when(passkeys).rename("elena", "x", "Neu");
         mvc.perform(post("/konto/passkeys/x/name").param("label", "Neu").with(user("elena")).with(csrf()))
                 .andExpect(flash().attribute("error", "Fremd."));
         mvc.perform(post("/konto/passkeys/id1/loeschen").with(user("elena")).with(csrf()))
                 .andExpect(flash().attribute("success", "Passkey entfernt."));
         verify(passkeys).remove("elena", "id1");
-        org.mockito.Mockito.doThrow(new UserException("Fremd.")).when(passkeys).remove("elena", "x");
+        doThrow(new UserException("Fremd.")).when(passkeys).remove("elena", "x");
         mvc.perform(post("/konto/passkeys/x/loeschen").with(user("elena")).with(csrf()))
                 .andExpect(flash().attribute("error", "Fremd."));
     }
@@ -220,7 +221,7 @@ class SecurityWebTest {
         mvc.perform(post("/konto/passwort").param("current", "alt").param("password", PASSWORD).with(user("elena")).with(csrf()))
                 .andExpect(flash().attribute("success", "Passwort geändert."));
         verify(users).changePassword("elena", "alt", PASSWORD);
-        org.mockito.Mockito.doThrow(new UserException("Falsch.")).when(users).changePassword("elena", "x", PASSWORD);
+        doThrow(new UserException("Falsch.")).when(users).changePassword("elena", "x", PASSWORD);
         mvc.perform(post("/konto/passwort").param("current", "x").param("password", PASSWORD).with(user("elena")).with(csrf()))
                 .andExpect(flash().attribute("error", "Falsch."));
     }
