@@ -10,6 +10,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.time.Clock;
 import java.time.Instant;
@@ -35,7 +37,8 @@ class NumberServiceTest {
     private final MappedQuerySpec<String> text = mock(MappedQuerySpec.class);
     @SuppressWarnings("unchecked")
     private final MappedQuerySpec<Integer> counter = mock(MappedQuerySpec.class);
-    private final NumberService service = new NumberService(sequences, jdbc, NEW_YEARS_EVE);
+    private final AuditService audit = mock(AuditService.class);
+    private final NumberService service = new NumberService(sequences, jdbc, NEW_YEARS_EVE, audit);
 
     @BeforeEach
     void statement() {
@@ -62,6 +65,7 @@ class NumberServiceTest {
         verify(statement).param("value", "RE-{YYYY}-{NNN}");
         verify(statement).update();
         assertThatThrownBy(() -> service.savePattern("{NN}")).isInstanceOf(SettingsException.class);
+        verify(audit).record(AuditAction.NUMBER_PATTERN_SAVED, "RE-{YYYY}-{NNN}");
     }
 
     @Test
@@ -80,6 +84,7 @@ class NumberServiceTest {
         verify(jdbc).sql(NumberService.START);
         verify(statement).param("start", 10);
         verify(statement, times(2)).param("year", 2028);
+        verify(audit).record(AuditAction.NUMBER_START_SET, "2028: 10");
     }
 
     @Test
@@ -87,6 +92,7 @@ class NumberServiceTest {
         when(statement.update()).thenReturn(1, 0);
         assertThatThrownBy(() -> service.setStart(2027, 10)).isInstanceOf(SettingsException.class)
                 .hasMessage("Für 2027 sind schon Nummern vergeben. Der Zähler ist gesperrt.");
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 
     @ParameterizedTest

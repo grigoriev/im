@@ -8,6 +8,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -26,8 +28,9 @@ class UserServiceTest {
     private final AppUserRepository repository = mock(AppUserRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final PersistentTokenRepository rememberMe = mock(PersistentTokenRepository.class);
+    private final AuditService audit = mock(AuditService.class);
     private final UserService service = new UserService(repository, encoder, rememberMe,
-            Clock.fixed(UserTestData.CREATED, ZoneOffset.UTC));
+            Clock.fixed(UserTestData.CREATED, ZoneOffset.UTC), audit);
 
     UserServiceTest() {
         when(encoder.encode(any())).thenAnswer(call -> "{enc}" + call.getArgument(0));
@@ -39,6 +42,7 @@ class UserServiceTest {
         AppUser user = service.create("elena", "  Elena Sommer ", PASSWORD, Role.USER);
         assertThat(user).isEqualTo(new AppUser(null, "elena", "Elena Sommer", "{enc}" + PASSWORD, Role.USER, true,
                 UserTestData.CREATED));
+        verify(audit).record(AuditAction.USER_CREATED, "elena (USER)");
     }
 
     @ParameterizedTest
@@ -90,6 +94,7 @@ class UserServiceTest {
         when(repository.findById(1L)).thenReturn(Optional.of(UserTestData.user(1, "elena", Role.USER)));
         assertThat(service.resetPassword(1, PASSWORD).passwordHash()).isEqualTo("{enc}" + PASSWORD);
         verify(rememberMe).removeUserTokens("elena");
+        verify(audit).record(AuditAction.PASSWORD_RESET, "elena");
     }
 
     @Test
@@ -118,6 +123,7 @@ class UserServiceTest {
         service.changePassword("elena", "alt-passwort", PASSWORD);
         verify(repository).save(org.mockito.ArgumentMatchers.argThat(user -> user.passwordHash().equals("{enc}" + PASSWORD)));
         verify(rememberMe).removeUserTokens("elena");
+        verify(audit).record("elena", AuditAction.PASSWORD_CHANGED, "");
     }
 
     @Test
@@ -134,6 +140,7 @@ class UserServiceTest {
         assertThatThrownBy(() -> service.changePassword("niemand", "x", PASSWORD)).isInstanceOf(UserException.class)
                 .hasMessage("Diesen Benutzer gibt es nicht.");
         verify(repository, never()).save(any());
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 
     @Test

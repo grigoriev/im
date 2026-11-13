@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import java.util.EnumMap;
 import java.util.List;
@@ -23,7 +25,8 @@ class TaxNoteServiceTest {
     private final TaxNoteRepository repository = mock(TaxNoteRepository.class);
     private final JdbcClient jdbc = mock(JdbcClient.class);
     private final StatementSpec statement = mock(StatementSpec.class);
-    private final TaxNoteService service = new TaxNoteService(repository, jdbc);
+    private final AuditService audit = mock(AuditService.class);
+    private final TaxNoteService service = new TaxNoteService(repository, jdbc, audit);
 
     @org.junit.jupiter.api.BeforeEach
     void statement() {
@@ -76,6 +79,7 @@ class TaxNoteServiceTest {
         verify(repository).deleteById("REVERSE_CHARGE_EU");
         verify(repository).deleteById("NOT_TAXABLE_ABROAD");
         verify(repository, never()).deleteById("STANDARD_19");
+        verify(audit).record(AuditAction.TAX_NOTES_SAVED, "");
     }
 
     @Test

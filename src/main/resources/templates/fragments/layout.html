@@ -51,6 +51,7 @@
         <th:block sec:authorize="hasRole('ADMIN')">
           <li class="menu-title mt-4 text-base-content/75">Verwaltung</li>
           <li><a th:href="@{/admin/benutzer}" th:classappend="${active == 'users'} ? 'menu-active'"><i data-lucide="users" class="size-4"></i>Benutzer</a></li>
+          <li><a th:href="@{/admin/protokoll}" th:classappend="${active == 'audit'} ? 'menu-active'"><i data-lucide="scroll-text" class="size-4"></i>Protokoll</a></li>
         </th:block>
       </ul>
       <form class="mt-auto p-4" th:action="@{/logout}" method="post">

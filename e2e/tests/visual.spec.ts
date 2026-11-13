@@ -10,7 +10,7 @@ const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
 ];
 
-for (const route of ROUTES) {
+for (const route of ROUTES.filter((item) => item.screenshot !== false)) {
   for (const viewport of VIEWPORTS) {
     for (const scheme of ['light', 'dark'] as const) {
       test(`${route.name} ${viewport.name} ${scheme}`, async ({ browser, adminState }) => {

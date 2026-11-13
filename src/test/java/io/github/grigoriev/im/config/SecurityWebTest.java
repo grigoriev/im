@@ -45,7 +45,11 @@ import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.country.Country;
 import io.github.grigoriev.im.country.CountryService;
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditEvent;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.web.AccountController;
+import io.github.grigoriev.im.web.AuditController;
 import io.github.grigoriev.im.web.CountryController;
 import io.github.grigoriev.im.web.CustomerController;
 import io.github.grigoriev.im.web.NumberController;
@@ -71,7 +75,8 @@ import org.springframework.test.web.servlet.MockMvc;
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
         SettingsController.class, TaxNoteController.class, NumberController.class,
-        CustomerController.class, CountryController.class})
+        CustomerController.class, CountryController.class,
+        AuditController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -113,6 +118,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private CountryService countries;
+
+    @MockitoBean
+    private AuditService audit;
 
     private void knownUsers() {
         when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
@@ -482,6 +490,22 @@ class SecurityWebTest {
                 .andExpect(flash().attribute("success", "Schweiz entfernt."));
         mvc.perform(post("/admin/laender/CH/entfernen").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void showsTheAuditLogToTheAdminOnly() throws Exception {
+        when(audit.latest()).thenReturn(List.of());
+        mvc.perform(get("/admin/protokoll").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Einträge.")));
+        when(audit.latest()).thenReturn(List.of(
+                new AuditEvent(2L, java.time.Instant.parse("2027-03-18T08:12:00Z"), "elena", AuditAction.CUSTOMER_CREATED,
+                        "Verlag am Fluss GmbH"),
+                new AuditEvent(1L, java.time.Instant.parse("2027-03-18T08:10:00Z"), "elena", AuditAction.TAX_NOTES_SAVED, "")));
+        mvc.perform(get("/admin/protokoll").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 09:12")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kunde angelegt</span><span>: Verlag am Fluss GmbH")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>Steuerhinweise gespeichert</span>\n")));
+        mvc.perform(get("/admin/protokoll").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
     }
 
     @Test

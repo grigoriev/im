@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +21,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 class CustomerServiceTest {
 
     private final CustomerRepository repository = mock(CustomerRepository.class);
-    private final CustomerService service = new CustomerService(repository);
+    private final AuditService audit = mock(AuditService.class);
+    private final CustomerService service = new CustomerService(repository, audit);
 
     private static Customer with(String field, String value) {
         Customer c = CustomerTestData.verlag();
@@ -54,6 +57,7 @@ class CustomerServiceTest {
         assertThat(saved.id()).isEqualTo(5L);
         verify(repository).save(new Customer(null, "Verlag am Fluss GmbH", c.street(), c.postcode(), c.city(), "DE",
                 null, "buchhaltung@verlag.example", "NL123456789B01", null, InvoiceFormat.ZUGFERD_EN16931));
+        verify(audit).record(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
     }
 
     @Test
@@ -65,6 +69,7 @@ class CustomerServiceTest {
         assertThatThrownBy(() -> service.update(5, verlag)).isInstanceOf(CustomerException.class)
                 .hasMessage("Diesen Kunden gibt es nicht.");
         verify(repository, never()).save(CustomerTestData.verlag().withId(5L));
+        verify(audit).record(AuditAction.CUSTOMER_CHANGED, "Verlag am Fluss GmbH");
     }
 
     @Test
@@ -75,6 +80,7 @@ class CustomerServiceTest {
         assertThatThrownBy(() -> service.delete(5)).isInstanceOf(CustomerException.class)
                 .hasMessage("Diesen Kunden gibt es nicht.");
         verify(repository, never()).deleteById(5L);
+        verify(audit).record(AuditAction.CUSTOMER_DELETED, "Verlag am Fluss GmbH");
     }
 
     @ParameterizedTest
@@ -92,6 +98,7 @@ class CustomerServiceTest {
         CustomerException e = catchThrowableOfType(CustomerException.class, () -> service.create(wrong));
         assertThat(e.problems()).containsExactly(problem);
         verify(repository, never()).save(any());
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 
     @ParameterizedTest

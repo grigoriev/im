@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,8 @@ class SellerServiceTest {
     private final StoredProfileRepository profiles = mock(StoredProfileRepository.class);
     private final JdbcClient jdbc = mock(JdbcClient.class);
     private final StatementSpec statement = mock(StatementSpec.class);
-    private final SellerService service = new SellerService(profiles, jdbc);
+    private final AuditService audit = mock(AuditService.class);
+    private final SellerService service = new SellerService(profiles, jdbc, audit);
 
     @org.junit.jupiter.api.BeforeEach
     void statement() {
@@ -84,6 +87,7 @@ class SellerServiceTest {
         verify(statement).param("accountHolder", null);
         verify(statement).update();
         assertThat(SellerService.UPSERT).contains("ON CONFLICT (id) DO UPDATE");
+        verify(audit).record(AuditAction.PROFILE_SAVED, "Erika Mustermann");
     }
 
     @Test
@@ -126,6 +130,7 @@ class SellerServiceTest {
         SettingsException e = catchThrowableOfType(SettingsException.class, () -> service.save(wrong));
         assertThat(e.problems()).containsExactly(problem);
         verify(statement, never()).update();
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 
     @ParameterizedTest

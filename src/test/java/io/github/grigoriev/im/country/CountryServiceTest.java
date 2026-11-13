@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,8 @@ class CountryServiceTest {
     private final StatementSpec statement = mock(StatementSpec.class);
     @SuppressWarnings("unchecked")
     private final MappedQuerySpec<String> codes = mock(MappedQuerySpec.class);
-    private final CountryService service = new CountryService(jdbc);
+    private final AuditService audit = mock(AuditService.class);
+    private final CountryService service = new CountryService(jdbc, audit);
 
     @BeforeEach
     void statement() {
@@ -91,6 +94,8 @@ class CountryServiceTest {
         verify(statement).update();
         assertThatThrownBy(() -> service.add("ZZ")).isInstanceOf(IllegalArgumentException.class);
         verify(statement, never()).param("code", "ZZ");
+        verify(audit).record(AuditAction.COUNTRY_ADDED, "JP");
+        verify(audit, never()).record(AuditAction.COUNTRY_ADDED, "ZZ");
     }
 
     @Test
@@ -99,5 +104,6 @@ class CountryServiceTest {
         verify(jdbc).sql(CountryService.REMOVE);
         verify(statement).param("code", "CH");
         verify(statement).update();
+        verify(audit).record(AuditAction.COUNTRY_REMOVED, "CH");
     }
 }

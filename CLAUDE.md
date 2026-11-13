@@ -43,6 +43,8 @@ Package `io.github.grigoriev.im`:
 - `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`,
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
 - `seller`: the seller profile (`SellerService`, one row, IBAN checksum) and the default tax notes (`TaxNoteService`)
+- `audit`: the audit log (`AuditService.record`, joins the caller's transaction); logins come from `user.LoginAudit`,
+  new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)

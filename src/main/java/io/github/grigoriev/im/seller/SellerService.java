@@ -10,6 +10,8 @@ import static io.github.grigoriev.im.validation.Fields.text;
 import static io.github.grigoriev.im.validation.Fields.upper;
 import static io.github.grigoriev.im.validation.Fields.checkVatId;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.math.BigInteger;
 import java.net.IDN;
 import java.util.ArrayList;
@@ -70,16 +72,19 @@ public class SellerService {
 
     private final StoredProfileRepository profiles;
     private final JdbcClient jdbc;
+    private final AuditService audit;
 
     /**
      * Creates the service.
      *
      * @param profiles reads the profile
      * @param jdbc writes the profile
+     * @param audit the audit log
      */
-    public SellerService(StoredProfileRepository profiles, JdbcClient jdbc) {
+    public SellerService(StoredProfileRepository profiles, JdbcClient jdbc, AuditService audit) {
         this.profiles = profiles;
         this.jdbc = jdbc;
+        this.audit = audit;
     }
 
     /**
@@ -116,6 +121,7 @@ public class SellerService {
                 .param("tagline", profile.tagline()).param("website", profile.website())
                 .param("bankName", profile.bankName()).param("accountHolder", profile.accountHolder())
                 .update();
+        audit.record(AuditAction.PROFILE_SAVED, profile.name());
         return profile;
     }
 
