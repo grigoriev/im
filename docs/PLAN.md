@@ -65,8 +65,8 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | UI | Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons | Server-side CRUD. CSS classes only, no SPA |
 | Design | Light and dark theme, Inter font in app and PDF, German formats | Mac and iPhone |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
-| Tests | JUnit 5, jqwik, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
-| Packaging | Container image on GHCR, multi-arch, attested | Same pattern as sb-stack |
+| Tests | JUnit 5, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
+| Packaging | Container image on GHCR, linux/amd64, attested | The NAS is x86_64. Same pattern as sb-stack |
 | Quality | SonarCloud, Renovate, Claude review, Greptile | Standard for public repositories |
 
 Group ID: `io.github.grigoriev`, artifact `im`, base package `io.github.grigoriev.im`.
@@ -150,6 +150,7 @@ The category is set per line. One invoice can mix categories, with these rules:
 2. `KLEINUNTERNEHMER` and `EXEMPT_4_21` share code E at 0 %. EN 16931 allows one VAT breakdown per code (BR-E-08).
    A mixed invoice gets one E breakdown. Its exemption reason (BT-120) joins both tax notes. The PDF shows both notes.
 3. The system keeps the category per line, so the §19 revenue counts only the `KLEINUNTERNEHMER` lines.
+4. `REVERSE_CHARGE_EU` needs the VAT ID of seller and buyer on the invoice (§14a Abs. 1 UStG). The editor rejects a draft without them.
 The model includes the standard rates now, so the end of the Kleinunternehmer status needs no redesign.
 The admin edits the default tax notes. A template and an invoice can override them.
 
@@ -207,7 +208,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 
 ## 8. Deployment on lemming
 
-1. CI builds the image and pushes it to `ghcr.io/grigoriev/im` with build attestations.
+1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.
 2. The compose file lives in the intranet repository: `lemming/docker/im`.
 3. Services: `im` (app) and `im-db` (PostgreSQL). The app listens on `127.0.0.1` only.
 4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN only.
@@ -232,7 +233,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 
 | Level | Scope | Tools | Runs |
 |---|---|---|---|
-| Unit | Domain rules: numbers, tax categories, §19 threshold, amounts, template placeholders | JUnit 5, AssertJ, jqwik | `mvn test` |
+| Unit | Domain rules: numbers, tax categories, §19 threshold, amounts, template placeholders | JUnit 5, AssertJ | `mvn test` |
 | Mutation | Domain core: tax rules, threshold, numbers, amounts | PIT | `mvn verify`, gate in CI |
 | Integration | Spring context, database, security, mail, e-invoice formats | Spring Boot Test, Testcontainers, GreenMail | `mvn verify` (`*IT`) |
 | E2E | User flows in the browser against the built image | Playwright Test (TypeScript) in `e2e/` | CI job |

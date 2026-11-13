@@ -1,9 +1,12 @@
 # im
 
+[![CI](https://github.com/grigoriev/im/actions/workflows/ci.yml/badge.svg)](https://github.com/grigoriev/im/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/grigoriev/im/badge)](https://scorecard.dev/viewer/?uri=github.com/grigoriev/im)
+[![Java 25+](https://img.shields.io/badge/Java-25%2B-blue)](pom.xml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=grigoriev_im&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=grigoriev_im)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=grigoriev_im&metric=coverage)](https://sonarcloud.io/summary/new_code?id=grigoriev_im)
 
 Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for a freelancer.
 
@@ -13,8 +16,24 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
 - Runs as a container with PostgreSQL in a home network.
 
-The project is in the planning stage. See [docs/PLAN.md](docs/PLAN.md) for the plan and
-[docs/mockup](docs/mockup) for the UI mockup.
+The project is in development; production use starts in 2027. See [docs/PLAN.md](docs/PLAN.md) for
+the plan and [docs/mockup](docs/mockup) for the UI mockup.
+
+## Run
+
+The image is `ghcr.io/grigoriev/im`. It needs PostgreSQL:
+
+```sh
+docker run -p 8080:8080 \
+  -e IM_DB_URL=jdbc:postgresql://db:5432/im -e IM_DB_USER=im -e IM_DB_PASSWORD=... \
+  ghcr.io/grigoriev/im:latest
+```
+
+Verify an image: `gh attestation verify oci://ghcr.io/grigoriev/im:<version> --owner grigoriev`.
+
+## Build
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 This software does not give tax advice. Check the invoice texts and the tax rules with a tax
 professional.

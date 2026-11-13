@@ -1,0 +1,37 @@
+# The E2E stack: database, the app image under test (service "web": Chromium forces HTTPS for the host "app"), and the pinned Playwright image.
+# Start it through scripts/e2e.sh.
+services:
+  db:
+    image: postgres:18.7-alpine@sha256:75dcac3dfb1cd01ca3536910bbc84128759362f8b118bf8c55b38a94f68f3b73
+    environment:
+      POSTGRES_DB: im
+      POSTGRES_USER: im
+      POSTGRES_PASSWORD: e2e-only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U im -d im"]
+      interval: 2s
+      retries: 30
+
+  web:
+    image: ${IM_IMAGE:-im:test}
+    environment:
+      IM_DB_URL: jdbc:postgresql://db:5432/im
+      IM_DB_USER: im
+      IM_DB_PASSWORD: e2e-only
+      TZ: Europe/Berlin
+    depends_on:
+      db:
+        condition: service_healthy
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
+    working_dir: /e2e
+    environment:
+      BASE_URL: http://web:8080
+      CI: ${CI:-}
+      PLAYWRIGHT_ARGS: ${PLAYWRIGHT_ARGS:-}
+    volumes:
+      - ./:/e2e
+    command: ["bash", "-c", "npm ci --no-audit --no-fund && npx playwright test $$PLAYWRIGHT_ARGS"]
+    depends_on:
+      - web

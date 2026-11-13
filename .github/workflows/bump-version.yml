@@ -1,0 +1,133 @@
+name: Bump Version & Release
+
+# The only way to release. It writes the release version into pom.xml, cuts
+# the CHANGELOG.md section, tags vX.Y.Z, and sets the next -SNAPSHOT. The tag
+# starts docker-publish.yml.
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  bump-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      # ref: main, because a dispatch can start from any branch, while the steps
+      # below commit the release version to main.
+      #
+      # persist-credentials: false, so no token lands in .git/config. PAT_TOKEN
+      # reaches only the step that pushes.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(mvn -B -q -ntp help:evaluate -Dexpression=project.version -DforceStdout)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Current version: $VERSION"
+
+      # The pom holds the next patch as X.Y.Z-SNAPSHOT. A patch release publishes
+      # it as it stands; minor and major count from it.
+      - name: Calculate new version
+        id: new
+        env:
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          IFS='.' read -r major minor patch <<< "${CURRENT_VERSION%-SNAPSHOT}"
+          case "$BUMP_TYPE" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              ;;
+          esac
+          NEW_VERSION="${major}.${minor}.${patch}"
+          NEXT_VERSION="${major}.${minor}.$((patch + 1))-SNAPSHOT"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "New version: $NEW_VERSION, next development version: $NEXT_VERSION"
+
+      - name: Write the release version
+        env:
+          NEW_VERSION: ${{ steps.new.outputs.version }}
+        run: mvn -B -q -ntp versions:set -DnewVersion="$NEW_VERSION" -DgenerateBackupPoms=false
+
+      # The publish workflow takes its notes from the section cut here.
+      - name: Move the Unreleased entries of CHANGELOG.md into the release
+        env:
+          NEW_VERSION: ${{ steps.new.outputs.version }}
+        run: .github/scripts/changelog-cut.sh "$NEW_VERSION"
+
+      # PAT_TOKEN, not GITHUB_TOKEN: a tag pushed with the default token starts
+      # no workflow, so the publish workflow would never see it.
+      - name: Commit, tag, set the next version and push
+        env:
+          NEW_VERSION: ${{ steps.new.outputs.version }}
+          NEXT_VERSION: ${{ steps.new.outputs.next }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pom.xml CHANGELOG.md
+          git commit -m "chore: bump version to ${NEW_VERSION}"
+          git tag "v${NEW_VERSION}"
+          mvn -B -q -ntp versions:set -DnewVersion="$NEXT_VERSION" -DgenerateBackupPoms=false
+          git add pom.xml
+          git commit -m "chore: start ${NEXT_VERSION}"
+          # The token reaches git through GIT_ASKPASS, so the remote URL holds no
+          # credential. The helper reads the token from the env.
+          # shellcheck disable=SC2016  # $PAT_TOKEN is read when the helper runs
+          printf '#!/bin/sh\nexec echo "$PAT_TOKEN"\n' > "$RUNNER_TEMP/askpass.sh"
+          chmod +x "$RUNNER_TEMP/askpass.sh"
+          export GIT_ASKPASS="$RUNNER_TEMP/askpass.sh"
+          REMOTE="https://x-access-token@github.com/${GITHUB_REPOSITORY}.git"
+          git push "$REMOTE" main
+          git push "$REMOTE" "v${NEW_VERSION}"
+
+      - name: Summary
+        env:
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          NEW_VERSION: ${{ steps.new.outputs.version }}
+        run: |
+          {
+            echo "## Release v${NEW_VERSION}"
+            echo ""
+            echo "Version \`${CURRENT_VERSION}\` released as \`${NEW_VERSION}\`."
+            echo ""
+            echo "The [publish workflow](../../actions/workflows/docker-publish.yml) now builds, tests and pushes ghcr.io/grigoriev/im:${NEW_VERSION}."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,22 @@
+{
+  "name": "im-frontend",
+  "private": true,
+  "description": "CSS and browser libraries of the Invoice Manager. Maven runs the build.",
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run build:css && npm run build:vendor",
+    "build:css": "tailwindcss --input src/main/frontend/app.css --output target/classes/static/css/app.css --minify",
+    "build:vendor": "node scripts/copy-vendor.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "5.3.0",
+    "alpinejs": "3.17.5",
+    "htmx.org": "2.0.11",
+    "lucide": "1.64.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "daisyui": "5.7.50",
+    "tailwindcss": "4.3.3"
+  }
+}
