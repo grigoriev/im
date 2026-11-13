@@ -1,0 +1,80 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <title th:text="'Rechnung ' + ${invoice.number}">Rechnung</title>
+  <style>
+    @page { size: A4; margin: 22mm 20mm 26mm 22mm;
+      @bottom-left { content: element(footer); } }
+    body { font-family: "Inter"; font-size: 9.5pt; line-height: 1.45; color: #1f2933; }
+    .footer { position: running(footer); width: 100%; font-size: 7pt; color: #616e7c; border-top: 0.5pt solid #cbd2d9; padding-top: 2mm; }
+    .footer td { vertical-align: top; width: 33%; }
+    .sender { font-size: 7pt; color: #616e7c; margin-bottom: 2mm; }
+    .head { width: 100%; margin-bottom: 12mm; }
+    .head td { vertical-align: top; }
+    .meta { text-align: right; font-size: 8.5pt; }
+    .meta td { padding: 0 0 0.6mm 4mm; }
+    h1 { font-size: 14pt; font-weight: 600; margin: 0 0 5mm 0; }
+    .lines { width: 100%; border-collapse: collapse; margin: 5mm 0; }
+    .lines th { font-weight: 600; text-align: left; border-bottom: 0.75pt solid #9aa5b1; padding: 1.5mm 2mm 1.5mm 0; }
+    .lines td { border-bottom: 0.5pt solid #e4e7eb; padding: 1.5mm 2mm 1.5mm 0; vertical-align: top; }
+    .num, .lines th.num { text-align: right; white-space: nowrap; }
+    .total td { border-bottom: 0; font-weight: 600; padding-top: 2.5mm; }
+    .note { white-space: pre-line; margin-top: 4mm; }
+    .strong { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <table class="footer">
+    <tr>
+      <td><span th:text="${invoice.seller.name}">Name</span><br/><span th:text="${invoice.seller.street}">Straße</span><br/><span th:text="${invoice.seller.postcode + ' ' + invoice.seller.city}">Ort</span></td>
+      <td>IBAN <span th:text="${fmt.iban(invoice.iban)}">IBAN</span><br/>BIC <span th:text="${invoice.bic}">BIC</span></td>
+      <td><span th:text="${invoice.seller.email}">E-Mail</span><br/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></td>
+    </tr>
+  </table>
+
+  <div class="sender" th:text="${invoice.seller.name + ' · ' + invoice.seller.street + ' · ' + invoice.seller.postcode + ' ' + invoice.seller.city}">Absender</div>
+  <table class="head">
+    <tr>
+      <td>
+        <div class="strong" th:text="${invoice.buyer.name}">Kunde</div>
+        <div th:text="${invoice.buyer.street}">Straße</div>
+        <div th:text="${invoice.buyer.postcode + ' ' + invoice.buyer.city}">Ort</div>
+        <div th:if="${invoice.buyer.countryCode != 'DE'}" th:text="${invoice.buyer.countryCode}">Land</div>
+        <div th:if="${invoice.buyer.vatId != null}" th:text="'USt-IdNr. ' + ${invoice.buyer.vatId}">USt-IdNr.</div>
+        <div th:if="${invoice.buyerReference != null}" th:text="'Käuferreferenz ' + ${invoice.buyerReference}">Käuferreferenz</div>
+      </td>
+      <td>
+        <table class="meta" align="right">
+          <tr><td>Rechnungsnummer</td><td class="strong" th:text="${invoice.number}">2027-01</td></tr>
+          <tr><td>Rechnungsdatum</td><td th:text="${fmt.date(invoice.issueDate)}">01.01.2027</td></tr>
+          <tr><td>Leistungszeitraum</td><td th:text="${fmt.period(invoice.serviceFrom, invoice.serviceTo)}">01.01.2027</td></tr>
+          <tr><td>Steuernummer</td><td th:text="${invoice.seller.taxNumber}">000/000/00000</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <h1>Rechnung</h1>
+  <p>Sehr geehrte Damen und Herren,</p>
+  <p th:if="${invoice.intro != null}" th:text="${invoice.intro}">Einleitung</p>
+
+  <table class="lines">
+    <thead>
+      <tr><th>Leistung</th><th class="num">Menge</th><th class="num">Einzelpreis</th><th class="num">Betrag</th></tr>
+    </thead>
+    <tbody>
+      <tr th:each="line : ${invoice.lines}">
+        <td th:text="${line.text}">Leistung</td>
+        <td class="num" th:text="${fmt.quantity(line.quantity) + ' ' + line.unitLabel}">1 Stk</td>
+        <td class="num" th:text="${fmt.money(line.unitPrice)}">0,00 €</td>
+        <td class="num" th:text="${fmt.money(line.netAmount())}">0,00 €</td>
+      </tr>
+      <tr class="total"><td colspan="3" class="num">Gesamtbetrag</td><td class="num" th:text="${fmt.money(invoice.total())}">0,00 €</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note" th:text="${invoice.effectiveTaxNote()}">Steuerhinweis</div>
+  <p th:text="'Bitte überweisen Sie den Betrag bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
+  <p th:if="${invoice.closing != null}" th:text="${invoice.closing}">Schlusstext</p>
+</body>
+</html>
