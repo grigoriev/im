@@ -219,6 +219,13 @@ class SecurityWebTest {
     }
 
     @Test
+    void greetsAUserWithoutAccountRecordByTheLoginName() throws Exception {
+        when(repository.findByUsername("ohne-datensatz")).thenReturn(Optional.empty());
+        mvc.perform(get("/").with(user("ohne-datensatz").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Guten Tag, ohne-datensatz")));
+    }
+
+    @Test
     void offersPasskeyLoginToAnonymousVisitors() throws Exception {
         mvc.perform(get("/login")).andExpect(content().string(org.hamcrest.Matchers.containsString("Mit Passkey anmelden")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf_header\"")));

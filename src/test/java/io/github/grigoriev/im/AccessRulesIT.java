@@ -121,11 +121,19 @@ class AccessRulesIT {
         return mvc.perform(request).andReturn().getResponse();
     }
 
+    /** The error page itself: called directly, it shows a 500 without a real error behind it. */
+    private static final String ERROR_PAGE = "ANY /error";
+
     /** Passed the rules: no 401 or 403, and no redirect to the login page. */
-    private static boolean admitted(MockHttpServletResponse response) {
+    private static boolean reached(MockHttpServletResponse response) {
         String location = response.getHeader("Location");
         return response.getStatus() != 401 && response.getStatus() != 403
                 && (location == null || !location.contains("/login"));
+    }
+
+    /** Passed the rules and worked: no server error either, except on the error page itself. */
+    private static boolean admitted(String rule, MockHttpServletResponse response) {
+        return reached(response) && (response.getStatus() < 500 || rule.equals(ERROR_PAGE));
     }
 
     @Test
@@ -140,7 +148,7 @@ class AccessRulesIT {
                 DynamicTest.dynamicTest(rule.getKey() + " anonymous", () -> {
                     MockHttpServletResponse response = send(rule.getKey(), null);
                     if (rule.getValue() == Access.PUBLIC) {
-                        assertThat(admitted(response)).as("admitted").isTrue();
+                        assertThat(admitted(rule.getKey(), response)).as("admitted").isTrue();
                     } else {
                         assertThat(response.getStatus()).isEqualTo(302);
                         assertThat(response.getHeader("Location")).endsWith("/login");
@@ -151,12 +159,12 @@ class AccessRulesIT {
                     if (rule.getValue() == Access.ADMIN) {
                         assertThat(response.getStatus()).isEqualTo(403);
                     } else {
-                        assertThat(admitted(response)).as("admitted, status %s", response.getStatus()).isTrue();
+                        assertThat(admitted(rule.getKey(), response)).as("admitted, status %s", response.getStatus()).isTrue();
                     }
                 }),
                 DynamicTest.dynamicTest(rule.getKey() + " admin", () -> {
                     MockHttpServletResponse response = send(rule.getKey(), ACTORS.get("admin"));
-                    assertThat(admitted(response)).as("admitted, status %s", response.getStatus()).isTrue();
+                    assertThat(admitted(rule.getKey(), response)).as("admitted, status %s", response.getStatus()).isTrue();
                 })));
     }
 
@@ -170,6 +178,16 @@ class AccessRulesIT {
             assertThat(response.getStatus()).isEqualTo(302);
             assertThat(response.getHeader("Location")).contains("/login");
         }));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> theLoginFormsNeedTheCsrfTokenToo() {
+        return Stream.of("POST /login", "POST /login/webauthn", "POST /webauthn/authenticate/options")
+                .map(rule -> DynamicTest.dynamicTest(rule, () -> {
+                    MockHttpServletResponse response = mvc.perform(request(rule)).andReturn().getResponse();
+                    assertThat(response.getStatus()).isEqualTo(302);
+                    assertThat(response.getHeader("Location")).contains("/login");
+                }));
     }
 
     @Test
