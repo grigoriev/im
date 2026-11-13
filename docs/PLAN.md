@@ -63,7 +63,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | PDF layout | Thymeleaf HTML, rendered by Flying Saucer as PDF/A-3B | Own layout. Mustang then embeds the XML |
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |
 | UI | Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons | Server-side CRUD. CSS classes only, no SPA |
-| Design | Light and dark theme, Inter font in app and PDF, German formats | Mac and iPhone |
+| Design | Light and dark theme, JetBrains Mono in app and PDF (without code ligatures), German formats | Mac and iPhone |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
 | Tests | JUnit 5, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
 | Packaging | Container image on GHCR, linux/amd64, attested | The NAS is x86_64. Same pattern as sb-stack |
@@ -304,7 +304,7 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | Dependency | Where | Manager |
 |---|---|---|
 | Spring Boot, Mustang, veraPDF, KoSIT, Maven plugins, test libraries | `pom.xml` | maven |
-| Tailwind, daisyUI, htmx, Alpine.js, Lucide, Inter | `package.json` | npm |
+| Tailwind, daisyUI, htmx, Alpine.js, Lucide, JetBrains Mono | `package.json` | npm |
 | Playwright and its image, as one group | `e2e/package.json`, `e2e/docker-compose.yml` | npm, docker-compose |
 | Node for the CSS build, as one group | `.node-version`, `pom.xml` | nodenv, regex |
 | Java base image, tag and digest | `Dockerfile` | dockerfile |
