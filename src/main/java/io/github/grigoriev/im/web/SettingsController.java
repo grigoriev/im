@@ -42,7 +42,7 @@ public class SettingsController {
      */
     @GetMapping
     public String show(Model model) {
-        return form(model, sellers.find().orElseGet(SellerProfile::empty));
+        return form(model, sellers.find().orElseGet(SellerProfile::empty), null);
     }
 
     /**
@@ -61,14 +61,16 @@ public class SettingsController {
             return "redirect:/einstellungen";
         } catch (SettingsException e) {
             model.addAttribute("problems", e.problems());
-            return form(model, profile);
+            return form(model, profile, profile.countryCode());
         }
     }
 
-    private String form(Model model, SellerProfile profile) {
+    /** Shows the form. The stored country and the submitted one stay in the select, even if the admin removed them. */
+    private String form(Model model, SellerProfile profile, String submitted) {
         model.addAttribute("profile", profile);
         model.addAttribute("statuses", TaxStatus.values());
-        model.addAttribute("countries", countries.options(sellers.find().map(SellerProfile::countryCode).orElse(null)));
+        model.addAttribute("countries",
+                countries.options(sellers.find().map(SellerProfile::countryCode).orElse(null), submitted));
         return VIEW;
     }
 }

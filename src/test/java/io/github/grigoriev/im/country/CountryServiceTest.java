@@ -58,8 +58,16 @@ class CountryServiceTest {
     void offersTheStoredCountryEvenIfTheAdminRemovedIt() {
         assertThat(service.options("JP")).extracting(Country::code).containsExactly("DE", "JP", "AT", "CH");
         assertThat(service.options("DE")).hasSize(3);
-        assertThat(service.options(null)).hasSize(3);
+        assertThat(service.options((String) null)).hasSize(3);
         assertThat(service.options(" ")).hasSize(3);
+    }
+
+    @Test
+    void keepsTheStoredAndTheSubmittedCountryOnce() {
+        assertThat(service.options("JP", "FR")).extracting(Country::code).containsExactly("DE", "FR", "JP", "AT", "CH");
+        assertThat(service.options("JP", "JP")).extracting(Country::code).containsExactly("DE", "JP", "AT", "CH");
+        assertThat(service.options(null, "DE")).hasSize(3);
+        assertThat(service.options()).hasSize(3);
     }
 
     @Test

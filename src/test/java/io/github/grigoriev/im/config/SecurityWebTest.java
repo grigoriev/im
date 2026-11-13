@@ -424,7 +424,7 @@ class SecurityWebTest {
     @Test
     void offersTheListToNewRecordsAndKeepsTheStoredCountry() throws Exception {
         List<Country> list = List.of(new Country("DE", "Deutschland"), new Country("CH", "Schweiz"));
-        when(countries.options(null)).thenReturn(list);
+        when(countries.options(null, null)).thenReturn(list);
         when(sellers.find()).thenReturn(Optional.empty());
         mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")))
@@ -436,7 +436,7 @@ class SecurityWebTest {
         SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
                 p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus());
         when(sellers.find()).thenReturn(Optional.of(kosovo));
-        when(countries.options("XK")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
+        when(countries.options("XK", null)).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
 
@@ -444,13 +444,13 @@ class SecurityWebTest {
         swiss = new Customer(5L, swiss.name(), swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
                 null, swiss.format());
         when(customers.find(5)).thenReturn(Optional.of(swiss));
-        when(countries.options("CH")).thenReturn(list);
+        when(countries.options("CH", null)).thenReturn(list);
         mvc.perform(get("/kunden/5").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\" selected=\"selected\">Schweiz</option>")));
         when(customers.update(eq(5L), any())).thenThrow(new CustomerException(List.of("Bitte ein Land aus der Liste wählen.")));
         mvc.perform(post("/kunden/5").param("countryCode", "JP").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte ein Land aus der Liste wählen.")));
-        verify(countries, times(2)).options("CH");
+        verify(countries).options("CH", "JP");
         mvc.perform(get("/kunden").with(user("elena").roles("USER"))).andExpect(status().isOk());
     }
 

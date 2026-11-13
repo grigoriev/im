@@ -68,17 +68,18 @@ public class CountryService {
     }
 
     /**
-     * Returns the countries of a form: the short list, and the stored country of the record even if the admin
-     * removed it. A stored code that is no ISO country shows as it is, so saving never changes it unseen: the
-     * check then asks for a country from the list.
+     * Returns the countries of a form: the short list, plus the codes to keep even if the admin removed them,
+     * such as the stored country of the record or the country of a form that comes back with a problem. A code
+     * that is no ISO country shows as it is, so saving never changes it unseen: the check then asks for a
+     * country from the list.
      *
-     * @param stored the country stored for the record, {@code null} for a new record
+     * @param keep the codes to keep; {@code null} and blank entries are ignored
      * @return the countries by German name
      */
-    public List<Country> options(String stored) {
+    public List<Country> options(String... keep) {
         List<String> codes = codes();
-        boolean keep = stored != null && !stored.isBlank() && !codes.contains(stored);
-        Stream<String> extra = keep ? Stream.of(stored) : Stream.empty();
+        Stream<String> extra = Stream.of(keep)
+                .filter(code -> code != null && !code.isBlank() && !codes.contains(code)).distinct();
         return sorted(Stream.concat(codes.stream(), extra));
     }
 
