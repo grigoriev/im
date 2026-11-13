@@ -133,7 +133,15 @@ class LoginIT {
         java.net.CookieStore store = jar.getCookieStore();
         store.getCookies().stream().filter(cookie -> cookie.getName().equals("JSESSIONID")).toList()
                 .forEach(cookie -> store.remove(null, cookie));
-        HttpResponse<String> logout = post(device, "/logout", "_csrf=veraltet");
+        HttpResponse<String> forged = device.send(HttpRequest.newBuilder(uri("/logout"))
+                .header("Content-Type", "application/x-www-form-urlencoded").header("Origin", "https://boese.example")
+                .POST(HttpRequest.BodyPublishers.ofString("_csrf=veraltet")).build(), HttpResponse.BodyHandlers.ofString());
+        assertThat(forged.headers().firstValue("Location"))
+                .hasValueSatisfying(url -> assertThat(url).endsWith("/login?abgelaufen"));
+        assertThat(jdbc.queryForObject(count, Integer.class)).as("a forged form changes nothing").isEqualTo(1);
+        HttpResponse<String> logout = device.send(HttpRequest.newBuilder(uri("/logout"))
+                .header("Content-Type", "application/x-www-form-urlencoded").header("Origin", "http://localhost:" + port)
+                .POST(HttpRequest.BodyPublishers.ofString("_csrf=veraltet")).build(), HttpResponse.BodyHandlers.ofString());
         assertThat(logout.headers().firstValue("Location"))
                 .hasValueSatisfying(url -> assertThat(url).endsWith("/login?abgemeldet"));
         assertThat(jdbc.queryForObject(count, Integer.class)).isZero();

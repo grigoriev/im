@@ -36,6 +36,7 @@ class StaleFormHandlerTest {
     private static MockHttpServletRequest logout(String contextPath) {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", contextPath + "/logout");
         request.setContextPath(contextPath);
+        request.addHeader("Sec-Fetch-Site", "same-origin");
         return request;
     }
 
@@ -106,6 +107,63 @@ class StaleFormHandlerTest {
             assertThat(response.getCookie("remember-me").getPath()).isEqualTo("/");
         }
         verify(tokens, never()).removeUserTokens(any());
+    }
+
+    @Test
+    void ignoresAForgedLogoutFromAnotherSite() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/logout");
+        request.addHeader("Sec-Fetch-Site", "cross-site");
+        request.addHeader("Origin", "https://boese.example");
+        request.setCookies(new Cookie("remember-me", cookieValue("serie:wert")));
+        MockHttpSession session = new MockHttpSession();
+        request.setSession(session);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        handler.handle(request, response, new MissingCsrfTokenException("x"));
+        assertThat(response.getRedirectedUrl()).isEqualTo("/login?abgelaufen");
+        assertThat(response.getCookie("remember-me")).isNull();
+        assertThat(session.isInvalid()).isFalse();
+        verify(tokens, never()).getTokenForSeries(any());
+    }
+
+    @Test
+    void recognizesARequestFromTheApp() {
+        MockHttpServletRequest none = new MockHttpServletRequest("POST", "/logout");
+        assertThat(StaleFormHandler.fromTheApp(none)).isFalse();
+        MockHttpServletRequest fetch = new MockHttpServletRequest("POST", "/logout");
+        fetch.addHeader("Sec-Fetch-Site", "same-site");
+        assertThat(StaleFormHandler.fromTheApp(fetch)).isFalse();
+
+        MockHttpServletRequest http = new MockHttpServletRequest("POST", "/logout");
+        http.setScheme("http");
+        http.setServerName("im.example");
+        http.setServerPort(80);
+        http.addHeader("Origin", "http://im.example");
+        assertThat(StaleFormHandler.fromTheApp(http)).isTrue();
+
+        MockHttpServletRequest https = new MockHttpServletRequest("POST", "/logout");
+        https.setScheme("https");
+        https.setServerName("im.example");
+        https.setServerPort(443);
+        https.addHeader("Origin", "https://im.example");
+        assertThat(StaleFormHandler.fromTheApp(https)).isTrue();
+        https.removeHeader("Origin");
+        https.addHeader("Origin", "https://im.example:443");
+        assertThat(StaleFormHandler.fromTheApp(https)).isFalse();
+
+        MockHttpServletRequest port = new MockHttpServletRequest("POST", "/logout");
+        port.setScheme("http");
+        port.setServerName("localhost");
+        port.setServerPort(8080);
+        port.addHeader("Origin", "http://localhost:8080");
+        assertThat(StaleFormHandler.fromTheApp(port)).isTrue();
+        port.setScheme("https");
+        assertThat(StaleFormHandler.fromTheApp(port)).isFalse();
+        MockHttpServletRequest httpsOn80 = new MockHttpServletRequest("POST", "/logout");
+        httpsOn80.setScheme("https");
+        httpsOn80.setServerName("im.example");
+        httpsOn80.setServerPort(80);
+        httpsOn80.addHeader("Origin", "https://im.example:80");
+        assertThat(StaleFormHandler.fromTheApp(httpsOn80)).isTrue();
     }
 
     @Test

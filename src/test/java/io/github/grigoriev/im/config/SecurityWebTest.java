@@ -108,12 +108,15 @@ class SecurityWebTest {
     void handlesAFormWithoutValidCsrfToken() throws Exception {
         mvc.perform(post("/login").param("username", "elena").param("password", PASSWORD))
                 .andExpect(redirectedUrl("/login?abgelaufen"));
-        mvc.perform(post("/logout").with(user("elena")).with(csrf().useInvalidToken()))
+        mvc.perform(post("/logout").with(user("elena")).with(csrf().useInvalidToken()).header("Origin", "http://localhost"))
                 .andExpect(redirectedUrl("/login?abgemeldet"));
+        mvc.perform(post("/logout").with(user("elena")).with(csrf().useInvalidToken())
+                        .header("Origin", "https://boese.example"))
+                .andExpect(redirectedUrl("/login?abgelaufen"));
         when(tokens.getTokenForSeries("serie")).thenReturn(new org.springframework.security.web.authentication
                 .rememberme.PersistentRememberMeToken("elena", "serie", "wert", new java.util.Date()));
         String cookie = java.util.Base64.getEncoder().withoutPadding().encodeToString("serie:wert".getBytes());
-        mvc.perform(post("/logout").with(csrf().useInvalidToken())
+        mvc.perform(post("/logout").with(csrf().useInvalidToken()).header("Sec-Fetch-Site", "same-origin")
                         .cookie(new jakarta.servlet.http.Cookie("remember-me", cookie)))
                 .andExpect(redirectedUrl("/login?abgemeldet"))
                 .andExpect(cookie().maxAge("remember-me", 0));
