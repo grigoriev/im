@@ -119,6 +119,26 @@ public record InvoiceDocument(
     }
 
     /**
+     * Tells whether the PDF shows the tax column. With more than one category, each line names its
+     * rate or exemption (§14 Abs. 4 Nr. 8 UStG).
+     *
+     * @return {@code true} if the lines use more than one category
+     */
+    public boolean showsTaxColumn() {
+        return categories().size() > 1;
+    }
+
+    /**
+     * Returns the number of columns of the lines table: text and amount, plus quantity and unit price,
+     * plus the tax column.
+     *
+     * @return the column count
+     */
+    public int columns() {
+        return 2 + (showsQuantities() ? 2 : 0) + (showsTaxColumn() ? 1 : 0);
+    }
+
+    /**
      * Returns the sum of the net line amounts.
      *
      * @return the net total

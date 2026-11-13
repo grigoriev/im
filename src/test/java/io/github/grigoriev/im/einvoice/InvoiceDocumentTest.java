@@ -45,6 +45,19 @@ class InvoiceDocumentTest {
     }
 
     @Test
+    void showsTheTaxColumnOnlyForSeveralCategories() {
+        InvoiceLine lump = SampleInvoices.lump("Lesung", "400.00", KLEINUNTERNEHMER);
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, lump, KU).showsTaxColumn()).isFalse();
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, lump).columns()).isEqualTo(2);
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, KU).columns()).isEqualTo(4);
+        InvoiceDocument mixed = invoice(PUBLISHER, null, ZUGFERD, lump, EX);
+        assertThat(mixed.showsTaxColumn()).isTrue();
+        assertThat(mixed.columns()).isEqualTo(5);
+        InvoiceDocument mixedLumps = invoice(PUBLISHER, null, ZUGFERD, lump, SampleInvoices.lump("x", "1", EXEMPT_4_21));
+        assertThat(mixedLumps.columns()).isEqualTo(3);
+    }
+
+    @Test
     void showsQuantitiesOnlyWhenALineHasItsOwn() {
         InvoiceLine lump = SampleInvoices.lump("Lesung", "400.00", KLEINUNTERNEHMER);
         assertThat(invoice(PUBLISHER, null, ZUGFERD, lump, lump).showsQuantities()).isFalse();

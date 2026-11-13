@@ -11,30 +11,32 @@ import java.math.BigDecimal;
 public enum TaxCategory {
 
     /** Kleinunternehmer, §19 UStG. Counts toward the §19 threshold. */
-    KLEINUNTERNEHMER("E", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", true, BigDecimal.ZERO),
+    KLEINUNTERNEHMER("E", "§ 19", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", true, BigDecimal.ZERO),
 
     /** Teaching, VAT-exempt under §4 Nr. 21 UStG. */
-    EXEMPT_4_21("E", "Steuerfrei gemäß § 4 Nr. 21 UStG.", false, BigDecimal.ZERO),
+    EXEMPT_4_21("E", "§ 4 Nr. 21", "Steuerfrei gemäß § 4 Nr. 21 UStG.", false, BigDecimal.ZERO),
 
     /** B2B service to a business in another EU country. */
-    REVERSE_CHARGE_EU("AE", "Steuerschuldnerschaft des Leistungsempfängers.", false, BigDecimal.ZERO),
+    REVERSE_CHARGE_EU("AE", "Reverse Charge", "Steuerschuldnerschaft des Leistungsempfängers.", false, BigDecimal.ZERO),
 
     /** Service to a customer outside the EU, not taxable in Germany. */
-    NOT_TAXABLE_ABROAD("O", "Nicht im Inland steuerbare Leistung.", false, BigDecimal.ZERO),
+    NOT_TAXABLE_ABROAD("O", "nicht steuerbar", "Nicht im Inland steuerbare Leistung.", false, BigDecimal.ZERO),
 
     /** Standard rate, 19 % (§12 Abs. 1 UStG). */
-    STANDARD_19("S", "", false, new BigDecimal("19")),
+    STANDARD_19("S", "19\u00a0%", "", false, new BigDecimal("19")),
 
     /** Reduced rate, 7 % (§12 Abs. 2 UStG), for example books. */
-    STANDARD_7("S", "", false, new BigDecimal("7"));
+    STANDARD_7("S", "7\u00a0%", "", false, new BigDecimal("7"));
 
     private final String code;
+    private final String label;
     private final String defaultNote;
     private final boolean countsForThreshold;
     private final BigDecimal rate;
 
-    TaxCategory(String code, String defaultNote, boolean countsForThreshold, BigDecimal rate) {
+    TaxCategory(String code, String label, String defaultNote, boolean countsForThreshold, BigDecimal rate) {
         this.code = code;
+        this.label = label;
         this.defaultNote = defaultNote;
         this.countsForThreshold = countsForThreshold;
         this.rate = rate;
@@ -47,6 +49,15 @@ public enum TaxCategory {
      */
     public String code() {
         return code;
+    }
+
+    /**
+     * Returns the short label of the tax column on the PDF, for example {@code 19 %} or {@code § 4 Nr. 21}.
+     *
+     * @return the label
+     */
+    public String label() {
+        return label;
     }
 
     /**

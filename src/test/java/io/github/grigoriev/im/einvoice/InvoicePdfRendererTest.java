@@ -57,9 +57,9 @@ class InvoicePdfRendererTest {
     void printsNetVatPerRateAndTotalForASale() throws IOException {
         String text = text(renderer.render(SampleInvoices.sale(InvoiceFormat.ZUGFERD_EN16931)));
         assertThat(text)
-                .contains("Leistung Menge Einzelpreis Netto")
-                .contains("Fachbuch „E-Rechnung in der Praxis“ 3 24,90\u00a0€ 74,70\u00a0€")
-                .contains("Versand 5,90\u00a0€")
+                .contains("Leistung Menge Einzelpreis USt Netto")
+                .contains("Fachbuch „E-Rechnung in der Praxis“ 3 24,90\u00a0€ 7\u00a0% 74,70\u00a0€")
+                .contains("Versand 19\u00a0% 5,90\u00a0€")
                 .contains("Nettobetrag 130,50\u00a0€")
                 .contains("USt 19\u00a0% auf 55,80\u00a0€ 10,60\u00a0€")
                 .contains("USt 7\u00a0% auf 74,70\u00a0€ 5,23\u00a0€")
@@ -71,7 +71,7 @@ class InvoicePdfRendererTest {
     @Test
     void printsOnlyTextAndAmountForLumpSums() throws IOException {
         String text = text(renderer.render(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931)));
-        assertThat(text).contains("Leistung Betrag").doesNotContain("Menge").doesNotContain("Einzelpreis")
+        assertThat(text).contains("Leistung Betrag").doesNotContain("Menge").doesNotContain("Einzelpreis").doesNotContain("USt ")
                 .doesNotContain("pauschal").contains("Reisekosten 80,00\u00a0€");
     }
 
@@ -81,8 +81,9 @@ class InvoicePdfRendererTest {
                 SampleInvoices.line("Deutschkurs B2, je 45 Min.", "16", "45.00", TaxCategory.EXEMPT_4_21),
                 SampleInvoices.lump("Lesung", "400.00", TaxCategory.KLEINUNTERNEHMER));
         String text = text(renderer.render(mixed));
-        assertThat(text).contains("Leistung Menge Einzelpreis Betrag").contains("Deutschkurs B2, je 45 Min. 16 45,00\u00a0€ 720,00\u00a0€")
-                .contains("Lesung 400,00\u00a0€").doesNotContain("pauschal");
+        assertThat(text).contains("Leistung Menge Einzelpreis USt Betrag")
+                .contains("Deutschkurs B2, je 45 Min. 16 45,00\u00a0€ § 4 Nr. 21 720,00\u00a0€")
+                .contains("Lesung § 19 400,00\u00a0€").doesNotContain("pauschal");
     }
 
     @Test

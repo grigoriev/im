@@ -154,6 +154,7 @@ The category is set per line. One invoice can mix categories, with these rules:
 5. `KLEINUNTERNEHMER` never mixes with a standard rate: a Kleinunternehmer charges no VAT.
 6. The VAT of a rate is computed once on the sum of its net line amounts and rounded half up (BR-CO-17).
    The PDF shows the net total, the VAT per rate with its base, and the gross total.
+7. With more than one category, the PDF shows a tax column: each line names its rate or exemption (§14 Abs. 4 Nr. 8 UStG).
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
 They also cover the end of the Kleinunternehmer status without a redesign.
 The admin edits the default tax notes. A template and an invoice can override them.

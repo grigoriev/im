@@ -65,7 +65,7 @@
 
   <table class="lines">
     <thead>
-      <tr><th>Leistung</th><th:block th:if="${invoice.showsQuantities()}"><th class="num">Menge</th><th class="num">Einzelpreis</th></th:block><th class="num" th:text="${invoice.vatAmounts().isEmpty() ? 'Betrag' : 'Netto'}">Betrag</th></tr>
+      <tr><th>Leistung</th><th:block th:if="${invoice.showsQuantities()}"><th class="num">Menge</th><th class="num">Einzelpreis</th></th:block><th class="num" th:if="${invoice.showsTaxColumn()}">USt</th><th class="num" th:text="${invoice.vatAmounts().isEmpty() ? 'Betrag' : 'Netto'}">Betrag</th></tr>
     </thead>
     <tbody>
       <tr th:each="line : ${invoice.lines}">
@@ -74,13 +74,14 @@
           <td class="num" th:text="${line.lumpSum ? '' : fmt.quantity(line.quantity)}">1</td>
           <td class="num" th:text="${line.lumpSum ? '' : fmt.price(line.unitPrice)}">0,00 €</td>
         </th:block>
+        <td class="num" th:if="${invoice.showsTaxColumn()}" th:text="${line.category.label()}">19 %</td>
         <td class="num" th:text="${fmt.money(line.netAmount())}">0,00 €</td>
       </tr>
       <th:block th:unless="${invoice.vatAmounts().isEmpty()}">
-        <tr class="sum"><td th:colspan="${invoice.showsQuantities() ? 3 : 1}" class="num">Nettobetrag</td><td class="num" th:text="${fmt.money(invoice.netTotal())}">0,00 €</td></tr>
-        <tr class="sum" th:each="vat : ${invoice.vatAmounts()}"><td th:colspan="${invoice.showsQuantities() ? 3 : 1}" class="num" th:text="'USt ' + ${fmt.percent(vat.rate)} + ' auf ' + ${fmt.money(vat.base)}">USt</td><td class="num" th:text="${fmt.money(vat.vat)}">0,00 €</td></tr>
+        <tr class="sum"><td th:colspan="${invoice.columns() - 1}" class="num">Nettobetrag</td><td class="num" th:text="${fmt.money(invoice.netTotal())}">0,00 €</td></tr>
+        <tr class="sum" th:each="vat : ${invoice.vatAmounts()}"><td th:colspan="${invoice.columns() - 1}" class="num" th:text="'USt ' + ${fmt.percent(vat.rate)} + ' auf ' + ${fmt.money(vat.base)}">USt</td><td class="num" th:text="${fmt.money(vat.vat)}">0,00 €</td></tr>
       </th:block>
-      <tr class="total"><td th:colspan="${invoice.showsQuantities() ? 3 : 1}" class="num">Gesamtbetrag</td><td class="num" th:text="${fmt.money(invoice.total())}">0,00 €</td></tr>
+      <tr class="total"><td th:colspan="${invoice.columns() - 1}" class="num">Gesamtbetrag</td><td class="num" th:text="${fmt.money(invoice.total())}">0,00 €</td></tr>
     </tbody>
   </table>
 

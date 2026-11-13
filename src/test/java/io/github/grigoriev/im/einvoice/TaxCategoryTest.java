@@ -36,6 +36,23 @@ class TaxCategoryTest {
         assertThat(category.chargesVat()).isEqualTo(charges);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+        "KLEINUNTERNEHMER, § 19",
+        "EXEMPT_4_21, § 4 Nr. 21",
+        "REVERSE_CHARGE_EU, Reverse Charge",
+        "NOT_TAXABLE_ABROAD, nicht steuerbar"
+    })
+    void labelsTheTaxColumn(TaxCategory category, String label) {
+        assertThat(category.label()).isEqualTo(label);
+    }
+
+    @Test
+    void labelsTheStandardRatesWithTheirPercentage() {
+        assertThat(TaxCategory.STANDARD_19.label()).isEqualTo("19\u00a0%");
+        assertThat(TaxCategory.STANDARD_7.label()).isEqualTo("7\u00a0%");
+    }
+
     @Test
     void defaultNotesNameTheLegalBasis() {
         assertThat(TaxCategory.KLEINUNTERNEHMER.defaultNote()).isEqualTo("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
