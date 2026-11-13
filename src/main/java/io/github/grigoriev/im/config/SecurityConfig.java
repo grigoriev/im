@@ -3,11 +3,13 @@ package io.github.grigoriev.im.config;
 import io.github.grigoriev.im.user.AppUserDetailsService;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,21 +38,30 @@ public class SecurityConfig {
      * @param users loads the users
      * @param rememberMeKey key that signs the remember-me cookie
      * @param staleForms handles forms that outlived their session
+     * @param passkeys the relying party of the passkeys
      * @return the filter chain
      * @throws Exception if the configuration is invalid
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, PersistentTokenRepository tokens,
             AppUserDetailsService users, @Value("${im.remember-me.key:im-remember-me}") String rememberMeKey,
-            StaleFormHandler staleForms) throws Exception {
+            StaleFormHandler staleForms, PasskeyProperties passkeys) throws Exception {
+        // The passkey login looks the users up here, even if the context holds another user store.
+        http.setSharedObject(UserDetailsService.class, users);
         return http
                 .userDetailsService(users)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/css/**", "/js/**", "/vendor/**", "/fonts/**", "/error",
-                                "/actuator/health", "/actuator/health/**").permitAll()
+                                "/actuator/health", "/actuator/health/**", "/webauthn/authenticate/options",
+                                "/login/webauthn").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/", true).permitAll())
+                .webAuthn(webAuthn -> webAuthn
+                        .rpName(passkeys.rpName())
+                        .rpId(passkeys.rpId())
+                        .allowedOrigins(Set.copyOf(passkeys.allowedOrigins()))
+                        .disableDefaultRegistrationPage(true))
                 .logout(logout -> logout.logoutSuccessUrl("/login?abgemeldet").deleteCookies("JSESSIONID"))
                 .rememberMe(remember -> remember
                         .key(rememberMeKey)

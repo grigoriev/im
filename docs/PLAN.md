@@ -223,6 +223,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 3. Services: `im` (app) and `im-db` (PostgreSQL). The app listens on `127.0.0.1` only.
 4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN only. It sends `X-Forwarded-Proto`,
    so the app marks its cookies `Secure` (`server.forward-headers-strategy=native`).
+   Passkeys are bound to that host: `IM_WEBAUTHN_RP_ID=im.h.g7v.io`, `IM_WEBAUTHN_ALLOWED_ORIGINS=https://im.h.g7v.io`.
 5. The certificate comes from acme.sh, as for the other sites.
 6. Data lives under `/volume1/docker/im`: database files and the document store.
 7. Renovate and the nightly `update.sh` update the image. Flyway migrates the schema at start.

@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Passkey login (Touch ID, Face ID): each user adds, renames and removes passkeys and changes the password on "Mein Konto"; the admin removes the passkeys of a user.
 - Login with password (Argon2), "Angemeldet bleiben", roles user and admin, the first admin from the environment, and the admin page "Benutzer".
 - App shell with sidebar menu, German error pages, a strict content security policy.
 - Implementation plan (`docs/PLAN.md`) and clickable UI mockup (`docs/mockup`).

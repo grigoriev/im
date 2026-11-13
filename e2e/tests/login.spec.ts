@@ -7,14 +7,14 @@ test.describe('without session', () => {
   test('sends a visitor to the login page', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('button', { name: 'Anmelden' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Anmelden', exact: true })).toBeVisible();
   });
 
   test('names a wrong password', async ({ page }) => {
     await page.goto('/login');
     await page.getByLabel('Benutzername').fill(ADMIN.username);
     await page.getByLabel('Passwort').fill('falsch-falsch-falsch');
-    await page.getByRole('button', { name: 'Anmelden' }).click();
+    await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText('Benutzername oder Passwort ist falsch.');
   });
 
@@ -22,7 +22,7 @@ test.describe('without session', () => {
     await page.goto('/login');
     await page.getByLabel('Benutzername').fill(ADMIN.username);
     await page.getByLabel('Passwort').fill(ADMIN.password);
-    await page.getByRole('button', { name: 'Anmelden' }).click();
+    await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Guten Tag, ${ADMIN.displayName}`);
     await page.getByRole('button', { name: 'Abmelden' }).click();
     await expect(page.getByRole('status')).toHaveText('Sie sind abgemeldet.');
@@ -43,7 +43,7 @@ test('the admin creates a user, who sees no admin area', async ({ page, browser 
   await user.goto('/login');
   await user.getByLabel('Benutzername').fill(username);
   await user.getByLabel('Passwort').fill('elena-passwort-123');
-  await user.getByRole('button', { name: 'Anmelden' }).click();
+  await user.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(user.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Elena Sommer');
   await expect(user.getByRole('link', { name: 'Benutzer' })).toHaveCount(0);
   await user.goto('/admin/benutzer');
@@ -68,7 +68,7 @@ test('the admin sets a new password', async ({ page, browser }) => {
   await user.goto('/login');
   await user.getByLabel('Benutzername').fill(username);
   await user.getByLabel('Passwort').fill('zweites-passwort-123');
-  await user.getByRole('button', { name: 'Anmelden' }).click();
+  await user.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(user.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Gast');
   await context.close();
 });
@@ -87,7 +87,7 @@ test('a long name without spaces stays inside the menu and the page', async ({ p
   await user.goto('/login');
   await user.getByLabel('Benutzername').fill(username);
   await user.getByLabel('Passwort').fill('lang-passwort-123');
-  await user.getByRole('button', { name: 'Anmelden' }).click();
+  await user.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(user.getByRole('heading', { level: 1 })).toContainText('Sehrlangername');
   const overflow = await user.evaluate(() => {
     const menu = document.querySelector('nav[aria-label="Hauptmenü"]')!;

@@ -1,8 +1,13 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.user.AppUser;
+import io.github.grigoriev.im.user.PasskeyService;
 import io.github.grigoriev.im.user.Role;
 import io.github.grigoriev.im.user.UserException;
 import io.github.grigoriev.im.user.UserService;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,14 +26,17 @@ public class AdminUserController {
     static final String BACK = "redirect:/admin/benutzer";
 
     private final UserService users;
+    private final PasskeyService passkeys;
 
     /**
      * Creates the controller.
      *
      * @param users the user service
+     * @param passkeys the passkey service
      */
-    public AdminUserController(UserService users) {
+    public AdminUserController(UserService users, PasskeyService passkeys) {
         this.users = users;
+        this.passkeys = passkeys;
     }
 
     /**
@@ -39,7 +47,11 @@ public class AdminUserController {
      */
     @GetMapping
     public String list(Model model) {
-        model.addAttribute("users", users.list());
+        var all = users.list();
+        Map<String, Integer> counts = all.stream().map(AppUser::username)
+                .collect(Collectors.toMap(Function.identity(), passkeys::count));
+        model.addAttribute("users", all);
+        model.addAttribute("passkeyCounts", counts);
         model.addAttribute("roles", Role.values());
         return VIEW;
     }
@@ -64,6 +76,25 @@ public class AdminUserController {
             flash.addFlashAttribute("error", e.getMessage());
             flash.addFlashAttribute("username", username);
             flash.addFlashAttribute("displayName", displayName);
+        }
+        return BACK;
+    }
+
+    /**
+     * Removes every passkey of a user, for example after a lost phone.
+     *
+     * @param id the user
+     * @param flash messages for the next page
+     * @return a redirect to the list
+     */
+    @PostMapping("/{id}/passkeys/loeschen")
+    public String removePasskeys(@PathVariable long id, RedirectAttributes flash) {
+        try {
+            String username = users.get(id).username();
+            int removed = passkeys.removeAll(username);
+            flash.addFlashAttribute("success", removed + " Passkey(s) von „" + username + "“ entfernt.");
+        } catch (UserException e) {
+            flash.addFlashAttribute("error", e.getMessage());
         }
         return BACK;
     }

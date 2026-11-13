@@ -2,9 +2,11 @@ package io.github.grigoriev.im;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /** Entry point of the Invoice Manager. */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class ImApplication {
 
     /**

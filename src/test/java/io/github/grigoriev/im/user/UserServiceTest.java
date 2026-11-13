@@ -112,6 +112,39 @@ class UserServiceTest {
     }
 
     @Test
+    void changesTheOwnPasswordAfterCheckingTheCurrentOne() {
+        when(repository.findByUsername("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
+        when(encoder.matches("alt-passwort", "{noop}x")).thenReturn(true);
+        service.changePassword("elena", "alt-passwort", PASSWORD);
+        verify(repository).save(org.mockito.ArgumentMatchers.argThat(user -> user.passwordHash().equals("{enc}" + PASSWORD)));
+        verify(rememberMe).removeUserTokens("elena");
+    }
+
+    @Test
+    void refusesAWrongCurrentPasswordAShortNewOneAndAnUnknownUser() {
+        when(repository.findByUsername("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
+        assertThatThrownBy(() -> service.changePassword("elena", "falsch", PASSWORD)).isInstanceOf(UserException.class)
+                .hasMessage("Das aktuelle Passwort stimmt nicht.");
+        assertThatThrownBy(() -> service.changePassword("elena", null, PASSWORD)).isInstanceOf(UserException.class)
+                .hasMessage("Das aktuelle Passwort stimmt nicht.");
+        when(encoder.matches("alt-passwort", "{noop}x")).thenReturn(true);
+        assertThatThrownBy(() -> service.changePassword("elena", "alt-passwort", "kurz")).isInstanceOf(UserException.class)
+                .hasMessageContaining("mindestens 12 Zeichen");
+        when(repository.findByUsername("niemand")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.changePassword("niemand", "x", PASSWORD)).isInstanceOf(UserException.class)
+                .hasMessage("Diesen Benutzer gibt es nicht.");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void returnsAUserById() {
+        AppUser elena = UserTestData.user(2, "elena", Role.USER);
+        when(repository.findById(2L)).thenReturn(Optional.of(elena));
+        assertThat(service.get(2)).isEqualTo(elena);
+        assertThatThrownBy(() -> service.get(9)).isInstanceOf(UserException.class);
+    }
+
+    @Test
     void listsTheUsersByName() {
         List<AppUser> all = List.of(UserTestData.user(1, "admin", Role.ADMIN));
         when(repository.findAllByOrderByUsername()).thenReturn(all);

@@ -1,4 +1,6 @@
-# The E2E stack: database, the app image under test (service "web": Chromium forces HTTPS for the host "app"), and the pinned Playwright image.
+# The E2E stack: database, the app image under test, and the pinned Playwright image.
+# Playwright shares the network of "web" and calls http://localhost:8080: WebAuthn (passkeys) runs only
+# in a secure context, and the browser treats localhost as one.
 # Start it through scripts/e2e.sh.
 services:
   db:
@@ -29,8 +31,9 @@ services:
   playwright:
     image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
     working_dir: /e2e
+    network_mode: service:web
     environment:
-      BASE_URL: http://web:8080
+      BASE_URL: http://localhost:8080
       CI: ${CI:-}
       PLAYWRIGHT_ARGS: ${PLAYWRIGHT_ARGS:-}
     volumes:

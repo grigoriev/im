@@ -3,6 +3,7 @@ export const ROUTES = [
   { name: 'login', path: '/login', anonymous: true },
   { name: 'start', path: '/', anonymous: false },
   { name: 'users', path: '/admin/benutzer', anonymous: false },
+  { name: 'account', path: '/konto', anonymous: false },
 ];
 
 // Widths of the no-horizontal-scroll rule (docs/PLAN.md, section 10).
