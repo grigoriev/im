@@ -44,5 +44,6 @@ Flag these in a pull request:
 - Generated XML or PDF that skips the validation of its format or profile, or checks a ZUGFeRD EN16931 profile against the XRechnung rules
 - A URL without a role check, a form without CSRF protection, or a secret in the log
 - A frontend asset loaded from a CDN at runtime
+- A table or layout that scrolls sideways, or columns that depend on the window width instead of the card width
 - Missing tests for new behavior: unit, integration, E2E and visual baselines per `docs/PLAN.md`
 - No `## [Unreleased]` entry in `CHANGELOG.md`, or README not updated for a behavior change

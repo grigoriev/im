@@ -46,6 +46,8 @@ Sources are listed in section 13. Verify each item again before the go-live.
 4. **Small footprint.** One household, two users, one container plus a database.
 5. **Own data.** Full export and import. No dependency on a cloud service.
 6. **Simple UI.** German only. Reuse customers, line templates and earlier invoices.
+   No horizontal scroll at any width: tables adapt to the width of their card (container queries),
+   merge secondary columns, and turn into cards on a narrow screen. Text wraps instead of being cut.
 7. **No real data in git.** Tests and demo use generated data only.
 
 ## 4. Technology
@@ -258,6 +260,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 5. On failure, CI uploads the diff images as an artifact.
 6. A separate command updates the baselines. Commit the new baselines on purpose.
 7. Playwright also runs axe accessibility checks.
+8. Playwright checks every view at 375, 768, 1024, 1440 and 1920 px: no element scrolls sideways or overflows its card.
 
 ### Gates
 
