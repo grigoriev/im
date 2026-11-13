@@ -990,7 +990,7 @@ document.addEventListener('input', e => {
     const l = state.lines[+tr.dataset.line], f = e.target.dataset.f;
     l[f] = (f === 'qty' || f === 'price') ? (Number.parseFloat(e.target.value.replaceAll('.', '').replace(',', '.')) || 0) : e.target.value;
     if (f === 'cat') { syncNote(); renderLines(); return; }
-    if (f === 'unit') { if (l.unit === 'pauschal') { l.price = Math.round(l.qty * l.price * 100) / 100; l.qty = 1; } renderLines(); return; }
+    if (f === 'unit') { if (l.unit === 'pauschal') { l.price = Math.round((l.qty * l.price + Number.EPSILON) * 100) / 100; l.qty = 1; } renderLines(); return; }
     if (f === 'qty' || f === 'price') tr.querySelector('.line-sum').textContent = eur.format(l.qty * l.price);
     renderPreview(); return;
   }
