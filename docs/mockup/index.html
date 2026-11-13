@@ -486,7 +486,7 @@ const VIEWS = {
           <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-2 text-sm">
             <div><dt class="eyebrow">E-Mail für Rechnungen</dt><dd>${c.mail}</dd></div>
             <div><dt class="eyebrow">E-Rechnungsformat</dt><dd>${FORMATS[c.format].desc}</dd></div>
-            ${c.leitweg ? `<div><dt class="eyebrow">Leitweg-ID</dt><dd class="num">${c.leitweg}</dd></div>` : ''}
+            ${c.leitweg ? `<div><dt class="eyebrow">Käuferreferenz (Leitweg-ID)</dt><dd class="num">${c.leitweg}</dd></div>` : ''}
             ${c.vat ? `<div><dt class="eyebrow">USt-IdNr.</dt><dd class="num">${c.vat}</dd></div>` : ''}
           </dl>
           <div class="grid gap-2">
@@ -709,7 +709,7 @@ function loadTemplate() {
   document.getElementById('f-intro').value = t.cat === 'ex' ? 'für den Unterricht im genannten Zeitraum stelle ich Ihnen in Rechnung:' : 'vielen Dank für Ihren Auftrag. Ich stelle Ihnen folgende Leistungen in Rechnung:';
   state.format = t.format ?? c.format;
   document.getElementById('f-format').value = state.format;
-  document.getElementById('f-custinfo').innerHTML = [['E-Mail', c.mail], ['Leitweg-ID', c.leitweg], ['USt-IdNr.', c.vat]]
+  document.getElementById('f-custinfo').innerHTML = [['E-Mail', c.mail], ['Käuferreferenz', c.leitweg], ['USt-IdNr.', c.vat]]
     .filter(([, val]) => val).map(([k, val]) => '<span><b>' + k + ':</b> ' + val + '</span>').join('');
   syncNote();
   renderLines();
@@ -751,7 +751,7 @@ function paymentText(terms, dueStr) {
 }
 
 function buyerBlock(c) {
-  const extra = [['USt-IdNr.', c.vat], ['Leitweg-ID', c.leitweg]].filter(([, val]) => val)
+  const extra = [['USt-IdNr.', c.vat], ['Käuferreferenz', c.leitweg]].filter(([, val]) => val)
     .map(([k, val]) => '<div>' + k + ' ' + val + '</div>').join('');
   return '<div><div class="font-medium">' + c.name + '</div><div>' + c.city + '</div><div>' + COUNTRY[c.country] + '</div>' + extra + '</div>';
 }
