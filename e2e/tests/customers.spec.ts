@@ -8,7 +8,7 @@ test('creates a public customer with XRechnung, changes and deletes it', async (
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Straße und Hausnummer').fill('Am Markt 1');
   await page.getByLabel('PLZ').fill('86150');
-  await page.getByLabel('Ort').fill('Musterstadt');
+  await page.getByLabel('Ort', { exact: true }).fill('Musterstadt');
   await page.getByLabel('E-Rechnungsformat').selectOption('XRECHNUNG');
   await page.getByRole('button', { name: 'Anlegen' }).click();
 

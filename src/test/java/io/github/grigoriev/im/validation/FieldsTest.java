@@ -83,12 +83,12 @@ class FieldsTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"DE, true", "CH, true", "D, false", "DEU, false", "de, false"})
+    @CsvSource({"DE, true", "CH, true", "XK, false", "ZZ, false", "D, false", "DEU, false", "de, false"})
     void checksACountryCode(String country, boolean valid) {
         List<String> problems = new ArrayList<>();
         Fields.checkCountry(problems, country);
         assertThat(problems).isEqualTo(valid ? List.of()
-                : List.of("Das Land ist ein Code aus zwei Buchstaben, zum Beispiel DE."));
+                : List.of("Bitte ein Land aus der Liste wählen."));
         List<String> missing = new ArrayList<>();
         Fields.checkCountry(missing, null);
         assertThat(missing).hasSize(1);
@@ -97,8 +97,8 @@ class FieldsTest {
     @Test
     void matchesAPattern() {
         List<String> problems = new ArrayList<>();
-        Fields.matches(problems, "ab", Fields.COUNTRY, "falsch");
-        Fields.matches(problems, "AB", Fields.COUNTRY, "falsch");
+        Fields.matches(problems, "a@b", Fields.EMAIL, "falsch");
+        Fields.matches(problems, "a@b.de", Fields.EMAIL, "falsch");
         assertThat(problems).containsExactly("falsch");
     }
 }

@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.country.CountryService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
@@ -32,14 +33,17 @@ public class CustomerController {
     private static final String SUCCESS = "success";
 
     private final CustomerService customers;
+    private final CountryService countries;
 
     /**
      * Creates the controller.
      *
      * @param customers the customer service
+     * @param countries the countries of the form
      */
-    public CustomerController(CustomerService customers) {
+    public CustomerController(CustomerService customers, CountryService countries) {
         this.customers = customers;
+        this.countries = countries;
     }
 
     /**
@@ -142,6 +146,7 @@ public class CustomerController {
         model.addAttribute("customer", customer);
         model.addAttribute("formats", FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());
+        model.addAttribute("countries", countries.options(customer == null ? null : customer.countryCode()));
         return VIEW;
     }
 }

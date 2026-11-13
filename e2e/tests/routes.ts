@@ -9,6 +9,7 @@ export const ROUTES = [
   { name: 'settings', path: '/einstellungen', anonymous: false },
   { name: 'tax-notes', path: '/admin/steuerhinweise', anonymous: false },
   { name: 'numbers', path: '/admin/nummernkreis', anonymous: false },
+  { name: 'countries', path: '/admin/laender', anonymous: false },
 ];
 
 // Widths of the no-horizontal-scroll rule (docs/PLAN.md, section 10).
