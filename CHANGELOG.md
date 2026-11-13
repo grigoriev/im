@@ -23,3 +23,7 @@ All notable changes to this project are documented in this file. The format foll
 - Start page with light and dark theme, served with its own fonts and libraries.
 - Container image, PostgreSQL with Flyway, and the release workflow to ghcr.io.
 - Repository baseline: security policy, contribution guide, Claude Code review, Scorecard, Renovate.
+
+### Fixed
+
+- The start page no longer fails for a logged-in user without an account record.

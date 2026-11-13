@@ -53,6 +53,7 @@ Package `io.github.grigoriev.im`:
 
 Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers, PDF baselines in
 `src/test/resources/visual/pdf`, Playwright tests and screenshot baselines in `e2e/tests`.
+`AccessRulesIT` holds the access rule of every URL: a new controller URL needs an entry there, or it fails.
 
 ## Code Style
 
