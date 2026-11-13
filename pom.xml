@@ -46,7 +46,7 @@
         <download-plugin.version>2.1.0</download-plugin.version>
         <sonar-plugin.version>5.8.0.7211</sonar-plugin.version>
         <!-- Keep equal to .node-version. -->
-        <node.version>v26.13.0</node.version>
+        <node.version>v26.13.1</node.version>
 
         <sonar.organization>grigoriev</sonar.organization>
         <sonar.projectKey>grigoriev_im</sonar.projectKey>
