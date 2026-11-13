@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsmanager Prototyp</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.7.50/daisyui.css" integrity="sha384-UwBu1IAWgb8nYSKlFTAgsMdqElJVcwjO1O31z47tHuvyhJ4rgjfif927I0JH2zI1" crossorigin="anonymous">
+<style>
+/* Layout: sidebar app shell, summary first, invoice paper preview beside the editor. */
+:root {
+  --color-base-100: oklch(99.4% 0.003 240);
+  --color-base-200: oklch(97% 0.006 240);
+  --color-base-300: oklch(92.5% 0.011 240);
+  --color-base-content: oklch(26% 0.025 250);
+  --color-primary: oklch(47% 0.1 232);
+  --color-primary-content: oklch(98% 0.01 232);
+  --color-secondary: oklch(52% 0.06 200);
+  --color-secondary-content: oklch(98% 0.01 200);
+  --color-accent: oklch(70% 0.14 68);
+  --color-accent-content: oklch(25% 0.05 68);
+  --color-neutral: oklch(32% 0.025 250);
+  --color-neutral-content: oklch(97% 0.005 250);
+  --color-info: oklch(58% 0.12 245);
+  --color-info-content: oklch(98% 0.01 245);
+  --color-success: oklch(56% 0.12 155);
+  --color-success-content: oklch(98% 0.01 155);
+  --color-warning: oklch(72% 0.15 75);
+  --color-warning-content: oklch(25% 0.05 75);
+  --color-error: oklch(55% 0.19 25);
+  --color-error-content: oklch(98% 0.01 25);
+  --radius-box: 0.6rem;
+  --radius-field: 0.45rem;
+  --radius-selector: 0.45rem;
+  --depth: 0;
+  --noise: 0;
+  --paper: oklch(100% 0 0);
+  --paper-ink: oklch(24% 0.02 250);
+  --paper-rule: oklch(88% 0.01 240);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+/* The script sets data-theme to light or dark, also for the system setting. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-base-100: oklch(22% 0.016 250);
+  --color-base-200: oklch(18.5% 0.015 250);
+  --color-base-300: oklch(29% 0.02 250);
+  --color-base-content: oklch(92% 0.01 240);
+  --color-primary: oklch(73% 0.1 228);
+  --color-primary-content: oklch(20% 0.03 232);
+  --color-secondary: oklch(70% 0.06 200);
+  --color-secondary-content: oklch(20% 0.02 200);
+  --color-accent: oklch(79% 0.13 72);
+  --color-accent-content: oklch(22% 0.04 72);
+  --color-neutral: oklch(36% 0.02 250);
+  --color-neutral-content: oklch(94% 0.005 250);
+  --color-info: oklch(72% 0.11 240);
+  --color-info-content: oklch(20% 0.03 240);
+  --color-success: oklch(72% 0.13 155);
+  --color-success-content: oklch(20% 0.03 155);
+  --color-warning: oklch(80% 0.14 78);
+  --color-warning-content: oklch(22% 0.04 78);
+  --color-error: oklch(70% 0.16 25);
+  --color-error-content: oklch(20% 0.04 25);
+  --paper: oklch(97% 0.004 240);
+  --paper-ink: oklch(24% 0.02 250);
+  --paper-rule: oklch(86% 0.01 240);
+}
+html, body { height: 100%; }
+html { background: var(--color-base-200); }
+body { background: var(--color-base-200); color: var(--color-base-content); font-family: var(--font-sans); font-size: 14px; }
+.num { font-variant-numeric: tabular-nums; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.eyebrow { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.65; font-weight: 600; }
+h1, h2, h3 { text-wrap: balance; }
+.paper { background: var(--paper); color: var(--paper-ink); box-shadow: 0 1px 2px oklch(0% 0 0 / 0.08), 0 8px 24px oklch(0% 0 0 / 0.08); aspect-ratio: 210 / 297; max-width: 100%; font-size: 9.5px; line-height: 1.45; }
+.paper .rule { border-color: var(--paper-rule); }
+.meter { height: 0.5rem; border-radius: 999px; background: var(--color-base-300); overflow: hidden; }
+.meter > span { display: block; height: 100%; border-radius: 999px; background: var(--color-primary); }
+.meter.limit > span { background: var(--color-accent); }
+.toast-msg { animation: fade 3.2s forwards; }
+@keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .toast-msg { animation: none; } }
+.nav-active { background: color-mix(in oklch, var(--color-primary) 14%, transparent); color: var(--color-primary); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+</style>
+
+</head>
+<body>
+<div class="drawer lg:drawer-open h-full">
+  <input id="nav" type="checkbox" class="drawer-toggle">
+  <div class="drawer-content flex flex-col min-w-0">
+    <header class="navbar bg-base-100 border-b border-base-300 gutter gap-2 sticky z-20" style="top: env(safe-area-inset-top, 0px)">
+      <label for="nav" class="btn btn-ghost btn-square btn-sm lg:hidden" aria-label="Menü öffnen"><i data-lucide="menu" class="size-5"></i></label>
+      <div class="flex-1 min-w-0">
+        <span class="font-semibold truncate" id="page-title">Übersicht</span>
+      </div>
+      <fieldset class="join"><legend class="sr-only">Darstellung</legend>
+        <button class="btn btn-xs join-item" data-theme-set="system" title="System"><i data-lucide="monitor" class="size-3.5"></i><span class="hidden sm:inline">System</span></button>
+        <button class="btn btn-xs join-item" data-theme-set="light" title="Hell"><i data-lucide="sun" class="size-3.5"></i><span class="hidden sm:inline">Hell</span></button>
+        <button class="btn btn-xs join-item" data-theme-set="dark" title="Dunkel"><i data-lucide="moon" class="size-3.5"></i><span class="hidden sm:inline">Dunkel</span></button>
+      </fieldset>
+      <a href="#anmelden" class="btn btn-ghost btn-sm btn-circle avatar placeholder" title="Abmelden">
+        <span class="bg-primary text-primary-content rounded-full size-8 grid place-items-center text-xs font-semibold">ES</span>
+      </a>
+    </header>
+    <main id="view" class="gutter py-6 flex-1 min-w-0"></main>
+  </div>
+  <div class="drawer-side z-30">
+    <label for="nav" class="drawer-overlay" aria-label="Menü schließen"></label>
+    <aside class="bg-base-100 border-r border-base-300 w-64 min-h-full flex flex-col">
+      <div class="px-5 py-5">
+        <div class="font-semibold text-lg tracking-tight">Rechnungen</div>
+        <div class="text-xs opacity-60">Elena Sommer · Kleinunternehmerin</div>
+      </div>
+      <ul class="menu w-full px-3 gap-0.5" id="menu">
+        <li><a href="#uebersicht" data-nav="uebersicht"><i data-lucide="layout-dashboard" class="size-4"></i>Übersicht</a></li>
+        <li><a href="#rechnungen" data-nav="rechnungen"><i data-lucide="file-text" class="size-4"></i>Rechnungen</a></li>
+        <li><a href="#kunden" data-nav="kunden"><i data-lucide="users" class="size-4"></i>Kunden &amp; Vorlagen</a></li>
+        <li><a href="#berichte" data-nav="berichte"><i data-lucide="chart-column" class="size-4"></i>Berichte</a></li>
+        <li class="menu-title mt-4">Verwaltung</li>
+        <li><a href="#einstellungen" data-nav="einstellungen"><i data-lucide="sliders-horizontal" class="size-4"></i>Einstellungen</a></li>
+        <li><a href="#anmelden" data-nav="anmelden"><i data-lucide="log-in" class="size-4"></i>Anmeldung</a></li>
+      </ul>
+      <div class="mt-auto p-4">
+        <a href="#rechnung-neu" class="btn btn-primary w-full"><i data-lucide="plus" class="size-4"></i>Neue Rechnung</a>
+        <p class="text-[11px] opacity-50 mt-3 leading-snug">Prototyp mit Beispieldaten. Keine echten Kunden.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div id="toasts" class="toast toast-end z-50" style="padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); padding-right: max(1rem, env(safe-area-inset-right, 0px))"></div>
+
+<dialog id="dlg-mail" class="modal">
+  <div class="modal-box max-w-lg">
+    <h3 class="font-semibold text-lg">Rechnung per E-Mail senden</h3>
+    <form class="mt-4 grid gap-3" data-toast="Rechnung 2027-07 per E-Mail versendet">
+      <label class="floating-label"><span>An</span><input id="mail-to" class="input w-full" value="buchhaltung@verlag-am-fluss.example"></label>
+      <label class="floating-label"><span>Betreff</span><input id="mail-subject" class="input w-full" value="Rechnung 2027-07 - Lesung am 04.03.2027"></label>
+      <label class="floating-label"><span>Nachricht</span><textarea id="mail-body" class="textarea w-full h-28">Sehr geehrte Damen und Herren,
+
+anbei erhalten Sie meine Rechnung 2027-07 als E-Rechnung (ZUGFeRD).
+
+Mit freundlichen Grüßen
+Elena Sommer</textarea></label>
+      <div class="flex flex-wrap gap-4 text-sm">
+        <label class="flex items-center gap-2"><input id="mail-pdf" type="checkbox" class="checkbox checkbox-sm" checked>PDF (ZUGFeRD)</label>
+        <label class="flex items-center gap-2"><input id="mail-xml" type="checkbox" class="checkbox checkbox-sm">XML separat</label>
+      </div>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" data-close>Abbrechen</button>
+        <button class="btn btn-primary"><i data-lucide="send" class="size-4"></i>Senden</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>schließen</button></form>
+</dialog>
+
+<dialog id="dlg-manual" class="modal">
+  <div class="modal-box max-w-md">
+    <h3 class="font-semibold text-lg">Als versendet markieren</h3>
+    <p class="text-sm opacity-70 mt-1">Für Rechnungen, die Sie selbst aus Ihrem Mailprogramm oder per Post verschickt haben.</p>
+    <form class="mt-4 grid gap-3" data-toast="Versand vermerkt">
+      <label class="floating-label"><span>Versanddatum</span><input id="man-date" type="date" class="input w-full" value="2027-03-18"></label>
+      <label class="floating-label"><span>Weg</span>
+        <select id="man-way" class="select w-full"><option>Eigenes Mailprogramm</option><option>Post</option><option>Portal des Kunden</option><option>Persönlich übergeben</option></select>
+      </label>
+      <label class="floating-label"><span>Empfänger</span><input id="man-to" class="input w-full" placeholder="z. B. rechnung@kunde.de"></label>
+      <label class="floating-label"><span>Notiz (optional)</span><input id="man-note" class="input w-full"></label>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" data-close>Abbrechen</button>
+        <button class="btn btn-primary"><i data-lucide="check" class="size-4"></i>Vermerken</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>schließen</button></form>
+</dialog>
+
+<dialog id="dlg-pay" class="modal">
+  <div class="modal-box max-w-md">
+    <h3 class="font-semibold text-lg">Zahlung erfassen</h3>
+    <form class="mt-4 grid gap-3" data-toast="Zahlung erfasst. Rechnung ist bezahlt.">
+      <label class="floating-label"><span>Zahlungseingang</span><input id="pay-date" type="date" class="input w-full" value="2027-03-18"></label>
+      <label class="floating-label"><span>Betrag in €</span><input id="pay-amount" class="input w-full num" value="1.200,00"></label>
+      <p class="text-xs opacity-70">Maßgeblich für die EÜR (Zuflussprinzip) und die Kleinunternehmergrenze.</p>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" data-close>Abbrechen</button>
+        <button class="btn btn-primary"><i data-lucide="banknote" class="size-4"></i>Erfassen</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>schließen</button></form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@1.50.0/dist/umd/lucide.min.js" integrity="sha384-/sIySnlbVLfPSNdgy7yqanP6+Dv4en7FlBure4Rag0mp480bA2f+nTviC6933zkQ" crossorigin="anonymous"></script>
+<script>
+const eur = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+const de = d => d ? d.split('-').reverse().join('.') : '';
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+const TODAY = '2027-03-18';
+
+const CAT = {
+  ku:  { label: '§ 19', long: 'Kleinunternehmer § 19 UStG', cls: 'badge-primary', note: 'Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.' },
+  ex:  { label: '§ 4 Nr. 21', long: 'Steuerfrei § 4 Nr. 21 UStG', cls: 'badge-secondary', note: 'Steuerfreie Leistung gemäß § 4 Nr. 21 UStG.' },
+  rc:  { label: 'Reverse Charge', long: 'EU, Reverse Charge', cls: 'badge-info', note: 'Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).' },
+  out: { label: 'Nicht steuerbar', long: 'Drittland, nicht steuerbar', cls: 'badge-neutral', note: 'Nicht im Inland steuerbare Leistung.' },
+};
+
+const CUSTOMERS = [
+  { id: 'lindenhof', name: 'Sprachschule Lindenhof GmbH', city: '80469 München', country: 'DE', format: 'zugferd', mail: 'rechnung@lindenhof.example', templates: [
+    { name: 'Deutschkurs B2, monatlich', cat: 'ex', lines: [['Unterricht Deutsch B2, je 45 Min.', 16, 'UE', 45]] },
+    { name: 'Prüfungsvorbereitung', cat: 'ex', lines: [['Prüfungstraining telc B2, je 45 Min.', 8, 'UE', 50]] } ] },
+  { id: 'vhs', name: 'Volkshochschule Musterstadt', city: '86150 Musterstadt', country: 'DE', format: 'xrechnung', leitweg: '09162000-VHS01-42', mail: 'erechnung@vhs-musterstadt.example', templates: [
+    { name: 'Integrationskurs, Modul', cat: 'ex', lines: [['Integrationskurs Modul 4, je 45 Min.', 24, 'UE', 41]] } ] },
+  { id: 'verlag', name: 'Verlag am Fluss GmbH', city: '20457 Hamburg', country: 'DE', format: 'zugferd', mail: 'buchhaltung@verlag-am-fluss.example', templates: [
+    { name: 'Lesung mit Gespräch', cat: 'ku', lines: [['Lesung aus „Der stille Hafen“, 90 Min.', 1, 'Stk', 400], ['Reisekosten, pauschal', 1, 'Stk', 80]] },
+    { name: 'Lektorat', cat: 'ku', lines: [['Lektorat Manuskript, je Normseite', 120, 'Seite', 4.5]] } ] },
+  { id: 'lingua', name: 'Lingua Lab B.V.', city: '3511 Utrecht', country: 'NL', format: 'zugferd', vat: 'NL123456789B01', mail: 'invoices@lingualab.example', templates: [
+    { name: 'Online-Workshop', cat: 'rc', lines: [['Online-Workshop „Deutsch im Beruf“, 3 Std.', 1, 'Stk', 600]] } ] },
+  { id: 'kulturforum', name: 'Kulturforum Zürich AG', city: '8001 Zürich', country: 'CH', format: 'zugferd', mail: 'kreditoren@kulturforum.example', templates: [
+    { name: 'Lesung', cat: 'out', lines: [['Lesung und Signierstunde', 1, 'Stk', 350]] } ] },
+];
+const cust = id => CUSTOMERS.find(c => c.id === id);
+const FORMATS = {
+  zugferd: { label: 'ZUGFeRD EN16931', desc: 'ZUGFeRD, Profil EN16931: PDF mit XML', preview: 'ZUGFeRD EN16931: PDF/A-3 mit XML',
+    checks: ['Mustang-Validator: gültig (EN 16931)', 'veraPDF: PDF/A-3B konform'],
+    docs: [['file-text', '.pdf', 'ZUGFeRD 2.3, Profil EN16931 · PDF/A-3B · E-Rechnung · 52 KB'], ['file-code-2', '.xml', 'CII, EN 16931, im PDF eingebettet · 14 KB']] },
+  'zugferd-xr': { label: 'ZUGFeRD XRECHNUNG', desc: 'ZUGFeRD, Profil XRECHNUNG: PDF mit XML', preview: 'ZUGFeRD XRECHNUNG: PDF/A-3 mit XML',
+    checks: ['Mustang-Validator: gültig (EN 16931)', 'KoSIT: gültig (XRechnung 3.0)', 'veraPDF: PDF/A-3B konform'],
+    docs: [['file-text', '.pdf', 'ZUGFeRD 2.3, Profil XRECHNUNG · PDF/A-3B · E-Rechnung · 53 KB'], ['file-code-2', '.xml', 'CII, XRechnung 3.0, im PDF eingebettet · 15 KB']] },
+  xrechnung: { label: 'XRechnung', desc: 'XRechnung (UBL): nur XML', preview: 'XRechnung: XML, PDF nur als Sichtkopie',
+    checks: ['KoSIT: gültig (XRechnung 3.0)'],
+    docs: [['file-code-2', '.xml', 'XRechnung 3.0 (UBL) · E-Rechnung · 15 KB'], ['file-text', '_Sichtkopie.pdf', 'Sichtkopie, keine E-Rechnung · 48 KB']] },
+};
+const fmtOf = i => i.format ?? cust(i.c).format;
+const catsOf = i => i.cats ?? [i.cat];
+function amountOf(i, k) {
+  if (i.amounts) return i.amounts[k] ?? 0;
+  return i.cat === k ? i.total : 0;
+}
+
+const INVOICES = [
+  { no: '2027-09', c: 'lindenhof', date: '2027-03-14', due: '2027-03-28', total: 720, cat: 'ex', status: 'issued' },
+  { no: '2027-08', c: 'kulturforum', date: '2027-02-25', due: '2027-03-11', total: 350, cat: 'out', status: 'sent', sent: 'E-Mail' },
+  { no: '2027-07', c: 'verlag', date: '2027-03-05', due: '2027-03-19', total: 1200, cat: 'ku', status: 'sent', sent: 'manuell' },
+  { no: '2027-06', c: 'vhs', date: '2027-02-28', due: '2027-03-30', total: 984, cat: 'ex', status: 'sent', sent: 'E-Mail' },
+  { no: '2027-05', c: 'lingua', date: '2027-02-21', due: '2027-03-07', total: 600, cat: 'rc', status: 'paid', paid: '2027-03-04', sent: 'E-Mail' },
+  { no: '2027-04', c: 'lindenhof', date: '2027-02-14', due: '2027-02-28', total: 720, cat: 'ex', status: 'paid', paid: '2027-02-25', sent: 'E-Mail' },
+  { no: '2027-03', c: 'vhs', date: '2027-01-31', due: '2027-03-02', total: 984, cat: 'ex', status: 'paid', paid: '2027-02-20', sent: 'E-Mail' },
+  { no: '2027-02', c: 'verlag', date: '2027-01-20', due: '2027-02-03', total: 450, cat: 'ku', status: 'paid', paid: '2027-02-05', sent: 'manuell' },
+  { no: '2027-01', c: 'lindenhof', date: '2027-01-15', due: '2027-01-29', total: 720, cat: 'ex', status: 'paid', paid: '2027-01-28', sent: 'E-Mail' },
+];
+const DRAFTS = [{ no: null, c: 'verlag', date: '2027-03-18', total: 480, cat: 'ku', status: 'draft' }];
+
+function statusOf(i) {
+  if (i.status === 'sent' && i.due < TODAY) return 'overdue';
+  return i.status;
+}
+const STATUS = {
+  draft: ['Entwurf', 'badge-ghost'], issued: ['Ausgestellt', 'badge-outline'], sent: ['Versendet', 'badge-info badge-soft'],
+  paid: ['Bezahlt', 'badge-success badge-soft'], overdue: ['Überfällig', 'badge-error badge-soft'], cancelled: ['Storniert', 'badge-ghost line-through'],
+};
+const badge = s => `<span class="badge badge-sm ${STATUS[s][1]} whitespace-nowrap">${STATUS[s][0]}</span>`;
+const catBadge = k => `<span class="badge badge-sm badge-soft ${CAT[k].cls} whitespace-nowrap">${CAT[k].label}</span>`;
+
+/* §19 figures */
+const BASELINE_2026 = 9850;
+const paid2027 = INVOICES.filter(i => i.status === 'paid');
+const counted = paid2027.reduce((s, i) => s + amountOf(i, 'ku'), 0);
+const excluded = paid2027.reduce((s, i) => s + i.total - amountOf(i, 'ku'), 0);
+const paidSum = paid2027.reduce((s, i) => s + i.total, 0);
+const open = INVOICES.filter(i => ['issued', 'sent'].includes(i.status));
+const openSum = open.reduce((s, i) => s + i.total, 0);
+const overdue = open.filter(i => statusOf(i) === 'overdue');
+const forecast = Math.round(counted / (77 / 365) / 10) * 10;
+
+function meter(value, limit, cls = '') {
+  const pct = Math.max(0.8, Math.min(100, value / limit * 100));
+  return `<div class="meter ${cls}" role="meter" aria-valuemin="0" aria-valuemax="${limit}" aria-valuenow="${value}"><span style="width:${pct}%"></span></div>`;
+}
+
+const SENT_ICONS = {
+  'E-Mail': '<i data-lucide="mail-check" class="size-4 opacity-70" title="Per E-Mail aus der App"></i>',
+  manuell: '<i data-lucide="hand" class="size-4 opacity-70" title="Manuell versendet"></i>',
+};
+
+function invoiceRows(list) {
+  return list.map(i => {
+    const c = cust(i.c), s = statusOf(i);
+    const href = i.no ? '#rechnung-' + i.no : '#rechnung-neu';
+    const sent = SENT_ICONS[i.sent] ?? '<span class="opacity-30">-</span>';
+    return `<tr class="hover:bg-base-200 cursor-pointer" data-href="${href}">
+      <td class="num font-medium whitespace-nowrap"><a href="${href}" class="link link-hover">${i.no ?? '<span class="opacity-50 italic">ohne Nr.</span>'}</a></td>
+      <td class="min-w-40"><div class="font-medium">${c.name}</div><div class="text-xs opacity-60 md:hidden">${de(i.date)}</div></td>
+      <td class="num hidden md:table-cell whitespace-nowrap">${de(i.date)}</td>
+      <td class="num hidden lg:table-cell whitespace-nowrap ${s === 'overdue' ? 'text-error font-medium' : ''}">${de(i.due)}</td>
+      <td class="hidden sm:table-cell"><div class="flex flex-wrap gap-1">${catsOf(i).map(catBadge).join('')}</div></td>
+      <td class="num text-right whitespace-nowrap font-medium">${eur.format(i.total)}</td>
+      <td class="hidden md:table-cell text-center">${sent}</td>
+      <td>${badge(s)}</td>
+    </tr>`;
+  }).join('');
+}
+const tableHead = `<thead><tr class="text-xs"><th>Nr.</th><th>Kunde</th><th class="hidden md:table-cell">Datum</th><th class="hidden lg:table-cell">Fällig</th><th class="hidden sm:table-cell">Steuer</th><th class="text-right">Betrag</th><th class="hidden md:table-cell text-center">Versand</th><th>Status</th></tr></thead>`;
+
+function dispatchEvent(i, c) {
+  if (i.sent === 'manuell') return ['hand', 'Manuell versendet', de(i.date), 'Eigenes Mailprogramm an ' + c.mail];
+  if (i.sent) return ['mail-check', 'Per E-Mail versendet', de(i.date) + ', 09:43', 'an ' + c.mail];
+  return null;
+}
+
+function taxSection(i) {
+  return catsOf(i).map(k => {
+    const counts = k === 'ku' ? 'Zählt nach Zahlungseingang zur Kleinunternehmergrenze.' : 'Zählt nicht zur Kleinunternehmergrenze.';
+    return '<div class="grid gap-1">' + catBadge(k) + '<p class="text-xs opacity-70">' + CAT[k].note + '</p><p class="text-xs opacity-70">'
+      + eur.format(amountOf(i, k)) + '. ' + counts + '</p></div>';
+  }).join('');
+}
+
+const VIEWS = {
+  uebersicht() {
+    const open = INVOICES.filter(i => ['issued', 'sent'].includes(i.status));
+    const openSum = open.reduce((s, i) => s + i.total, 0);
+    const overdue = open.filter(i => statusOf(i) === 'overdue');
+    return `
+    <div class="max-w-6xl mx-auto grid gap-6">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div><div class="eyebrow">Stand ${de(TODAY)}</div><h1 class="text-2xl font-semibold tracking-tight">Guten Tag, Elena</h1></div>
+        <a href="#rechnung-neu" class="btn btn-primary"><i data-lucide="plus" class="size-4"></i>Neue Rechnung</a>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        <a href="#rechnungen" class="bg-base-100 rounded-box border border-base-300 p-4 hover:border-primary transition-colors">
+          <div class="eyebrow">Offen</div>
+          <div class="text-2xl font-semibold num mt-1">${eur.format(openSum)}</div>
+          <div class="text-xs opacity-70 mt-1">${open.length} Rechnungen</div>
+        </a>
+        <a href="#rechnungen" class="bg-base-100 rounded-box border border-base-300 p-4 hover:border-error transition-colors">
+          <div class="eyebrow">Überfällig</div>
+          <div class="text-2xl font-semibold num mt-1 text-error">${eur.format(overdue.reduce((s, i) => s + i.total, 0))}</div>
+          <div class="text-xs opacity-70 mt-1">${overdue.map(i => i.no + ', ' + cust(i.c).name).join('')}</div>
+        </a>
+        <div class="bg-base-100 rounded-box border border-base-300 p-4">
+          <div class="eyebrow">Eingegangen 2027</div>
+          <div class="text-2xl font-semibold num mt-1">${eur.format(paidSum)}</div>
+          <div class="text-xs opacity-70 mt-1">${paid2027.length} Zahlungen, nach Zahlungseingang</div>
+        </div>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-[1fr_22rem]">
+        <section class="bg-base-100 rounded-box border border-base-300 min-w-0">
+          <div class="flex items-center justify-between px-4 pt-4 pb-2">
+            <h2 class="font-semibold">Aktuelle Rechnungen</h2>
+            <a href="#rechnungen" class="link link-hover text-sm text-primary">Alle anzeigen</a>
+          </div>
+          <div class="overflow-x-auto"><table class="table table-sm">${tableHead}<tbody>${invoiceRows([...DRAFTS, ...INVOICES.slice(0, 5)])}</tbody></table></div>
+        </section>
+
+        <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-4 content-start">
+          <div class="flex items-start justify-between gap-2">
+            <div><h2 class="font-semibold">Kleinunternehmergrenze</h2><p class="text-xs opacity-70">§ 19 UStG, zählt nur Umsätze nach Zahlungseingang</p></div>
+            <span class="badge badge-success badge-soft badge-sm whitespace-nowrap">gilt 2027</span>
+          </div>
+          <div class="grid gap-1.5">
+            <div class="flex justify-between text-sm"><span>Vorjahr 2026</span><span class="num">${eur.format(BASELINE_2026)} <span class="opacity-50">/ 25.000 €</span></span></div>
+            ${meter(BASELINE_2026, 25000)}
+            <div class="text-xs opacity-60">Manuell erfasst, da 2026 vor dem Start der App liegt.</div>
+          </div>
+          <div class="grid gap-1.5">
+            <div class="flex justify-between text-sm"><span>2027 bisher</span><span class="num">${eur.format(counted)} <span class="opacity-50">/ 100.000 €</span></span></div>
+            ${meter(counted, 100000, 'limit')}
+            <div class="text-xs opacity-60">Über 100.000 € endet die Regelung sofort.</div>
+          </div>
+          <div class="grid gap-1.5">
+            <div class="flex justify-between text-sm"><span>Prognose 2027 für 2028</span><span class="num">≈ ${eur.format(forecast)} <span class="opacity-50">/ 25.000 €</span></span></div>
+            ${meter(forecast, 25000, 'limit')}
+          </div>
+          <div class="bg-base-200 rounded-field p-3 text-xs grid gap-1">
+            <div class="flex justify-between"><span>Nicht mitgezählt 2027</span><span class="num font-medium">${eur.format(excluded)}</span></div>
+            <div class="opacity-70">Unterricht nach § 4 Nr. 21 UStG und Leistungen an Kunden im Ausland.</div>
+          </div>
+        </section>
+      </div>
+    </div>`;
+  },
+
+  rechnungen() {
+    const all = [...DRAFTS, ...INVOICES];
+    const count = s => all.filter(i => s === 'all' || statusOf(i) === s || (s === 'open' && ['issued', 'sent', 'overdue'].includes(statusOf(i)))).length;
+    return `
+    <div class="max-w-6xl mx-auto grid gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-semibold tracking-tight">Rechnungen</h1>
+        <a href="#rechnung-neu" class="btn btn-primary"><i data-lucide="plus" class="size-4"></i>Neue Rechnung</a>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div role="tablist" class="tabs tabs-box tabs-sm" id="inv-tabs">
+          ${[['all', 'Alle'], ['draft', 'Entwürfe'], ['open', 'Offen'], ['overdue', 'Überfällig'], ['paid', 'Bezahlt']].map(([k, l], n) =>
+            `<button role="tab" class="tab ${k === state.invFilter ? 'tab-active' : ''}" data-filter="${k}">${l}<span class="ml-1.5 opacity-60 num">${count(k)}</span></button>`).join('')}
+        </div>
+        <label class="input input-sm w-full sm:w-64 sm:ml-auto"><i data-lucide="search" class="size-4 opacity-60"></i><input id="inv-search" type="search" placeholder="Kunde oder Nummer" value="${esc(state.invQuery)}"></label>
+        <select id="inv-year" class="select select-sm w-28"><option>2027</option></select>
+      </div>
+      <section class="bg-base-100 rounded-box border border-base-300 overflow-x-auto">
+        <table class="table table-sm">${tableHead}<tbody id="inv-body"></tbody></table>
+      </section>
+    </div>`;
+  },
+
+  'rechnung-neu'() {
+    const custOpts = CUSTOMERS.map(c => `<option value="${c.id}" ${c.id === 'verlag' ? 'selected' : ''}>${c.name}</option>`).join('');
+    return `
+    <div class="max-w-7xl mx-auto grid gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div><div class="eyebrow">Entwurf</div><h1 class="text-2xl font-semibold tracking-tight">Neue Rechnung</h1></div>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn btn-ghost" data-toast="Entwurf gespeichert"><i data-lucide="save" class="size-4"></i>Speichern</button>
+          <button class="btn btn-primary" id="btn-issue"><i data-lucide="stamp" class="size-4"></i>Rechnung ausstellen</button>
+        </div>
+      </div>
+
+      <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
+        <div class="grid gap-4 min-w-0 content-start">
+          <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-3 sm:grid-cols-2">
+            <label class="floating-label"><span>Kunde</span><select id="f-cust" class="select w-full">${custOpts}</select></label>
+            <label class="floating-label"><span>Vorlage</span><select id="f-tpl" class="select w-full"></select></label>
+            <label class="floating-label sm:col-span-2"><span>E-Rechnungsformat (aus der Vorlage)</span><select id="f-format" class="select w-full">${Object.entries(FORMATS).map(([k, f]) => '<option value="' + k + '">' + f.label + '</option>').join('')}</select></label>
+            <label class="floating-label"><span>Rechnungsdatum</span><input id="f-date" type="date" class="input w-full" value="2027-03-18"></label>
+            <label class="floating-label"><span>Zahlungsziel</span><select id="f-terms" class="select w-full"><option value="14">14 Tage</option><option value="30">30 Tage</option><option value="0">Sofort</option></select></label>
+            <label class="floating-label"><span>Leistung von</span><input id="f-from" type="date" class="input w-full" value="2027-03-16"></label>
+            <label class="floating-label"><span>Leistung bis</span><input id="f-to" type="date" class="input w-full" value="2027-03-16"></label>
+            <div class="sm:col-span-2 text-xs opacity-70 flex flex-wrap gap-x-4 gap-y-1" id="f-custinfo"></div>
+          </section>
+
+          <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-3">
+            <label class="floating-label"><span>Einleitung</span><textarea id="f-intro" class="textarea w-full h-16"></textarea></label>
+            <div class="overflow-x-auto">
+              <table class="table table-sm" id="lines">
+                <thead><tr class="text-xs"><th class="min-w-56">Leistung</th><th class="w-20 text-right">Menge</th><th class="w-24">Einheit</th><th class="w-28 text-right">Preis €</th><th class="w-40">Steuer</th><th class="w-24 text-right">Summe</th><th class="w-8"></th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <button class="btn btn-sm btn-ghost" id="add-line"><i data-lucide="plus" class="size-4"></i>Position hinzufügen</button>
+              <div class="text-right"><div class="text-xs opacity-60">Gesamtbetrag</div><div class="text-xl font-semibold num" id="f-total"></div></div>
+            </div>
+            <label class="floating-label"><span>Steuerhinweis (aus der Vorlage, änderbar)</span><textarea id="f-note" class="textarea w-full h-16"></textarea></label>
+            <label class="floating-label"><span>Schlusstext</span><textarea id="f-closing" class="textarea w-full h-16">Bitte überweisen Sie den Betrag innerhalb von 14 Tagen unter Angabe der Rechnungsnummer.</textarea></label>
+          </section>
+
+          <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-2 text-sm" id="checks"></section>
+        </div>
+
+        <aside class="min-w-0 grid gap-2 content-start xl:sticky xl:top-20 self-start">
+          <div class="flex items-center justify-between">
+            <span class="eyebrow">Vorschau</span>
+            <span class="text-xs opacity-60" id="pv-format"></span>
+          </div>
+          <div class="paper rounded-sm p-[7%] flex flex-col gap-3 w-full mx-auto" id="preview"></div>
+        </aside>
+      </div>
+    </div>`;
+  },
+
+  kunden() {
+    const c = cust(state.customer);
+    return `
+    <div class="max-w-6xl mx-auto grid gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-semibold tracking-tight">Kunden &amp; Vorlagen</h1>
+        <button class="btn btn-ghost" data-toast="Neuer Kunde angelegt (Prototyp)"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</button>
+      </div>
+      <div class="grid gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
+        <ul class="menu bg-base-100 rounded-box border border-base-300 w-full p-2 content-start">
+          ${CUSTOMERS.map(k => `<li><button type="button" data-cust="${k.id}" class="text-left ${k.id === c.id ? 'nav-active' : ''}" aria-pressed="${k.id === c.id}"><div class="min-w-0"><div class="truncate">${k.name}</div><div class="text-xs opacity-60">${k.city} · ${k.country}</div></div></button></li>`).join('')}
+        </ul>
+        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-5 min-w-0 content-start">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div><h2 class="text-lg font-semibold">${c.name}</h2><div class="text-sm opacity-70">${c.city}, ${c.country}</div></div>
+            <span class="badge badge-outline">${FORMATS[c.format].label}</span>
+          </div>
+          <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-2 text-sm">
+            <div><dt class="eyebrow">E-Mail für Rechnungen</dt><dd>${c.mail}</dd></div>
+            <div><dt class="eyebrow">E-Rechnungsformat</dt><dd>${FORMATS[c.format].desc}</dd></div>
+            ${c.leitweg ? `<div><dt class="eyebrow">Käuferreferenz (Leitweg-ID)</dt><dd class="num">${c.leitweg}</dd></div>` : ''}
+            ${c.vat ? `<div><dt class="eyebrow">USt-IdNr.</dt><dd class="num">${c.vat}</dd></div>` : ''}
+          </dl>
+          <div class="grid gap-2">
+            <div class="flex items-center justify-between"><h3 class="font-semibold">Vorlagen</h3><button class="btn btn-sm btn-ghost" data-toast="Vorlage angelegt (Prototyp)"><i data-lucide="plus" class="size-4"></i>Neue Vorlage</button></div>
+            ${c.templates.map(t => {
+              const sum = t.lines.reduce((s, l) => s + l[1] * l[3], 0);
+              return `<div class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
+                <div class="min-w-0 flex-1"><div class="font-medium">${t.name}</div><div class="text-xs opacity-70 truncate">${t.lines.map(l => l[0]).join(' · ')}</div></div>
+                ${catBadge(t.cat)}<span class="num text-sm w-24 text-right">${eur.format(sum)}</span>
+                <a href="#rechnung-neu" class="btn btn-sm btn-primary btn-outline" data-use="${c.id}|${t.name}">Rechnung erstellen</a>
+              </div>`; }).join('')}
+          </div>
+        </section>
+      </div>
+    </div>`;
+  },
+
+  berichte() {
+    const byCat = k => paid2027.reduce((s, i) => s + amountOf(i, k), 0);
+    return `
+    <div class="max-w-4xl mx-auto grid gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-semibold tracking-tight">Berichte</h1>
+        <div class="flex gap-2"><select id="rep-year" class="select select-sm w-28"><option>2027</option></select>
+        <button class="btn btn-sm btn-ghost" data-toast="CSV erstellt (Prototyp)"><i data-lucide="sheet" class="size-4"></i>CSV</button>
+        <button class="btn btn-sm btn-ghost" data-toast="Archiv erstellt (Prototyp)"><i data-lucide="archive" class="size-4"></i>Archiv ZIP</button></div>
+      </div>
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+        <div><h2 class="font-semibold">Anlage EÜR 2027, Betriebseinnahmen</h2><p class="text-xs opacity-70">Nach Zahlungseingang. Werte zum Übertragen in WISO Steuer. Zeilennummern werden mit dem Formular 2027 abgeglichen.</p></div>
+        <div class="overflow-x-auto"><table class="table table-sm">
+          <thead><tr class="text-xs"><th>Feld</th><th class="text-right">Betrag</th></tr></thead>
+          <tbody>
+            <tr><td>Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer</td><td class="num text-right font-medium">${eur.format(paidSum)}</td></tr>
+            <tr><td class="pl-8 opacity-80">davon nicht für die Grenze nach § 19 UStG zu berücksichtigen</td><td class="num text-right">${eur.format(excluded)}</td></tr>
+          </tbody></table></div>
+      </section>
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+        <h2 class="font-semibold">Einnahmen nach Steuerart</h2>
+        <div class="grid gap-3">
+          ${Object.keys(CAT).map(k => `<div class="grid grid-cols-[9rem_minmax(0,1fr)_6.5rem] items-center gap-3 text-sm">${catBadge(k)}${meter(byCat(k), paidSum, k === 'ku' ? 'limit' : '')}<span class="num text-right">${eur.format(byCat(k))}</span></div>`).join('')}
+        </div>
+      </section>
+    </div>`;
+  },
+
+  einstellungen() {
+    return `
+    <div class="max-w-4xl mx-auto grid gap-4">
+      <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+      <div role="tablist" class="tabs tabs-border" id="set-tabs">
+        ${[['num', 'Nummernkreis', 1], ['tax', 'Steuerhinweise', 1], ['mail', 'E-Mail', 1], ['users', 'Benutzer', 1], ['keys', 'Mein Konto', 0], ['backup', 'Datensicherung', 1]].map(([k, l, adm], n) =>
+          `<button role="tab" class="tab gap-1.5 ${n === 0 ? 'tab-active' : ''}" data-set="${k}">${l}${adm ? '<span class="badge badge-xs badge-ghost">Admin</span>' : ''}</button>`).join('')}
+      </div>
+      <section class="bg-base-100 rounded-box border border-base-300 p-5" id="set-body"></section>
+    </div>`;
+  },
+
+  anmelden() {
+    return `
+    <div class="min-h-[70vh] grid place-items-center">
+      <div class="bg-base-100 rounded-box border border-base-300 p-6 sm:p-8 w-full max-w-sm grid gap-5">
+        <div class="text-center"><div class="font-semibold text-xl tracking-tight">Rechnungen</div><div class="text-sm opacity-70">Anmelden</div></div>
+        <button class="btn btn-primary btn-lg w-full" data-toast="Angemeldet mit Touch ID" data-go="#uebersicht"><i data-lucide="fingerprint" class="size-5"></i>Mit Passkey anmelden</button>
+        <p class="text-xs text-center opacity-60 -mt-2">Touch ID am Mac, Face ID am iPhone</p>
+        <div class="divider text-xs opacity-60 my-0">oder mit Passwort</div>
+        <form class="grid gap-3" data-toast="Angemeldet" data-go="#uebersicht">
+          <label class="floating-label"><span>Benutzername</span><input id="login-user" class="input w-full" autocomplete="username webauthn" value="elena"></label>
+          <label class="floating-label"><span>Passwort</span><input id="login-pass" type="password" class="input w-full" autocomplete="current-password"></label>
+          <label class="flex items-center gap-2 text-sm"><input id="login-remember" type="checkbox" class="checkbox checkbox-sm" checked>Angemeldet bleiben</label>
+          <button class="btn btn-ghost w-full">Anmelden</button>
+        </form>
+      </div>
+    </div>`;
+  },
+
+  detail(no) {
+    const i = INVOICES.find(x => x.no === no) || INVOICES[2];
+    const c = cust(i.c), s = statusOf(i);
+    state.current = i;
+    const events = [
+      ['stamp', 'Ausgestellt', de(i.date) + ', 09:41', 'Elena Sommer'],
+      dispatchEvent(i, c),
+      i.paid ? ['banknote', 'Zahlung eingegangen', de(i.paid), eur.format(i.total)] : null,
+    ].filter(Boolean);
+    return `
+    <div class="max-w-6xl mx-auto grid gap-4">
+      <a href="#rechnungen" class="link link-hover text-sm opacity-70 w-fit"><i data-lucide="arrow-left" class="size-3.5 inline"></i> Rechnungen</a>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div><div class="flex items-center gap-2 flex-wrap"><h1 class="text-2xl font-semibold tracking-tight num">Rechnung ${i.no}</h1>${badge(s)}</div>
+          <div class="text-sm opacity-70 mt-1">${c.name} · ${eur.format(i.total)} · fällig am ${de(i.due)}</div></div>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn btn-primary" data-dialog="dlg-mail"><i data-lucide="send" class="size-4"></i>Per E-Mail senden</button>
+          <button class="btn" data-dialog="dlg-manual"><i data-lucide="hand" class="size-4"></i>Als versendet markieren</button>
+          <button class="btn" data-dialog="dlg-pay"><i data-lucide="banknote" class="size-4"></i>Zahlung erfassen</button>
+          <div class="dropdown dropdown-end">
+            <button class="btn btn-ghost btn-square" aria-label="Weitere Aktionen"><i data-lucide="ellipsis" class="size-4"></i></button>
+            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-300 w-56 p-2 z-10">
+              <li><a data-toast="Kopie als Entwurf angelegt"><i data-lucide="copy" class="size-4"></i>Als Vorlage kopieren</a></li>
+              <li><a class="text-error" data-toast="Stornorechnung als Entwurf angelegt. Die Nummer folgt beim Ausstellen."><i data-lucide="undo-2" class="size-4"></i>Stornieren</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div class="grid gap-4 content-start min-w-0">
+          <section class="bg-base-100 rounded-box border border-base-300 p-5">
+            <h2 class="font-semibold mb-3">Verlauf</h2>
+            <ul class="timeline timeline-vertical timeline-compact">
+              ${events.map((e, n) => `<li>${n ? '<hr class="bg-base-300">' : ''}<div class="timeline-middle"><span class="grid place-items-center size-7 rounded-full bg-base-200"><i data-lucide="${e[0]}" class="size-3.5"></i></span></div>
+                <div class="timeline-end pb-4 pl-1"><div class="font-medium text-sm">${e[1]}</div><div class="text-xs opacity-70">${e[2]} · ${e[3]}</div></div>${n < events.length - 1 ? '<hr class="bg-base-300">' : ''}</li>`).join('')}
+            </ul>
+          </section>
+          <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+            <h2 class="font-semibold">Dokumente</h2>
+            ${FORMATS[fmtOf(i)].docs.map(d => `<div class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
+              <i data-lucide="${d[0]}" class="size-5 text-primary"></i>
+              <div class="flex-1 min-w-0"><div class="font-medium text-sm">Rechnung_${i.no}${d[1]}</div><div class="text-xs opacity-60">${d[2]}</div></div>
+              <button class="btn btn-sm btn-ghost" data-toast="Download (Prototyp)" aria-label="Herunterladen"><i data-lucide="download" class="size-4"></i></button>
+            </div>`).join('')}
+            <div class="text-xs opacity-60 break-all">SHA-256 PDF: 9f2c4e1a7b03d58e6c21f4a09b7e33d1c8a5f60e2d94b71c0a3e8f5d6b2c9a14</div>
+          </section>
+        </div>
+        <aside class="grid gap-4 content-start">
+          <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
+            <h2 class="font-semibold">Prüfung</h2>
+            ${FORMATS[fmtOf(i)].checks.map(t => checkRow(true, t, '')).join('')}
+            <div class="flex items-center gap-2"><i data-lucide="lock" class="size-4 opacity-70"></i>Unveränderbar seit ${de(i.date)}</div>
+          </section>
+          <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
+            <h2 class="font-semibold">Steuer</h2>
+            ${taxSection(i)}
+          </section>
+        </aside>
+      </div>
+    </div>`;
+  },
+};
+
+const TITLES = { uebersicht: 'Übersicht', rechnungen: 'Rechnungen', 'rechnung-neu': 'Neue Rechnung', kunden: 'Kunden & Vorlagen', berichte: 'Berichte', einstellungen: 'Einstellungen', anmelden: 'Anmeldung' };
+const state = { customer: 'verlag', draftCust: 'verlag', draftTpl: 'Lesung mit Gespräch', lines: [], invFilter: 'all', invQuery: '' };
+function matchesFilter(i, f) {
+  return f === 'all' || statusOf(i) === f || (f === 'open' && ['issued', 'sent', 'overdue'].includes(statusOf(i)));
+}
+function renderInvoiceList() {
+  const q = state.invQuery.toLowerCase();
+  const list = [...DRAFTS, ...INVOICES].filter(i => matchesFilter(i, state.invFilter) && ((i.no || '').includes(q) || cust(i.c).name.toLowerCase().includes(q)));
+  document.getElementById('inv-body').innerHTML = list.length ? invoiceRows(list) : '<tr><td colspan="8" class="text-center opacity-60 py-6">Keine Rechnungen gefunden.</td></tr>';
+  lucide.createIcons();
+}
+
+/* Settings tabs */
+const SETTINGS = {
+  num: () => `<div class="grid gap-4 max-w-xl">
+      <div><h2 class="font-semibold">Rechnungsnummern</h2><p class="text-xs opacity-70">Die Nummer wird erst beim Ausstellen vergeben. Lückenlos, ohne Dubletten.</p></div>
+      <label class="floating-label"><span>Muster</span><input id="num-pattern" class="input w-full font-mono" value="{YYYY}-{NN}"></label>
+      <div class="flex flex-wrap gap-1.5 text-xs">${['{YYYY}', '{YY}', '{N}', '{NN}', '{NNN}', 'RE-'].map(t => `<button class="badge badge-ghost font-mono cursor-pointer" data-tok="${t}">${t}</button>`).join('')}</div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <label class="floating-label"><span>Zähler beginnt neu</span><select id="num-reset" class="select w-full"><option>jedes Jahr</option><option>nie</option></select></label>
+        <label class="floating-label"><span>Startnummer 2028</span><input id="num-start" class="input w-full num" value="1"></label>
+      </div>
+      <p class="text-xs opacity-70">Letzte vergebene Nummer 2027: <span class="num">${INVOICES.length}</span>. Der Zähler eines Jahres mit ausgestellten Rechnungen ist gesperrt. Eine Startnummer lässt sich nur für ein Jahr ohne Rechnungen setzen.</p>
+      <div class="bg-base-200 rounded-field p-3 text-sm">Nächste Nummer: <span class="font-semibold num font-mono" id="num-next"></span></div>
+      <div><button class="btn btn-primary" data-toast="Nummernkreis gespeichert">Speichern</button></div></div>`,
+  tax: () => `<div class="grid gap-4">
+      <div><h2 class="font-semibold">Standard-Steuerhinweise</h2><p class="text-xs opacity-70">Vorgabe für neue Vorlagen. Vorlage und Rechnung können den Text überschreiben.</p></div>
+      ${Object.entries(CAT).map(([k, c]) => `<label class="floating-label"><span>${c.long}</span><textarea id="tax-${k}" class="textarea w-full h-14">${c.note}</textarea></label>`).join('')}
+      <div><button class="btn btn-primary" data-toast="Steuerhinweise gespeichert">Speichern</button></div></div>`,
+  mail: () => `<div class="grid gap-4 max-w-xl">
+      <h2 class="font-semibold">E-Mail-Versand</h2>
+      <div class="grid sm:grid-cols-[1fr_7rem] gap-3">
+        <label class="floating-label"><span>SMTP-Server</span><input id="smtp-host" class="input w-full" value="smtp.fastmail.com"></label>
+        <label class="floating-label"><span>Port</span><input id="smtp-port" class="input w-full num" value="465"></label>
+      </div>
+      <label class="floating-label"><span>Benutzer</span><input id="smtp-user" class="input w-full" value="rechnungen@sommer.example"></label>
+      <label class="floating-label"><span>App-Passwort</span><input id="smtp-pass" type="password" class="input w-full" value="xxxxxxxxxxxxxxxx"></label>
+      <label class="floating-label"><span>Absender</span><input id="smtp-from" class="input w-full" value="Elena Sommer &lt;rechnungen@sommer.example&gt;"></label>
+      <label class="flex items-center gap-2 text-sm"><input id="smtp-bcc" type="checkbox" class="checkbox checkbox-sm" checked>Kopie an mich (BCC)</label>
+      <div class="flex gap-2"><button class="btn btn-primary" data-toast="Einstellungen gespeichert">Speichern</button><button class="btn btn-ghost" data-toast="Testmail versendet">Testmail senden</button></div></div>`,
+  users: () => `<div class="grid gap-4">
+      <div class="flex items-center justify-between"><h2 class="font-semibold">Benutzer</h2><button class="btn btn-sm btn-ghost" data-toast="Benutzer angelegt (Prototyp)"><i data-lucide="user-plus" class="size-4"></i>Neu</button></div>
+      <div class="overflow-x-auto"><table class="table table-sm"><thead><tr class="text-xs"><th>Name</th><th>Rolle</th><th>Passkeys</th><th>Letzte Anmeldung</th><th></th></tr></thead><tbody>
+        <tr><td>Elena Sommer<div class="text-xs opacity-60">elena</div></td><td><span class="badge badge-sm badge-soft badge-primary">Benutzerin</span></td><td class="num">2</td><td class="num">18.03.2027</td><td class="text-right"><button class="btn btn-xs btn-ghost" data-toast="Passwort zurückgesetzt">Passwort zurücksetzen</button></td></tr>
+        <tr><td>Administrator<div class="text-xs opacity-60">admin</div></td><td><span class="badge badge-sm badge-soft badge-accent">Admin</span></td><td class="num">1</td><td class="num">17.03.2027</td><td></td></tr>
+      </tbody></table></div>
+      <div class="border-t border-base-300 pt-4"><h3 class="font-semibold text-sm mb-2">Protokoll</h3>
+        <ul class="text-xs grid gap-1 opacity-80 num"><li>18.03.2027 09:12 · elena · Rechnung 2027-09 ausgestellt</li><li>17.03.2027 21:30 · admin · Nummernkreis geprüft</li><li>14.03.2027 10:02 · elena · Zahlung zu 2027-05 erfasst</li></ul></div></div>`,
+  keys: () => `<div class="grid gap-4 max-w-xl">
+      <div><h2 class="font-semibold">Passkeys</h2><p class="text-xs opacity-70">Mit einem Passkey melden Sie sich per Touch ID oder Face ID an. Über den iCloud-Schlüsselbund steht er auf allen Ihren Apple-Geräten bereit.</p></div>
+      ${[['laptop', 'MacBook Air', 'Touch ID · hinzugefügt am 02.01.2027 · zuletzt heute'], ['smartphone', 'iPhone', 'Face ID · hinzugefügt am 03.01.2027 · zuletzt 15.03.2027']].map(k =>
+        `<div class="border border-base-300 rounded-field p-3 flex items-center gap-3"><i data-lucide="${k[0]}" class="size-5 opacity-70"></i><div class="flex-1 min-w-0"><div class="font-medium text-sm">${k[1]}</div><div class="text-xs opacity-60">${k[2]}</div></div><button class="btn btn-xs btn-ghost" data-toast="Umbenannt (Prototyp)">Umbenennen</button><button class="btn btn-xs btn-ghost text-error" data-toast="Passkey entfernt (Prototyp)">Entfernen</button></div>`).join('')}
+      <div><button class="btn btn-primary" data-toast="Passkey hinzugefügt"><i data-lucide="fingerprint" class="size-4"></i>Passkey hinzufügen</button></div>
+      <div class="border-t border-base-300 pt-4 grid gap-3"><h3 class="font-semibold text-sm">Passwort ändern</h3>
+        <label class="floating-label"><span>Neues Passwort</span><input id="pw-new" type="password" class="input w-full" autocomplete="new-password"></label>
+        <div><button class="btn btn-sm" data-toast="Passwort geändert">Ändern</button></div></div></div>`,
+  backup: () => `<div class="grid gap-4">
+      <h2 class="font-semibold">Datensicherung</h2>
+      <div class="grid sm:grid-cols-3 gap-3 text-sm">
+        ${[['Lokal (NAS)', 'heute 03:12', 'circle-check', 'text-success'], ['Extern (verschlüsselt)', 'heute 03:20', 'circle-check', 'text-success'], ['Wiederherstellungstest', '01.03.2027', 'circle-check', 'text-success']].map(b =>
+          `<div class="border border-base-300 rounded-field p-3"><div class="flex items-center gap-2 font-medium"><i data-lucide="${b[2]}" class="size-4 ${b[3]}"></i>${b[0]}</div><div class="text-xs opacity-70 mt-1">${b[1]}</div></div>`).join('')}
+      </div>
+      <div class="flex flex-wrap gap-2"><button class="btn" data-toast="Export erstellt (Prototyp)"><i data-lucide="package" class="size-4"></i>Vollständiger Export</button><button class="btn btn-ghost" data-toast="Import gestartet (Prototyp)"><i data-lucide="upload" class="size-4"></i>Import</button></div>
+      <p class="text-xs opacity-60">Der Export enthält alle Daten und Dokumente. Er dient auch dem Umzug auf einen anderen Server.</p></div>`,
+};
+
+function renderNext() {
+  const p = document.getElementById('num-pattern'), out = document.getElementById('num-next');
+  if (!p) return;
+  const n = INVOICES.length + 1;
+  out.textContent = p.value.replace('{YYYY}', '2027').replace('{YY}', '27').replace(/\{(N+)\}/g, (_, ns) => String(n).padStart(ns.length, '0'));
+}
+
+/* Editor */
+function loadTemplate() {
+  const c = cust(state.draftCust);
+  const t = c.templates.find(x => x.name === state.draftTpl) || c.templates[0];
+  state.draftTpl = t.name;
+  state.lines = t.lines.map(l => ({ text: l[0], qty: l[1], unit: l[2], price: l[3], cat: t.cat }));
+  document.getElementById('f-tpl').innerHTML = c.templates.map(x => `<option ${x.name === t.name ? 'selected' : ''}>${x.name}</option>`).join('');
+  state.noteEdited = false; state.noteCats = null;
+  document.getElementById('f-intro').value = t.cat === 'ex' ? 'für den Unterricht im genannten Zeitraum stelle ich Ihnen in Rechnung:' : 'vielen Dank für Ihren Auftrag. Ich stelle Ihnen folgende Leistungen in Rechnung:';
+  state.format = t.format ?? c.format;
+  document.getElementById('f-format').value = state.format;
+  document.getElementById('f-custinfo').innerHTML = [['E-Mail', c.mail], ['Käuferreferenz', c.leitweg], ['USt-IdNr.', c.vat]]
+    .filter(([, val]) => val).map(([k, val]) => '<span><b>' + k + ':</b> ' + val + '</span>').join('');
+  syncNote();
+  renderLines();
+}
+function syncNote() {
+  const cats = [...new Set(state.lines.map(l => l.cat))].sort().join();
+  if (state.noteEdited || cats === state.noteCats) return;
+  state.noteCats = cats;
+  document.getElementById('f-note').value = [...new Set(state.lines.map(l => l.cat))].map(k => CAT[k].note).join('\n');
+}
+function renderLines() {
+  const body = document.querySelector('#lines tbody');
+  body.innerHTML = state.lines.map((l, n) => `<tr data-line="${n}">
+    <td><input id="l-text-${n}" class="input input-sm w-full" data-f="text" value="${esc(l.text)}"></td>
+    <td><input id="l-qty-${n}" class="input input-sm w-full text-right num" data-f="qty" value="${String(l.qty).replace('.', ',')}"></td>
+    <td><input id="l-unit-${n}" class="input input-sm w-full" data-f="unit" value="${esc(l.unit)}"></td>
+    <td><input id="l-price-${n}" class="input input-sm w-full text-right num" data-f="price" value="${l.price.toFixed(2).replace('.', ',')}"></td>
+    <td><select id="l-cat-${n}" class="select select-sm w-full" data-f="cat">${Object.entries(CAT).map(([k, c]) => `<option value="${k}" ${k === l.cat ? 'selected' : ''}>${c.label}</option>`).join('')}</select></td>
+    <td class="text-right num whitespace-nowrap">${eur.format(l.qty * l.price)}</td>
+    <td><button class="btn btn-ghost btn-xs btn-square" data-del="${n}" aria-label="Position entfernen"><i data-lucide="x" class="size-3.5"></i></button></td></tr>`).join('');
+  lucide.createIcons();
+  renderPreview();
+}
+const COUNTRY = { DE: 'Deutschland', NL: 'Niederlande', CH: 'Schweiz' };
+const lineSum = lines => lines.reduce((s, l) => s + l.qty * l.price, 0);
+const formValue = id => document.getElementById(id).value;
+
+function dueDate(dateVal, terms) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return '';
+  const due = new Date(dateVal + 'T00:00:00Z');
+  due.setUTCDate(due.getUTCDate() + terms);
+  return due.toISOString().slice(0, 10);
+}
+
+function paymentText(terms, dueStr) {
+  if (!terms) return 'sofort';
+  if (!dueStr) return terms + ' Tagen';
+  return terms + ' Tagen, bis zum ' + de(dueStr) + ',';
+}
+
+function buyerBlock(c) {
+  const extra = [['USt-IdNr.', c.vat], ['Käuferreferenz', c.leitweg]].filter(([, val]) => val)
+    .map(([k, val]) => '<div>' + k + ' ' + val + '</div>').join('');
+  return '<div><div class="font-medium">' + c.name + '</div><div>' + c.city + '</div><div>' + COUNTRY[c.country] + '</div>' + extra + '</div>';
+}
+
+function previewLines() {
+  return state.lines.map(l => '<tr class="border-b rule align-top"><td class="py-1 pr-2">' + esc(l.text) + '</td>'
+    + '<td class="text-right whitespace-nowrap">' + String(l.qty).replace('.', ',') + ' ' + esc(l.unit) + '</td>'
+    + '<td class="text-right whitespace-nowrap">' + eur.format(l.price) + '</td>'
+    + '<td class="text-right whitespace-nowrap">' + eur.format(l.qty * l.price) + '</td></tr>').join('');
+}
+
+function previewHtml(c, f) {
+  const period = f.from === f.to ? de(f.from) : de(f.from) + ' bis ' + de(f.to);
+  const dateText = f.date ? de(f.date) : '<span class="text-red-600">fehlt</span>';
+  return `
+    <div class="flex justify-between gap-4"><div class="text-[7px] opacity-70 leading-tight">Elena Sommer · Lindenstraße 12 · 80331 München</div><div class="text-right font-semibold text-[11px]">Elena Sommer</div></div>
+    <div class="flex justify-between gap-4 mt-2">
+      ${buyerBlock(c)}
+      <div class="text-right text-[8.5px] leading-snug num"><div>Rechnungsnr.: <i>wird beim Ausstellen vergeben</i></div><div>Datum: ${dateText}</div><div>Leistung: ${period}</div><div>Steuernr.: 143/123/45678</div></div>
+    </div>
+    <div class="font-semibold text-[12px] mt-3">Rechnung</div>
+    <div>Sehr geehrte Damen und Herren,</div>
+    <div>${esc(f.intro)}</div>
+    <table class="w-full num"><thead><tr class="border-b rule text-left"><th class="py-1 font-medium">Leistung</th><th class="text-right font-medium">Menge</th><th class="text-right font-medium">Preis</th><th class="text-right font-medium">Summe</th></tr></thead>
+      <tbody>${previewLines()}</tbody>
+      <tfoot><tr><td colspan="3" class="text-right pt-1 font-semibold">Gesamtbetrag</td><td class="text-right pt-1 font-semibold">${eur.format(lineSum(state.lines))}</td></tr></tfoot></table>
+    <div class="whitespace-pre-line">${esc(f.note)}</div>
+    <div>${esc(f.closing).replace('14 Tagen', paymentText(f.terms, f.due))}</div>
+    <div class="mt-auto border-t rule pt-2 text-[7px] opacity-70 grid grid-cols-3 gap-2 leading-tight"><div>Elena Sommer<br>Lindenstraße 12<br>80331 München</div><div>IBAN DE02 1203 0000 0000 2020 51<br>BIC BYLADEM1001</div><div>kontakt@sommer.example<br>Steuernr. 143/123/45678</div></div>`;
+}
+
+function checkRow(ok, okText, failText, failIcon = 'circle-alert', failCls = 'text-error') {
+  const icon = ok ? 'circle-check' : failIcon;
+  const cls = ok ? 'text-success' : failCls;
+  return '<div class="flex items-center gap-2"><i data-lucide="' + icon + '" class="size-4 ' + cls + '"></i>' + (ok ? okText : failText) + '</div>';
+}
+
+function renderChecks(c, f) {
+  const cats = [...new Set(state.lines.map(l => l.cat))];
+  const noteOk = f.note.trim().length > 10;
+  const mixOk = !(cats.includes('out') && cats.length > 1);
+  const needsRef = state.format !== 'zugferd';
+  const refOk = !needsRef || Boolean(c.leitweg);
+  state.valid = noteOk && mixOk && refOk && Boolean(f.due) && state.lines.length > 0;
+  const kuNew = lineSum(state.lines.filter(l => l.cat === 'ku'));
+  const threshold = kuNew ? 'Nach Zahlung: ' + eur.format(counted + kuNew) + ' von 100.000 € (§ 19)' : 'Zählt nicht zur Kleinunternehmergrenze';
+  document.getElementById('checks').innerHTML = '<h2 class="font-semibold">Vor dem Ausstellen</h2>'
+    + checkRow(noteOk, 'Steuerhinweis vorhanden', 'Steuerhinweis fehlt für steuerfreie Positionen')
+    + checkRow(Boolean(f.due), 'Pflichtangaben nach § 14 UStG vollständig', 'Rechnungsdatum fehlt')
+    + (mixOk ? '' : checkRow(false, '', '„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)'))
+    + (needsRef ? checkRow(refOk, 'Käuferreferenz vorhanden (BR-DE-15)', 'XRechnung braucht eine Käuferreferenz beim Kunden, z. B. die Leitweg-ID (BR-DE-15)') : '')
+    + checkRow(state.valid, 'Prüfung ' + FORMATS[state.format].label + ' erfolgreich (Probelauf)', 'Prüfung erst nach Behebung der Fehler', 'circle-minus', 'opacity-50')
+    + '<div class="flex items-center gap-2"><i data-lucide="gauge" class="size-4 opacity-70"></i>' + threshold + '</div>';
+}
+
+function renderPreview() {
+  const c = cust(state.draftCust);
+  const terms = Number.parseInt(formValue('f-terms'), 10);
+  const f = {
+    date: formValue('f-date'), from: formValue('f-from'), to: formValue('f-to'), terms,
+    intro: formValue('f-intro'), note: formValue('f-note'), closing: formValue('f-closing'),
+  };
+  f.due = dueDate(f.date, terms);
+  document.getElementById('f-total').textContent = eur.format(lineSum(state.lines));
+  document.getElementById('pv-format').textContent = FORMATS[state.format].preview;
+  document.getElementById('preview').innerHTML = previewHtml(c, f);
+  renderChecks(c, f);
+  lucide.createIcons();
+}
+
+function issueInvoice() {
+  if (!state.valid) {
+    toast('Bitte zuerst die markierten Fehler beheben.', 'error');
+    document.getElementById('checks').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  const no = '2027-' + String(INVOICES.length + 1).padStart(2, '0');
+  const date = formValue('f-date') || TODAY;
+  const amounts = {};
+  state.lines.forEach(l => { amounts[l.cat] = (amounts[l.cat] ?? 0) + l.qty * l.price; });
+  INVOICES.unshift({
+    no, c: state.draftCust, date, due: dueDate(date, Number.parseInt(formValue('f-terms'), 10)),
+    total: lineSum(state.lines), format: state.format, cat: state.lines[0]?.cat ?? 'ku', cats: Object.keys(amounts), amounts, status: 'issued',
+  });
+  toast('Rechnung ' + no + ' ausgestellt und geprüft');
+  location.hash = '#rechnung-' + no;
+}
+
+/* Router */
+function route() {
+  const h = (location.hash || '#uebersicht').slice(1);
+  let key = VIEWS[h] ? h : 'uebersicht';
+  if (h.startsWith('rechnung-') && h !== 'rechnung-neu') key = 'detail';
+  document.getElementById('view').innerHTML = key === 'detail' ? VIEWS.detail(h.slice(9)) : VIEWS[key]();
+  document.getElementById('page-title').textContent = key === 'detail' ? 'Rechnung ' + h.slice(9) : TITLES[key];
+  const navKey = key === 'detail' || key === 'rechnung-neu' ? 'rechnungen' : key;
+  document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('nav-active', a.dataset.nav === navKey));
+  document.getElementById('nav').checked = false;
+  if (key === 'rechnung-neu') { document.getElementById('f-cust').value = state.draftCust; loadTemplate(); }
+  if (key === 'rechnungen') renderInvoiceList();
+  if (key === 'einstellungen') { document.getElementById('set-body').innerHTML = SETTINGS.num(); renderNext(); }
+  lucide.createIcons();
+  window.scrollTo(0, 0);
+}
+
+function fillDialogs(i) {
+  if (!i) return;
+  const c = cust(i.c), xr = fmtOf(i) === 'xrechnung';
+  const set = (id, val) => { document.getElementById(id).value = val; };
+  set('mail-to', c.mail);
+  set('mail-subject', 'Rechnung ' + i.no);
+  set('mail-body', `Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie meine Rechnung ${i.no} als E-Rechnung (${FORMATS[fmtOf(i)].label}).\n\nMit freundlichen Grüßen\nElena Sommer`);
+  document.getElementById('mail-pdf').checked = !xr;
+  document.getElementById('mail-xml').checked = xr;
+  set('man-to', c.mail);
+  set('pay-amount', i.total.toFixed(2).replace('.', ','));
+  document.querySelector('#dlg-mail form').dataset.toast = `Rechnung ${i.no} per E-Mail versendet`;
+}
+
+function toast(msg, kind = 'success') {
+  const el = document.createElement('div');
+  el.className = `alert alert-${kind} toast-msg text-sm py-2`;
+  el.innerHTML = `<i data-lucide="${kind === 'error' ? 'circle-alert' : 'check'}" class="size-4"></i><span>${esc(msg)}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  lucide.createIcons();
+  setTimeout(() => el.remove(), 3300);
+}
+
+/* Theme: "system" follows the operating system, also when it changes. */
+const darkQuery = globalThis.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(mode) {
+  state.theme = mode;
+  const dark = mode === 'dark' || (mode === 'system' && darkQuery.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('btn-active', b.dataset.themeSet === mode));
+  try { localStorage.setItem('im-theme', mode); } catch { /* storage unavailable */ }
+}
+darkQuery.addEventListener('change', () => applyTheme(state.theme));
+let savedTheme = 'system';
+try { savedTheme = localStorage.getItem('im-theme') || 'system'; } catch { /* storage unavailable */ }
+
+function selectTab(selector, active) {
+  document.querySelectorAll(selector).forEach(b => b.classList.toggle('tab-active', b === active));
+}
+
+/* Click handlers, first match wins. */
+const CLICK_HANDLERS = [
+  ['[data-theme-set]', el => applyTheme(el.dataset.themeSet)],
+  ['tr[data-href]', el => { location.hash = el.dataset.href; }],
+  ['[data-dialog]', el => { fillDialogs(state.current); document.getElementById(el.dataset.dialog).showModal(); }],
+  ['[data-close]', el => el.closest('dialog').close()],
+  ['[data-use]', el => { [state.draftCust, state.draftTpl] = el.dataset.use.split('|'); }],
+  ['[data-cust]', el => { state.customer = el.dataset.cust; route(); }],
+  ['[data-filter]', el => { selectTab('[data-filter]', el); state.invFilter = el.dataset.filter; renderInvoiceList(); }],
+  ['[data-set]', el => {
+    selectTab('[data-set]', el);
+    document.getElementById('set-body').innerHTML = SETTINGS[el.dataset.set]();
+    renderNext();
+    lucide.createIcons();
+  }],
+  ['[data-tok]', el => { document.getElementById('num-pattern').value += el.dataset.tok; renderNext(); }],
+  ['[data-del]', el => { state.lines.splice(Number(el.dataset.del), 1); syncNote(); renderLines(); }],
+  ['#add-line', () => { state.lines.push({ text: 'Neue Leistung', qty: 1, unit: 'Stk', price: 0, cat: state.lines[0]?.cat ?? 'ku' }); renderLines(); }],
+  ['#btn-issue', issueInvoice],
+  ['button[data-toast], a[data-toast]', el => {
+    if (el.closest('form')) return;
+    toast(el.dataset.toast);
+    if (el.dataset.go) location.hash = el.dataset.go;
+  }],
+];
+
+document.addEventListener('click', e => {
+  for (const [selector, handler] of CLICK_HANDLERS) {
+    const el = e.target.closest(selector);
+    if (el) { handler(el); return; }
+  }
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target; toast(f.dataset.toast || 'Gespeichert');
+  const d = f.closest('dialog'); if (d) d.close();
+  if (f.dataset.go) location.hash = f.dataset.go;
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'num-pattern') return renderNext();
+  if (e.target.id === 'inv-search') {
+    state.invQuery = e.target.value; renderInvoiceList(); return;
+  }
+  const tr = e.target.closest('tr[data-line]');
+  if (tr && e.target.dataset.f) {
+    const l = state.lines[+tr.dataset.line], f = e.target.dataset.f;
+    l[f] = (f === 'qty' || f === 'price') ? (Number.parseFloat(e.target.value.replaceAll('.', '').replace(',', '.')) || 0) : e.target.value;
+    if (f === 'cat') { syncNote(); renderLines(); return; }
+    if (f === 'qty' || f === 'price') tr.lastElementChild.previousElementSibling.textContent = eur.format(l.qty * l.price);
+    renderPreview(); return;
+  }
+  if (e.target.id === 'f-note') state.noteEdited = true;
+  if (['f-date', 'f-from', 'f-to', 'f-terms', 'f-intro', 'f-note', 'f-closing'].includes(e.target.id)) renderPreview();
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'f-cust') { state.draftCust = e.target.value; state.draftTpl = null; loadTemplate(); }
+  if (e.target.id === 'f-tpl') { state.draftTpl = e.target.value; loadTemplate(); }
+  if (e.target.id === 'f-format') { state.format = e.target.value; renderPreview(); }
+  if (e.target.id === 'f-terms') renderPreview();
+});
+
+window.addEventListener('hashchange', route);
+applyTheme(savedTheme);
+route();
+</script>
+</body>
+</html>
