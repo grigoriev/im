@@ -67,6 +67,9 @@ public record InvoiceDocument(
         if (used.contains(TaxCategory.NOT_TAXABLE_ABROAD) && used.size() > 1) {
             throw new IllegalArgumentException("Category O never mixes with another category (BR-O-12)");
         }
+        if (used.contains(TaxCategory.REVERSE_CHARGE_EU) && (seller.vatId() == null || buyer.vatId() == null)) {
+            throw new IllegalArgumentException("Reverse charge needs the VAT ID of seller and buyer (§14a UStG)");
+        }
         if (format.followsXRechnung() && (buyerReference == null || buyerReference.isBlank())) {
             throw new IllegalArgumentException("XRechnung needs a buyer reference (BR-DE-15)");
         }

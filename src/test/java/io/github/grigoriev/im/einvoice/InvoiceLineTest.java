@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.einvoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.math.BigDecimal;
@@ -24,6 +25,21 @@ class InvoiceLineTest {
     void roundsTheNetAmountHalfUpToCents(String quantity, String price, String amount) {
         InvoiceLine line = new InvoiceLine("x", new BigDecimal(quantity), "C62", "Stk", new BigDecimal(price), KU);
         assertThat(line.netAmount()).isEqualTo(new BigDecimal(amount));
+    }
+
+    @Test
+    void acceptsFourDecimalsAndTrailingZeros() {
+        InvoiceLine line = new InvoiceLine("x", new BigDecimal("1.2345"), "C62", "Stk", new BigDecimal("0.12340000"), KU);
+        assertThat(line.quantity()).isEqualByComparingTo("1.2345");
+    }
+
+    @Test
+    void rejectsMoreThanFourDecimals() {
+        BigDecimal five = new BigDecimal("0.00001");
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new InvoiceLine("x", five, "C62", "Stk", ONE, KU)).withMessageContaining("quantity");
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new InvoiceLine("x", ONE, "C62", "Stk", five, KU)).withMessageContaining("unit price");
     }
 
     @Test

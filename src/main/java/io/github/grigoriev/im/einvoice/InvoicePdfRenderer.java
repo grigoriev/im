@@ -89,7 +89,22 @@ public class InvoicePdfRenderer {
          * @return the formatted amount
          */
         public String money(BigDecimal amount) {
-            return NumberFormat.getCurrencyInstance(GERMAN).format(amount);
+            NumberFormat format = NumberFormat.getCurrencyInstance(GERMAN);
+            format.setRoundingMode(RoundingMode.HALF_UP);
+            return format.format(amount);
+        }
+
+        /**
+         * Formats a unit price with two to four decimals, for example {@code 0,005 €}.
+         *
+         * @param price the unit price
+         * @return the formatted price
+         */
+        public String price(BigDecimal price) {
+            NumberFormat format = NumberFormat.getCurrencyInstance(GERMAN);
+            format.setMaximumFractionDigits(InvoiceLine.MAX_DECIMALS);
+            format.setRoundingMode(RoundingMode.HALF_UP);
+            return format.format(price);
         }
 
         /**

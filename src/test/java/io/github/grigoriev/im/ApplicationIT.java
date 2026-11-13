@@ -6,6 +6,7 @@ import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
 import io.github.grigoriev.im.einvoice.ItSamples;
+import io.github.grigoriev.im.einvoice.ValidationResult;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -62,7 +63,7 @@ class ApplicationIT {
     void issuesAnEInvoiceWithTheBeansOfTheContext() {
         for (InvoiceFormat format : InvoiceFormat.values()) {
             IssuedEInvoice issued = einvoices.issue(ItSamples.reading(format));
-            assertThat(issued.validations()).isNotEmpty().allMatch(result -> result.valid());
+            assertThat(issued.validations()).isNotEmpty().allMatch(ValidationResult::valid);
         }
     }
 }

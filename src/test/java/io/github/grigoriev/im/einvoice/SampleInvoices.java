@@ -12,6 +12,9 @@ final class SampleInvoices {
 
     static final Party SELLER = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
             "kontakt@sommer.example", "+49 89 1234567", "Elena Sommer", "143/123/45678", null);
+    /** The seller with a VAT ID, as reverse charge needs it (§14a UStG). */
+    static final Party SELLER_EU = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
+            "kontakt@sommer.example", "+49 89 1234567", "Elena Sommer", "143/123/45678", "DE123456789");
     static final Party PUBLISHER = new Party("Verlag am Fluss GmbH", "Hafenweg 3", "20457", "Hamburg", "DE",
             "buchhaltung@verlag-am-fluss.example", null, null, null, null);
     static final Party SCHOOL = new Party("Volkshochschule Musterstadt", "Marktplatz 1", "86150", "Musterstadt", "DE",
@@ -31,8 +34,13 @@ final class SampleInvoices {
     }
 
     static InvoiceDocument invoice(Party buyer, String buyerReference, InvoiceFormat format, InvoiceLine... lines) {
+        return invoice(SELLER, buyer, buyerReference, format, lines);
+    }
+
+    static InvoiceDocument invoice(Party seller, Party buyer, String buyerReference, InvoiceFormat format,
+            InvoiceLine... lines) {
         return new InvoiceDocument("2027-10", DAY, DAY.minusDays(2), DAY.minusDays(2), DAY.plusDays(14),
-                SELLER, buyer, buyerReference, "DE02120300000000202051", "BYLADEM1001",
+                seller, buyer, buyerReference, "DE02120300000000202051", "BYLADEM1001",
                 "vielen Dank für Ihren Auftrag.", "Mit freundlichen Grüßen", null, format, List.of(lines));
     }
 

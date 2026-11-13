@@ -11,10 +11,10 @@ public enum TaxCategory {
     KLEINUNTERNEHMER("E", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", true),
 
     /** Teaching, VAT-exempt under §4 Nr. 21 UStG. */
-    EXEMPT_4_21("E", "Steuerfreie Leistung gemäß § 4 Nr. 21 UStG.", false),
+    EXEMPT_4_21("E", "Steuerfrei gemäß § 4 Nr. 21 UStG.", false),
 
     /** B2B service to a business in another EU country. */
-    REVERSE_CHARGE_EU("AE", "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).", false),
+    REVERSE_CHARGE_EU("AE", "Steuerschuldnerschaft des Leistungsempfängers.", false),
 
     /** Service to a customer outside the EU, not taxable in Germany. */
     NOT_TAXABLE_ABROAD("O", "Nicht im Inland steuerbare Leistung.", false);

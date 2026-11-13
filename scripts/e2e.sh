@@ -5,14 +5,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PLAYWRIGHT_ARGS=""
-if [ "${1:-}" = "--update" ]; then
+if [[ "${1:-}" == "--update" ]]; then
     PLAYWRIGHT_ARGS="--update-snapshots"
 fi
 export PLAYWRIGHT_ARGS
 
 IM_IMAGE="${IM_IMAGE:-im:test}"
 export IM_IMAGE
-if [ -z "${SKIP_IMAGE_BUILD:-}" ]; then
+if [[ -z "${SKIP_IMAGE_BUILD:-}" ]]; then
     docker build --tag "$IM_IMAGE" .
 fi
 

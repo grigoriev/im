@@ -4,6 +4,7 @@ import static io.github.grigoriev.im.einvoice.SampleInvoices.DAY;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.DUTCH;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.PUBLISHER;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.SELLER;
+import static io.github.grigoriev.im.einvoice.SampleInvoices.SELLER_EU;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.SWISS;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.invoice;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.line;
@@ -104,7 +105,7 @@ class MustangInvoiceMapperTest {
 
     @Test
     void mapsTheBuyerWithVatId() {
-        TradeParty buyer = mapper.toMustang(invoice(DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
+        TradeParty buyer = mapper.toMustang(invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                 line("Workshop", "1", "600.00", REVERSE_CHARGE_EU))).getRecipient();
         assertThat(buyer.getName()).isEqualTo("Lingua Lab B.V.");
         assertThat(buyer.getCountry()).isEqualTo("NL");
@@ -137,7 +138,7 @@ class MustangInvoiceMapperTest {
 
     @Test
     void mapsReverseChargeWithItsCode() {
-        Invoice invoice = mapper.toMustang(invoice(DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
+        Invoice invoice = mapper.toMustang(invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                 line("Workshop", "1", "600.00", REVERSE_CHARGE_EU), line("Lesung", "1", "1", KLEINUNTERNEHMER)));
         assertThat(product(invoice, 0).getTaxCategoryCode()).isEqualTo("AE");
         assertThat(product(invoice, 0).getTaxExemptionReason()).isEqualTo(REVERSE_CHARGE_EU.defaultNote());
@@ -156,7 +157,7 @@ class MustangInvoiceMapperTest {
 
     @Test
     void usesTheOwnNoteAsReasonForEveryCategory() {
-        InvoiceDocument document = new InvoiceDocument("1", DAY, DAY, DAY, DAY, SELLER, DUTCH, null, "I", "B", null,
+        InvoiceDocument document = new InvoiceDocument("1", DAY, DAY, DAY, DAY, SELLER_EU, DUTCH, null, "I", "B", null,
                 null, "Eigener Hinweis", InvoiceFormat.ZUGFERD_EN16931,
                 List.of(line("Workshop", "1", "1", REVERSE_CHARGE_EU), line("Lesung", "1", "1", KLEINUNTERNEHMER)));
         Invoice invoice = mapper.toMustang(document);
@@ -166,7 +167,7 @@ class MustangInvoiceMapperTest {
 
     @Test
     void ignoresABlankOwnNote() {
-        InvoiceDocument document = new InvoiceDocument("1", DAY, DAY, DAY, DAY, SELLER, DUTCH, null, "I", "B", null,
+        InvoiceDocument document = new InvoiceDocument("1", DAY, DAY, DAY, DAY, SELLER_EU, DUTCH, null, "I", "B", null,
                 null, " ", InvoiceFormat.ZUGFERD_EN16931,
                 List.of(line("Workshop", "1", "1", REVERSE_CHARGE_EU), line("Lesung", "1", "1", KLEINUNTERNEHMER)));
         Invoice invoice = mapper.toMustang(document);

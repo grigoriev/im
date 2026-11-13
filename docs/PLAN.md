@@ -66,7 +66,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | Design | Light and dark theme, Inter font in app and PDF, German formats | Mac and iPhone |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
 | Tests | JUnit 5, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
-| Packaging | Container image on GHCR, multi-arch, attested | Same pattern as sb-stack |
+| Packaging | Container image on GHCR, linux/amd64, attested | The NAS is x86_64. Same pattern as sb-stack |
 | Quality | SonarCloud, Renovate, Claude review, Greptile | Standard for public repositories |
 
 Group ID: `io.github.grigoriev`, artifact `im`, base package `io.github.grigoriev.im`.
@@ -150,6 +150,7 @@ The category is set per line. One invoice can mix categories, with these rules:
 2. `KLEINUNTERNEHMER` and `EXEMPT_4_21` share code E at 0 %. EN 16931 allows one VAT breakdown per code (BR-E-08).
    A mixed invoice gets one E breakdown. Its exemption reason (BT-120) joins both tax notes. The PDF shows both notes.
 3. The system keeps the category per line, so the §19 revenue counts only the `KLEINUNTERNEHMER` lines.
+4. `REVERSE_CHARGE_EU` needs the VAT ID of seller and buyer on the invoice (§14a Abs. 1 UStG). The editor rejects a draft without them.
 The model includes the standard rates now, so the end of the Kleinunternehmer status needs no redesign.
 The admin edits the default tax notes. A template and an invoice can override them.
 
@@ -207,7 +208,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 
 ## 8. Deployment on lemming
 
-1. CI builds the image and pushes it to `ghcr.io/grigoriev/im` with build attestations.
+1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.
 2. The compose file lives in the intranet repository: `lemming/docker/im`.
 3. Services: `im` (app) and `im-db` (PostgreSQL). The app listens on `127.0.0.1` only.
 4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN only.

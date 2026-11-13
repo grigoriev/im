@@ -5,7 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The files of an issued e-invoice and the results of their validation.
+ * The files of an issued e-invoice and the results of their validation. The files never change: the
+ * record copies them on the way in and on the way out.
  *
  * @param format the format
  * @param pdf the PDF: the e-invoice for ZUGFeRD, a viewing copy for XRechnung
@@ -14,19 +15,41 @@ import java.util.Objects;
  */
 public record IssuedEInvoice(InvoiceFormat format, byte[] pdf, byte[] xml, List<ValidationResult> validations) {
 
-    /** Copies the validation results. */
+    /** Copies the files and the validation results. */
     public IssuedEInvoice {
+        pdf = pdf.clone();
+        xml = xml.clone();
         validations = List.copyOf(validations);
+    }
+
+    /**
+     * Returns a copy of the PDF.
+     *
+     * @return the PDF bytes
+     */
+    @Override
+    public byte[] pdf() {
+        return pdf.clone();
+    }
+
+    /**
+     * Returns a copy of the XML.
+     *
+     * @return the XML bytes
+     */
+    @Override
+    public byte[] xml() {
+        return xml.clone();
     }
 
     /** Compares the content of the files, not the array references. */
     @Override
     public boolean equals(Object other) {
-        return other instanceof IssuedEInvoice that
-                && format == that.format
-                && Arrays.equals(pdf, that.pdf)
-                && Arrays.equals(xml, that.xml)
-                && validations.equals(that.validations);
+        return other instanceof IssuedEInvoice(var otherFormat, var otherPdf, var otherXml, var otherValidations)
+                && format == otherFormat
+                && Arrays.equals(pdf, otherPdf)
+                && Arrays.equals(xml, otherXml)
+                && validations.equals(otherValidations);
     }
 
     @Override

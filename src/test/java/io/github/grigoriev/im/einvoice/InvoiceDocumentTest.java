@@ -1,8 +1,10 @@
 package io.github.grigoriev.im.einvoice;
 
 import static io.github.grigoriev.im.einvoice.SampleInvoices.DAY;
+import static io.github.grigoriev.im.einvoice.SampleInvoices.DUTCH;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.PUBLISHER;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.SELLER;
+import static io.github.grigoriev.im.einvoice.SampleInvoices.SELLER_EU;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.SWISS;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.invoice;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.line;
@@ -114,7 +116,20 @@ class InvoiceDocumentTest {
 
     @Test
     void acceptsMixedExemptCategories() {
-        assertThat(invoice(PUBLISHER, null, ZUGFERD, KU, EX, RC).categories()).hasSize(3);
+        assertThat(invoice(SELLER_EU, DUTCH, null, ZUGFERD, KU, EX, RC).categories()).hasSize(3);
+    }
+
+    @Test
+    void rejectsReverseChargeWithoutBothVatIds() {
+        assertThatIllegalArgumentException().isThrownBy(() -> invoice(SELLER, DUTCH, null, ZUGFERD, RC))
+                .withMessageContaining("§14a UStG");
+        assertThatIllegalArgumentException().isThrownBy(() -> invoice(SELLER_EU, PUBLISHER, null, ZUGFERD, RC))
+                .withMessageContaining("§14a UStG");
+    }
+
+    @Test
+    void needsNoVatIdWithoutReverseCharge() {
+        assertThat(invoice(SELLER, PUBLISHER, null, ZUGFERD, KU, EX).seller().vatId()).isNull();
     }
 
     @ParameterizedTest

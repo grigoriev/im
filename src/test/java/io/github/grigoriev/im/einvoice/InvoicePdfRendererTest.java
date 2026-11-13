@@ -55,10 +55,22 @@ class InvoicePdfRendererTest {
 
     @Test
     void printsForeignBuyerVatIdAndBuyerReference() throws IOException {
-        InvoiceDocument dutch = SampleInvoices.invoice(SampleInvoices.DUTCH, "REF-1", InvoiceFormat.XRECHNUNG,
-                SampleInvoices.line("Workshop", "1", "600.00", TaxCategory.REVERSE_CHARGE_EU));
+        InvoiceDocument dutch = SampleInvoices.invoice(SampleInvoices.SELLER_EU, SampleInvoices.DUTCH, "REF-1",
+                InvoiceFormat.XRECHNUNG, SampleInvoices.line("Workshop", "1", "600.00", TaxCategory.REVERSE_CHARGE_EU));
         String text = text(renderer.render(dutch));
-        assertThat(text).contains("NL").contains("USt-IdNr. NL123456789B01").contains("Käuferreferenz REF-1");
+        assertThat(text).contains("NL").contains("USt-IdNr. NL123456789B01").contains("Käuferreferenz REF-1")
+                .contains("USt-IdNr. DE123456789").contains("Steuernummer 143/123/45678");
+    }
+
+    @Test
+    void printsTheVatIdInsteadOfAMissingTaxNumber() throws IOException {
+        Party vatOnly = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
+                "kontakt@sommer.example", null, null, null, "DE123456789");
+        InvoiceDocument document = SampleInvoices.invoice(vatOnly, SampleInvoices.PUBLISHER, null,
+                InvoiceFormat.ZUGFERD_EN16931, SampleInvoices.line("x", "3", "0.005", TaxCategory.KLEINUNTERNEHMER));
+        String text = text(renderer.render(document));
+        assertThat(text).contains("USt-IdNr. DE123456789").doesNotContain("Steuernummer").contains("0,005\u00a0€")
+                .contains("0,02\u00a0€");
     }
 
     @Test
@@ -90,6 +102,10 @@ class InvoicePdfRendererTest {
     @Test
     void formatsGermanNumbersAndDates() {
         assertThat(fmt.money(new BigDecimal("1234.5"))).isEqualTo("1.234,50\u00a0€");
+        assertThat(fmt.money(new BigDecimal("0.125"))).isEqualTo("0,13\u00a0€");
+        assertThat(fmt.price(new BigDecimal("45"))).isEqualTo("45,00\u00a0€");
+        assertThat(fmt.price(new BigDecimal("41.665"))).isEqualTo("41,665\u00a0€");
+        assertThat(fmt.price(new BigDecimal("0.12345"))).isEqualTo("0,1235\u00a0€");
         assertThat(fmt.quantity(new BigDecimal("1.50"))).isEqualTo("1,5");
         assertThat(fmt.quantity(new BigDecimal("120"))).isEqualTo("120");
         assertThat(fmt.quantity(new BigDecimal("0.12345"))).isEqualTo("0,1235");

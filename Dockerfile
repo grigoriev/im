@@ -1,13 +1,14 @@
 # The image of the Invoice Manager. CI builds the jar first: mvn verify.
 FROM eclipse-temurin:25-jre-noble@sha256:e3b6f7887a50f20d8f07abf279d8a81a5953fb398a9555bd9edd56b9bd15968c
 
-RUN groupadd --system im && useradd --system --gid im --home-dir /opt/im --shell /usr/sbin/nologin im
+RUN groupadd --system --gid 10001 im \
+    && useradd --system --uid 10001 --gid im --home-dir /opt/im --shell /usr/sbin/nologin im
 
 WORKDIR /opt/im
-COPY --chown=im:im target/kosit-xrechnung /opt/im/kosit-xrechnung
-COPY --chown=im:im target/im.jar /opt/im/im.jar
+COPY --chown=10001:10001 target/kosit-xrechnung /opt/im/kosit-xrechnung
+COPY --chown=10001:10001 target/im.jar /opt/im/im.jar
 
-USER im
+USER 10001:10001
 EXPOSE 8080
 
 # The JRE image has no curl. Bash reads the health endpoint over /dev/tcp.

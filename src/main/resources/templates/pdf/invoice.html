@@ -13,7 +13,7 @@
     .sender { font-size: 7pt; color: #616e7c; margin-bottom: 2mm; }
     .head { width: 100%; margin-bottom: 12mm; }
     .head td { vertical-align: top; }
-    .meta { text-align: right; font-size: 8.5pt; }
+    .meta { text-align: right; font-size: 8.5pt; margin-left: auto; }
     .meta td { padding: 0 0 0.6mm 4mm; }
     h1 { font-size: 14pt; font-weight: 600; margin: 0 0 5mm 0; }
     .lines { width: 100%; border-collapse: collapse; margin: 5mm 0; -fs-table-paginate: paginate; }
@@ -31,7 +31,7 @@
     <tr>
       <td><span th:text="${invoice.seller.name}">Name</span><br/><span th:text="${invoice.seller.street}">Straße</span><br/><span th:text="${invoice.seller.postcode + ' ' + invoice.seller.city}">Ort</span></td>
       <td>IBAN <span th:text="${fmt.iban(invoice.iban)}">IBAN</span><br/>BIC <span th:text="${invoice.bic}">BIC</span></td>
-      <td><span th:text="${invoice.seller.email}">E-Mail</span><br/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></td>
+      <td><span th:text="${invoice.seller.email}">E-Mail</span><th:block th:if="${invoice.seller.taxNumber != null}"><br/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></th:block><th:block th:if="${invoice.seller.vatId != null}"><br/>USt-IdNr. <span th:text="${invoice.seller.vatId}">USt-IdNr.</span></th:block></td>
     </tr>
   </table>
 
@@ -47,11 +47,12 @@
         <div th:if="${invoice.buyerReference != null}" th:text="'Käuferreferenz ' + ${invoice.buyerReference}">Käuferreferenz</div>
       </td>
       <td>
-        <table class="meta" align="right" role="presentation">
+        <table class="meta" role="presentation">
           <tr><td>Rechnungsnummer</td><td class="strong" th:text="${invoice.number}">2027-01</td></tr>
           <tr><td>Rechnungsdatum</td><td th:text="${fmt.date(invoice.issueDate)}">01.01.2027</td></tr>
           <tr><td>Leistungszeitraum</td><td th:text="${fmt.period(invoice.serviceFrom, invoice.serviceTo)}">01.01.2027</td></tr>
-          <tr><td>Steuernummer</td><td th:text="${invoice.seller.taxNumber}">000/000/00000</td></tr>
+          <tr th:if="${invoice.seller.taxNumber != null}"><td>Steuernummer</td><td th:text="${invoice.seller.taxNumber}">000/000/00000</td></tr>
+          <tr th:if="${invoice.seller.vatId != null}"><td>USt-IdNr.</td><td th:text="${invoice.seller.vatId}">DE000000000</td></tr>
         </table>
       </td>
     </tr>
@@ -69,7 +70,7 @@
       <tr th:each="line : ${invoice.lines}">
         <td th:text="${line.text}">Leistung</td>
         <td class="num" th:text="${fmt.quantity(line.quantity) + ' ' + line.unitLabel}">1 Stk</td>
-        <td class="num" th:text="${fmt.money(line.unitPrice)}">0,00 €</td>
+        <td class="num" th:text="${fmt.price(line.unitPrice)}">0,00 €</td>
         <td class="num" th:text="${fmt.money(line.netAmount())}">0,00 €</td>
       </tr>
       <tr class="total"><td colspan="3" class="num">Gesamtbetrag</td><td class="num" th:text="${fmt.money(invoice.total())}">0,00 €</td></tr>

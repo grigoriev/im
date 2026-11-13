@@ -3,6 +3,7 @@ package io.github.grigoriev.im.einvoice;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.DUTCH;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.PUBLISHER;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.SCHOOL;
+import static io.github.grigoriev.im.einvoice.SampleInvoices.SELLER_EU;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.invoice;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.line;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +56,7 @@ class PdfVisualTest {
                         line("Lesung aus „Der stille Hafen“", "1", "400.00", TaxCategory.KLEINUNTERNEHMER))),
                 Arguments.of("xrechnung-buyer-reference", invoice(SCHOOL, "04011000-12345-67", InvoiceFormat.XRECHNUNG,
                         line("Integrationskurs Modul 4, je 45 Min.", "24", "41.00", TaxCategory.EXEMPT_4_21))),
-                Arguments.of("reverse-charge", invoice(DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
+                Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                         line("Online-Workshop „Deutsch im Beruf“, 3 Std.", "1", "600.00",
                                 TaxCategory.REVERSE_CHARGE_EU))));
     }
