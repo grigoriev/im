@@ -301,12 +301,13 @@ class SecurityWebTest {
         verify(sellers).save(argThat(profile -> profile.name().equals("Erika Mustermann")
                 && profile.taxStatus() == TaxStatus.REGULAR));
         when(sellers.save(any())).thenThrow(new SettingsException(List.of("Die IBAN ist ungültig.", "Bitte Ort angeben.")));
-        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE00")
+        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE00").param("countryCode", "JP")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Die IBAN ist ungültig.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte Ort angeben.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")));
+        verify(countries).options(null, "JP");
         mvc.perform(post("/einstellungen").param("name", "x").with(csrf())).andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
         verify(sellers, times(2)).save(any());
