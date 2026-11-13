@@ -298,7 +298,7 @@ function invoiceRows(list) {
     const sent = i.sent === 'E-Mail' ? '<i data-lucide="mail-check" class="size-4 opacity-70" title="Per E-Mail aus der App"></i>'
       : i.sent === 'manuell' ? '<i data-lucide="hand" class="size-4 opacity-70" title="Manuell versendet"></i>' : '<span class="opacity-30">-</span>';
     return `<tr class="hover:bg-base-200 cursor-pointer" data-href="${href}">
-      <td class="num font-medium whitespace-nowrap">${i.no ?? '<span class="opacity-50 italic">ohne Nr.</span>'}</td>
+      <td class="num font-medium whitespace-nowrap"><a href="${href}" class="link link-hover">${i.no ?? '<span class="opacity-50 italic">ohne Nr.</span>'}</a></td>
       <td class="min-w-40"><div class="font-medium">${c.name}</div><div class="text-xs opacity-60 md:hidden">${de(i.date)}</div></td>
       <td class="num hidden md:table-cell whitespace-nowrap">${de(i.date)}</td>
       <td class="num hidden lg:table-cell whitespace-nowrap ${s === 'overdue' ? 'text-error font-medium' : ''}">${de(i.due)}</td>
@@ -387,13 +387,13 @@ const VIEWS = {
       <div class="flex flex-wrap items-center gap-3">
         <div role="tablist" class="tabs tabs-box tabs-sm" id="inv-tabs">
           ${[['all', 'Alle'], ['draft', 'Entwürfe'], ['open', 'Offen'], ['overdue', 'Überfällig'], ['paid', 'Bezahlt']].map(([k, l], n) =>
-            `<button role="tab" class="tab ${n === 0 ? 'tab-active' : ''}" data-filter="${k}">${l}<span class="ml-1.5 opacity-60 num">${count(k)}</span></button>`).join('')}
+            `<button role="tab" class="tab ${k === state.invFilter ? 'tab-active' : ''}" data-filter="${k}">${l}<span class="ml-1.5 opacity-60 num">${count(k)}</span></button>`).join('')}
         </div>
-        <label class="input input-sm w-full sm:w-64 sm:ml-auto"><i data-lucide="search" class="size-4 opacity-60"></i><input id="inv-search" type="search" placeholder="Kunde oder Nummer"></label>
+        <label class="input input-sm w-full sm:w-64 sm:ml-auto"><i data-lucide="search" class="size-4 opacity-60"></i><input id="inv-search" type="search" placeholder="Kunde oder Nummer" value="${state.invQuery.replace(/"/g, '&quot;')}"></label>
         <select id="inv-year" class="select select-sm w-28"><option>2027</option></select>
       </div>
       <section class="bg-base-100 rounded-box border border-base-300 overflow-x-auto">
-        <table class="table table-sm">${tableHead}<tbody id="inv-body">${invoiceRows(all)}</tbody></table>
+        <table class="table table-sm">${tableHead}<tbody id="inv-body"></tbody></table>
       </section>
     </div>`;
   },
@@ -462,7 +462,7 @@ const VIEWS = {
       </div>
       <div class="grid gap-4 md:grid-cols-[18rem_minmax(0,1fr)]">
         <ul class="menu bg-base-100 rounded-box border border-base-300 w-full p-2 content-start">
-          ${CUSTOMERS.map(k => `<li><a data-cust="${k.id}" class="${k.id === c.id ? 'nav-active' : ''}"><div class="min-w-0"><div class="truncate">${k.name}</div><div class="text-xs opacity-60">${k.city} · ${k.country}</div></div></a></li>`).join('')}
+          ${CUSTOMERS.map(k => `<li><button type="button" data-cust="${k.id}" class="text-left ${k.id === c.id ? 'nav-active' : ''}" aria-pressed="${k.id === c.id}"><div class="min-w-0"><div class="truncate">${k.name}</div><div class="text-xs opacity-60">${k.city} · ${k.country}</div></div></button></li>`).join('')}
         </ul>
         <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-5 min-w-0 content-start">
           <div class="flex flex-wrap items-start justify-between gap-3">
@@ -620,7 +620,16 @@ const VIEWS = {
 };
 
 const TITLES = { uebersicht: 'Übersicht', rechnungen: 'Rechnungen', 'rechnung-neu': 'Neue Rechnung', kunden: 'Kunden & Vorlagen', berichte: 'Berichte', einstellungen: 'Einstellungen', anmelden: 'Anmeldung' };
-const state = { customer: 'verlag', draftCust: 'verlag', draftTpl: 'Lesung mit Gespräch', lines: [] };
+const state = { customer: 'verlag', draftCust: 'verlag', draftTpl: 'Lesung mit Gespräch', lines: [], invFilter: 'all', invQuery: '' };
+function matchesFilter(i, f) {
+  return f === 'all' || statusOf(i) === f || (f === 'open' && ['issued', 'sent', 'overdue'].includes(statusOf(i)));
+}
+function renderInvoiceList() {
+  const q = state.invQuery.toLowerCase();
+  const list = [...DRAFTS, ...INVOICES].filter(i => matchesFilter(i, state.invFilter) && ((i.no || '').includes(q) || cust(i.c).name.toLowerCase().includes(q)));
+  document.getElementById('inv-body').innerHTML = list.length ? invoiceRows(list) : '<tr><td colspan="8" class="text-center opacity-60 py-6">Keine Rechnungen gefunden.</td></tr>';
+  lucide.createIcons();
+}
 
 /* Settings tabs */
 const SETTINGS = {
@@ -717,15 +726,20 @@ function renderPreview() {
   document.getElementById('f-total').textContent = eur.format(total);
   const v = id => document.getElementById(id).value;
   const terms = parseInt(v('f-terms'), 10);
-  const due = new Date(v('f-date')); due.setDate(due.getDate() + terms);
-  const dueStr = due.toISOString().slice(0, 10);
+  const dateVal = v('f-date');
+  let dueStr = '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+    const due = new Date(dateVal + 'T00:00:00Z');
+    due.setUTCDate(due.getUTCDate() + terms);
+    dueStr = due.toISOString().slice(0, 10);
+  }
   document.getElementById('pv-format').textContent = c.format === 'XRechnung' ? 'XRechnung: XML, PDF nur als Sichtkopie' : 'ZUGFeRD EN16931: PDF/A-3 mit XML';
   const period = v('f-from') === v('f-to') ? de(v('f-from')) : de(v('f-from')) + ' bis ' + de(v('f-to'));
   document.getElementById('preview').innerHTML = `
     <div class="flex justify-between gap-4"><div class="text-[7px] opacity-70 leading-tight">Elena Sommer · Lindenstraße 12 · 80331 München</div><div class="text-right font-semibold text-[11px]">Elena Sommer</div></div>
     <div class="flex justify-between gap-4 mt-2">
       <div><div class="font-medium">${c.name}</div><div>${c.city}</div><div>${c.country === 'DE' ? 'Deutschland' : c.country === 'NL' ? 'Niederlande' : 'Schweiz'}</div>${c.vat ? `<div>USt-IdNr. ${c.vat}</div>` : ''}${c.leitweg ? `<div>Leitweg-ID ${c.leitweg}</div>` : ''}</div>
-      <div class="text-right text-[8.5px] leading-snug num"><div>Rechnungsnr.: <b>2027-10</b></div><div>Datum: ${de(v('f-date'))}</div><div>Leistung: ${period}</div><div>Steuernr.: 143/123/45678</div></div>
+      <div class="text-right text-[8.5px] leading-snug num"><div>Rechnungsnr.: <b>2027-10</b></div><div>Datum: ${dateVal ? de(dateVal) : '<span class="text-red-600">fehlt</span>'}</div><div>Leistung: ${period}</div><div>Steuernr.: 143/123/45678</div></div>
     </div>
     <div class="font-semibold text-[12px] mt-3">Rechnung</div>
     <div>Sehr geehrte Damen und Herren,</div>
@@ -734,7 +748,7 @@ function renderPreview() {
       <tbody>${state.lines.map(l => `<tr class="border-b rule align-top"><td class="py-1 pr-2">${l.text}</td><td class="text-right whitespace-nowrap">${String(l.qty).replace('.', ',')} ${l.unit}</td><td class="text-right whitespace-nowrap">${eur.format(l.price)}</td><td class="text-right whitespace-nowrap">${eur.format(l.qty * l.price)}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td colspan="3" class="text-right pt-1 font-semibold">Gesamtbetrag</td><td class="text-right pt-1 font-semibold">${eur.format(total)}</td></tr></tfoot></table>
     <div class="whitespace-pre-line">${v('f-note')}</div>
-    <div>${v('f-closing').replace('14 Tagen', terms ? terms + ' Tagen, bis zum ' + de(dueStr) + ',' : 'sofort')}</div>
+    <div>${v('f-closing').replace('14 Tagen', !terms ? 'sofort' : dueStr ? terms + ' Tagen, bis zum ' + de(dueStr) + ',' : terms + ' Tagen')}</div>
     <div class="mt-auto border-t rule pt-2 text-[7px] opacity-70 grid grid-cols-3 gap-2 leading-tight"><div>Elena Sommer<br>Lindenstraße 12<br>80331 München</div><div>IBAN DE02 1203 0000 0000 2020 51<br>BIC BYLADEM1001</div><div>kontakt@sommer.example<br>Steuernr. 143/123/45678</div></div>`;
   const kuNew = state.lines.filter(l => l.cat === 'ku').reduce((s, l) => s + l.qty * l.price, 0);
   const cats = [...new Set(state.lines.map(l => l.cat))];
@@ -742,7 +756,8 @@ function renderPreview() {
   document.getElementById('checks').innerHTML = `
     <h2 class="font-semibold">Vor dem Ausstellen</h2>
     <div class="flex items-center gap-2"><i data-lucide="${noteOk ? 'circle-check' : 'circle-alert'}" class="size-4 ${noteOk ? 'text-success' : 'text-error'}"></i>${noteOk ? 'Steuerhinweis vorhanden' : 'Steuerhinweis fehlt für steuerfreie Positionen'}</div>
-    <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>Pflichtangaben nach § 14 UStG vollständig</div>
+    <div class="flex items-center gap-2"><i data-lucide="${dueStr ? 'circle-check' : 'circle-alert'}" class="size-4 ${dueStr ? 'text-success' : 'text-error'}"></i>${dueStr ? 'Pflichtangaben nach § 14 UStG vollständig' : 'Rechnungsdatum fehlt'}</div>
+    ${cats.includes('out') && cats.length > 1 ? '<div class="flex items-center gap-2"><i data-lucide="circle-alert" class="size-4 text-error"></i>„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)</div>' : ''}
     <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>KoSIT-Prüfung ${c.format} erfolgreich (Probelauf)</div>
     <div class="flex items-center gap-2"><i data-lucide="gauge" class="size-4 opacity-70"></i>${kuNew ? `Nach Zahlung: ${eur.format(counted + kuNew)} von 100.000 € (§ 19)` : 'Zählt nicht zur Kleinunternehmergrenze'}</div>`;
   lucide.createIcons();
@@ -758,6 +773,7 @@ function route() {
   document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('nav-active', a.dataset.nav === navKey));
   document.getElementById('nav').checked = false;
   if (key === 'rechnung-neu') { document.getElementById('f-cust').value = state.draftCust; loadTemplate(); }
+  if (key === 'rechnungen') renderInvoiceList();
   if (key === 'einstellungen') { document.getElementById('set-body').innerHTML = SETTINGS.num(); renderNext(); }
   lucide.createIcons();
   window.scrollTo(0, 0);
@@ -792,9 +808,7 @@ document.addEventListener('click', e => {
   const tab = e.target.closest('[data-filter]');
   if (tab) {
     document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('tab-active', b === tab));
-    const f = tab.dataset.filter, all = [...DRAFTS, ...INVOICES];
-    const list = all.filter(i => f === 'all' || statusOf(i) === f || (f === 'open' && ['issued', 'sent', 'overdue'].includes(statusOf(i))));
-    document.getElementById('inv-body').innerHTML = invoiceRows(list); lucide.createIcons(); return;
+    state.invFilter = tab.dataset.filter; renderInvoiceList(); return;
   }
   const st = e.target.closest('[data-set]');
   if (st) { document.querySelectorAll('[data-set]').forEach(b => b.classList.toggle('tab-active', b === st)); document.getElementById('set-body').innerHTML = SETTINGS[st.dataset.set](); renderNext(); lucide.createIcons(); return; }
@@ -814,9 +828,7 @@ document.addEventListener('submit', e => {
 document.addEventListener('input', e => {
   if (e.target.id === 'num-pattern' || e.target.id === 'num-last') return renderNext();
   if (e.target.id === 'inv-search') {
-    const q = e.target.value.toLowerCase();
-    document.getElementById('inv-body').innerHTML = invoiceRows([...DRAFTS, ...INVOICES].filter(i => (i.no || '').includes(q) || cust(i.c).name.toLowerCase().includes(q)));
-    lucide.createIcons(); return;
+    state.invQuery = e.target.value; renderInvoiceList(); return;
   }
   const tr = e.target.closest('tr[data-line]');
   if (tr && e.target.dataset.f) {

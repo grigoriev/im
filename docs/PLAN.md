@@ -125,7 +125,7 @@ DRAFT -> ISSUED -> SENT -> PAID
 1. `DRAFT` can change or be deleted. It has no number.
 2. `ISSUED` gets the next number, the snapshots and the frozen documents.
 3. `SENT` records each dispatch. One invoice can have several dispatches.
-4. `PAID` needs at least one payment that covers the total.
+4. `PAID` applies when the sum of all payments covers the total.
 5. `CANCELLED` links to the Stornorechnung. The cancellation invoice has its own number.
 
 ### Tax categories
@@ -138,7 +138,8 @@ DRAFT -> ISSUED -> SENT -> PAID
 | `NOT_TAXABLE_ABROAD` | Nicht im Inland steuerbare Leistung. | O | no |
 | `STANDARD_7`, `STANDARD_19` | Later, after the Kleinunternehmer status ends | S | n/a |
 
-The category is set per line. One invoice can mix categories.
+The category is set per line. One invoice can mix categories, with one exception.
+`NOT_TAXABLE_ABROAD` (code O) never mixes with another category (EN 16931 rule BR-O-12). The editor rejects such a draft.
 The model includes the standard rates now, so the end of the Kleinunternehmer status needs no redesign.
 The admin edits the default tax notes. A template and an invoice can override them.
 
