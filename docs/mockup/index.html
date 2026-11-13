@@ -551,6 +551,7 @@ const VIEWS = {
   detail(no) {
     const i = INVOICES.find(x => x.no === no) || INVOICES[2];
     const c = cust(i.c), s = statusOf(i);
+    state.current = i;
     const events = [
       ['stamp', 'Ausgestellt', de(i.date) + ', 09:41', 'Elena Sommer'],
       i.sent === 'manuell' ? ['hand', 'Manuell versendet', de(i.date) === '05.03.2027' ? '06.03.2027' : de(i.date), 'Eigenes Mailprogramm an ' + c.mail] :
@@ -587,24 +588,22 @@ const VIEWS = {
           </section>
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
             <h2 class="font-semibold">Dokumente</h2>
-            <div class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
-              <i data-lucide="file-text" class="size-5 text-primary"></i>
-              <div class="flex-1 min-w-0"><div class="font-medium text-sm">Rechnung_${i.no}.pdf</div><div class="text-xs opacity-60">ZUGFeRD 2.3, Profil EN16931 · PDF/A-3B · 52 KB</div></div>
-              <button class="btn btn-sm btn-ghost" data-toast="Download (Prototyp)"><i data-lucide="download" class="size-4"></i></button>
-            </div>
-            <div class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
-              <i data-lucide="file-code-2" class="size-5 text-primary"></i>
-              <div class="flex-1 min-w-0"><div class="font-medium text-sm">Rechnung_${i.no}.xml</div><div class="text-xs opacity-60">CII, EN 16931 · 14 KB</div></div>
-              <button class="btn btn-sm btn-ghost" data-toast="Download (Prototyp)"><i data-lucide="download" class="size-4"></i></button>
-            </div>
+            ${(c.format === 'XRechnung'
+              ? [['file-code-2', '.xml', 'XRechnung 3.0 (UBL) · E-Rechnung · 15 KB'], ['file-text', '_Sichtkopie.pdf', 'Sichtkopie, keine E-Rechnung · 48 KB']]
+              : [['file-text', '.pdf', 'ZUGFeRD 2.3, Profil EN16931 · PDF/A-3B · E-Rechnung · 52 KB'], ['file-code-2', '.xml', 'CII, EN 16931, im PDF eingebettet · 14 KB']]
+            ).map(d => `<div class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
+              <i data-lucide="${d[0]}" class="size-5 text-primary"></i>
+              <div class="flex-1 min-w-0"><div class="font-medium text-sm">Rechnung_${i.no}${d[1]}</div><div class="text-xs opacity-60">${d[2]}</div></div>
+              <button class="btn btn-sm btn-ghost" data-toast="Download (Prototyp)" aria-label="Herunterladen"><i data-lucide="download" class="size-4"></i></button>
+            </div>`).join('')}
             <div class="text-xs opacity-60 break-all">SHA-256 PDF: 9f2c4e1a7b03d58e6c21f4a09b7e33d1c8a5f60e2d94b71c0a3e8f5d6b2c9a14</div>
           </section>
         </div>
         <aside class="grid gap-4 content-start">
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
             <h2 class="font-semibold">Prüfung</h2>
-            <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>KoSIT: gültig (EN 16931)</div>
-            <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>veraPDF: PDF/A-3B konform</div>
+            <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>KoSIT: gültig (${c.format === 'XRechnung' ? 'XRechnung 3.0' : 'EN 16931'})</div>
+            ${c.format === 'XRechnung' ? '' : '<div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>veraPDF: PDF/A-3B konform</div>'}
             <div class="flex items-center gap-2"><i data-lucide="lock" class="size-4 opacity-70"></i>Unveränderbar seit ${de(i.date)}</div>
           </section>
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
@@ -698,14 +697,17 @@ function loadTemplate() {
   state.draftTpl = t.name;
   state.lines = t.lines.map(l => ({ text: l[0], qty: l[1], unit: l[2], price: l[3], cat: t.cat }));
   document.getElementById('f-tpl').innerHTML = c.templates.map(x => `<option ${x.name === t.name ? 'selected' : ''}>${x.name}</option>`).join('');
+  state.noteEdited = false; state.noteCats = null;
   document.getElementById('f-intro').value = t.cat === 'ex' ? 'für den Unterricht im genannten Zeitraum stelle ich Ihnen in Rechnung:' : 'vielen Dank für Ihren Auftrag. Ich stelle Ihnen folgende Leistungen in Rechnung:';
   document.getElementById('f-custinfo').innerHTML = `<span><b>Format:</b> ${c.format}</span><span><b>E-Mail:</b> ${c.mail}</span>${c.leitweg ? `<span><b>Leitweg-ID:</b> ${c.leitweg}</span>` : ''}${c.vat ? `<span><b>USt-IdNr.:</b> ${c.vat}</span>` : ''}`;
   syncNote();
   renderLines();
 }
 function syncNote() {
-  const cats = [...new Set(state.lines.map(l => l.cat))];
-  document.getElementById('f-note').value = cats.map(k => CAT[k].note).join('\n');
+  const cats = [...new Set(state.lines.map(l => l.cat))].sort().join();
+  if (state.noteEdited || cats === state.noteCats) return;
+  state.noteCats = cats;
+  document.getElementById('f-note').value = [...new Set(state.lines.map(l => l.cat))].map(k => CAT[k].note).join('\n');
 }
 function renderLines() {
   const body = document.querySelector('#lines tbody');
@@ -739,7 +741,7 @@ function renderPreview() {
     <div class="flex justify-between gap-4"><div class="text-[7px] opacity-70 leading-tight">Elena Sommer · Lindenstraße 12 · 80331 München</div><div class="text-right font-semibold text-[11px]">Elena Sommer</div></div>
     <div class="flex justify-between gap-4 mt-2">
       <div><div class="font-medium">${c.name}</div><div>${c.city}</div><div>${c.country === 'DE' ? 'Deutschland' : c.country === 'NL' ? 'Niederlande' : 'Schweiz'}</div>${c.vat ? `<div>USt-IdNr. ${c.vat}</div>` : ''}${c.leitweg ? `<div>Leitweg-ID ${c.leitweg}</div>` : ''}</div>
-      <div class="text-right text-[8.5px] leading-snug num"><div>Rechnungsnr.: <b>2027-10</b></div><div>Datum: ${dateVal ? de(dateVal) : '<span class="text-red-600">fehlt</span>'}</div><div>Leistung: ${period}</div><div>Steuernr.: 143/123/45678</div></div>
+      <div class="text-right text-[8.5px] leading-snug num"><div>Rechnungsnr.: <b>2027-${String(INVOICES.length + 1).padStart(2, '0')}</b></div><div>Datum: ${dateVal ? de(dateVal) : '<span class="text-red-600">fehlt</span>'}</div><div>Leistung: ${period}</div><div>Steuernr.: 143/123/45678</div></div>
     </div>
     <div class="font-semibold text-[12px] mt-3">Rechnung</div>
     <div>Sehr geehrte Damen und Herren,</div>
@@ -779,6 +781,20 @@ function route() {
   window.scrollTo(0, 0);
 }
 
+function fillDialogs(i) {
+  if (!i) return;
+  const c = cust(i.c), xr = c.format === 'XRechnung';
+  const set = (id, val) => { document.getElementById(id).value = val; };
+  set('mail-to', c.mail);
+  set('mail-subject', 'Rechnung ' + i.no);
+  set('mail-body', `Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie meine Rechnung ${i.no} als E-Rechnung (${xr ? 'XRechnung' : 'ZUGFeRD'}).\n\nMit freundlichen Grüßen\nElena Sommer`);
+  document.getElementById('mail-pdf').checked = !xr;
+  document.getElementById('mail-xml').checked = xr;
+  set('man-to', c.mail);
+  set('pay-amount', i.total.toFixed(2).replace('.', ','));
+  document.querySelector('#dlg-mail form').dataset.toast = `Rechnung ${i.no} per E-Mail versendet`;
+}
+
 function toast(msg) {
   const el = document.createElement('div');
   el.className = 'alert alert-success toast-msg text-sm py-2';
@@ -801,7 +817,7 @@ try { savedTheme = localStorage.getItem('im-theme') || 'system'; } catch (e) { /
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-theme-set]'); if (t) return setTheme(t.dataset.themeSet);
   const row = e.target.closest('tr[data-href]'); if (row) { location.hash = row.dataset.href; return; }
-  const dlg = e.target.closest('[data-dialog]'); if (dlg) return document.getElementById(dlg.dataset.dialog).showModal();
+  const dlg = e.target.closest('[data-dialog]'); if (dlg) { fillDialogs(state.current); return document.getElementById(dlg.dataset.dialog).showModal(); }
   const cl = e.target.closest('[data-close]'); if (cl) return cl.closest('dialog').close();
   const use = e.target.closest('[data-use]'); if (use) { const [c, tpl] = use.dataset.use.split('|'); state.draftCust = c; state.draftTpl = tpl; return; }
   const cu = e.target.closest('[data-cust]'); if (cu) { state.customer = cu.dataset.cust; route(); return; }
@@ -815,7 +831,16 @@ document.addEventListener('click', e => {
   const tok = e.target.closest('[data-tok]'); if (tok) { const p = document.getElementById('num-pattern'); p.value += tok.dataset.tok; renderNext(); return; }
   const del = e.target.closest('[data-del]'); if (del) { state.lines.splice(+del.dataset.del, 1); syncNote(); renderLines(); return; }
   if (e.target.closest('#add-line')) { state.lines.push({ text: 'Neue Leistung', qty: 1, unit: 'Stk', price: 0, cat: state.lines[0]?.cat || 'ku' }); renderLines(); return; }
-  if (e.target.closest('#btn-issue')) { toast('Rechnung 2027-10 ausgestellt und geprüft'); setTimeout(() => { location.hash = '#rechnung-2027-07'; }, 600); return; }
+  if (e.target.closest('#btn-issue')) {
+    const no = '2027-' + String(INVOICES.length + 1).padStart(2, '0');
+    const date = document.getElementById('f-date').value || TODAY;
+    const terms = parseInt(document.getElementById('f-terms').value, 10);
+    const due = new Date(date + 'T00:00:00Z'); due.setUTCDate(due.getUTCDate() + terms);
+    INVOICES.unshift({ no, c: state.draftCust, date, due: due.toISOString().slice(0, 10), total: state.lines.reduce((s, l) => s + l.qty * l.price, 0), cat: state.lines[0]?.cat || 'ku', status: 'issued' });
+    toast(`Rechnung ${no} ausgestellt und geprüft`);
+    location.hash = '#rechnung-' + no;
+    return;
+  }
   const tb = e.target.closest('button[data-toast], a[data-toast]');
   if (tb && !tb.closest('form')) { toast(tb.dataset.toast); if (tb.dataset.go) location.hash = tb.dataset.go; }
 });
@@ -838,6 +863,7 @@ document.addEventListener('input', e => {
     if (f === 'qty' || f === 'price') tr.lastElementChild.previousElementSibling.textContent = eur.format(l.qty * l.price);
     renderPreview(); return;
   }
+  if (e.target.id === 'f-note') state.noteEdited = true;
   if (['f-date', 'f-from', 'f-to', 'f-terms', 'f-intro', 'f-note', 'f-closing'].includes(e.target.id)) renderPreview();
 });
 document.addEventListener('change', e => {
