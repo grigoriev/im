@@ -38,7 +38,7 @@ jobs:
 
       - name: No em-dash
         run: |
-          if git grep -n -I $'—' -- . ':!LICENSE'; then
+          if git grep -n -I $'\u2014' -- . ':!LICENSE'; then
             echo "::error::Replace the em-dashes above with a hyphen, comma or period."
             exit 1
           fi

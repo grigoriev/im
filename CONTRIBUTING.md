@@ -25,6 +25,6 @@ Pull requests are squash-merged once all required checks are green.
 
 ## Releases
 
-A maintainer runs the Bump Version workflow. It moves the Unreleased entries into a versioned
+From milestone M0 on, a maintainer runs the Bump Version workflow. It moves the Unreleased entries into a versioned
 section, tags the release, and the release workflow publishes the image with signed build
 provenance.
