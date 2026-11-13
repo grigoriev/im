@@ -226,6 +226,7 @@ Elena Sommer</textarea></label>
 <script>
 const eur = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 const de = d => d ? d.split('-').reverse().join('.') : '';
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const TODAY = '2027-03-18';
 
 const CAT = {
@@ -313,6 +314,9 @@ const tableHead = `<thead><tr class="text-xs"><th>Nr.</th><th>Kunde</th><th clas
 
 const VIEWS = {
   uebersicht() {
+    const open = INVOICES.filter(i => ['issued', 'sent'].includes(i.status));
+    const openSum = open.reduce((s, i) => s + i.total, 0);
+    const overdue = open.filter(i => statusOf(i) === 'overdue');
     return `
     <div class="max-w-6xl mx-auto grid gap-6">
       <div class="flex flex-wrap items-end justify-between gap-3">
@@ -712,9 +716,9 @@ function syncNote() {
 function renderLines() {
   const body = document.querySelector('#lines tbody');
   body.innerHTML = state.lines.map((l, n) => `<tr data-line="${n}">
-    <td><input id="l-text-${n}" class="input input-sm w-full" data-f="text" value="${l.text.replace(/"/g, '&quot;')}"></td>
+    <td><input id="l-text-${n}" class="input input-sm w-full" data-f="text" value="${esc(l.text)}"></td>
     <td><input id="l-qty-${n}" class="input input-sm w-full text-right num" data-f="qty" value="${String(l.qty).replace('.', ',')}"></td>
-    <td><input id="l-unit-${n}" class="input input-sm w-full" data-f="unit" value="${l.unit}"></td>
+    <td><input id="l-unit-${n}" class="input input-sm w-full" data-f="unit" value="${esc(l.unit)}"></td>
     <td><input id="l-price-${n}" class="input input-sm w-full text-right num" data-f="price" value="${l.price.toFixed(2).replace('.', ',')}"></td>
     <td><select id="l-cat-${n}" class="select select-sm w-full" data-f="cat">${Object.entries(CAT).map(([k, c]) => `<option value="${k}" ${k === l.cat ? 'selected' : ''}>${c.label}</option>`).join('')}</select></td>
     <td class="text-right num whitespace-nowrap">${eur.format(l.qty * l.price)}</td>
@@ -745,22 +749,24 @@ function renderPreview() {
     </div>
     <div class="font-semibold text-[12px] mt-3">Rechnung</div>
     <div>Sehr geehrte Damen und Herren,</div>
-    <div>${v('f-intro')}</div>
+    <div>${esc(v('f-intro'))}</div>
     <table class="w-full num"><thead><tr class="border-b rule text-left"><th class="py-1 font-medium">Leistung</th><th class="text-right font-medium">Menge</th><th class="text-right font-medium">Preis</th><th class="text-right font-medium">Summe</th></tr></thead>
-      <tbody>${state.lines.map(l => `<tr class="border-b rule align-top"><td class="py-1 pr-2">${l.text}</td><td class="text-right whitespace-nowrap">${String(l.qty).replace('.', ',')} ${l.unit}</td><td class="text-right whitespace-nowrap">${eur.format(l.price)}</td><td class="text-right whitespace-nowrap">${eur.format(l.qty * l.price)}</td></tr>`).join('')}</tbody>
+      <tbody>${state.lines.map(l => `<tr class="border-b rule align-top"><td class="py-1 pr-2">${esc(l.text)}</td><td class="text-right whitespace-nowrap">${String(l.qty).replace('.', ',')} ${esc(l.unit)}</td><td class="text-right whitespace-nowrap">${eur.format(l.price)}</td><td class="text-right whitespace-nowrap">${eur.format(l.qty * l.price)}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td colspan="3" class="text-right pt-1 font-semibold">Gesamtbetrag</td><td class="text-right pt-1 font-semibold">${eur.format(total)}</td></tr></tfoot></table>
-    <div class="whitespace-pre-line">${v('f-note')}</div>
-    <div>${v('f-closing').replace('14 Tagen', !terms ? 'sofort' : dueStr ? terms + ' Tagen, bis zum ' + de(dueStr) + ',' : terms + ' Tagen')}</div>
+    <div class="whitespace-pre-line">${esc(v('f-note'))}</div>
+    <div>${esc(v('f-closing')).replace('14 Tagen', !terms ? 'sofort' : dueStr ? terms + ' Tagen, bis zum ' + de(dueStr) + ',' : terms + ' Tagen')}</div>
     <div class="mt-auto border-t rule pt-2 text-[7px] opacity-70 grid grid-cols-3 gap-2 leading-tight"><div>Elena Sommer<br>Lindenstraße 12<br>80331 München</div><div>IBAN DE02 1203 0000 0000 2020 51<br>BIC BYLADEM1001</div><div>kontakt@sommer.example<br>Steuernr. 143/123/45678</div></div>`;
   const kuNew = state.lines.filter(l => l.cat === 'ku').reduce((s, l) => s + l.qty * l.price, 0);
   const cats = [...new Set(state.lines.map(l => l.cat))];
-  const noteOk = cats.every(k => v('f-note').includes(CAT[k].note.split(' ').slice(0, 3).join(' '))) || v('f-note').trim().length > 10;
+  const noteOk = v('f-note').trim().length > 10;
+  const mixOk = !(cats.includes('out') && cats.length > 1);
+  state.valid = noteOk && mixOk && Boolean(dueStr) && state.lines.length > 0;
   document.getElementById('checks').innerHTML = `
     <h2 class="font-semibold">Vor dem Ausstellen</h2>
     <div class="flex items-center gap-2"><i data-lucide="${noteOk ? 'circle-check' : 'circle-alert'}" class="size-4 ${noteOk ? 'text-success' : 'text-error'}"></i>${noteOk ? 'Steuerhinweis vorhanden' : 'Steuerhinweis fehlt für steuerfreie Positionen'}</div>
     <div class="flex items-center gap-2"><i data-lucide="${dueStr ? 'circle-check' : 'circle-alert'}" class="size-4 ${dueStr ? 'text-success' : 'text-error'}"></i>${dueStr ? 'Pflichtangaben nach § 14 UStG vollständig' : 'Rechnungsdatum fehlt'}</div>
-    ${cats.includes('out') && cats.length > 1 ? '<div class="flex items-center gap-2"><i data-lucide="circle-alert" class="size-4 text-error"></i>„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)</div>' : ''}
-    <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>KoSIT-Prüfung ${c.format} erfolgreich (Probelauf)</div>
+    ${!mixOk ? '<div class="flex items-center gap-2"><i data-lucide="circle-alert" class="size-4 text-error"></i>„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)</div>' : ''}
+    <div class="flex items-center gap-2"><i data-lucide="${state.valid ? 'circle-check' : 'circle-minus'}" class="size-4 ${state.valid ? 'text-success' : 'opacity-50'}"></i>${state.valid ? `KoSIT-Prüfung ${c.format} erfolgreich (Probelauf)` : 'KoSIT-Prüfung erst nach Behebung der Fehler'}</div>
     <div class="flex items-center gap-2"><i data-lucide="gauge" class="size-4 opacity-70"></i>${kuNew ? `Nach Zahlung: ${eur.format(counted + kuNew)} von 100.000 € (§ 19)` : 'Zählt nicht zur Kleinunternehmergrenze'}</div>`;
   lucide.createIcons();
 }
@@ -795,10 +801,10 @@ function fillDialogs(i) {
   document.querySelector('#dlg-mail form').dataset.toast = `Rechnung ${i.no} per E-Mail versendet`;
 }
 
-function toast(msg) {
+function toast(msg, kind = 'success') {
   const el = document.createElement('div');
-  el.className = 'alert alert-success toast-msg text-sm py-2';
-  el.innerHTML = `<i data-lucide="check" class="size-4"></i><span>${msg}</span>`;
+  el.className = `alert alert-${kind} toast-msg text-sm py-2`;
+  el.innerHTML = `<i data-lucide="${kind === 'error' ? 'circle-alert' : 'check'}" class="size-4"></i><span>${esc(msg)}</span>`;
   document.getElementById('toasts').appendChild(el);
   lucide.createIcons();
   setTimeout(() => el.remove(), 3300);
@@ -832,6 +838,7 @@ document.addEventListener('click', e => {
   const del = e.target.closest('[data-del]'); if (del) { state.lines.splice(+del.dataset.del, 1); syncNote(); renderLines(); return; }
   if (e.target.closest('#add-line')) { state.lines.push({ text: 'Neue Leistung', qty: 1, unit: 'Stk', price: 0, cat: state.lines[0]?.cat || 'ku' }); renderLines(); return; }
   if (e.target.closest('#btn-issue')) {
+    if (!state.valid) { toast('Bitte zuerst die markierten Fehler beheben.', 'error'); document.getElementById('checks').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
     const no = '2027-' + String(INVOICES.length + 1).padStart(2, '0');
     const date = document.getElementById('f-date').value || TODAY;
     const terms = parseInt(document.getElementById('f-terms').value, 10);
