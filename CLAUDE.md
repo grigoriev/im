@@ -44,6 +44,7 @@ Package `io.github.grigoriev.im`:
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
 - `seller`: the seller profile (`SellerService`, one row, IBAN checksum) and the default tax notes (`TaxNoteService`)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
+- `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`

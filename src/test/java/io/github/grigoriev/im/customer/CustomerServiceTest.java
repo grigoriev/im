@@ -83,7 +83,7 @@ class CustomerServiceTest {
         "street    |                    | Bitte Straße angeben.",
         "postcode  | ' '                | Bitte PLZ angeben.",
         "city      | ''                 | Bitte Ort angeben.",
-        "country   | DEU                | Das Land ist ein Code aus zwei Buchstaben, zum Beispiel DE.",
+        "country   | DEU                | Bitte ein Land aus der Liste wählen.",
         "email     | verlag.example     | Bitte eine gültige E-Mail-Adresse angeben.",
         "vatId     | 123456789          | Die USt-IdNr. beginnt mit dem Ländercode, zum Beispiel DE123456789."
     })

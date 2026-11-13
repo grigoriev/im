@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.country.CountryService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
@@ -32,14 +33,17 @@ public class CustomerController {
     private static final String SUCCESS = "success";
 
     private final CustomerService customers;
+    private final CountryService countries;
 
     /**
      * Creates the controller.
      *
      * @param customers the customer service
+     * @param countries the countries of the form
      */
-    public CustomerController(CustomerService customers) {
+    public CustomerController(CustomerService customers, CountryService countries) {
         this.customers = customers;
+        this.countries = countries;
     }
 
     /**
@@ -93,7 +97,7 @@ public class CustomerController {
             return "redirect:/kunden/" + saved.id();
         } catch (CustomerException e) {
             model.addAttribute("problems", e.problems());
-            return page(model, input.withId(null));
+            return page(model, input.withId(null), input.countryCode());
         }
     }
 
@@ -115,7 +119,7 @@ public class CustomerController {
             return "redirect:/kunden/" + id;
         } catch (CustomerException e) {
             model.addAttribute("problems", e.problems());
-            return page(model, input.withId(id));
+            return page(model, input.withId(id), input.countryCode());
         }
     }
 
@@ -137,11 +141,25 @@ public class CustomerController {
         return "redirect:/kunden";
     }
 
+    /** The country stored for the customer: a new customer has none, its default comes from the list. */
+    private String stored(Customer customer) {
+        if (customer == null || customer.id() == null) {
+            return null;
+        }
+        return customers.find(customer.id()).map(Customer::countryCode).orElse(null);
+    }
+
     private String page(Model model, Customer customer) {
+        return page(model, customer, null);
+    }
+
+    /** Shows the page. The stored country and the submitted one stay in the select, even if the admin removed them. */
+    private String page(Model model, Customer customer, String submitted) {
         model.addAttribute("customerList", customers.list());
         model.addAttribute("customer", customer);
         model.addAttribute("formats", FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());
+        model.addAttribute("countries", countries.options(stored(customer), submitted));
         return VIEW;
     }
 }

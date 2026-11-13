@@ -378,6 +378,7 @@
                         <param>io.github.grigoriev.im.numbering.NumberService</param>
                         <param>io.github.grigoriev.im.validation.Fields</param>
                         <param>io.github.grigoriev.im.customer.CustomerService</param>
+                        <param>io.github.grigoriev.im.country.CountryService</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>
@@ -385,6 +386,7 @@
                         <param>io.github.grigoriev.im.numbering.*Test</param>
                         <param>io.github.grigoriev.im.validation.*Test</param>
                         <param>io.github.grigoriev.im.customer.*Test</param>
+                        <param>io.github.grigoriev.im.country.*Test</param>
                     </targetTests>
                     <!-- These tests run the full validators (KoSIT, veraPDF) and take a minute each. The mutated
                          classes have fast tests of their own, so PIT leaves the slow ones out. -->

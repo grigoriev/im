@@ -30,6 +30,7 @@ import io.github.grigoriev.im.user.UserTestData;
 import io.github.grigoriev.im.user.Passkey;
 import io.github.grigoriev.im.user.PasskeyService;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.seller.SettingsException;
@@ -38,10 +39,14 @@ import io.github.grigoriev.im.seller.TaxStatus;
 import io.github.grigoriev.im.numbering.NumberPattern;
 import io.github.grigoriev.im.numbering.NumberSequence;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.country.Country;
+import io.github.grigoriev.im.country.CountryService;
 import io.github.grigoriev.im.web.AccountController;
+import io.github.grigoriev.im.web.CountryController;
 import io.github.grigoriev.im.web.CustomerController;
 import io.github.grigoriev.im.web.NumberController;
 import io.github.grigoriev.im.web.SettingsController;
@@ -66,7 +71,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
         SettingsController.class, TaxNoteController.class, NumberController.class,
-        CustomerController.class})
+        CustomerController.class, CountryController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -105,6 +110,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private CustomerService customers;
+
+    @MockitoBean
+    private CountryService countries;
 
     private void knownUsers() {
         when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
@@ -293,12 +301,13 @@ class SecurityWebTest {
         verify(sellers).save(argThat(profile -> profile.name().equals("Erika Mustermann")
                 && profile.taxStatus() == TaxStatus.REGULAR));
         when(sellers.save(any())).thenThrow(new SettingsException(List.of("Die IBAN ist ungültig.", "Bitte Ort angeben.")));
-        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE00")
+        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE00").param("countryCode", "JP")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Die IBAN ist ungültig.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte Ort angeben.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")));
+        verify(countries).options(null, "JP");
         mvc.perform(post("/einstellungen").param("name", "x").with(csrf())).andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
         verify(sellers, times(2)).save(any());
@@ -411,6 +420,61 @@ class SecurityWebTest {
         when(customers.delete(4)).thenThrow(new CustomerException(List.of("Diesen Kunden gibt es nicht.")));
         mvc.perform(post("/kunden/4/loeschen").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(flash().attribute("error", "Diesen Kunden gibt es nicht."));
+    }
+
+    @Test
+    void offersTheListToNewRecordsAndKeepsTheStoredCountry() throws Exception {
+        List<Country> list = List.of(new Country("DE", "Deutschland"), new Country("CH", "Schweiz"));
+        when(countries.options(null, null)).thenReturn(list);
+        when(sellers.find()).thenReturn(Optional.empty());
+        mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\">Schweiz</option>")));
+        mvc.perform(get("/kunden/neu").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
+
+        SellerProfile p = SellerTestData.profile();
+        SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
+                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus());
+        when(sellers.find()).thenReturn(Optional.of(kosovo));
+        when(countries.options("XK", null)).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
+        mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
+
+        Customer swiss = CustomerTestData.verlag();
+        swiss = new Customer(5L, swiss.name(), swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
+                null, swiss.format());
+        when(customers.find(5)).thenReturn(Optional.of(swiss));
+        when(countries.options("CH", null)).thenReturn(list);
+        mvc.perform(get("/kunden/5").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\" selected=\"selected\">Schweiz</option>")));
+        when(customers.update(eq(5L), any())).thenThrow(new CustomerException(List.of("Bitte ein Land aus der Liste wählen.")));
+        mvc.perform(post("/kunden/5").param("countryCode", "JP").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte ein Land aus der Liste wählen.")));
+        verify(countries).options("CH", "JP");
+        mvc.perform(get("/kunden").with(user("elena").roles("USER"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void theAdminKeepsTheShortListOfCountries() throws Exception {
+        when(countries.enabled()).thenReturn(List.of(new Country("DE", "Deutschland")));
+        when(countries.others()).thenReturn(List.of(new Country("JP", "Japan")));
+        mvc.perform(get("/admin/laender").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Deutschland entfernen\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"JP\">Japan</option>")));
+        mvc.perform(get("/admin/laender").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+
+        when(countries.add("JP")).thenReturn(new Country("JP", "Japan"));
+        mvc.perform(post("/admin/laender").param("code", "JP").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/laender")).andExpect(flash().attribute("success", "Japan hinzugefügt."));
+        when(countries.add("ZZ")).thenThrow(new IllegalArgumentException("Unknown country ZZ"));
+        mvc.perform(post("/admin/laender").param("code", "ZZ").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Dieses Land gibt es nicht."));
+        when(countries.remove("CH")).thenReturn(new Country("CH", "Schweiz"));
+        mvc.perform(post("/admin/laender/CH/entfernen").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("success", "Schweiz entfernt."));
+        mvc.perform(post("/admin/laender/CH/entfernen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
     }
 
     @Test

@@ -1,14 +1,12 @@
 package io.github.grigoriev.im.validation;
 
+import io.github.grigoriev.im.country.CountryService;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
 /** Normalizes form fields and collects the problems of a form. */
 public final class Fields {
-
-    /** ISO 3166-1 alpha-2 country code. */
-    public static final Pattern COUNTRY = Pattern.compile("[A-Z]{2}");
 
     /** A plausible e-mail address. The mail server has the last word. */
     public static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
@@ -122,12 +120,14 @@ public final class Fields {
     }
 
     /**
-     * Checks a country code.
+     * Checks a country: an ISO 3166 code.
      *
      * @param problems the problems found so far
      * @param country the normalized code
      */
     public static void checkCountry(List<String> problems, String country) {
-        matches(problems, country, COUNTRY, "Das Land ist ein Code aus zwei Buchstaben, zum Beispiel DE.");
+        if (!CountryService.isKnown(country)) {
+            problems.add("Bitte ein Land aus der Liste wählen.");
+        }
     }
 }

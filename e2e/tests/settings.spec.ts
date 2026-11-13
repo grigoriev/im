@@ -8,7 +8,7 @@ test('saves the seller profile and shows the problems of a wrong entry', async (
   await page.getByLabel('Name', { exact: true }).fill('Erika Mustermann');
   await page.getByLabel('Straße und Hausnummer').fill('Musterweg 1');
   await page.getByLabel('PLZ').fill('12345');
-  await page.getByLabel('Ort').fill('Musterstadt');
+  await page.getByLabel('Ort', { exact: true }).fill('Musterstadt');
   await page.getByLabel('E-Mail').fill('erika@example.org');
   await page.getByLabel('Telefon').fill('+49 30 1234567');
   await page.getByLabel('Steuernummer').fill('12/345/67890');
@@ -61,6 +61,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await expect(user.getByRole('tab', { name: 'Profil' })).toBeVisible();
   await expect(user.getByRole('tab', { name: /Steuerhinweise/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Nummernkreis/ })).toHaveCount(0);
+  await expect(user.getByRole('tab', { name: /Länder/ })).toHaveCount(0);
   const response = await user.goto('/admin/steuerhinweise');
   expect(response?.status()).toBe(403);
   await context.close();

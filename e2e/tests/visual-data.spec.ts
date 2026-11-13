@@ -14,7 +14,7 @@ test('a saved customer with a long name', async ({ page, browser }) => {
   await page.getByLabel('Name', { exact: true }).fill(LONG_NAME);
   await page.getByLabel('Straße und Hausnummer').fill('Lange Straße 123');
   await page.getByLabel('PLZ').fill('86150');
-  await page.getByLabel('Ort').fill('Musterstadt');
+  await page.getByLabel('Ort', { exact: true }).fill('Musterstadt');
   await page.getByLabel('E-Mail für Rechnungen').fill('erechnung@gesellschaft.example');
   await page.getByLabel('E-Rechnungsformat').selectOption('ZUGFERD_XRECHNUNG');
   await page.getByLabel('Käuferreferenz (Leitweg-ID)').fill('09162000-GGSB1-42');
