@@ -54,8 +54,8 @@ Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontai
 ## Reviews
 
 Claude Code and Greptile review every pull request. Neither reviews Renovate: the Claude workflow skips
-bots, and `.greptile/config.json` excludes them, so their reviews do not use up the Greptile allowance.
-The CI checks still guard every Renovate update.
+bots, and the Author/Exclude filter in the Greptile dashboard excludes them. The CI checks still guard
+every Renovate update.
 
 ## Review Focus
 
