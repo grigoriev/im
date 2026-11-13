@@ -211,20 +211,32 @@ const CAT = {
 };
 
 const CUSTOMERS = [
-  { id: 'lindenhof', name: 'Sprachschule Lindenhof GmbH', city: '80469 München', country: 'DE', format: 'ZUGFeRD', mail: 'rechnung@lindenhof.example', templates: [
+  { id: 'lindenhof', name: 'Sprachschule Lindenhof GmbH', city: '80469 München', country: 'DE', format: 'zugferd', mail: 'rechnung@lindenhof.example', templates: [
     { name: 'Deutschkurs B2, monatlich', cat: 'ex', lines: [['Unterricht Deutsch B2, je 45 Min.', 16, 'UE', 45]] },
     { name: 'Prüfungsvorbereitung', cat: 'ex', lines: [['Prüfungstraining telc B2, je 45 Min.', 8, 'UE', 50]] } ] },
-  { id: 'vhs', name: 'Volkshochschule Musterstadt', city: '86150 Musterstadt', country: 'DE', format: 'XRechnung', leitweg: '09162000-VHS01-42', mail: 'erechnung@vhs-musterstadt.example', templates: [
+  { id: 'vhs', name: 'Volkshochschule Musterstadt', city: '86150 Musterstadt', country: 'DE', format: 'xrechnung', leitweg: '09162000-VHS01-42', mail: 'erechnung@vhs-musterstadt.example', templates: [
     { name: 'Integrationskurs, Modul', cat: 'ex', lines: [['Integrationskurs Modul 4, je 45 Min.', 24, 'UE', 41]] } ] },
-  { id: 'verlag', name: 'Verlag am Fluss GmbH', city: '20457 Hamburg', country: 'DE', format: 'ZUGFeRD', mail: 'buchhaltung@verlag-am-fluss.example', templates: [
+  { id: 'verlag', name: 'Verlag am Fluss GmbH', city: '20457 Hamburg', country: 'DE', format: 'zugferd', mail: 'buchhaltung@verlag-am-fluss.example', templates: [
     { name: 'Lesung mit Gespräch', cat: 'ku', lines: [['Lesung aus „Der stille Hafen“, 90 Min.', 1, 'Stk', 400], ['Reisekosten, pauschal', 1, 'Stk', 80]] },
     { name: 'Lektorat', cat: 'ku', lines: [['Lektorat Manuskript, je Normseite', 120, 'Seite', 4.5]] } ] },
-  { id: 'lingua', name: 'Lingua Lab B.V.', city: '3511 Utrecht', country: 'NL', format: 'ZUGFeRD', vat: 'NL123456789B01', mail: 'invoices@lingualab.example', templates: [
+  { id: 'lingua', name: 'Lingua Lab B.V.', city: '3511 Utrecht', country: 'NL', format: 'zugferd', vat: 'NL123456789B01', mail: 'invoices@lingualab.example', templates: [
     { name: 'Online-Workshop', cat: 'rc', lines: [['Online-Workshop „Deutsch im Beruf“, 3 Std.', 1, 'Stk', 600]] } ] },
-  { id: 'kulturforum', name: 'Kulturforum Zürich AG', city: '8001 Zürich', country: 'CH', format: 'ZUGFeRD', mail: 'kreditoren@kulturforum.example', templates: [
+  { id: 'kulturforum', name: 'Kulturforum Zürich AG', city: '8001 Zürich', country: 'CH', format: 'zugferd', mail: 'kreditoren@kulturforum.example', templates: [
     { name: 'Lesung', cat: 'out', lines: [['Lesung und Signierstunde', 1, 'Stk', 350]] } ] },
 ];
 const cust = id => CUSTOMERS.find(c => c.id === id);
+const FORMATS = {
+  zugferd: { label: 'ZUGFeRD EN16931', desc: 'ZUGFeRD, Profil EN16931: PDF mit XML', preview: 'ZUGFeRD EN16931: PDF/A-3 mit XML',
+    checks: ['Mustang-Validator: gültig (EN 16931)', 'veraPDF: PDF/A-3B konform'],
+    docs: [['file-text', '.pdf', 'ZUGFeRD 2.3, Profil EN16931 · PDF/A-3B · E-Rechnung · 52 KB'], ['file-code-2', '.xml', 'CII, EN 16931, im PDF eingebettet · 14 KB']] },
+  'zugferd-xr': { label: 'ZUGFeRD XRECHNUNG', desc: 'ZUGFeRD, Profil XRECHNUNG: PDF mit XML', preview: 'ZUGFeRD XRECHNUNG: PDF/A-3 mit XML',
+    checks: ['Mustang-Validator: gültig (EN 16931)', 'KoSIT: gültig (XRechnung 3.0)', 'veraPDF: PDF/A-3B konform'],
+    docs: [['file-text', '.pdf', 'ZUGFeRD 2.3, Profil XRECHNUNG · PDF/A-3B · E-Rechnung · 53 KB'], ['file-code-2', '.xml', 'CII, XRechnung 3.0, im PDF eingebettet · 15 KB']] },
+  xrechnung: { label: 'XRechnung', desc: 'XRechnung (UBL): nur XML', preview: 'XRechnung: XML, PDF nur als Sichtkopie',
+    checks: ['KoSIT: gültig (XRechnung 3.0)'],
+    docs: [['file-code-2', '.xml', 'XRechnung 3.0 (UBL) · E-Rechnung · 15 KB'], ['file-text', '_Sichtkopie.pdf', 'Sichtkopie, keine E-Rechnung · 48 KB']] },
+};
+const fmtOf = i => i.format ?? cust(i.c).format;
 const catsOf = i => i.cats ?? [i.cat];
 function amountOf(i, k) {
   if (i.amounts) return i.amounts[k] ?? 0;
@@ -416,6 +428,7 @@ const VIEWS = {
           <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-3 sm:grid-cols-2">
             <label class="floating-label"><span>Kunde</span><select id="f-cust" class="select w-full">${custOpts}</select></label>
             <label class="floating-label"><span>Vorlage</span><select id="f-tpl" class="select w-full"></select></label>
+            <label class="floating-label sm:col-span-2"><span>E-Rechnungsformat (aus der Vorlage)</span><select id="f-format" class="select w-full">${Object.entries(FORMATS).map(([k, f]) => '<option value="' + k + '">' + f.label + '</option>').join('')}</select></label>
             <label class="floating-label"><span>Rechnungsdatum</span><input id="f-date" type="date" class="input w-full" value="2027-03-18"></label>
             <label class="floating-label"><span>Zahlungsziel</span><select id="f-terms" class="select w-full"><option value="14">14 Tage</option><option value="30">30 Tage</option><option value="0">Sofort</option></select></label>
             <label class="floating-label"><span>Leistung von</span><input id="f-from" type="date" class="input w-full" value="2027-03-16"></label>
@@ -468,11 +481,11 @@ const VIEWS = {
         <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-5 min-w-0 content-start">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div><h2 class="text-lg font-semibold">${c.name}</h2><div class="text-sm opacity-70">${c.city}, ${c.country}</div></div>
-            <span class="badge badge-outline">${c.format}</span>
+            <span class="badge badge-outline">${FORMATS[c.format].label}</span>
           </div>
           <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-2 text-sm">
             <div><dt class="eyebrow">E-Mail für Rechnungen</dt><dd>${c.mail}</dd></div>
-            <div><dt class="eyebrow">E-Rechnungsformat</dt><dd>${c.format === 'XRechnung' ? 'XRechnung (UBL), nur XML' : 'ZUGFeRD EN16931, PDF mit XML'}</dd></div>
+            <div><dt class="eyebrow">E-Rechnungsformat</dt><dd>${FORMATS[c.format].desc}</dd></div>
             ${c.leitweg ? `<div><dt class="eyebrow">Leitweg-ID</dt><dd class="num">${c.leitweg}</dd></div>` : ''}
             ${c.vat ? `<div><dt class="eyebrow">USt-IdNr.</dt><dd class="num">${c.vat}</dd></div>` : ''}
           </dl>
@@ -588,10 +601,7 @@ const VIEWS = {
           </section>
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
             <h2 class="font-semibold">Dokumente</h2>
-            ${(c.format === 'XRechnung'
-              ? [['file-code-2', '.xml', 'XRechnung 3.0 (UBL) · E-Rechnung · 15 KB'], ['file-text', '_Sichtkopie.pdf', 'Sichtkopie, keine E-Rechnung · 48 KB']]
-              : [['file-text', '.pdf', 'ZUGFeRD 2.3, Profil EN16931 · PDF/A-3B · E-Rechnung · 52 KB'], ['file-code-2', '.xml', 'CII, EN 16931, im PDF eingebettet · 14 KB']]
-            ).map(d => `<div class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
+            ${FORMATS[fmtOf(i)].docs.map(d => `<div class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
               <i data-lucide="${d[0]}" class="size-5 text-primary"></i>
               <div class="flex-1 min-w-0"><div class="font-medium text-sm">Rechnung_${i.no}${d[1]}</div><div class="text-xs opacity-60">${d[2]}</div></div>
               <button class="btn btn-sm btn-ghost" data-toast="Download (Prototyp)" aria-label="Herunterladen"><i data-lucide="download" class="size-4"></i></button>
@@ -602,8 +612,7 @@ const VIEWS = {
         <aside class="grid gap-4 content-start">
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
             <h2 class="font-semibold">Prüfung</h2>
-            <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>${c.format === 'XRechnung' ? 'KoSIT: gültig (XRechnung 3.0)' : 'Mustang-Validator: gültig (EN 16931)'}</div>
-            ${c.format === 'XRechnung' ? '' : '<div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>veraPDF: PDF/A-3B konform</div>'}
+            ${FORMATS[fmtOf(i)].checks.map(t => checkRow(true, t, '')).join('')}
             <div class="flex items-center gap-2"><i data-lucide="lock" class="size-4 opacity-70"></i>Unveränderbar seit ${de(i.date)}</div>
           </section>
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
@@ -698,7 +707,9 @@ function loadTemplate() {
   document.getElementById('f-tpl').innerHTML = c.templates.map(x => `<option ${x.name === t.name ? 'selected' : ''}>${x.name}</option>`).join('');
   state.noteEdited = false; state.noteCats = null;
   document.getElementById('f-intro').value = t.cat === 'ex' ? 'für den Unterricht im genannten Zeitraum stelle ich Ihnen in Rechnung:' : 'vielen Dank für Ihren Auftrag. Ich stelle Ihnen folgende Leistungen in Rechnung:';
-  document.getElementById('f-custinfo').innerHTML = [['Format', c.format], ['E-Mail', c.mail], ['Leitweg-ID', c.leitweg], ['USt-IdNr.', c.vat]]
+  state.format = t.format ?? c.format;
+  document.getElementById('f-format').value = state.format;
+  document.getElementById('f-custinfo').innerHTML = [['E-Mail', c.mail], ['Leitweg-ID', c.leitweg], ['USt-IdNr.', c.vat]]
     .filter(([, val]) => val).map(([k, val]) => '<span><b>' + k + ':</b> ' + val + '</span>').join('');
   syncNote();
   renderLines();
@@ -789,7 +800,7 @@ function renderChecks(c, f) {
     + checkRow(noteOk, 'Steuerhinweis vorhanden', 'Steuerhinweis fehlt für steuerfreie Positionen')
     + checkRow(Boolean(f.due), 'Pflichtangaben nach § 14 UStG vollständig', 'Rechnungsdatum fehlt')
     + (mixOk ? '' : checkRow(false, '', '„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)'))
-    + checkRow(state.valid, 'Prüfung ' + c.format + ' erfolgreich (Probelauf)', 'Prüfung erst nach Behebung der Fehler', 'circle-minus', 'opacity-50')
+    + checkRow(state.valid, 'Prüfung ' + FORMATS[state.format].label + ' erfolgreich (Probelauf)', 'Prüfung erst nach Behebung der Fehler', 'circle-minus', 'opacity-50')
     + '<div class="flex items-center gap-2"><i data-lucide="gauge" class="size-4 opacity-70"></i>' + threshold + '</div>';
 }
 
@@ -802,7 +813,7 @@ function renderPreview() {
   };
   f.due = dueDate(f.date, terms);
   document.getElementById('f-total').textContent = eur.format(lineSum(state.lines));
-  document.getElementById('pv-format').textContent = c.format === 'XRechnung' ? 'XRechnung: XML, PDF nur als Sichtkopie' : 'ZUGFeRD EN16931: PDF/A-3 mit XML';
+  document.getElementById('pv-format').textContent = FORMATS[state.format].preview;
   document.getElementById('preview').innerHTML = previewHtml(c, f);
   renderChecks(c, f);
   lucide.createIcons();
@@ -820,7 +831,7 @@ function issueInvoice() {
   state.lines.forEach(l => { amounts[l.cat] = (amounts[l.cat] ?? 0) + l.qty * l.price; });
   INVOICES.unshift({
     no, c: state.draftCust, date, due: dueDate(date, Number.parseInt(formValue('f-terms'), 10)),
-    total: lineSum(state.lines), cat: state.lines[0]?.cat ?? 'ku', cats: Object.keys(amounts), amounts, status: 'issued',
+    total: lineSum(state.lines), format: state.format, cat: state.lines[0]?.cat ?? 'ku', cats: Object.keys(amounts), amounts, status: 'issued',
   });
   toast('Rechnung ' + no + ' ausgestellt und geprüft');
   location.hash = '#rechnung-' + no;
@@ -845,11 +856,11 @@ function route() {
 
 function fillDialogs(i) {
   if (!i) return;
-  const c = cust(i.c), xr = c.format === 'XRechnung';
+  const c = cust(i.c), xr = fmtOf(i) === 'xrechnung';
   const set = (id, val) => { document.getElementById(id).value = val; };
   set('mail-to', c.mail);
   set('mail-subject', 'Rechnung ' + i.no);
-  set('mail-body', `Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie meine Rechnung ${i.no} als E-Rechnung (${xr ? 'XRechnung' : 'ZUGFeRD'}).\n\nMit freundlichen Grüßen\nElena Sommer`);
+  set('mail-body', `Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie meine Rechnung ${i.no} als E-Rechnung (${FORMATS[fmtOf(i)].label}).\n\nMit freundlichen Grüßen\nElena Sommer`);
   document.getElementById('mail-pdf').checked = !xr;
   document.getElementById('mail-xml').checked = xr;
   set('man-to', c.mail);
@@ -940,6 +951,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   if (e.target.id === 'f-cust') { state.draftCust = e.target.value; state.draftTpl = null; loadTemplate(); }
   if (e.target.id === 'f-tpl') { state.draftTpl = e.target.value; loadTemplate(); }
+  if (e.target.id === 'f-format') { state.format = e.target.value; renderPreview(); }
   if (e.target.id === 'f-terms') renderPreview();
 });
 

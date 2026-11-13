@@ -106,7 +106,7 @@ Not chosen:
 | `SellerProfile` | Name, address, tax number, IBAN, contact data, logo |
 | `Customer` | Address, country, e-mail, USt-IdNr, Leitweg-ID, format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
 | `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), e-mail text |
-| `Invoice` | Number, status, dates, service period, texts, payment terms, snapshots of seller and buyer |
+| `Invoice` | Number, status, format, dates, service period, texts, payment terms, snapshots of seller and buyer |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, path, SHA-256, size |
 | `Dispatch` | When, to whom, channel (`EMAIL_APP` or `MANUAL`), by which user, note |
@@ -158,7 +158,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. The user creates one or more templates per customer.
 2. A template holds: title, intro text, closing text, tax note, lines, payment terms, format, e-mail subject and body.
 3. Texts support placeholders, for example `{Leistungszeitraum}`, `{Zahlungsziel}`, `{Rechnungsnummer}`.
-4. A new invoice starts from a template. The template content is copied into the draft.
+4. A new invoice starts from a template. The template content, the format included, is copied into the draft.
 5. The user edits every field of the draft: texts, tax note, lines, dates.
 6. A preview shows the final PDF before issue.
 7. A template change does not affect existing invoices.
