@@ -7,7 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.7.50/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.7.50/daisyui.css" integrity="sha384-UwBu1IAWgb8nYSKlFTAgsMdqElJVcwjO1O31z47tHuvyhJ4rgjfif927I0JH2zI1" crossorigin="anonymous">
 <style>
 /* Layout: sidebar app shell, summary first, invoice paper preview beside the editor. */
 :root {
@@ -41,34 +41,7 @@
   --paper-rule: oklch(88% 0.01 240);
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --color-base-100: oklch(22% 0.016 250);
-    --color-base-200: oklch(18.5% 0.015 250);
-    --color-base-300: oklch(29% 0.02 250);
-    --color-base-content: oklch(92% 0.01 240);
-    --color-primary: oklch(73% 0.1 228);
-    --color-primary-content: oklch(20% 0.03 232);
-    --color-secondary: oklch(70% 0.06 200);
-    --color-secondary-content: oklch(20% 0.02 200);
-    --color-accent: oklch(79% 0.13 72);
-    --color-accent-content: oklch(22% 0.04 72);
-    --color-neutral: oklch(36% 0.02 250);
-    --color-neutral-content: oklch(94% 0.005 250);
-    --color-info: oklch(72% 0.11 240);
-    --color-info-content: oklch(20% 0.03 240);
-    --color-success: oklch(72% 0.13 155);
-    --color-success-content: oklch(20% 0.03 155);
-    --color-warning: oklch(80% 0.14 78);
-    --color-warning-content: oklch(22% 0.04 78);
-    --color-error: oklch(70% 0.16 25);
-    --color-error-content: oklch(20% 0.04 25);
-    --paper: oklch(97% 0.004 240);
-    --paper-ink: oklch(24% 0.02 250);
-    --paper-rule: oklch(86% 0.01 240);
-  }
-}
+/* The script sets data-theme to light or dark, also for the system setting. */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-base-100: oklch(22% 0.016 250);
@@ -96,6 +69,7 @@
   --paper-rule: oklch(86% 0.01 240);
 }
 html, body { height: 100%; }
+html { background: var(--color-base-200); }
 body { background: var(--color-base-200); color: var(--color-base-content); font-family: var(--font-sans); font-size: 14px; }
 .num { font-variant-numeric: tabular-nums; }
 .gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -123,11 +97,11 @@ h1, h2, h3 { text-wrap: balance; }
       <div class="flex-1 min-w-0">
         <span class="font-semibold truncate" id="page-title">Übersicht</span>
       </div>
-      <div class="join" role="group" aria-label="Darstellung">
+      <fieldset class="join"><legend class="sr-only">Darstellung</legend>
         <button class="btn btn-xs join-item" data-theme-set="system" title="System"><i data-lucide="monitor" class="size-3.5"></i><span class="hidden sm:inline">System</span></button>
         <button class="btn btn-xs join-item" data-theme-set="light" title="Hell"><i data-lucide="sun" class="size-3.5"></i><span class="hidden sm:inline">Hell</span></button>
         <button class="btn btn-xs join-item" data-theme-set="dark" title="Dunkel"><i data-lucide="moon" class="size-3.5"></i><span class="hidden sm:inline">Dunkel</span></button>
-      </div>
+      </fieldset>
       <a href="#anmelden" class="btn btn-ghost btn-sm btn-circle avatar placeholder" title="Abmelden">
         <span class="bg-primary text-primary-content rounded-full size-8 grid place-items-center text-xs font-semibold">ES</span>
       </a>
@@ -221,8 +195,8 @@ Elena Sommer</textarea></label>
   <form method="dialog" class="modal-backdrop"><button>schließen</button></form>
 </dialog>
 
-<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js"></script>
-<script src="https://unpkg.com/lucide@1.50.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3/dist/index.global.js" integrity="sha384-2ql948lIdLcGEE0/qxNiudyTjgauA3RDJERu5xW75kFCvSl5a9odyQYCb6tEjnmB" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@1.50.0/dist/umd/lucide.min.js" integrity="sha384-/sIySnlbVLfPSNdgy7yqanP6+Dv4en7FlBure4Rag0mp480bA2f+nTviC6933zkQ" crossorigin="anonymous"></script>
 <script>
 const eur = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 const de = d => d ? d.split('-').reverse().join('.') : '';
@@ -251,6 +225,8 @@ const CUSTOMERS = [
     { name: 'Lesung', cat: 'out', lines: [['Lesung und Signierstunde', 1, 'Stk', 350]] } ] },
 ];
 const cust = id => CUSTOMERS.find(c => c.id === id);
+const catsOf = i => i.cats ?? [i.cat];
+const amountOf = (i, k) => i.amounts ? (i.amounts[k] ?? 0) : (i.cat === k ? i.total : 0);
 
 const INVOICES = [
   { no: '2027-09', c: 'lindenhof', date: '2027-03-14', due: '2027-03-28', total: 720, cat: 'ex', status: 'issued' },
@@ -279,8 +255,8 @@ const catBadge = k => `<span class="badge badge-sm badge-soft ${CAT[k].cls} whit
 /* §19 figures */
 const BASELINE_2026 = 9850;
 const paid2027 = INVOICES.filter(i => i.status === 'paid');
-const counted = paid2027.filter(i => i.cat === 'ku').reduce((s, i) => s + i.total, 0);
-const excluded = paid2027.filter(i => i.cat !== 'ku').reduce((s, i) => s + i.total, 0);
+const counted = paid2027.reduce((s, i) => s + amountOf(i, 'ku'), 0);
+const excluded = paid2027.reduce((s, i) => s + i.total - amountOf(i, 'ku'), 0);
 const paidSum = paid2027.reduce((s, i) => s + i.total, 0);
 const open = INVOICES.filter(i => ['issued', 'sent'].includes(i.status));
 const openSum = open.reduce((s, i) => s + i.total, 0);
@@ -292,18 +268,22 @@ function meter(value, limit, cls = '') {
   return `<div class="meter ${cls}" role="meter" aria-valuemin="0" aria-valuemax="${limit}" aria-valuenow="${value}"><span style="width:${pct}%"></span></div>`;
 }
 
+const SENT_ICONS = {
+  'E-Mail': '<i data-lucide="mail-check" class="size-4 opacity-70" title="Per E-Mail aus der App"></i>',
+  manuell: '<i data-lucide="hand" class="size-4 opacity-70" title="Manuell versendet"></i>',
+};
+
 function invoiceRows(list) {
   return list.map(i => {
     const c = cust(i.c), s = statusOf(i);
     const href = i.no ? '#rechnung-' + i.no : '#rechnung-neu';
-    const sent = i.sent === 'E-Mail' ? '<i data-lucide="mail-check" class="size-4 opacity-70" title="Per E-Mail aus der App"></i>'
-      : i.sent === 'manuell' ? '<i data-lucide="hand" class="size-4 opacity-70" title="Manuell versendet"></i>' : '<span class="opacity-30">-</span>';
+    const sent = SENT_ICONS[i.sent] ?? '<span class="opacity-30">-</span>';
     return `<tr class="hover:bg-base-200 cursor-pointer" data-href="${href}">
       <td class="num font-medium whitespace-nowrap"><a href="${href}" class="link link-hover">${i.no ?? '<span class="opacity-50 italic">ohne Nr.</span>'}</a></td>
       <td class="min-w-40"><div class="font-medium">${c.name}</div><div class="text-xs opacity-60 md:hidden">${de(i.date)}</div></td>
       <td class="num hidden md:table-cell whitespace-nowrap">${de(i.date)}</td>
       <td class="num hidden lg:table-cell whitespace-nowrap ${s === 'overdue' ? 'text-error font-medium' : ''}">${de(i.due)}</td>
-      <td class="hidden sm:table-cell">${catBadge(i.cat)}</td>
+      <td class="hidden sm:table-cell"><div class="flex flex-wrap gap-1">${catsOf(i).map(catBadge).join('')}</div></td>
       <td class="num text-right whitespace-nowrap font-medium">${eur.format(i.total)}</td>
       <td class="hidden md:table-cell text-center">${sent}</td>
       <td>${badge(s)}</td>
@@ -311,6 +291,20 @@ function invoiceRows(list) {
   }).join('');
 }
 const tableHead = `<thead><tr class="text-xs"><th>Nr.</th><th>Kunde</th><th class="hidden md:table-cell">Datum</th><th class="hidden lg:table-cell">Fällig</th><th class="hidden sm:table-cell">Steuer</th><th class="text-right">Betrag</th><th class="hidden md:table-cell text-center">Versand</th><th>Status</th></tr></thead>`;
+
+function dispatchEvent(i, c) {
+  if (i.sent === 'manuell') return ['hand', 'Manuell versendet', de(i.date), 'Eigenes Mailprogramm an ' + c.mail];
+  if (i.sent) return ['mail-check', 'Per E-Mail versendet', de(i.date) + ', 09:43', 'an ' + c.mail];
+  return null;
+}
+
+function taxSection(i) {
+  return catsOf(i).map(k => {
+    const counts = k === 'ku' ? 'Zählt nach Zahlungseingang zur Kleinunternehmergrenze.' : 'Zählt nicht zur Kleinunternehmergrenze.';
+    return '<div class="grid gap-1">' + catBadge(k) + '<p class="text-xs opacity-70">' + CAT[k].note + '</p><p class="text-xs opacity-70">'
+      + eur.format(amountOf(i, k)) + '. ' + counts + '</p></div>';
+  }).join('');
+}
 
 const VIEWS = {
   uebersicht() {
@@ -393,7 +387,7 @@ const VIEWS = {
           ${[['all', 'Alle'], ['draft', 'Entwürfe'], ['open', 'Offen'], ['overdue', 'Überfällig'], ['paid', 'Bezahlt']].map(([k, l], n) =>
             `<button role="tab" class="tab ${k === state.invFilter ? 'tab-active' : ''}" data-filter="${k}">${l}<span class="ml-1.5 opacity-60 num">${count(k)}</span></button>`).join('')}
         </div>
-        <label class="input input-sm w-full sm:w-64 sm:ml-auto"><i data-lucide="search" class="size-4 opacity-60"></i><input id="inv-search" type="search" placeholder="Kunde oder Nummer" value="${state.invQuery.replace(/"/g, '&quot;')}"></label>
+        <label class="input input-sm w-full sm:w-64 sm:ml-auto"><i data-lucide="search" class="size-4 opacity-60"></i><input id="inv-search" type="search" placeholder="Kunde oder Nummer" value="${esc(state.invQuery)}"></label>
         <select id="inv-year" class="select select-sm w-28"><option>2027</option></select>
       </div>
       <section class="bg-base-100 rounded-box border border-base-300 overflow-x-auto">
@@ -495,7 +489,7 @@ const VIEWS = {
   },
 
   berichte() {
-    const byCat = k => paid2027.filter(i => i.cat === k).reduce((s, i) => s + i.total, 0);
+    const byCat = k => paid2027.reduce((s, i) => s + amountOf(i, k), 0);
     return `
     <div class="max-w-4xl mx-auto grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -558,8 +552,7 @@ const VIEWS = {
     state.current = i;
     const events = [
       ['stamp', 'Ausgestellt', de(i.date) + ', 09:41', 'Elena Sommer'],
-      i.sent === 'manuell' ? ['hand', 'Manuell versendet', de(i.date) === '05.03.2027' ? '06.03.2027' : de(i.date), 'Eigenes Mailprogramm an ' + c.mail] :
-      i.sent ? ['mail-check', 'Per E-Mail versendet', de(i.date) + ', 09:43', 'an ' + c.mail + ', PDF (ZUGFeRD)'] : null,
+      dispatchEvent(i, c),
       i.paid ? ['banknote', 'Zahlung eingegangen', de(i.paid), eur.format(i.total)] : null,
     ].filter(Boolean);
     return `
@@ -576,7 +569,7 @@ const VIEWS = {
             <button class="btn btn-ghost btn-square" aria-label="Weitere Aktionen"><i data-lucide="ellipsis" class="size-4"></i></button>
             <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-300 w-56 p-2 z-10">
               <li><a data-toast="Kopie als Entwurf angelegt"><i data-lucide="copy" class="size-4"></i>Als Vorlage kopieren</a></li>
-              <li><a class="text-error" data-toast="Stornorechnung 2027-10 als Entwurf angelegt"><i data-lucide="undo-2" class="size-4"></i>Stornieren</a></li>
+              <li><a class="text-error" data-toast="Stornorechnung als Entwurf angelegt. Die Nummer folgt beim Ausstellen."><i data-lucide="undo-2" class="size-4"></i>Stornieren</a></li>
             </ul>
           </div>
         </div>
@@ -606,15 +599,13 @@ const VIEWS = {
         <aside class="grid gap-4 content-start">
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
             <h2 class="font-semibold">Prüfung</h2>
-            <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>KoSIT: gültig (${c.format === 'XRechnung' ? 'XRechnung 3.0' : 'EN 16931'})</div>
+            <div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>${c.format === 'XRechnung' ? 'KoSIT: gültig (XRechnung 3.0)' : 'Mustang-Validator: gültig (EN 16931)'}</div>
             ${c.format === 'XRechnung' ? '' : '<div class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>veraPDF: PDF/A-3B konform</div>'}
             <div class="flex items-center gap-2"><i data-lucide="lock" class="size-4 opacity-70"></i>Unveränderbar seit ${de(i.date)}</div>
           </section>
           <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm">
             <h2 class="font-semibold">Steuer</h2>
-            <div>${catBadge(i.cat)}</div>
-            <p class="text-xs opacity-70">${CAT[i.cat].note}</p>
-            <p class="text-xs opacity-70">${i.cat === 'ku' ? 'Zählt nach Zahlungseingang zur Kleinunternehmergrenze.' : 'Zählt nicht zur Kleinunternehmergrenze.'}</p>
+            ${taxSection(i)}
           </section>
         </aside>
       </div>
@@ -642,8 +633,9 @@ const SETTINGS = {
       <div class="flex flex-wrap gap-1.5 text-xs">${['{YYYY}', '{YY}', '{N}', '{NN}', '{NNN}', 'RE-'].map(t => `<button class="badge badge-ghost font-mono cursor-pointer" data-tok="${t}">${t}</button>`).join('')}</div>
       <div class="grid sm:grid-cols-2 gap-3">
         <label class="floating-label"><span>Zähler beginnt neu</span><select id="num-reset" class="select w-full"><option>jedes Jahr</option><option>nie</option></select></label>
-        <label class="floating-label"><span>Letzte vergebene Nummer 2027</span><input id="num-last" class="input w-full num" value="9"></label>
+        <label class="floating-label"><span>Startnummer 2028</span><input id="num-start" class="input w-full num" value="1"></label>
       </div>
+      <p class="text-xs opacity-70">Letzte vergebene Nummer 2027: <span class="num">${INVOICES.length}</span>. Der Zähler eines Jahres mit ausgestellten Rechnungen ist gesperrt. Eine Startnummer lässt sich nur für ein Jahr ohne Rechnungen setzen.</p>
       <div class="bg-base-200 rounded-field p-3 text-sm">Nächste Nummer: <span class="font-semibold num font-mono" id="num-next"></span></div>
       <div><button class="btn btn-primary" data-toast="Nummernkreis gespeichert">Speichern</button></div></div>`,
   tax: () => `<div class="grid gap-4">
@@ -688,9 +680,9 @@ const SETTINGS = {
 };
 
 function renderNext() {
-  const p = document.getElementById('num-pattern'), last = document.getElementById('num-last'), out = document.getElementById('num-next');
+  const p = document.getElementById('num-pattern'), out = document.getElementById('num-next');
   if (!p) return;
-  const n = (parseInt(last.value, 10) || 0) + 1;
+  const n = INVOICES.length + 1;
   out.textContent = p.value.replace('{YYYY}', '2027').replace('{YY}', '27').replace(/\{(N+)\}/g, (_, ns) => String(n).padStart(ns.length, '0'));
 }
 
@@ -703,7 +695,8 @@ function loadTemplate() {
   document.getElementById('f-tpl').innerHTML = c.templates.map(x => `<option ${x.name === t.name ? 'selected' : ''}>${x.name}</option>`).join('');
   state.noteEdited = false; state.noteCats = null;
   document.getElementById('f-intro').value = t.cat === 'ex' ? 'für den Unterricht im genannten Zeitraum stelle ich Ihnen in Rechnung:' : 'vielen Dank für Ihren Auftrag. Ich stelle Ihnen folgende Leistungen in Rechnung:';
-  document.getElementById('f-custinfo').innerHTML = `<span><b>Format:</b> ${c.format}</span><span><b>E-Mail:</b> ${c.mail}</span>${c.leitweg ? `<span><b>Leitweg-ID:</b> ${c.leitweg}</span>` : ''}${c.vat ? `<span><b>USt-IdNr.:</b> ${c.vat}</span>` : ''}`;
+  document.getElementById('f-custinfo').innerHTML = [['Format', c.format], ['E-Mail', c.mail], ['Leitweg-ID', c.leitweg], ['USt-IdNr.', c.vat]]
+    .filter(([, val]) => val).map(([k, val]) => '<span><b>' + k + ':</b> ' + val + '</span>').join('');
   syncNote();
   renderLines();
 }
@@ -726,49 +719,108 @@ function renderLines() {
   lucide.createIcons();
   renderPreview();
 }
-function renderPreview() {
-  const c = cust(state.draftCust);
-  const total = state.lines.reduce((s, l) => s + l.qty * l.price, 0);
-  document.getElementById('f-total').textContent = eur.format(total);
-  const v = id => document.getElementById(id).value;
-  const terms = parseInt(v('f-terms'), 10);
-  const dateVal = v('f-date');
-  let dueStr = '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
-    const due = new Date(dateVal + 'T00:00:00Z');
-    due.setUTCDate(due.getUTCDate() + terms);
-    dueStr = due.toISOString().slice(0, 10);
-  }
-  document.getElementById('pv-format').textContent = c.format === 'XRechnung' ? 'XRechnung: XML, PDF nur als Sichtkopie' : 'ZUGFeRD EN16931: PDF/A-3 mit XML';
-  const period = v('f-from') === v('f-to') ? de(v('f-from')) : de(v('f-from')) + ' bis ' + de(v('f-to'));
-  document.getElementById('preview').innerHTML = `
+const COUNTRY = { DE: 'Deutschland', NL: 'Niederlande', CH: 'Schweiz' };
+const lineSum = lines => lines.reduce((s, l) => s + l.qty * l.price, 0);
+const formValue = id => document.getElementById(id).value;
+
+function dueDate(dateVal, terms) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return '';
+  const due = new Date(dateVal + 'T00:00:00Z');
+  due.setUTCDate(due.getUTCDate() + terms);
+  return due.toISOString().slice(0, 10);
+}
+
+function paymentText(terms, dueStr) {
+  if (!terms) return 'sofort';
+  if (!dueStr) return terms + ' Tagen';
+  return terms + ' Tagen, bis zum ' + de(dueStr) + ',';
+}
+
+function buyerBlock(c) {
+  const extra = [['USt-IdNr.', c.vat], ['Leitweg-ID', c.leitweg]].filter(([, val]) => val)
+    .map(([k, val]) => '<div>' + k + ' ' + val + '</div>').join('');
+  return '<div><div class="font-medium">' + c.name + '</div><div>' + c.city + '</div><div>' + COUNTRY[c.country] + '</div>' + extra + '</div>';
+}
+
+function previewLines() {
+  return state.lines.map(l => '<tr class="border-b rule align-top"><td class="py-1 pr-2">' + esc(l.text) + '</td>'
+    + '<td class="text-right whitespace-nowrap">' + String(l.qty).replace('.', ',') + ' ' + esc(l.unit) + '</td>'
+    + '<td class="text-right whitespace-nowrap">' + eur.format(l.price) + '</td>'
+    + '<td class="text-right whitespace-nowrap">' + eur.format(l.qty * l.price) + '</td></tr>').join('');
+}
+
+function previewHtml(c, f) {
+  const period = f.from === f.to ? de(f.from) : de(f.from) + ' bis ' + de(f.to);
+  const dateText = f.date ? de(f.date) : '<span class="text-red-600">fehlt</span>';
+  return `
     <div class="flex justify-between gap-4"><div class="text-[7px] opacity-70 leading-tight">Elena Sommer · Lindenstraße 12 · 80331 München</div><div class="text-right font-semibold text-[11px]">Elena Sommer</div></div>
     <div class="flex justify-between gap-4 mt-2">
-      <div><div class="font-medium">${c.name}</div><div>${c.city}</div><div>${c.country === 'DE' ? 'Deutschland' : c.country === 'NL' ? 'Niederlande' : 'Schweiz'}</div>${c.vat ? `<div>USt-IdNr. ${c.vat}</div>` : ''}${c.leitweg ? `<div>Leitweg-ID ${c.leitweg}</div>` : ''}</div>
-      <div class="text-right text-[8.5px] leading-snug num"><div>Rechnungsnr.: <b>2027-${String(INVOICES.length + 1).padStart(2, '0')}</b></div><div>Datum: ${dateVal ? de(dateVal) : '<span class="text-red-600">fehlt</span>'}</div><div>Leistung: ${period}</div><div>Steuernr.: 143/123/45678</div></div>
+      ${buyerBlock(c)}
+      <div class="text-right text-[8.5px] leading-snug num"><div>Rechnungsnr.: <i>wird beim Ausstellen vergeben</i></div><div>Datum: ${dateText}</div><div>Leistung: ${period}</div><div>Steuernr.: 143/123/45678</div></div>
     </div>
     <div class="font-semibold text-[12px] mt-3">Rechnung</div>
     <div>Sehr geehrte Damen und Herren,</div>
-    <div>${esc(v('f-intro'))}</div>
+    <div>${esc(f.intro)}</div>
     <table class="w-full num"><thead><tr class="border-b rule text-left"><th class="py-1 font-medium">Leistung</th><th class="text-right font-medium">Menge</th><th class="text-right font-medium">Preis</th><th class="text-right font-medium">Summe</th></tr></thead>
-      <tbody>${state.lines.map(l => `<tr class="border-b rule align-top"><td class="py-1 pr-2">${esc(l.text)}</td><td class="text-right whitespace-nowrap">${String(l.qty).replace('.', ',')} ${esc(l.unit)}</td><td class="text-right whitespace-nowrap">${eur.format(l.price)}</td><td class="text-right whitespace-nowrap">${eur.format(l.qty * l.price)}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td colspan="3" class="text-right pt-1 font-semibold">Gesamtbetrag</td><td class="text-right pt-1 font-semibold">${eur.format(total)}</td></tr></tfoot></table>
-    <div class="whitespace-pre-line">${esc(v('f-note'))}</div>
-    <div>${esc(v('f-closing')).replace('14 Tagen', !terms ? 'sofort' : dueStr ? terms + ' Tagen, bis zum ' + de(dueStr) + ',' : terms + ' Tagen')}</div>
+      <tbody>${previewLines()}</tbody>
+      <tfoot><tr><td colspan="3" class="text-right pt-1 font-semibold">Gesamtbetrag</td><td class="text-right pt-1 font-semibold">${eur.format(lineSum(state.lines))}</td></tr></tfoot></table>
+    <div class="whitespace-pre-line">${esc(f.note)}</div>
+    <div>${esc(f.closing).replace('14 Tagen', paymentText(f.terms, f.due))}</div>
     <div class="mt-auto border-t rule pt-2 text-[7px] opacity-70 grid grid-cols-3 gap-2 leading-tight"><div>Elena Sommer<br>Lindenstraße 12<br>80331 München</div><div>IBAN DE02 1203 0000 0000 2020 51<br>BIC BYLADEM1001</div><div>kontakt@sommer.example<br>Steuernr. 143/123/45678</div></div>`;
-  const kuNew = state.lines.filter(l => l.cat === 'ku').reduce((s, l) => s + l.qty * l.price, 0);
+}
+
+function checkRow(ok, okText, failText, failIcon = 'circle-alert', failCls = 'text-error') {
+  const icon = ok ? 'circle-check' : failIcon;
+  const cls = ok ? 'text-success' : failCls;
+  return '<div class="flex items-center gap-2"><i data-lucide="' + icon + '" class="size-4 ' + cls + '"></i>' + (ok ? okText : failText) + '</div>';
+}
+
+function renderChecks(c, f) {
   const cats = [...new Set(state.lines.map(l => l.cat))];
-  const noteOk = v('f-note').trim().length > 10;
+  const noteOk = f.note.trim().length > 10;
   const mixOk = !(cats.includes('out') && cats.length > 1);
-  state.valid = noteOk && mixOk && Boolean(dueStr) && state.lines.length > 0;
-  document.getElementById('checks').innerHTML = `
-    <h2 class="font-semibold">Vor dem Ausstellen</h2>
-    <div class="flex items-center gap-2"><i data-lucide="${noteOk ? 'circle-check' : 'circle-alert'}" class="size-4 ${noteOk ? 'text-success' : 'text-error'}"></i>${noteOk ? 'Steuerhinweis vorhanden' : 'Steuerhinweis fehlt für steuerfreie Positionen'}</div>
-    <div class="flex items-center gap-2"><i data-lucide="${dueStr ? 'circle-check' : 'circle-alert'}" class="size-4 ${dueStr ? 'text-success' : 'text-error'}"></i>${dueStr ? 'Pflichtangaben nach § 14 UStG vollständig' : 'Rechnungsdatum fehlt'}</div>
-    ${!mixOk ? '<div class="flex items-center gap-2"><i data-lucide="circle-alert" class="size-4 text-error"></i>„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)</div>' : ''}
-    <div class="flex items-center gap-2"><i data-lucide="${state.valid ? 'circle-check' : 'circle-minus'}" class="size-4 ${state.valid ? 'text-success' : 'opacity-50'}"></i>${state.valid ? `KoSIT-Prüfung ${c.format} erfolgreich (Probelauf)` : 'KoSIT-Prüfung erst nach Behebung der Fehler'}</div>
-    <div class="flex items-center gap-2"><i data-lucide="gauge" class="size-4 opacity-70"></i>${kuNew ? `Nach Zahlung: ${eur.format(counted + kuNew)} von 100.000 € (§ 19)` : 'Zählt nicht zur Kleinunternehmergrenze'}</div>`;
+  state.valid = noteOk && mixOk && Boolean(f.due) && state.lines.length > 0;
+  const kuNew = lineSum(state.lines.filter(l => l.cat === 'ku'));
+  const threshold = kuNew ? 'Nach Zahlung: ' + eur.format(counted + kuNew) + ' von 100.000 € (§ 19)' : 'Zählt nicht zur Kleinunternehmergrenze';
+  document.getElementById('checks').innerHTML = '<h2 class="font-semibold">Vor dem Ausstellen</h2>'
+    + checkRow(noteOk, 'Steuerhinweis vorhanden', 'Steuerhinweis fehlt für steuerfreie Positionen')
+    + checkRow(Boolean(f.due), 'Pflichtangaben nach § 14 UStG vollständig', 'Rechnungsdatum fehlt')
+    + (mixOk ? '' : checkRow(false, '', '„Nicht steuerbar“ lässt sich nicht mit anderen Steuerarten mischen (BR-O-12)'))
+    + checkRow(state.valid, 'Prüfung ' + c.format + ' erfolgreich (Probelauf)', 'Prüfung erst nach Behebung der Fehler', 'circle-minus', 'opacity-50')
+    + '<div class="flex items-center gap-2"><i data-lucide="gauge" class="size-4 opacity-70"></i>' + threshold + '</div>';
+}
+
+function renderPreview() {
+  const c = cust(state.draftCust);
+  const terms = Number.parseInt(formValue('f-terms'), 10);
+  const f = {
+    date: formValue('f-date'), from: formValue('f-from'), to: formValue('f-to'), terms,
+    intro: formValue('f-intro'), note: formValue('f-note'), closing: formValue('f-closing'),
+  };
+  f.due = dueDate(f.date, terms);
+  document.getElementById('f-total').textContent = eur.format(lineSum(state.lines));
+  document.getElementById('pv-format').textContent = c.format === 'XRechnung' ? 'XRechnung: XML, PDF nur als Sichtkopie' : 'ZUGFeRD EN16931: PDF/A-3 mit XML';
+  document.getElementById('preview').innerHTML = previewHtml(c, f);
+  renderChecks(c, f);
   lucide.createIcons();
+}
+
+function issueInvoice() {
+  if (!state.valid) {
+    toast('Bitte zuerst die markierten Fehler beheben.', 'error');
+    document.getElementById('checks').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  const no = '2027-' + String(INVOICES.length + 1).padStart(2, '0');
+  const date = formValue('f-date') || TODAY;
+  const amounts = {};
+  state.lines.forEach(l => { amounts[l.cat] = (amounts[l.cat] ?? 0) + l.qty * l.price; });
+  INVOICES.unshift({
+    no, c: state.draftCust, date, due: dueDate(date, Number.parseInt(formValue('f-terms'), 10)),
+    total: lineSum(state.lines), cat: state.lines[0]?.cat ?? 'ku', cats: Object.keys(amounts), amounts, status: 'issued',
+  });
+  toast('Rechnung ' + no + ' ausgestellt und geprüft');
+  location.hash = '#rechnung-' + no;
 }
 
 /* Router */
@@ -810,46 +862,54 @@ function toast(msg, kind = 'success') {
   setTimeout(() => el.remove(), 3300);
 }
 
-/* Theme */
-function setTheme(t) {
-  if (t === 'system') document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.setAttribute('data-theme', t);
-  document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('btn-active', b.dataset.themeSet === t));
-  try { localStorage.setItem('im-theme', t); } catch (e) { /* storage unavailable */ }
+/* Theme: "system" follows the operating system, also when it changes. */
+const darkQuery = globalThis.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(mode) {
+  state.theme = mode;
+  const dark = mode === 'dark' || (mode === 'system' && darkQuery.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('btn-active', b.dataset.themeSet === mode));
+  try { localStorage.setItem('im-theme', mode); } catch { /* storage unavailable */ }
 }
+darkQuery.addEventListener('change', () => applyTheme(state.theme));
 let savedTheme = 'system';
-try { savedTheme = localStorage.getItem('im-theme') || 'system'; } catch (e) { /* storage unavailable */ }
+try { savedTheme = localStorage.getItem('im-theme') || 'system'; } catch { /* storage unavailable */ }
+
+function selectTab(selector, active) {
+  document.querySelectorAll(selector).forEach(b => b.classList.toggle('tab-active', b === active));
+}
+
+/* Click handlers, first match wins. */
+const CLICK_HANDLERS = [
+  ['[data-theme-set]', el => applyTheme(el.dataset.themeSet)],
+  ['tr[data-href]', el => { location.hash = el.dataset.href; }],
+  ['[data-dialog]', el => { fillDialogs(state.current); document.getElementById(el.dataset.dialog).showModal(); }],
+  ['[data-close]', el => el.closest('dialog').close()],
+  ['[data-use]', el => { [state.draftCust, state.draftTpl] = el.dataset.use.split('|'); }],
+  ['[data-cust]', el => { state.customer = el.dataset.cust; route(); }],
+  ['[data-filter]', el => { selectTab('[data-filter]', el); state.invFilter = el.dataset.filter; renderInvoiceList(); }],
+  ['[data-set]', el => {
+    selectTab('[data-set]', el);
+    document.getElementById('set-body').innerHTML = SETTINGS[el.dataset.set]();
+    renderNext();
+    lucide.createIcons();
+  }],
+  ['[data-tok]', el => { document.getElementById('num-pattern').value += el.dataset.tok; renderNext(); }],
+  ['[data-del]', el => { state.lines.splice(Number(el.dataset.del), 1); syncNote(); renderLines(); }],
+  ['#add-line', () => { state.lines.push({ text: 'Neue Leistung', qty: 1, unit: 'Stk', price: 0, cat: state.lines[0]?.cat ?? 'ku' }); renderLines(); }],
+  ['#btn-issue', issueInvoice],
+  ['button[data-toast], a[data-toast]', el => {
+    if (el.closest('form')) return;
+    toast(el.dataset.toast);
+    if (el.dataset.go) location.hash = el.dataset.go;
+  }],
+];
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-theme-set]'); if (t) return setTheme(t.dataset.themeSet);
-  const row = e.target.closest('tr[data-href]'); if (row) { location.hash = row.dataset.href; return; }
-  const dlg = e.target.closest('[data-dialog]'); if (dlg) { fillDialogs(state.current); return document.getElementById(dlg.dataset.dialog).showModal(); }
-  const cl = e.target.closest('[data-close]'); if (cl) return cl.closest('dialog').close();
-  const use = e.target.closest('[data-use]'); if (use) { const [c, tpl] = use.dataset.use.split('|'); state.draftCust = c; state.draftTpl = tpl; return; }
-  const cu = e.target.closest('[data-cust]'); if (cu) { state.customer = cu.dataset.cust; route(); return; }
-  const tab = e.target.closest('[data-filter]');
-  if (tab) {
-    document.querySelectorAll('[data-filter]').forEach(b => b.classList.toggle('tab-active', b === tab));
-    state.invFilter = tab.dataset.filter; renderInvoiceList(); return;
+  for (const [selector, handler] of CLICK_HANDLERS) {
+    const el = e.target.closest(selector);
+    if (el) { handler(el); return; }
   }
-  const st = e.target.closest('[data-set]');
-  if (st) { document.querySelectorAll('[data-set]').forEach(b => b.classList.toggle('tab-active', b === st)); document.getElementById('set-body').innerHTML = SETTINGS[st.dataset.set](); renderNext(); lucide.createIcons(); return; }
-  const tok = e.target.closest('[data-tok]'); if (tok) { const p = document.getElementById('num-pattern'); p.value += tok.dataset.tok; renderNext(); return; }
-  const del = e.target.closest('[data-del]'); if (del) { state.lines.splice(+del.dataset.del, 1); syncNote(); renderLines(); return; }
-  if (e.target.closest('#add-line')) { state.lines.push({ text: 'Neue Leistung', qty: 1, unit: 'Stk', price: 0, cat: state.lines[0]?.cat || 'ku' }); renderLines(); return; }
-  if (e.target.closest('#btn-issue')) {
-    if (!state.valid) { toast('Bitte zuerst die markierten Fehler beheben.', 'error'); document.getElementById('checks').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
-    const no = '2027-' + String(INVOICES.length + 1).padStart(2, '0');
-    const date = document.getElementById('f-date').value || TODAY;
-    const terms = parseInt(document.getElementById('f-terms').value, 10);
-    const due = new Date(date + 'T00:00:00Z'); due.setUTCDate(due.getUTCDate() + terms);
-    INVOICES.unshift({ no, c: state.draftCust, date, due: due.toISOString().slice(0, 10), total: state.lines.reduce((s, l) => s + l.qty * l.price, 0), cat: state.lines[0]?.cat || 'ku', status: 'issued' });
-    toast(`Rechnung ${no} ausgestellt und geprüft`);
-    location.hash = '#rechnung-' + no;
-    return;
-  }
-  const tb = e.target.closest('button[data-toast], a[data-toast]');
-  if (tb && !tb.closest('form')) { toast(tb.dataset.toast); if (tb.dataset.go) location.hash = tb.dataset.go; }
 });
 document.addEventListener('submit', e => {
   e.preventDefault();
@@ -858,14 +918,14 @@ document.addEventListener('submit', e => {
   if (f.dataset.go) location.hash = f.dataset.go;
 });
 document.addEventListener('input', e => {
-  if (e.target.id === 'num-pattern' || e.target.id === 'num-last') return renderNext();
+  if (e.target.id === 'num-pattern') return renderNext();
   if (e.target.id === 'inv-search') {
     state.invQuery = e.target.value; renderInvoiceList(); return;
   }
   const tr = e.target.closest('tr[data-line]');
   if (tr && e.target.dataset.f) {
     const l = state.lines[+tr.dataset.line], f = e.target.dataset.f;
-    l[f] = (f === 'qty' || f === 'price') ? (parseFloat(e.target.value.replace(/\./g, '').replace(',', '.')) || 0) : e.target.value;
+    l[f] = (f === 'qty' || f === 'price') ? (Number.parseFloat(e.target.value.replaceAll('.', '').replace(',', '.')) || 0) : e.target.value;
     if (f === 'cat') { syncNote(); renderLines(); return; }
     if (f === 'qty' || f === 'price') tr.lastElementChild.previousElementSibling.textContent = eur.format(l.qty * l.price);
     renderPreview(); return;
@@ -880,7 +940,7 @@ document.addEventListener('change', e => {
 });
 
 window.addEventListener('hashchange', route);
-setTheme(savedTheme);
+applyTheme(savedTheme);
 route();
 </script>
 </body>

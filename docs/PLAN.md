@@ -40,7 +40,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 
 ## 3. Principles
 
-1. **Correct first.** No invoice leaves the system without a passed KoSIT validation.
+1. **Correct first.** No invoice leaves the system without a passed validation for its format (see section 4).
 2. **Immutable.** Issuing freezes the invoice, its XML and its PDF. The system stores a SHA-256 of each document.
 3. **Snapshot.** Issuing copies seller and buyer data into the invoice. Later edits of master data do not change it.
 4. **Small footprint.** One household, two users, one container plus a database.
@@ -55,7 +55,8 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | Language | Java 25 (LTS) | Main stack of the developer. Best e-invoice libraries are on the JVM |
 | Framework | Spring Boot 4.x, Maven | Security, mail, scheduling, Flyway out of the box |
 | e-invoice | Mustang Project | Creates and reads ZUGFeRD, Factur-X and XRechnung |
-| Validation | KoSIT Validator + XRechnung configuration | Official validator, the same check that buyers run |
+| Validation, ZUGFeRD | Mustang validator: EN 16931 and ZUGFeRD schematron, PDF/A-3 through veraPDF | The XRechnung rules do not apply to a plain EN16931 profile |
+| Validation, XRechnung | KoSIT validator + XRechnung configuration | Official validator, the same check that public buyers run |
 | PDF layout | Thymeleaf HTML, rendered by Flying Saucer as PDF/A-3B | Own layout. Mustang then embeds the XML |
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |
 | UI | Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons | Server-side CRUD. CSS classes only, no SPA |
@@ -68,7 +69,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 Group ID: `io.github.grigoriev`, artifact `im`, base package `io.github.grigoriev.im`.
 
 Flying Saucer supports PDF/A-3B (`PdfAConformance.PDF_A_3B`). All fonts must be embedded.
-Milestone M0 checks the full chain: Flying Saucer PDF, Mustang embedding, veraPDF and KoSIT validation.
+Milestone M0 checks the full chain: Flying Saucer PDF, Mustang embedding, then the validation of each format.
 
 Currency: EUR only.
 
@@ -108,7 +109,7 @@ Not chosen:
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, path, SHA-256, size |
 | `Dispatch` | When, to whom, channel (`EMAIL_APP` or `MANUAL`), by which user, note |
-| `Payment` | Date received, amount, note |
+| `Payment` | Date, amount, note. A negative amount is a refund |
 | `NumberSequence` | Format pattern, year, last number |
 | `ThresholdBaseline` | Revenue counted for §19 in a year before the system existed |
 | `Setting` | Key-value settings: SMTP, texts, defaults |
@@ -118,8 +119,8 @@ Not chosen:
 
 ```text
 DRAFT -> ISSUED -> SENT -> PAID
-           |         |
-           +---------+--> CANCELLED (by a Stornorechnung)
+           |         |       |
+           +---------+-------+--> CANCELLED (by a Stornorechnung)
 ```
 
 1. `DRAFT` can change or be deleted. It has no number.
@@ -127,6 +128,8 @@ DRAFT -> ISSUED -> SENT -> PAID
 3. `SENT` records each dispatch. One invoice can have several dispatches.
 4. `PAID` applies when the sum of all payments covers the total.
 5. `CANCELLED` links to the Stornorechnung. The cancellation invoice has its own number.
+6. A paid invoice can be cancelled too. The money that goes back is a refund: a payment with a negative amount.
+7. A refund lowers the §19 revenue and the EÜR income in the year it is paid, not in the year of the invoice.
 
 ### Tax categories
 
@@ -138,8 +141,12 @@ DRAFT -> ISSUED -> SENT -> PAID
 | `NOT_TAXABLE_ABROAD` | Nicht im Inland steuerbare Leistung. | O | no |
 | `STANDARD_7`, `STANDARD_19` | Later, after the Kleinunternehmer status ends | S | n/a |
 
-The category is set per line. One invoice can mix categories, with one exception.
-`NOT_TAXABLE_ABROAD` (code O) never mixes with another category (EN 16931 rule BR-O-12). The editor rejects such a draft.
+The category is set per line. One invoice can mix categories, with these rules:
+
+1. `NOT_TAXABLE_ABROAD` (code O) never mixes with another category (EN 16931 rule BR-O-12). The editor rejects such a draft.
+2. `KLEINUNTERNEHMER` and `EXEMPT_4_21` share code E at 0 %. EN 16931 allows one VAT breakdown per code (BR-E-08).
+   A mixed invoice gets one E breakdown. Its exemption reason (BT-120) joins both tax notes. The PDF shows both notes.
+3. The system keeps the category per line, so the §19 revenue counts only the `KLEINUNTERNEHMER` lines.
 The model includes the standard rates now, so the end of the Kleinunternehmer status needs no redesign.
 The admin edits the default tax notes. A template and an invoice can override them.
 
@@ -154,13 +161,14 @@ The admin edits the default tax notes. A template and an invoice can override th
 5. The user edits every field of the draft: texts, tax note, lines, dates.
 6. A preview shows the final PDF before issue.
 7. A template change does not affect existing invoices.
-8. Validation before issue: a VAT-exempt line needs a tax note. The KoSIT check must pass.
+8. Validation before issue: a VAT-exempt line needs a tax note. The validation of the format must pass.
 
 ### Invoice numbers
 
 1. The admin sets the pattern, for example `{YYYY}-{NN}`, which gives `2026-01`.
 2. Tokens: `{YYYY}`, `{YY}`, `{N}` with padding (`{NN}`, `{NNN}`), fixed text.
-3. The counter resets each year. The admin can set the start value.
+3. The counter resets each year. The admin can set the start value only for a year without issued invoices.
+   The check runs in the same locked transaction that assigns numbers.
 4. A number is assigned only at issue, in one transaction with a row lock. No gaps, no duplicates.
 5. A pattern change applies to the next number. The system rejects a pattern that can repeat an existing number.
 
@@ -174,7 +182,8 @@ The admin edits the default tax notes. A template and an invoice can override th
 ### Payments
 
 1. Record a payment: date and amount. Partial payments are allowed.
-2. Overview of open and overdue invoices.
+2. Record a refund after a Stornorechnung: a payment with a negative amount.
+3. Overview of open and overdue invoices.
 
 ### Threshold tracking
 
@@ -228,7 +237,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 
 ### Integration suite
 
-1. E-invoice chain: Flying Saucer, Mustang, veraPDF, KoSIT, then Mustang reads the file back. One case per tax category and format.
+1. E-invoice chain: Flying Saucer, Mustang, the validation of the format, then Mustang reads the file back. One case per tax category, per format and per mix of categories.
 2. Database: Flyway on an empty database. After the go-live also upgrades from the last release with data.
 3. Security: access to each URL for `USER`, `ADMIN` and anonymous. CSRF. Password login.
 4. Passkeys: registration and login with the Chromium virtual authenticator in Playwright.
@@ -275,7 +284,8 @@ Every dependency lives in a file that Renovate reads. No version hides in code.
 
 | Dependency | Where | Manager | Policy |
 |---|---|---|---|
-| Spring Boot, Mustang, veraPDF, KoSIT, test libraries | `pom.xml` | maven | Minor and patch automerge after green CI |
+| Spring Boot, test libraries | `pom.xml` | maven | Minor and patch automerge after green CI |
+| Mustang, veraPDF, KoSIT validator | `pom.xml` | maven | Manual review. They shape the legal output |
 | Maven plugins, PIT, JaCoCo | `pom.xml` | maven | Automerge, as above |
 | Tailwind, daisyUI, htmx, Alpine.js, Lucide, Inter | `package.json` | npm | Automerge, as above. Visual tests guard the look |
 | Playwright | `e2e/package.json` and the Playwright image tag | npm, docker | One group. Manual review, the baselines can change |
@@ -290,7 +300,7 @@ Every dependency lives in a file that Renovate reads. No version hides in code.
 ### Rules
 
 1. Automerge needs the full CI: unit, integration, mutation, E2E and visual tests.
-2. Libraries that touch the legal output never automerge: Mustang, KoSIT, the XRechnung configuration.
+2. Libraries that touch the legal output never automerge: Mustang, veraPDF, KoSIT, the XRechnung configuration.
 3. A visual change after an update fails the build. A human checks the diff and updates the baselines.
 4. The PostgreSQL version in tests matches production.
 5. The frontend libraries come from npm and go into the jar at build time. No CDN at runtime.
@@ -301,7 +311,7 @@ Every dependency lives in a file that Renovate reads. No version hides in code.
 |---|---|---|---|
 | M0 | Skeleton | Maven project, Spring Boot, CI, image on GHCR, Sonar, Renovate. PDF/A-3 spike | 2026-11 |
 | M1 | Base | Login with passkeys, roles, seller profile, customers, settings, audit log | 2026-11 |
-| M2 | Invoices | Templates, drafts, preview, issue, numbers, PDF, ZUGFeRD, XRechnung, KoSIT, archive | 2026-12 |
+| M2 | Invoices | Templates, drafts, preview, issue, numbers, PDF, ZUGFeRD, XRechnung, validation, archive | 2026-12 |
 | M3 | Sending and payments | SMTP sending, manual dispatch, payments, Stornorechnung | 2026-12 |
 | M4 | Threshold and reports | Dashboard, baseline, EÜR report, CSV, archive export | 2026-12 |
 | M5 | Operations | Deployment on lemming, backups to meerkat, restore test, full export and import | 2026-12 |
@@ -310,7 +320,7 @@ Every dependency lives in a file that Renovate reads. No version hides in code.
 
 ## 13. Open questions
 
-1. Does the Goethe-Institut need XRechnung and a Leitweg-ID? Ask the contact person.
+1. Does the public-sector customer need XRechnung and a Leitweg-ID? Ask the contact person.
    XRechnung is in scope either way.
 2. Foreign customers: invoice texts, USt-IdNr, Zusammenfassende Meldung. Verify before M6.
 3. Field mapping of the yearly report: check against the Anlage EÜR 2027 form before M4.
