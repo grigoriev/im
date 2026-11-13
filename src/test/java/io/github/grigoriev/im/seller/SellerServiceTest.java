@@ -175,7 +175,9 @@ class SellerServiceTest {
     @ParameterizedTest
     @CsvSource({"www.erika.example, true", "https://erika.example/kurse, true", "http://a-b.example.de, true",
         "erika, false", "https://, false", "www.erika example.de, false", "mailto:erika@example.org, false",
-        ".example.de, false", "example.de., false", "www..example.de, false", "https://example.de/a b, false"})
+        ".example.de, false", "example.de., false", "www..example.de, false", "https://example.de/a b, false",
+        "www.müller-sprachkurse.de, true", "HTTPS://Example.DE, true", "www.straße.de/kurse, true",
+        "www.exa_mple.de, false", "ftp://example.de, false"})
     void checksTheWebsite(String website, boolean valid) {
         assertThat(SellerService.check(with("website", website))).isEqualTo(valid ? List.of()
                 : List.of("Bitte eine Website wie www.example.de angeben."));
@@ -183,7 +185,9 @@ class SellerServiceTest {
 
     @Test
     void limitsTheWebsiteTo200Characters() {
-        String host = "www." + "w".repeat(188) + ".example"; // 4 + 188 + 8 = 200 characters
+        // 200 characters in labels of at most 63, as DNS allows: 4 + 3 * 61 - 1 + 14.
+        String label = "a".repeat(60);
+        String host = "www." + label + "." + label + "." + label + ".bbbbb.example";
         assertThat(SellerService.check(with("website", host))).isEmpty();
         assertThat(SellerService.check(with("website", host + "x"))).containsExactly("Website hat höchstens 200 Zeichen.");
     }

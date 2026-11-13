@@ -11,6 +11,7 @@ import static io.github.grigoriev.im.validation.Fields.upper;
 import static io.github.grigoriev.im.validation.Fields.checkVatId;
 
 import java.math.BigInteger;
+import java.net.IDN;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +58,11 @@ public class SellerService {
                 tax_number = EXCLUDED.tax_number, vat_id = EXCLUDED.vat_id, iban = EXCLUDED.iban,
                 bic = EXCLUDED.bic, tax_status = EXCLUDED.tax_status, tagline = EXCLUDED.tagline,
                 website = EXCLUDED.website, bank_name = EXCLUDED.bank_name, account_holder = EXCLUDED.account_holder""";
-    /** A host name, with or without {@code https://} and a path. {@link #websiteOk} checks the dots. */
-    static final Pattern WEBSITE = Pattern.compile("(?:https?://)?[\\w.-]+(?:/\\S*)?");
+    /** The scheme of a website, in any case. */
+    static final Pattern SCHEME = Pattern.compile("^https?://", Pattern.CASE_INSENSITIVE);
+
+    /** A host in ASCII, after {@link IDN#toASCII(String)}: letters, digits, dots and hyphens. */
+    static final Pattern HOST = Pattern.compile("[A-Za-z0-9.-]+");
 
     static final Pattern BIC = Pattern.compile("[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?");
 
@@ -165,13 +169,23 @@ public class SellerService {
         }
     }
 
-    /** A website needs a host with a dot inside, such as {@code www.example.de}, and no empty part. */
+    /**
+     * A website needs a host with a dot inside, such as {@code www.example.de} or {@code www.müller.de}, no empty
+     * part and no space. The scheme {@code http://} or {@code https://} is optional.
+     */
     static boolean websiteOk(String website) {
-        if (!WEBSITE.matcher(website).matches()) {
+        String[] parts = SCHEME.matcher(website).replaceFirst("").split("/", 2);
+        if (website.chars().anyMatch(Character::isWhitespace)) {
             return false;
         }
-        String host = website.replaceFirst("^https?://", "").split("/", 2)[0];
-        return host.contains(".") && !host.startsWith(".") && !host.endsWith(".") && !host.contains("..");
+        String host;
+        try {
+            host = IDN.toASCII(parts[0]);
+        } catch (IllegalArgumentException _) {
+            return false;
+        }
+        // IDN.toASCII already refuses empty labels such as ".example.de" or "www..example.de".
+        return HOST.matcher(host).matches() && host.contains(".") && !host.endsWith(".");
     }
 
     /** ISO 13616: the IBAN with its first four characters moved to the end, letters as numbers, mod 97 is 1. */
