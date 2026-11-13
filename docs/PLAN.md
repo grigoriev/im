@@ -250,9 +250,10 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 
 ### Gates
 
-1. Coverage of new code at least 80 %, unit and integration tests merged by JaCoCo.
+1. Unit test coverage 100 %, lines and branches, measured by JaCoCo and enforced in the build.
+   Integration tests add to the report, but do not count toward the 100 %.
 2. PIT mutation score of the domain core at least 80 %.
-3. No new SonarCloud issues. No new CodeRabbit findings.
+3. SonarCloud quality gate green. No open findings from any review: Claude, Greptile, CodeRabbit, Sonar.
 
 ### Definition of done
 
@@ -260,7 +261,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 2. Integration test if the feature touches the database, security, mail or a format.
 3. E2E scenario for the user flow.
 4. Visual baselines for new screens and states, and for the PDF if its layout changed.
-5. All gates green.
+5. All gates green and every review finding fixed.
 
 ### Before the go-live
 
