@@ -46,6 +46,12 @@ class PdfVisualTest {
             "Hauptstraße 123", "80331", "München", "DE", "rechnungswesen.sprachfoerderung@gemeinnuetzige-gesellschaft.example",
             "+49 89 1234567", "Erika Mustermann", "143/123/45678", "DE123456789");
 
+    /** The invoice with another IBAN, for example the 31 characters of Malta, the longest in SEPA. */
+    private static InvoiceDocument withIban(InvoiceDocument d, String iban) {
+        return new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(), d.dueDate(), d.seller(),
+                d.buyer(), d.buyerReference(), iban, d.bic(), d.intro(), d.closing(), d.taxNote(), d.format(), d.lines());
+    }
+
     static Stream<Arguments> layouts() {
         List<InvoiceLine> many = new ArrayList<>();
         IntStream.rangeClosed(1, 40).forEach(n -> many.add(
@@ -66,6 +72,8 @@ class PdfVisualTest {
                         line("Integrationskurs Modul 4, je 45 Min.", "24", "41.00", TaxCategory.EXEMPT_4_21))),
                 Arguments.of("long-contact", invoice(LONG_CONTACT, SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
                         many.subList(0, 30).toArray(InvoiceLine[]::new))),
+                Arguments.of("long-iban", withIban(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),
+                        "MT84MALT011000012345MTLCAST001S")),
                 Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                         line("Online-Workshop „Deutsch im Beruf“, 3 Std.", "1", "600.00",
                                 TaxCategory.REVERSE_CHARGE_EU))));

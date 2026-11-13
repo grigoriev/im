@@ -10,8 +10,8 @@
     /* The footer holds the page number in its own column, so no text can run over it. */
     .footer { position: running(footer); width: 100%; table-layout: fixed; font-size: 7pt; color: #616e7c; border-top: 0.5pt solid #cbd2d9; padding-top: 2mm; }
     .footer td { vertical-align: top; width: 26%; padding-right: 2mm; overflow-wrap: anywhere; word-wrap: break-word; }
-    /* The IBAN stays on one line: a monospace IBAN needs more width than the other columns. */
-    .footer td.bank { width: 32%; white-space: nowrap; }
+    /* The widest text column: a German IBAN fits on one line. A longer one wraps between its groups of four. */
+    .footer td.bank { width: 32%; overflow-wrap: normal; word-wrap: normal; }
     .footer td.page { width: 16%; padding-right: 0; text-align: right; white-space: nowrap; }
     .footer .page-number:before { content: counter(page); }
     .footer .page-count:before { content: counter(pages); }
