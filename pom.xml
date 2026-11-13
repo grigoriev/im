@@ -386,6 +386,16 @@
                         <param>io.github.grigoriev.im.validation.*Test</param>
                         <param>io.github.grigoriev.im.customer.*Test</param>
                     </targetTests>
+                    <!-- These tests run the full validators (KoSIT, veraPDF) and take a minute each. The mutated
+                         classes have fast tests of their own, so PIT leaves the slow ones out. -->
+                    <excludedTestClasses>
+                        <param>io.github.grigoriev.im.einvoice.EInvoiceServiceTest</param>
+                        <param>io.github.grigoriev.im.einvoice.ValidatorsTest</param>
+                        <param>io.github.grigoriev.im.einvoice.PdfVisualTest</param>
+                        <param>io.github.grigoriev.im.einvoice.InvoicePdfRendererTest</param>
+                        <param>io.github.grigoriev.im.einvoice.EInvoiceWriterTest</param>
+                    </excludedTestClasses>
+                    <threads>4</threads>
                     <!-- The surefire argLine holds a JaCoCo placeholder that PIT cannot resolve. -->
                     <parseSurefireArgLine>false</parseSurefireArgLine>
                     <argLine>-XX:+EnableDynamicAgentLoading</argLine>
