@@ -35,7 +35,11 @@ import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.seller.SettingsException;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
+import io.github.grigoriev.im.numbering.NumberPattern;
+import io.github.grigoriev.im.numbering.NumberSequence;
+import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.web.AccountController;
+import io.github.grigoriev.im.web.NumberController;
 import io.github.grigoriev.im.web.SettingsController;
 import io.github.grigoriev.im.web.TaxNoteController;
 import io.github.grigoriev.im.web.AdminUserController;
@@ -57,7 +61,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
-        SettingsController.class, TaxNoteController.class})
+        SettingsController.class, TaxNoteController.class, NumberController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -90,6 +94,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private TaxNoteService taxNotes;
+
+    @MockitoBean
+    private NumberService numbers;
 
     private void knownUsers() {
         when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
@@ -304,6 +311,46 @@ class SecurityWebTest {
         doThrow(new SettingsException(List.of("Zu lang."))).when(taxNotes).save(Map.of());
         mvc.perform(post("/admin/steuerhinweise").with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(flash().attribute("error", "Zu lang."));
+    }
+
+    @Test
+    void showsThePatternAndTheCountersToTheAdmin() throws Exception {
+        NumberSequence used = new NumberSequence(2027, 8, true);
+        NumberSequence open = new NumberSequence(2028, 1, false);
+        when(numbers.pattern()).thenReturn(NumberPattern.DEFAULT);
+        when(numbers.years()).thenReturn(List.of(used, open));
+        when(numbers.preview(used)).thenReturn("2027-08");
+        when(numbers.preview(open)).thenReturn("2028-01");
+        mvc.perform(get("/admin/nummernkreis").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"{YYYY}-{NN}\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-08")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Der Zähler ist gesperrt.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"start-2028\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"start-2027\""))));
+        mvc.perform(get("/admin/nummernkreis").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void savesThePatternAndTheStartAndReportsProblems() throws Exception {
+        mvc.perform(post("/admin/nummernkreis/muster").param("pattern", "RE-{YYYY}-{NNN}")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/nummernkreis")).andExpect(flash().attribute("success", "Muster gespeichert."));
+        verify(numbers).savePattern("RE-{YYYY}-{NNN}");
+        when(numbers.savePattern("{NN}")).thenThrow(new SettingsException(List.of("Jahr fehlt.")));
+        mvc.perform(post("/admin/nummernkreis/muster").param("pattern", "{NN}").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Jahr fehlt."));
+
+        mvc.perform(post("/admin/nummernkreis/start").param("year", "2028").param("start", "10")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("success", "Startnummer für 2028 gespeichert."));
+        verify(numbers).setStart(2028, 10);
+        doThrow(new SettingsException(List.of("Gesperrt."))).when(numbers).setStart(2027, 5);
+        mvc.perform(post("/admin/nummernkreis/start").param("year", "2027").param("start", "5")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Gesperrt."));
+        mvc.perform(post("/admin/nummernkreis/start").param("year", "2028").param("start", "1")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
     }
 
     @Test

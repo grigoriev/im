@@ -60,6 +60,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await user.getByRole('link', { name: 'Einstellungen' }).click();
   await expect(user.getByRole('tab', { name: 'Profil' })).toBeVisible();
   await expect(user.getByRole('tab', { name: /Steuerhinweise/ })).toHaveCount(0);
+  await expect(user.getByRole('tab', { name: /Nummernkreis/ })).toHaveCount(0);
   const response = await user.goto('/admin/steuerhinweise');
   expect(response?.status()).toBe(403);
   await context.close();
