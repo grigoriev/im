@@ -32,7 +32,7 @@
 
         <mustang.version>2.26.0</mustang.version>
         <flying-saucer.version>10.7.0</flying-saucer.version>
-        <kosit-validator.version>1.6.3</kosit-validator.version>
+        <kosit-validator.version>2.0.0-tp2</kosit-validator.version>
         <!-- renovate: datasource=github-releases depName=itplr-kosit/validator-configuration-xrechnung -->
         <xrechnung-config.version>v2026-08-31</xrechnung-config.version>
         <xrechnung-config.file>xrechnung-3.0.2-validator-configuration-2026-08-31.zip</xrechnung-config.file>
