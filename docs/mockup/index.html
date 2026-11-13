@@ -226,7 +226,10 @@ const CUSTOMERS = [
 ];
 const cust = id => CUSTOMERS.find(c => c.id === id);
 const catsOf = i => i.cats ?? [i.cat];
-const amountOf = (i, k) => i.amounts ? (i.amounts[k] ?? 0) : (i.cat === k ? i.total : 0);
+function amountOf(i, k) {
+  if (i.amounts) return i.amounts[k] ?? 0;
+  return i.cat === k ? i.total : 0;
+}
 
 const INVOICES = [
   { no: '2027-09', c: 'lindenhof', date: '2027-03-14', due: '2027-03-28', total: 720, cat: 'ex', status: 'issued' },
@@ -826,7 +829,8 @@ function issueInvoice() {
 /* Router */
 function route() {
   const h = (location.hash || '#uebersicht').slice(1);
-  const key = h.startsWith('rechnung-') && h !== 'rechnung-neu' ? 'detail' : (VIEWS[h] ? h : 'uebersicht');
+  let key = VIEWS[h] ? h : 'uebersicht';
+  if (h.startsWith('rechnung-') && h !== 'rechnung-neu') key = 'detail';
   document.getElementById('view').innerHTML = key === 'detail' ? VIEWS.detail(h.slice(9)) : VIEWS[key]();
   document.getElementById('page-title').textContent = key === 'detail' ? 'Rechnung ' + h.slice(9) : TITLES[key];
   const navKey = key === 'detail' || key === 'rechnung-neu' ? 'rechnungen' : key;

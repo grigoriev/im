@@ -55,7 +55,8 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | Language | Java 25 (LTS) | Main stack of the developer. Best e-invoice libraries are on the JVM |
 | Framework | Spring Boot 4.x, Maven | Security, mail, scheduling, Flyway out of the box |
 | e-invoice | Mustang Project | Creates and reads ZUGFeRD, Factur-X and XRechnung |
-| Validation, ZUGFeRD | Mustang validator: EN 16931 and ZUGFeRD schematron, PDF/A-3 through veraPDF | The XRechnung rules do not apply to a plain EN16931 profile |
+| Validation, ZUGFeRD EN16931 | Mustang validator: EN 16931 and ZUGFeRD schematron, PDF/A-3 through veraPDF | The XRechnung rules do not apply to a plain EN16931 profile |
+| Validation, ZUGFeRD XRECHNUNG | As EN16931, plus KoSIT with the XRechnung configuration on the embedded XML | The profile claims the XRechnung rules, for example BR-DE-15 |
 | Validation, XRechnung | KoSIT validator + XRechnung configuration | Official validator, the same check that public buyers run |
 | PDF layout | Thymeleaf HTML, rendered by Flying Saucer as PDF/A-3B | Own layout. Mustang then embeds the XML |
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |

@@ -41,7 +41,7 @@ Flag these in a pull request:
 - Tax rules that contradict `docs/PLAN.md`: categories, §19 threshold, EN 16931 codes, rules BR-O-12 and BR-E-08
 - Threshold sums that use the invoice date instead of the payment date
 - Money in `double` or `float`, rounding without an explicit `RoundingMode`
-- Generated XML or PDF that skips the validation of its format, or checks ZUGFeRD against the XRechnung rules
+- Generated XML or PDF that skips the validation of its format or profile, or checks a ZUGFeRD EN16931 profile against the XRechnung rules
 - A URL without a role check, a form without CSRF protection, or a secret in the log
 - A frontend asset loaded from a CDN at runtime
 - Missing tests for new behavior: unit, integration, E2E and visual baselines per `docs/PLAN.md`
