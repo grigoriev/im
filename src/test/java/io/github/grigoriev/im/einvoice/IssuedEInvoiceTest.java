@@ -25,7 +25,8 @@ class IssuedEInvoiceTest {
                 .isNotEqualTo(issued(InvoiceFormat.XRECHNUNG, "other", "xml", OK))
                 .isNotEqualTo(issued(InvoiceFormat.XRECHNUNG, "pdf", "other", OK))
                 .isNotEqualTo(issued(InvoiceFormat.XRECHNUNG, "pdf", "xml", List.of()));
-        assertThat(one.equals(null)).isFalse();
+        boolean equalsNull = one.equals(null);
+        assertThat(equalsNull).as("equals(null)").isFalse();
     }
 
     @Test
