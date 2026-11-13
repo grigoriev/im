@@ -38,7 +38,7 @@
     <nav aria-label="Hauptmenü" class="bg-base-100 border-r border-base-300 w-64 min-h-full flex flex-col">
       <div class="px-5 py-5">
         <div class="font-semibold text-lg tracking-tight">Rechnungen</div>
-        <div class="text-xs text-base-content/75" th:if="${currentUser != null}" th:text="${currentUser.displayName}">Name</div>
+        <div class="text-xs text-base-content/75 [overflow-wrap:anywhere]" th:if="${currentUser != null}" th:text="${currentUser.displayName}">Name</div>
       </div>
       <ul class="menu w-full px-3 gap-0.5">
         <li><a th:href="@{/}" th:classappend="${active == 'home'} ? 'menu-active'"><i data-lucide="layout-dashboard" class="size-4"></i>Übersicht</a></li>

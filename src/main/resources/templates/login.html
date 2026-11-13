@@ -14,7 +14,8 @@
         <p class="text-sm text-base-content/75">Anmelden</p>
       </div>
       <div role="alert" class="alert alert-error text-sm" th:if="${param.error}">Benutzername oder Passwort ist falsch.</div>
-      <div role="status" class="alert alert-success text-sm" th:if="${param.abgemeldet}">Sie sind abgemeldet.</div>
+      <output class="alert alert-success text-sm" th:if="${param.abgemeldet}">Sie sind abgemeldet.</output>
+      <output class="alert alert-warning text-sm" th:if="${param.abgelaufen}">Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.</output>
       <form class="grid gap-3" th:action="@{/login}" method="post">
         <label class="floating-label"><span>Benutzername</span>
           <input id="username" name="username" class="input w-full" autocomplete="username" required>

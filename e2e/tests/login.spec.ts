@@ -72,3 +72,28 @@ test('the admin sets a new password', async ({ page, browser }) => {
   await expect(user.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Gast');
   await context.close();
 });
+
+test('a long name without spaces stays inside the menu and the page', async ({ page, browser }) => {
+  const username = uniqueUsername('lang');
+  const name = 'Sehrlangername'.repeat(9).slice(0, 120);
+  await page.goto('/admin/benutzer');
+  await page.getByLabel('Benutzername').fill(username);
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.locator('#new-password').fill('lang-passwort-123');
+  await page.getByRole('button', { name: 'Anlegen' }).click();
+
+  const context = await browser.newContext({ storageState: ANONYMOUS, viewport: { width: 1024, height: 800 } });
+  const user = await context.newPage();
+  await user.goto('/login');
+  await user.getByLabel('Benutzername').fill(username);
+  await user.getByLabel('Passwort').fill('lang-passwort-123');
+  await user.getByRole('button', { name: 'Anmelden' }).click();
+  await expect(user.getByRole('heading', { level: 1 })).toContainText('Sehrlangername');
+  const overflow = await user.evaluate(() => {
+    const menu = document.querySelector('nav[aria-label="Hauptmenü"]')!;
+    const inside = [...menu.querySelectorAll('*')].every((el) => el.getBoundingClientRect().right <= menu.getBoundingClientRect().right + 1);
+    return { inside, page: document.scrollingElement!.scrollWidth <= window.innerWidth + 1 };
+  });
+  expect(overflow).toEqual({ inside: true, page: true });
+  await context.close();
+});

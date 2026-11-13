@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,8 +18,12 @@ public class UserService {
     /** Minimum password length. A passkey is the usual login; the password is the fallback. */
     static final int MIN_PASSWORD = 12;
 
+    /** Maximum length of the display name, as in the database. */
+    static final int MAX_DISPLAY_NAME = 128;
+
     private final AppUserRepository users;
     private final PasswordEncoder encoder;
+    private final PersistentTokenRepository rememberMe;
     private final Clock clock;
 
     /**
@@ -26,11 +31,14 @@ public class UserService {
      *
      * @param users the user store
      * @param encoder encodes passwords
+     * @param rememberMe the "Angemeldet bleiben" tokens
      * @param clock source of the creation time
      */
-    public UserService(AppUserRepository users, PasswordEncoder encoder, Clock clock) {
+    public UserService(AppUserRepository users, PasswordEncoder encoder, PersistentTokenRepository rememberMe,
+            Clock clock) {
         this.users = users;
         this.encoder = encoder;
+        this.rememberMe = rememberMe;
         this.clock = clock;
     }
 
@@ -61,6 +69,9 @@ public class UserService {
         if (displayName == null || displayName.isBlank()) {
             throw new UserException("Bitte einen Namen angeben.");
         }
+        if (displayName.strip().length() > MAX_DISPLAY_NAME) {
+            throw new UserException("Der Name hat höchstens " + MAX_DISPLAY_NAME + " Zeichen.");
+        }
         checkPassword(password);
         if (users.findByUsername(username).isPresent()) {
             throw new UserException("Der Benutzername „" + username + "“ ist schon vergeben.");
@@ -70,7 +81,8 @@ public class UserService {
     }
 
     /**
-     * Sets a new password.
+     * Sets a new password and ends every "Angemeldet bleiben" of the user: a reset usually follows a
+     * leaked password or a lost device.
      *
      * @param id the user
      * @param password the new password
@@ -81,7 +93,9 @@ public class UserService {
     public AppUser resetPassword(long id, String password) {
         checkPassword(password);
         AppUser user = users.findById(id).orElseThrow(() -> new UserException("Diesen Benutzer gibt es nicht."));
-        return users.save(user.withPasswordHash(encoder.encode(password)));
+        AppUser saved = users.save(user.withPasswordHash(encoder.encode(password)));
+        rememberMe.removeUserTokens(saved.username());
+        return saved;
     }
 
     private static void checkPassword(String password) {

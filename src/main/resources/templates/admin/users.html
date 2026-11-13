@@ -9,13 +9,13 @@
 <div th:replace="~{fragments/layout :: shell('Benutzer', 'users', ~{::content})}">
   <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
     <h1 class="text-2xl font-semibold tracking-tight">Benutzer</h1>
-    <div role="status" class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
     <section id="user-list" class="bg-base-100 rounded-box border border-base-300 divide-y divide-base-300">
       <div th:each="user : ${users}" class="p-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div class="min-w-0">
-          <div class="font-medium" th:text="${user.displayName}">Name</div>
+          <div class="font-medium [overflow-wrap:anywhere]" th:text="${user.displayName}">Name</div>
           <div class="text-xs text-base-content/75 flex flex-wrap gap-x-3">
             <span th:text="${user.username}">login</span>
             <span th:text="${user.role.name() == 'ADMIN'} ? 'Admin' : 'Benutzer'">Rolle</span>
@@ -37,7 +37,7 @@
           <input id="new-username" name="username" class="input w-full" th:value="${username}" autocomplete="off" pattern="[a-z0-9._\-]{3,32}" required>
         </label>
         <label class="floating-label"><span>Name</span>
-          <input id="new-display-name" name="displayName" class="input w-full" th:value="${displayName}" required>
+          <input id="new-display-name" name="displayName" class="input w-full" th:value="${displayName}" maxlength="128" required>
         </label>
         <label class="floating-label"><span>Passwort</span>
           <input id="new-password" name="password" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>

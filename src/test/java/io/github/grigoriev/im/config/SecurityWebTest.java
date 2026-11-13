@@ -105,9 +105,13 @@ class SecurityWebTest {
     }
 
     @Test
-    void refusesAPostWithoutCsrfToken() throws Exception {
+    void sendsAPostWithoutValidCsrfTokenBackToTheLogin() throws Exception {
         mvc.perform(post("/login").param("username", "elena").param("password", PASSWORD))
-                .andExpect(status().isForbidden());
+                .andExpect(redirectedUrl("/login?abgelaufen"));
+        mvc.perform(post("/logout").with(user("elena")).with(csrf().useInvalidToken()))
+                .andExpect(redirectedUrl("/login?abgelaufen"));
+        mvc.perform(get("/login").param("abgelaufen", ""))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Die Sitzung ist abgelaufen.")));
     }
 
     @Test

@@ -110,11 +110,13 @@ class LoginIT {
     }
 
     @Test
-    void storesTheRememberMeToken() throws Exception {
-        service.create("gast", "Gast", "gast-passwort-123", Role.USER);
+    void storesTheRememberMeTokenAndDropsItOnAPasswordReset() throws Exception {
+        AppUser gast = service.create("gast", "Gast", "gast-passwort-123", Role.USER);
         loggedIn("gast", "gast-passwort-123", true);
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM persistent_logins WHERE username = 'gast'", Integer.class))
-                .isEqualTo(1);
+        String count = "SELECT count(*) FROM persistent_logins WHERE username = 'gast'";
+        assertThat(jdbc.queryForObject(count, Integer.class)).isEqualTo(1);
+        service.resetPassword(gast.id(), "neues-passwort-123");
+        assertThat(jdbc.queryForObject(count, Integer.class)).isZero();
     }
 
     @Test

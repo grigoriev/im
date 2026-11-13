@@ -3,7 +3,7 @@ import { ANONYMOUS } from './accounts';
 import { ROUTES } from './routes';
 
 // Screenshot of every page, light and dark, phone and desktop. Update with scripts/e2e.sh --update.
-// Data that other tests add in parallel, such as new users, is masked.
+// The project "visual" runs before every test that adds data (playwright.config.ts).
 const VIEWPORTS = [
   { name: 'phone', width: 390, height: 844 },
   { name: 'desktop', width: 1440, height: 900 },
@@ -21,10 +21,7 @@ for (const route of ROUTES) {
         const page = await context.newPage();
         await page.goto(route.path);
         await page.evaluate(() => document.fonts.ready);
-        await expect(page).toHaveScreenshot(`${route.name}-${viewport.name}-${scheme}.png`, {
-          fullPage: true,
-          mask: [page.locator('#user-list')],
-        });
+        await expect(page).toHaveScreenshot(`${route.name}-${viewport.name}-${scheme}.png`, { fullPage: true });
         await context.close();
       });
     }

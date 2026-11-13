@@ -21,5 +21,9 @@ export default defineConfig({
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.001, animations: 'disabled' },
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // The screenshots run first, while the database holds only the admin: tests that add data come after.
+  projects: [
+    { name: 'visual', testMatch: /visual\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'chromium', testIgnore: /visual\.spec\.ts/, dependencies: ['visual'], use: { ...devices['Desktop Chrome'] } },
+  ],
 });

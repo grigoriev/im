@@ -17,6 +17,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 class UserServiceTest {
 
@@ -24,7 +25,8 @@ class UserServiceTest {
 
     private final AppUserRepository repository = mock(AppUserRepository.class);
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
-    private final UserService service = new UserService(repository, encoder,
+    private final PersistentTokenRepository rememberMe = mock(PersistentTokenRepository.class);
+    private final UserService service = new UserService(repository, encoder, rememberMe,
             Clock.fixed(UserTestData.CREATED, ZoneOffset.UTC));
 
     UserServiceTest() {
@@ -84,9 +86,19 @@ class UserServiceTest {
     }
 
     @Test
-    void resetsThePassword() {
+    void resetsThePasswordAndEndsEveryRememberMe() {
         when(repository.findById(1L)).thenReturn(Optional.of(UserTestData.user(1, "elena", Role.USER)));
         assertThat(service.resetPassword(1, PASSWORD).passwordHash()).isEqualTo("{enc}" + PASSWORD);
+        verify(rememberMe).removeUserTokens("elena");
+    }
+
+    @Test
+    void limitsTheDisplayNameTo128Characters() {
+        String max = "x".repeat(128);
+        assertThat(service.create("elena", " " + max + " ", PASSWORD, Role.USER).displayName()).isEqualTo(max);
+        String tooLong = "x".repeat(129);
+        assertThatThrownBy(() -> service.create("elena2", tooLong, PASSWORD, Role.USER))
+                .isInstanceOf(UserException.class).hasMessage("Der Name hat höchstens 128 Zeichen.");
     }
 
     @Test
@@ -96,6 +108,7 @@ class UserServiceTest {
         when(repository.findById(9L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.resetPassword(9, PASSWORD)).isInstanceOf(UserException.class)
                 .hasMessage("Diesen Benutzer gibt es nicht.");
+        verify(rememberMe, never()).removeUserTokens(any());
     }
 
     @Test
