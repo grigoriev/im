@@ -138,7 +138,7 @@ public class CustomerController {
     }
 
     private String page(Model model, Customer customer) {
-        model.addAttribute("customers", customers.list());
+        model.addAttribute("customerList", customers.list());
         model.addAttribute("customer", customer);
         model.addAttribute("formats", FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());

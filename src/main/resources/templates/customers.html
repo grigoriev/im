@@ -17,9 +17,9 @@
 
     <div class="grid gap-4 grid-cols-[minmax(0,1fr)] md:grid-cols-[18rem_minmax(0,1fr)] items-start">
       <nav aria-label="Kundenliste" class="bg-base-100 rounded-box border border-base-300 p-2">
-        <p class="text-sm text-base-content/75 p-3" th:if="${customers.isEmpty()}">Noch keine Kunden.</p>
-        <ul class="menu w-full p-0" th:unless="${customers.isEmpty()}" id="customer-list">
-          <li th:each="item : ${customers}">
+        <p class="text-sm text-base-content/75 p-3" th:if="${customerList.isEmpty()}">Noch keine Kunden.</p>
+        <ul class="menu w-full p-0" th:unless="${customerList.isEmpty()}" id="customer-list">
+          <li th:each="item : ${customerList}">
             <a th:href="@{/kunden/{id}(id=${item.id})}" th:classappend="${customer != null && customer.id == item.id} ? 'menu-active'"
                th:attr="aria-current=${customer != null && customer.id == item.id} ? 'page'">
               <span class="min-w-0 grid">

@@ -61,7 +61,8 @@ class CustomerServiceTest {
         when(repository.existsById(4L)).thenReturn(true);
         when(repository.save(any())).thenAnswer(call -> call.getArgument(0));
         assertThat(service.update(4, CustomerTestData.verlag().withId(99L)).id()).isEqualTo(4L);
-        assertThatThrownBy(() -> service.update(5, CustomerTestData.verlag())).isInstanceOf(CustomerException.class)
+        Customer verlag = CustomerTestData.verlag();
+        assertThatThrownBy(() -> service.update(5, verlag)).isInstanceOf(CustomerException.class)
                 .hasMessage("Diesen Kunden gibt es nicht.");
         verify(repository, never()).save(CustomerTestData.verlag().withId(5L));
     }
