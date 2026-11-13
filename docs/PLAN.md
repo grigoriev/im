@@ -104,8 +104,8 @@ Not chosen:
 | `AppUser` | Login, role, password hash |
 | `Passkey` | WebAuthn credential of a user |
 | `SellerProfile` | Name, address, tax number, IBAN, contact data, logo |
-| `Customer` | Address, country, e-mail, USt-IdNr, Leitweg-ID, format (ZUGFeRD or XRechnung) |
-| `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, e-mail text |
+| `Customer` | Address, country, e-mail, USt-IdNr, Leitweg-ID, format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
+| `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), e-mail text |
 | `Invoice` | Number, status, dates, service period, texts, payment terms, snapshots of seller and buyer |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, path, SHA-256, size |
