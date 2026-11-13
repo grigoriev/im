@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// Japan is not on the starting list: only this test adds it, and it removes it again.
+// The list starts with Germany only. Only this test adds Japan, and it removes it again.
 test('the admin adds a country that the customer form then offers', async ({ page }) => {
   await page.goto('/admin/laender');
   await expect(page.getByRole('tab', { name: /Länder/ })).toHaveAttribute('aria-selected', 'true');

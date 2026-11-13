@@ -18,15 +18,16 @@ class CountryIT {
     private CountryService countries;
 
     @Test
-    void startsWithTheEuAndItsNeighborsAndKeepsTheChanges() {
-        assertThat(countries.enabled()).extracting(Country::code).contains("DE", "AT", "FR", "CH", "GB", "US")
-                .doesNotContain("JP").hasSize(32);
+    void startsWithGermanyOnlyAndKeepsTheChanges() {
+        assertThat(countries.enabled()).extracting(Country::code).containsExactly("DE");
         countries.add("JP");
         countries.add("JP");
-        assertThat(countries.enabled()).extracting(Country::code).contains("JP").hasSize(33);
-        assertThat(countries.others()).extracting(Country::code).doesNotContain("JP");
+        countries.add("AT");
+        assertThat(countries.enabled()).extracting(Country::code).containsExactly("DE", "JP", "AT");
+        assertThat(countries.others()).extracting(Country::code).doesNotContain("JP", "AT");
         countries.remove("JP");
-        assertThat(countries.enabled()).hasSize(32);
+        countries.remove("AT");
+        assertThat(countries.enabled()).extracting(Country::code).containsExactly("DE");
         assertThat(countries.options("JP")).extracting(Country::code).contains("JP");
     }
 }

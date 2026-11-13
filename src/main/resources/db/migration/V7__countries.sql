@@ -3,8 +3,5 @@ CREATE TABLE country (
     code VARCHAR(2) PRIMARY KEY
 );
 
--- The EU, and the neighbors and markets a German freelancer bills most often.
-INSERT INTO country (code) VALUES
-    ('AT'), ('BE'), ('BG'), ('CY'), ('CZ'), ('DE'), ('DK'), ('EE'), ('ES'), ('FI'), ('FR'), ('GR'), ('HR'), ('HU'),
-    ('IE'), ('IT'), ('LT'), ('LU'), ('LV'), ('MT'), ('NL'), ('PL'), ('PT'), ('RO'), ('SE'), ('SI'), ('SK'),
-    ('CH'), ('GB'), ('LI'), ('NO'), ('US');
+-- Only Germany at the start: the admin adds the countries of the customers.
+INSERT INTO country (code) VALUES ('DE');
