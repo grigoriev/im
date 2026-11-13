@@ -46,10 +46,13 @@ class ApplicationIT {
     }
 
     @Test
-    void servesTheStartPage() throws Exception {
-        HttpResponse<String> response = get("/");
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("<html lang=\"de\"").contains("Rechnungen");
+    void sendsAnonymousVisitorsToTheLoginPage() throws Exception {
+        HttpResponse<String> start = get("/");
+        assertThat(start.statusCode()).isEqualTo(302);
+        assertThat(start.headers().firstValue("Location")).hasValueSatisfying(url -> assertThat(url).endsWith("/login"));
+        HttpResponse<String> login = get("/login");
+        assertThat(login.statusCode()).isEqualTo(200);
+        assertThat(login.body()).contains("<html lang=\"de\"").contains("Anmelden");
     }
 
     @Test

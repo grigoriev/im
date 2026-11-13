@@ -15,6 +15,8 @@ export default defineConfig({
     locale: 'de-DE',
     timezoneId: 'Europe/Berlin',
     trace: 'retain-on-failure',
+    // Logged in as the admin of docker-compose.yml. Tests of the login page reset it.
+    storageState: '.auth/admin.json',
   },
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.001, animations: 'disabled' },

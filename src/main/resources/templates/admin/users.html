@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Benutzer · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Benutzer', 'users', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <h1 class="text-2xl font-semibold tracking-tight">Benutzer</h1>
+    <div role="status" class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</div>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <section id="user-list" class="bg-base-100 rounded-box border border-base-300 divide-y divide-base-300">
+      <div th:each="user : ${users}" class="p-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div class="min-w-0">
+          <div class="font-medium" th:text="${user.displayName}">Name</div>
+          <div class="text-xs text-base-content/75 flex flex-wrap gap-x-3">
+            <span th:text="${user.username}">login</span>
+            <span th:text="${user.role.name() == 'ADMIN'} ? 'Admin' : 'Benutzer'">Rolle</span>
+          </div>
+        </div>
+        <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/benutzer/{id}/passwort(id=${user.id})}" method="post">
+          <label class="floating-label grow sm:grow-0"><span>Neues Passwort</span>
+            <input th:id="'password-' + ${user.id}" name="password" type="password" class="input input-sm w-full sm:w-48" autocomplete="new-password" minlength="12" required>
+          </label>
+          <button type="submit" class="btn btn-sm">Passwort setzen</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+      <h2 class="font-semibold">Neuer Benutzer</h2>
+      <form class="grid gap-3 sm:grid-cols-2" th:action="@{/admin/benutzer}" method="post">
+        <label class="floating-label"><span>Benutzername</span>
+          <input id="new-username" name="username" class="input w-full" th:value="${username}" autocomplete="off" pattern="[a-z0-9._\-]{3,32}" required>
+        </label>
+        <label class="floating-label"><span>Name</span>
+          <input id="new-display-name" name="displayName" class="input w-full" th:value="${displayName}" required>
+        </label>
+        <label class="floating-label"><span>Passwort</span>
+          <input id="new-password" name="password" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
+        </label>
+        <label class="floating-label"><span>Rolle</span>
+          <select id="new-role" name="role" class="select w-full">
+            <option value="USER" selected>Benutzer</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </label>
+        <div class="sm:col-span-2"><button type="submit" class="btn btn-primary">Anlegen</button></div>
+      </form>
+    </section>
+  </div>
+</div>
+</body>
+</html>
