@@ -7,7 +7,7 @@ Issues and pull requests are welcome.
 The application code arrives with milestone M0, see [docs/PLAN.md](docs/PLAN.md). The build and
 test commands follow then.
 
-CI runs the Claude Code review, SonarCloud and CodeQL for every pull request.
+CI runs the lint job, the SonarCloud analysis and the Claude Code review for every pull request.
 
 ## Pull requests
 
