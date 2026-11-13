@@ -12,6 +12,7 @@ import org.mustangproject.Invoice;
 import org.mustangproject.Item;
 import org.mustangproject.Product;
 import org.mustangproject.TradeParty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /** Maps an {@link InvoiceDocument} to the invoice model of the Mustang library. */
@@ -28,6 +29,7 @@ public class MustangInvoiceMapper {
     private final ZoneId zone;
 
     /** Creates a mapper that converts dates in the system time zone. */
+    @Autowired
     public MustangInvoiceMapper() {
         this(ZoneId.systemDefault());
     }

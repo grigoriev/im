@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.pdf.BaseFont;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.ITemplateEngine;
 import org.thymeleaf.context.Context;
@@ -35,6 +36,7 @@ public class InvoicePdfRenderer {
      *
      * @param templates the Thymeleaf engine that holds {@code pdf/invoice.html}
      */
+    @Autowired
     public InvoicePdfRenderer(ITemplateEngine templates) {
         this(templates, FONTS);
     }
