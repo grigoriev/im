@@ -27,6 +27,7 @@
 
     <properties>
         <java.version>25</java.version>
+        <skipTests>false</skipTests>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
@@ -108,6 +109,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- Passkeys: Touch ID and Face ID through WebAuthn (docs/PLAN.md, section 5). -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-webauthn</artifactId>
         </dependency>
         <dependency>
             <groupId>org.thymeleaf.extras</groupId>
@@ -293,6 +299,8 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <!-- No tests, no coverage to check: "mvn package -DskipTests" builds the jar for the E2E run. -->
+                            <skip>${skipTests}</skip>
                             <dataFile>${project.build.directory}/jacoco.exec</dataFile>
                             <rules>
                                 <rule>

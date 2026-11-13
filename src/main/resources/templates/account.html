@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Mein Konto · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Mein Konto', 'account', ~{::content})}">
+  <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4">
+    <h1 class="text-2xl font-semibold tracking-tight">Mein Konto</h1>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <output class="alert alert-success text-sm" th:if="${param.passkey}">Passkey hinzugefügt.</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4">
+      <div>
+        <h2 class="font-semibold">Passkeys</h2>
+        <p class="text-sm text-base-content/75">Mit einem Passkey melden Sie sich per Touch ID oder Face ID an.
+          Über den iCloud-Schlüsselbund steht er auf allen Ihren Apple-Geräten bereit.</p>
+      </div>
+      <p class="text-sm text-base-content/75" th:if="${passkeys.isEmpty()}">Noch kein Passkey. Fügen Sie unten einen hinzu.</p>
+      <div id="passkey-list" class="grid gap-3" th:unless="${passkeys.isEmpty()}">
+        <div th:each="passkey : ${passkeys}" class="border border-base-300 rounded-field p-3 grid gap-2">
+          <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+            <span class="font-medium [overflow-wrap:anywhere]" th:text="${passkey.label}">MacBook</span>
+            <span class="text-xs text-base-content/75"
+                  th:text="'Hinzugefügt am ' + ${#temporals.format(passkey.created, 'dd.MM.yyyy', 'Europe/Berlin')}
+                     + (${passkey.lastUsed} != null ? ' · zuletzt ' + ${#temporals.format(passkey.lastUsed, 'dd.MM.yyyy', 'Europe/Berlin')} : '')">Datum</span>
+          </div>
+          <div class="flex flex-wrap gap-2 items-end">
+            <form class="flex flex-wrap gap-2 items-end grow" th:action="@{/konto/passkeys/{id}/name(id=${passkey.id})}" method="post">
+              <label class="floating-label grow"><span>Name</span>
+                <input th:id="'label-' + ${passkeyStat.index}" name="label" class="input input-sm w-full" th:value="${passkey.label}" maxlength="64" required>
+              </label>
+              <button type="submit" class="btn btn-sm">Umbenennen</button>
+            </form>
+            <form th:action="@{/konto/passkeys/{id}/loeschen(id=${passkey.id})}" method="post">
+              <button type="submit" class="btn btn-sm btn-ghost text-error">Entfernen</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <form class="flex flex-wrap gap-2 items-end" data-passkey-register>
+        <label class="floating-label grow"><span>Name des Geräts</span>
+          <input id="new-passkey-label" name="label" class="input w-full" placeholder="z. B. MacBook Air" maxlength="64" required>
+        </label>
+        <button type="submit" class="btn btn-primary"><i data-lucide="fingerprint" class="size-4"></i>Passkey hinzufügen</button>
+      </form>
+      <p role="alert" class="alert alert-error text-sm" data-passkey-message hidden></p>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+      <h2 class="font-semibold">Passwort ändern</h2>
+      <form class="grid gap-3 sm:grid-cols-2" th:action="@{/konto/passwort}" method="post">
+        <label class="floating-label"><span>Aktuelles Passwort</span>
+          <input id="current-password" name="current" type="password" class="input w-full" autocomplete="current-password" required>
+        </label>
+        <label class="floating-label"><span>Neues Passwort</span>
+          <input id="new-own-password" name="password" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
+        </label>
+        <div class="sm:col-span-2"><button type="submit" class="btn">Passwort ändern</button></div>
+      </form>
+    </section>
+  </div>
+</div>
+</body>
+</html>

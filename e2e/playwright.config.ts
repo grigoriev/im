@@ -11,7 +11,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   globalSetup: './global-setup.ts',
   use: {
-    baseURL: process.env.BASE_URL ?? 'http://web:8080',
+    baseURL: process.env.BASE_URL ?? 'http://localhost:8080',
     locale: 'de-DE',
     timezoneId: 'Europe/Berlin',
     trace: 'retain-on-failure',
@@ -19,7 +19,8 @@ export default defineConfig({
     storageState: '.auth/admin.json',
   },
   expect: {
-    toHaveScreenshot: { maxDiffPixelRatio: 0.001, animations: 'disabled' },
+    // Strict on purpose: the default threshold 0.2 misses dark theme changes, and a ratio misses one new menu item.
+    toHaveScreenshot: { threshold: 0.05, maxDiffPixels: 20, animations: 'disabled' },
   },
   // The screenshots run first, while the database holds only the admin: tests that add data come after.
   projects: [

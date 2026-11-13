@@ -19,6 +19,7 @@
           <div class="text-xs text-base-content/75 flex flex-wrap gap-x-3">
             <span th:text="${user.username}">login</span>
             <span th:text="${user.role.name() == 'ADMIN'} ? 'Admin' : 'Benutzer'">Rolle</span>
+            <span th:text="${passkeyCounts[user.username]} + ' Passkey(s)'">0 Passkeys</span>
           </div>
         </div>
         <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/benutzer/{id}/passwort(id=${user.id})}" method="post">
@@ -26,6 +27,8 @@
             <input th:id="'password-' + ${user.id}" name="password" type="password" class="input input-sm w-full sm:w-48" autocomplete="new-password" minlength="12" required>
           </label>
           <button type="submit" class="btn btn-sm">Passwort setzen</button>
+          <button type="submit" class="btn btn-sm btn-ghost text-error" th:if="${passkeyCounts[user.username] > 0}"
+                  th:formaction="@{/admin/benutzer/{id}/passkeys/loeschen(id=${user.id})}" formnovalidate>Passkeys entfernen</button>
         </form>
       </div>
     </section>

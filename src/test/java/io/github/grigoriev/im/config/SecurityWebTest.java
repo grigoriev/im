@@ -3,6 +3,7 @@ package io.github.grigoriev.im.config;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -24,6 +25,9 @@ import io.github.grigoriev.im.user.Role;
 import io.github.grigoriev.im.user.UserException;
 import io.github.grigoriev.im.user.UserService;
 import io.github.grigoriev.im.user.UserTestData;
+import io.github.grigoriev.im.user.Passkey;
+import io.github.grigoriev.im.user.PasskeyService;
+import io.github.grigoriev.im.web.AccountController;
 import io.github.grigoriev.im.web.AdminUserController;
 import io.github.grigoriev.im.web.CurrentUserAdvice;
 import io.github.grigoriev.im.web.HomeController;
@@ -41,8 +45,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
-@WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class})
+@WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
+@org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 
     private static final String PASSWORD = "lang-genug-123";
@@ -64,6 +69,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private PersistentTokenRepository tokens;
+
+    @MockitoBean
+    private PasskeyService passkeys;
 
     private void knownUsers() {
         when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
@@ -144,9 +152,12 @@ class SecurityWebTest {
         mvc.perform(get("/admin/benutzer").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
         when(users.list()).thenReturn(List.of(UserTestData.user(1, "admin", Role.ADMIN),
                 UserTestData.user(2, "elena", Role.USER)));
+        when(passkeys.count("elena")).thenReturn(1);
         mvc.perform(get("/admin/benutzer").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Name elena")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Neuer Benutzer")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Neuer Benutzer")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("1 Passkey(s)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Passkeys entfernen")));
     }
 
     @Test
@@ -164,6 +175,68 @@ class SecurityWebTest {
                 .andExpect(flash().attribute("error", "Kaputt."))
                 .andExpect(flash().attribute("username", "x"))
                 .andExpect(flash().attribute("displayName", "X"));
+    }
+
+    @Test
+    void offersPasskeyLoginToAnonymousVisitors() throws Exception {
+        mvc.perform(get("/login")).andExpect(content().string(org.hamcrest.Matchers.containsString("Mit Passkey anmelden")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf_header\"")));
+        mvc.perform(post("/webauthn/authenticate/options").with(csrf())).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"challenge\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"rpId\":\"localhost\"")));
+        mvc.perform(post("/webauthn/register/options").with(csrf())).andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void showsTheAccountWithItsPasskeys() throws Exception {
+        knownUsers();
+        when(passkeys.list("elena")).thenReturn(List.of(new Passkey("id1", "MacBook Air", UserTestData.CREATED, null),
+                new Passkey("id2", "iPhone", UserTestData.CREATED, UserTestData.CREATED)));
+        mvc.perform(get("/konto").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("MacBook Air")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Hinzugefügt am 02.01.2027 · zuletzt 02.01.2027")));
+        when(passkeys.list("admin")).thenReturn(List.of());
+        mvc.perform(get("/konto").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch kein Passkey.")));
+    }
+
+    @Test
+    void renamesAndRemovesOwnPasskeysAndReportsProblems() throws Exception {
+        mvc.perform(post("/konto/passkeys/id1/name").param("label", "Neu").with(user("elena")).with(csrf()))
+                .andExpect(redirectedUrl("/konto")).andExpect(flash().attribute("success", "Passkey umbenannt."));
+        verify(passkeys).rename("elena", "id1", "Neu");
+        doThrow(new UserException("Fremd.")).when(passkeys).rename("elena", "x", "Neu");
+        mvc.perform(post("/konto/passkeys/x/name").param("label", "Neu").with(user("elena")).with(csrf()))
+                .andExpect(flash().attribute("error", "Fremd."));
+        mvc.perform(post("/konto/passkeys/id1/loeschen").with(user("elena")).with(csrf()))
+                .andExpect(flash().attribute("success", "Passkey entfernt."));
+        verify(passkeys).remove("elena", "id1");
+        doThrow(new UserException("Fremd.")).when(passkeys).remove("elena", "x");
+        mvc.perform(post("/konto/passkeys/x/loeschen").with(user("elena")).with(csrf()))
+                .andExpect(flash().attribute("error", "Fremd."));
+    }
+
+    @Test
+    void changesTheOwnPasswordAndReportsAProblem() throws Exception {
+        mvc.perform(post("/konto/passwort").param("current", "alt").param("password", PASSWORD).with(user("elena")).with(csrf()))
+                .andExpect(flash().attribute("success", "Passwort geändert."));
+        verify(users).changePassword("elena", "alt", PASSWORD);
+        doThrow(new UserException("Falsch.")).when(users).changePassword("elena", "x", PASSWORD);
+        mvc.perform(post("/konto/passwort").param("current", "x").param("password", PASSWORD).with(user("elena")).with(csrf()))
+                .andExpect(flash().attribute("error", "Falsch."));
+    }
+
+    @Test
+    void theAdminRemovesThePasskeysOfAUser() throws Exception {
+        when(users.get(2)).thenReturn(UserTestData.user(2, "elena", Role.USER));
+        when(passkeys.removeAll("elena")).thenReturn(2);
+        mvc.perform(post("/admin/benutzer/2/passkeys/loeschen").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("success", "2 Passkey(s) von „elena“ entfernt."));
+        when(users.get(9)).thenThrow(new UserException("Diesen Benutzer gibt es nicht."));
+        mvc.perform(post("/admin/benutzer/9/passkeys/loeschen").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Diesen Benutzer gibt es nicht."));
+        mvc.perform(post("/admin/benutzer/2/passkeys/loeschen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
     }
 
     @Test

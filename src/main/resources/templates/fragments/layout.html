@@ -5,10 +5,13 @@
   <!-- Viewport, styles and scripts of every page. Each page writes its own title. -->
   <th:block th:fragment="assets">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
     <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css">
     <script th:src="@{/js/theme.js}" src="/js/theme.js" defer></script>
     <script th:src="@{/vendor/lucide.min.js}" src="/vendor/lucide.min.js" defer></script>
     <script th:src="@{/js/app.js}" src="/js/app.js" defer></script>
+    <script th:src="@{/js/passkeys.js}" src="/js/passkeys.js" defer></script>
   </th:block>
 </head>
 <body>
@@ -42,6 +45,7 @@
       </div>
       <ul class="menu w-full px-3 gap-0.5">
         <li><a th:href="@{/}" th:classappend="${active == 'home'} ? 'menu-active'"><i data-lucide="layout-dashboard" class="size-4"></i>Übersicht</a></li>
+        <li><a th:href="@{/konto}" th:classappend="${active == 'account'} ? 'menu-active'"><i data-lucide="user-round" class="size-4"></i>Mein Konto</a></li>
         <th:block sec:authorize="hasRole('ADMIN')">
           <li class="menu-title mt-4 text-base-content/75">Verwaltung</li>
           <li><a th:href="@{/admin/benutzer}" th:classappend="${active == 'users'} ? 'menu-active'"><i data-lucide="users" class="size-4"></i>Benutzer</a></li>

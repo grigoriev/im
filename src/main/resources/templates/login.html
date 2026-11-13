@@ -16,15 +16,19 @@
       <div role="alert" class="alert alert-error text-sm" th:if="${param.error}">Benutzername oder Passwort ist falsch.</div>
       <output class="alert alert-success text-sm" th:if="${param.abgemeldet}">Sie sind abgemeldet.</output>
       <output class="alert alert-warning text-sm" th:if="${param.abgelaufen}">Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.</output>
+      <button type="button" class="btn btn-primary btn-lg w-full" data-passkey-login><i data-lucide="fingerprint" class="size-5"></i>Mit Passkey anmelden</button>
+      <p class="text-xs text-center text-base-content/75 -mt-2">Touch ID am Mac, Face ID am iPhone</p>
+      <p role="alert" class="alert alert-error text-sm" data-passkey-message hidden></p>
+      <div class="divider text-xs text-base-content/75 my-0">oder mit Passwort</div>
       <form class="grid gap-3" th:action="@{/login}" method="post">
         <label class="floating-label"><span>Benutzername</span>
-          <input id="username" name="username" class="input w-full" autocomplete="username" required>
+          <input id="username" name="username" class="input w-full" autocomplete="username webauthn" required>
         </label>
         <label class="floating-label"><span>Passwort</span>
           <input id="password" name="password" type="password" class="input w-full" autocomplete="current-password" required>
         </label>
         <label class="flex items-center gap-2 text-sm"><input id="angemeldet-bleiben" name="angemeldet-bleiben" type="checkbox" class="checkbox checkbox-sm">Angemeldet bleiben</label>
-        <button type="submit" class="btn btn-primary w-full">Anmelden</button>
+        <button type="submit" class="btn w-full">Anmelden</button>
       </form>
     </div>
   </main>

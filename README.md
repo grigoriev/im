@@ -28,12 +28,17 @@ The image is `ghcr.io/grigoriev/im`. It needs PostgreSQL:
 docker run -p 8080:8080 \
   -e IM_DB_URL=jdbc:postgresql://db:5432/im -e IM_DB_USER=im -e IM_DB_PASSWORD=... \
   -e IM_ADMIN_USERNAME=admin -e IM_ADMIN_PASSWORD=... -e IM_REMEMBER_ME_KEY=... \
+  -e IM_WEBAUTHN_RP_ID=rechnungen.example -e IM_WEBAUTHN_ALLOWED_ORIGINS=https://rechnungen.example \
   ghcr.io/grigoriev/im:latest
 ```
 
 `IM_ADMIN_USERNAME` and `IM_ADMIN_PASSWORD` create the first admin at startup while no admin exists. The
 admin creates the other users on the page "Benutzer". `IM_REMEMBER_ME_KEY` signs the "Angemeldet bleiben"
 cookie: set a long random value.
+
+Passkeys need HTTPS, or `http://localhost`. `IM_WEBAUTHN_RP_ID` is the host name of the app, and
+`IM_WEBAUTHN_ALLOWED_ORIGINS` lists its origins, comma separated. A passkey works only on the host it
+was created for. Each user adds passkeys on the page "Mein Konto". The admin can remove them.
 
 Verify an image: `gh attestation verify oci://ghcr.io/grigoriev/im:<version> --owner grigoriev`.
 

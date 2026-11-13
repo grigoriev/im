@@ -52,6 +52,17 @@ public class UserService {
     }
 
     /**
+     * Returns a user.
+     *
+     * @param id the user
+     * @return the user
+     * @throws UserException if the user does not exist
+     */
+    public AppUser get(long id) {
+        return users.findById(id).orElseThrow(() -> new UserException("Diesen Benutzer gibt es nicht."));
+    }
+
+    /**
      * Creates a user.
      *
      * @param username login name
@@ -92,10 +103,30 @@ public class UserService {
     @Transactional
     public AppUser resetPassword(long id, String password) {
         checkPassword(password);
-        AppUser user = users.findById(id).orElseThrow(() -> new UserException("Diesen Benutzer gibt es nicht."));
+        AppUser user = get(id);
         AppUser saved = users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(saved.username());
         return saved;
+    }
+
+    /**
+     * Changes the password of the logged-in user, after a check of the current one. Other devices
+     * lose their "Angemeldet bleiben".
+     *
+     * @param username the login name
+     * @param current the current password
+     * @param password the new password
+     * @throws UserException if the current password is wrong or the new one too short
+     */
+    @Transactional
+    public void changePassword(String username, String current, String password) {
+        AppUser user = users.findByUsername(username).orElseThrow(() -> new UserException("Diesen Benutzer gibt es nicht."));
+        if (current == null || !encoder.matches(current, user.passwordHash())) {
+            throw new UserException("Das aktuelle Passwort stimmt nicht.");
+        }
+        checkPassword(password);
+        users.save(user.withPasswordHash(encoder.encode(password)));
+        rememberMe.removeUserTokens(username);
     }
 
     private static void checkPassword(String password) {
