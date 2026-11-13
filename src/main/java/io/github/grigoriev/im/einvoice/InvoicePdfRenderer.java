@@ -23,7 +23,7 @@ import org.xhtmlrenderer.pdf.PdfAConformance;
 @Component
 public class InvoicePdfRenderer {
 
-    static final List<String> DEFAULT_FONTS = List.of("fonts/Inter-Regular.ttf", "fonts/Inter-SemiBold.ttf");
+    static final List<String> DEFAULT_FONTS = List.of("fonts/JetBrainsMonoNL-Regular.ttf", "fonts/JetBrainsMonoNL-SemiBold.ttf");
 
     private static final Locale GERMAN = Locale.GERMANY;
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy", GERMAN);

@@ -22,6 +22,10 @@ for (const route of ROUTES) {
             found.push(`scrolls sideways: ${el.tagName.toLowerCase()}.${el.className}`);
           }
         }
+        // A floating label stays on one line (app.css): it must fit, or the user reads half of it.
+        for (const label of Array.from(document.querySelectorAll<HTMLElement>('.floating-label > span'))) {
+          if (label.scrollWidth > label.clientWidth + 1) found.push(`label cut off: ${label.textContent?.trim()}`);
+        }
         return found;
       });
       expect(problems).toEqual([]);

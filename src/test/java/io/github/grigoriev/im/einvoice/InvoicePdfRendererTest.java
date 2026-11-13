@@ -29,7 +29,7 @@ class InvoicePdfRendererTest {
             for (var name : document.getPage(0).getResources().getFontNames()) {
                 PDFont font = document.getPage(0).getResources().getFont(name);
                 assertThat(font.isEmbedded()).as(font.getName()).isTrue();
-                assertThat(font.getName()).contains("Inter");
+                assertThat(font.getName()).contains("JetBrainsMonoNL");
             }
         }
     }

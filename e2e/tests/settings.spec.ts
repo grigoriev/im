@@ -14,7 +14,7 @@ test('saves the seller profile and shows the problems of a wrong entry', async (
   await page.getByLabel('Steuernummer').fill('12/345/67890');
   await page.getByLabel('IBAN').fill('DE89 3704 0044 0532 0130 01');
   await page.getByLabel('BIC').fill('cobadeffxxx');
-  await page.getByLabel('Zusatz unter dem Namen, z. B. der Beruf').fill('Freiberufliche Dozentin');
+  await page.getByLabel('Zusatz, z. B. der Beruf').fill('Freiberufliche Dozentin');
   await page.getByLabel('Website, z. B. www.example.de').fill('www.erika.example');
   await page.getByLabel('Kreditinstitut').fill('Commerzbank');
   await page.getByRole('button', { name: 'Speichern' }).click();
@@ -28,7 +28,7 @@ test('saves the seller profile and shows the problems of a wrong entry', async (
   await expect(page.getByLabel('IBAN')).toHaveValue('DE89 3704 0044 0532 0130 00');
   await expect(page.getByLabel('BIC')).toHaveValue('COBADEFFXXX');
   await expect(page.getByLabel('Steuerstatus')).toHaveValue('KLEINUNTERNEHMER');
-  await expect(page.getByLabel('Zusatz unter dem Namen, z. B. der Beruf')).toHaveValue('Freiberufliche Dozentin');
+  await expect(page.getByLabel('Zusatz, z. B. der Beruf')).toHaveValue('Freiberufliche Dozentin');
   await expect(page.getByLabel('Kreditinstitut')).toHaveValue('Commerzbank');
   await expect(page.getByLabel('Kontoinhaber (leer: der Name)')).toHaveValue('');
 });

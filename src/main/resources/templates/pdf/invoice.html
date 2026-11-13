@@ -6,10 +6,12 @@
   <style>
     @page { size: A4; margin: 22mm 20mm 30mm 22mm;
       @bottom-left { content: element(footer); vertical-align: top; }
-      @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-family: "Inter", sans-serif; font-size: 7pt; color: #616e7c; vertical-align: top; padding-top: 2.6mm; } }
-    body { font-family: "Inter", sans-serif; font-size: 9.5pt; line-height: 1.45; color: #1f2933; }
-    .footer { position: running(footer); width: 140mm; font-size: 7pt; color: #616e7c; border-top: 0.5pt solid #cbd2d9; padding-top: 2mm; }
-    .footer td { vertical-align: top; width: 33%; }
+      @bottom-right { content: "Seite " counter(page) " von " counter(pages); white-space: nowrap; font-family: "JetBrains Mono NL", monospace; font-size: 7pt; color: #616e7c; vertical-align: top; padding-top: 2.6mm; } }
+    body { font-family: "JetBrains Mono NL", monospace; font-size: 9.5pt; line-height: 1.45; color: #1f2933; }
+    .footer { position: running(footer); width: 150mm; font-size: 7pt; color: #616e7c; border-top: 0.5pt solid #cbd2d9; padding-top: 2mm; }
+    .footer td { vertical-align: top; width: 30%; }
+    /* The IBAN stays on one line: a monospace IBAN needs more width than the other columns. */
+    .footer td.bank { width: 40%; white-space: nowrap; }
     .sender { font-size: 7pt; color: #616e7c; margin-bottom: 2mm; }
     .head { width: 100%; margin-bottom: 12mm; }
     .head td { vertical-align: top; }
@@ -31,7 +33,7 @@
   <table class="footer" role="presentation">
     <tr>
       <td><span th:text="${invoice.seller.name}">Name</span><br/><span th:text="${invoice.seller.street}">Straße</span><br/><span th:text="${invoice.seller.postcode + ' ' + invoice.seller.city}">Ort</span></td>
-      <td>IBAN <span th:text="${fmt.iban(invoice.iban)}">IBAN</span><br/>BIC <span th:text="${invoice.bic}">BIC</span></td>
+      <td class="bank">IBAN <span th:text="${fmt.iban(invoice.iban)}">IBAN</span><br/>BIC <span th:text="${invoice.bic}">BIC</span></td>
       <td><span th:text="${invoice.seller.email}">E-Mail</span><th:block th:if="${invoice.seller.taxNumber != null}"><br/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></th:block><th:block th:if="${invoice.seller.vatId != null}"><br/>USt-IdNr. <span th:text="${invoice.seller.vatId}">USt-IdNr.</span></th:block></td>
     </tr>
   </table>
