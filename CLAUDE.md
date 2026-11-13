@@ -51,6 +51,12 @@ Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontai
 - No em-dashes in code, comments, docs or commit messages. American spelling.
 - Amounts in `BigDecimal`, never `double`. Dates as `LocalDate`, time from an injected `Clock`.
 
+## Reviews
+
+Claude Code and Greptile review every pull request. Neither reviews Renovate: the Claude workflow skips
+bots, and `.greptile/config.json` excludes them, so their reviews do not use up the Greptile allowance.
+The CI checks still guard every Renovate update.
+
 ## Review Focus
 
 Flag these in a pull request:
