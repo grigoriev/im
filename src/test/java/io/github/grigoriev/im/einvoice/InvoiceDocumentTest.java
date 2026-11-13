@@ -45,6 +45,19 @@ class InvoiceDocumentTest {
     }
 
     @Test
+    void showsTheTaxColumnOnlyForSeveralCategories() {
+        InvoiceLine lump = SampleInvoices.lump("Lesung", "400.00", KLEINUNTERNEHMER);
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, lump, KU).showsTaxColumn()).isFalse();
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, lump).columns()).isEqualTo(2);
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, KU).columns()).isEqualTo(4);
+        InvoiceDocument mixed = invoice(PUBLISHER, null, ZUGFERD, lump, EX);
+        assertThat(mixed.showsTaxColumn()).isTrue();
+        assertThat(mixed.columns()).isEqualTo(5);
+        InvoiceDocument mixedLumps = invoice(PUBLISHER, null, ZUGFERD, lump, SampleInvoices.lump("x", "1", EXEMPT_4_21));
+        assertThat(mixedLumps.columns()).isEqualTo(3);
+    }
+
+    @Test
     void showsQuantitiesOnlyWhenALineHasItsOwn() {
         InvoiceLine lump = SampleInvoices.lump("Lesung", "400.00", KLEINUNTERNEHMER);
         assertThat(invoice(PUBLISHER, null, ZUGFERD, lump, lump).showsQuantities()).isFalse();
@@ -53,8 +66,53 @@ class InvoiceDocumentTest {
     }
 
     @Test
-    void sumsTheLines() {
-        assertThat(invoice(PUBLISHER, null, ZUGFERD, KU, EX).total()).isEqualTo(new BigDecimal("1120.00"));
+    void sumsTheLinesWithoutVat() {
+        InvoiceDocument document = invoice(PUBLISHER, null, ZUGFERD, KU, EX);
+        assertThat(document.netTotal()).isEqualTo(new BigDecimal("1120.00"));
+        assertThat(document.vatAmounts()).isEmpty();
+        assertThat(document.vatTotal()).isEqualByComparingTo("0");
+        assertThat(document.total()).isEqualTo(new BigDecimal("1120.00"));
+    }
+
+    @Test
+    void computesTheVatPerRateHighestFirst() {
+        InvoiceDocument sale = SampleInvoices.sale(ZUGFERD);
+        assertThat(sale.netTotal()).isEqualTo(new BigDecimal("130.50"));
+        assertThat(sale.vatAmounts()).containsExactly(
+                new VatAmount(new BigDecimal("19"), new BigDecimal("55.80"), new BigDecimal("10.60")),
+                new VatAmount(new BigDecimal("7"), new BigDecimal("74.70"), new BigDecimal("5.23")));
+        assertThat(sale.vatTotal()).isEqualTo(new BigDecimal("15.83"));
+        assertThat(sale.total()).isEqualTo(new BigDecimal("146.33"));
+    }
+
+    @Test
+    void roundsTheVatOnceOnTheSumOfARate() {
+        InvoiceLine cents = line("Kleinteil", "1", "0.03", TaxCategory.STANDARD_19);
+        InvoiceDocument document = invoice(SampleInvoices.SHOP, PUBLISHER, null, ZUGFERD, cents, cents, cents);
+        assertThat(document.vatAmounts()).containsExactly(
+                new VatAmount(new BigDecimal("19"), new BigDecimal("0.09"), new BigDecimal("0.02")));
+    }
+
+    @Test
+    void rejectsVatOnAKleinunternehmerInvoice() {
+        InvoiceLine vat = line("Buch", "1", "20.00", TaxCategory.STANDARD_7);
+        assertThatIllegalArgumentException().isThrownBy(() -> invoice(PUBLISHER, null, ZUGFERD, KU, vat))
+                .withMessageContaining("§19 UStG");
+    }
+
+    @Test
+    void acceptsVatNextToExemptAndReverseChargeLines() {
+        InvoiceLine vat = line("Buch", "1", "20.00", TaxCategory.STANDARD_19);
+        assertThat(invoice(SampleInvoices.SHOP, SampleInvoices.SCHOOL, null, ZUGFERD, vat, EX).categories()).hasSize(2);
+        assertThat(invoice(SampleInvoices.SHOP, DUTCH, null, ZUGFERD, vat, RC).categories()).hasSize(2);
+    }
+
+    @Test
+    void printsNoTaxNoteForVatOnlyAndOnlyTheExemptNoteNextToVat() {
+        InvoiceLine vat = line("Buch", "1", "20.00", TaxCategory.STANDARD_19);
+        assertThat(invoice(SampleInvoices.SHOP, PUBLISHER, null, ZUGFERD, vat).effectiveTaxNote()).isEmpty();
+        assertThat(invoice(SampleInvoices.SHOP, PUBLISHER, null, ZUGFERD, vat, EX).effectiveTaxNote())
+                .isEqualTo(EXEMPT_4_21.defaultNote());
     }
 
     @Test

@@ -45,6 +45,16 @@ class EInvoiceServiceTest {
                     line("Unterricht", "16", "45.00", EXEMPT_4_21), line("Lesung", "1", "400.00", KLEINUNTERNEHMER))));
             cases.add(Arguments.of(format, "AE", invoice(SELLER_EU, DUTCH, ref, format, line("Workshop", "1", "600.00", REVERSE_CHARGE_EU))));
             cases.add(Arguments.of(format, "lump sums", SampleInvoices.reading(format)));
+            cases.add(Arguments.of(format, "sale 19+7", SampleInvoices.sale(format)));
+            InvoiceLine cents = line("Kleinteil", "1", "0.03", TaxCategory.STANDARD_19);
+            cases.add(Arguments.of(format, "VAT rounded once per rate",
+                    invoice(SampleInvoices.SHOP, PUBLISHER, ref, format, cents, cents, cents)));
+            cases.add(Arguments.of(format, "19+§4", invoice(SampleInvoices.SHOP, SCHOOL, ref, format,
+                    line("Lehrbuch", "2", "19.90", TaxCategory.STANDARD_19),
+                    line("Unterricht", "16", "45.00", EXEMPT_4_21))));
+            cases.add(Arguments.of(format, "19+AE", invoice(SampleInvoices.SHOP, DUTCH, ref, format,
+                    line("Lehrbuch", "2", "19.90", TaxCategory.STANDARD_19),
+                    line("Workshop", "1", "600.00", REVERSE_CHARGE_EU))));
             cases.add(Arguments.of(format, "O", invoice(SWISS, ref, format, line("Lesung", "1", "350.00", NOT_TAXABLE_ABROAD))));
         }
         return cases.stream();
@@ -58,6 +68,10 @@ class EInvoiceServiceTest {
         assertThat(issued.pdf()).startsWith("%PDF".getBytes());
         assertThat(issued.xml()).isNotEmpty();
         assertThat(issued.validations()).allMatch(ValidationResult::valid);
+        String xml = new String(issued.xml(), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(xml).as("Mustang computes the same totals")
+                .contains("<ram:GrandTotalAmount>" + document.total().toPlainString() + "</ram:GrandTotalAmount>")
+                .contains("<ram:TaxBasisTotalAmount>" + document.netTotal().toPlainString() + "</ram:TaxBasisTotalAmount>");
         List<String> validators = issued.validations().stream().map(ValidationResult::validator).toList();
         switch (format) {
             case ZUGFERD_EN16931 -> assertThat(validators).containsExactly("Mustang");
