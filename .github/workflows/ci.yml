@@ -96,6 +96,24 @@ jobs:
           path: target/visual-diff/
           if-no-files-found: ignore
 
+  # The jar without tests, so the E2E job runs beside the build instead of after it.
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Package
+        run: mvn -B -ntp -DskipTests package
+
       - name: Upload the jar for the E2E job
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -109,7 +127,7 @@ jobs:
   # The image under test with its database, and Playwright in its pinned image:
   # E2E flows, axe, no horizontal scroll, screenshots in light and dark.
   e2e:
-    needs: build
+    needs: package
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
