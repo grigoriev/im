@@ -56,18 +56,20 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | Framework | Spring Boot 4.x, Maven | Security, mail, scheduling, Flyway out of the box |
 | e-invoice | Mustang Project | Creates and reads ZUGFeRD, Factur-X and XRechnung |
 | Validation | KoSIT Validator + XRechnung configuration | Official validator, the same check that buyers run |
-| PDF layout | Thymeleaf HTML, rendered by Flying Saucer (OpenPDF) | Own layout. Mustang then embeds the XML into PDF/A-3 |
+| PDF layout | Thymeleaf HTML, rendered by Flying Saucer as PDF/A-3B | Own layout. Mustang then embeds the XML |
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |
 | UI | Thymeleaf + htmx | Server-side CRUD. No SPA build for 10 invoices per month |
-| Security | Spring Security, form login, Argon2 password hashes | Two users, two roles |
+| Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
 | Tests | JUnit 5, Testcontainers, AssertJ | Real PostgreSQL in tests |
 | Packaging | Container image on GHCR, multi-arch, attested | Same pattern as sb-stack |
 | Quality | SonarCloud, Renovate, CodeRabbit, Claude review | Standard for public repositories |
 
 Group ID: `io.github.grigoriev`, artifact `im`, base package `io.github.grigoriev.im`.
 
-Risk to check in milestone M0: Flying Saucer output must convert to valid PDF/A-3.
-Fallback: the PDF visualization of Mustang (XSL-FO).
+Flying Saucer supports PDF/A-3B (`PdfAConformance.PDF_A_3B`). All fonts must be embedded.
+Milestone M0 checks the full chain: Flying Saucer PDF, Mustang embedding, veraPDF and KoSIT validation.
+
+Currency: EUR only.
 
 ## 5. Users and roles
 
@@ -78,18 +80,26 @@ Fallback: the PDF visualization of Mustang (XSL-FO).
 
 1. The first admin account comes from environment variables at the first start.
 2. The admin creates the user account in the admin panel.
-3. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
-4. nginx additionally allows only the home LAN (10.10.10.0/24).
+3. Each user registers one or more passkeys: Face ID or Touch ID, synced by iCloud Keychain.
+4. A password stays as a fallback login. Passwords use Argon2 hashes.
+5. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
+6. nginx additionally allows only the home LAN (10.10.10.0/24).
+
+Not chosen:
+
+- Sign in with Apple: needs a paid Apple Developer account and a domain that Apple can reach.
+- Google login (OpenID Connect): possible as an add-on later. Login then depends on the internet.
 
 ## 6. Domain model
 
 | Entity | Purpose |
 |---|---|
 | `AppUser` | Login, role, password hash |
+| `Passkey` | WebAuthn credential of a user |
 | `SellerProfile` | Name, address, tax number, IBAN, contact data, logo |
-| `Customer` | Address, country, e-mail, USt-IdNr, Leitweg-ID, preferred format, default tax category |
-| `LineTemplate` | Reusable invoice line: text, unit, price, tax category |
-| `Invoice` | Number, status, dates, service period, payment terms, snapshots of seller and buyer |
+| `Customer` | Address, country, e-mail, USt-IdNr, Leitweg-ID, format (ZUGFeRD or XRechnung) |
+| `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, e-mail text |
+| `Invoice` | Number, status, dates, service period, texts, payment terms, snapshots of seller and buyer |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, path, SHA-256, size |
 | `Dispatch` | When, to whom, channel (`EMAIL_APP` or `MANUAL`), by which user, note |
@@ -115,7 +125,7 @@ DRAFT -> ISSUED -> SENT -> PAID
 
 ### Tax categories
 
-| Category | Invoice text (draft, verify) | EN 16931 code | Counts for §19 |
+| Category | Default tax note (verify) | EN 16931 code | Counts for §19 |
 |---|---|---|---|
 | `KLEINUNTERNEHMER` | Gemäß § 19 UStG wird keine Umsatzsteuer berechnet. | E | yes |
 | `EXEMPT_4_21` | Steuerfrei gemäß § 4 Nr. 21 UStG. | E | no |
@@ -125,8 +135,20 @@ DRAFT -> ISSUED -> SENT -> PAID
 
 The category is set per line. One invoice can mix categories.
 The model includes the standard rates now, so the end of the Kleinunternehmer status needs no redesign.
+The admin edits the default tax notes. A template and an invoice can override them.
 
 ## 7. Features
+
+### Invoice templates
+
+1. The user creates one or more templates per customer.
+2. A template holds: title, intro text, closing text, tax note, lines, payment terms, format, e-mail subject and body.
+3. Texts support placeholders, for example `{Leistungszeitraum}`, `{Zahlungsziel}`, `{Rechnungsnummer}`.
+4. A new invoice starts from a template. The template content is copied into the draft.
+5. The user edits every field of the draft: texts, tax note, lines, dates.
+6. A preview shows the final PDF before issue.
+7. A template change does not affect existing invoices.
+8. Validation before issue: a VAT-exempt line needs a tax note. The KoSIT check must pass.
 
 ### Invoice numbers
 
@@ -157,7 +179,9 @@ The model includes the standard rates now, so the end of the Kleinunternehmer st
 
 ### Reports and export
 
-1. Yearly report for Anlage EÜR: income by payment date (Zuflussprinzip), split by tax category.
+1. Yearly report for Anlage EÜR: income by payment date (Zuflussprinzip).
+   It shows the sums for the EÜR form fields, ready to type into WISO Steuer.
+   Example: total Kleinunternehmer income, and the part excluded from the §19 threshold.
 2. CSV of all payments of a year.
 3. Archive export: ZIP with all XML and PDF files of a year.
 4. Full export and import: ZIP with JSON data and all documents. This also moves the system to a new host.
@@ -195,8 +219,8 @@ The model includes the standard rates now, so the end of the Kleinunternehmer st
 | # | Milestone | Content | Target |
 |---|---|---|---|
 | M0 | Skeleton | Maven project, Spring Boot, CI, image on GHCR, Sonar, Renovate, CodeRabbit. PDF/A-3 spike | 2026-11 |
-| M1 | Base | Login and roles, seller profile, customers, settings, audit log | 2026-11 |
-| M2 | Invoices | Drafts, issue, numbers, PDF, ZUGFeRD, XRechnung, KoSIT, archive | 2026-12 |
+| M1 | Base | Login with passkeys, roles, seller profile, customers, settings, audit log | 2026-11 |
+| M2 | Invoices | Templates, drafts, preview, issue, numbers, PDF, ZUGFeRD, XRechnung, KoSIT, archive | 2026-12 |
 | M3 | Sending and payments | SMTP sending, manual dispatch, payments, Stornorechnung | 2026-12 |
 | M4 | Threshold and reports | Dashboard, baseline, EÜR report, CSV, archive export | 2026-12 |
 | M5 | Operations | Deployment on lemming, backups to meerkat, restore test, full export and import | 2026-12 |
@@ -206,10 +230,10 @@ The model includes the standard rates now, so the end of the Kleinunternehmer st
 ## 12. Open questions
 
 1. Does the Goethe-Institut need XRechnung and a Leitweg-ID? Ask the contact person.
+   XRechnung is in scope either way.
 2. Foreign customers: invoice texts, USt-IdNr, Zusammenfassende Meldung. Verify before M6.
-3. Exact mapping of the yearly report to the lines of Anlage EÜR.
-4. Final wording of the tax notes on the invoice.
-5. Currency: EUR only, or also foreign currencies?
+3. Field mapping of the yearly report: check against the Anlage EÜR 2027 form before M4.
+4. Final wording of the default tax notes.
 
 ## 13. Sources
 
@@ -217,4 +241,5 @@ The model includes the standard rates now, so the end of the Kleinunternehmer st
 - [§19 UStG, Haufe](https://www.haufe.de/id/norm/umsatzsteuergesetz-19-besteuerung-der-kleinunternehmer-HI847581_p19.html)
 - [Kleinunternehmerregelung, Handelskammer Hamburg](https://www.handelskammer-hamburg.de/recht-steuern/steuerrecht/umsatzsteuer-mehrwertsteuer/umsatzsteuer-mehrwertsteuer-national/kleinunternehmerregelung-6680502)
 - [Mustang Project](https://www.mustangproject.org/)
+- [veraPDF](https://verapdf.org/)
 - [KoSIT Validator](https://github.com/itplr-kosit/validator)
