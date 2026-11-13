@@ -90,7 +90,7 @@ Currency: EUR only.
 5. The profile page lists the passkeys of the user. The user adds, renames and removes them.
 6. One account can have several passkeys, for example Mac and iPhone.
 7. The login page offers the passkey first. The password stays as a fallback. Passwords use Argon2 hashes.
-8. The admin can remove the passkeys of a user and reset the password.
+8. The admin can remove the passkeys of a user and reset the password. A reset ends every "Angemeldet bleiben" of the user.
 9. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
 10. nginx additionally allows only the home LAN (10.10.10.0/24).
 
@@ -221,7 +221,8 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.
 2. The compose file lives in the intranet repository: `lemming/docker/im`.
 3. Services: `im` (app) and `im-db` (PostgreSQL). The app listens on `127.0.0.1` only.
-4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN only.
+4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN only. It sends `X-Forwarded-Proto`,
+   so the app marks its cookies `Secure` (`server.forward-headers-strategy=native`).
 5. The certificate comes from acme.sh, as for the other sites.
 6. Data lives under `/volume1/docker/im`: database files and the document store.
 7. Renovate and the nightly `update.sh` update the image. Flyway migrates the schema at start.

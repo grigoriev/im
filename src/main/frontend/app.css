@@ -97,3 +97,12 @@
   main .grid:not([class*="grid-cols"]) { grid-template-columns: minmax(0, 1fr); }
   main dd { overflow-wrap: anywhere; }
 }
+
+/* The active menu entry as in docs/mockup: a soft tint of the primary color. */
+@layer components {
+  .menu :where(li > a).menu-active {
+    background-color: color-mix(in oklch, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+}

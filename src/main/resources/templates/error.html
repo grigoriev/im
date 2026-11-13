@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Fehler · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+  <main class="px-4 py-12 grid place-items-center">
+    <div class="bg-base-100 rounded-box border border-base-300 p-6 sm:p-8 w-full max-w-md grid gap-3 text-center">
+      <h1 class="font-semibold text-xl tracking-tight" th:switch="${status}">
+        <span th:case="403">Kein Zugriff</span>
+        <span th:case="404">Seite nicht gefunden</span>
+        <span th:case="*">Etwas ist schiefgegangen</span>
+      </h1>
+      <p class="text-sm text-base-content/75" th:switch="${status}">
+        <span th:case="403">Diese Seite ist nur für Administratoren.</span>
+        <span th:case="404">Diese Adresse gibt es nicht.</span>
+        <span th:case="*">Bitte versuchen Sie es noch einmal.</span>
+      </p>
+      <p><a class="btn btn-primary" th:href="@{/}" href="/">Zur Übersicht</a></p>
+    </div>
+  </main>
+</body>
+</html>

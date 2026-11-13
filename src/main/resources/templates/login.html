@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Anmelden · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+  <header class="flex justify-end px-4 py-3"><div th:replace="~{fragments/layout :: theme}"></div></header>
+  <main class="px-4 py-8 grid place-items-center">
+    <div class="bg-base-100 rounded-box border border-base-300 p-6 sm:p-8 w-full max-w-sm grid gap-5">
+      <div class="text-center">
+        <h1 class="font-semibold text-xl tracking-tight">Rechnungen</h1>
+        <p class="text-sm text-base-content/75">Anmelden</p>
+      </div>
+      <div role="alert" class="alert alert-error text-sm" th:if="${param.error}">Benutzername oder Passwort ist falsch.</div>
+      <output class="alert alert-success text-sm" th:if="${param.abgemeldet}">Sie sind abgemeldet.</output>
+      <output class="alert alert-warning text-sm" th:if="${param.abgelaufen}">Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.</output>
+      <form class="grid gap-3" th:action="@{/login}" method="post">
+        <label class="floating-label"><span>Benutzername</span>
+          <input id="username" name="username" class="input w-full" autocomplete="username" required>
+        </label>
+        <label class="floating-label"><span>Passwort</span>
+          <input id="password" name="password" type="password" class="input w-full" autocomplete="current-password" required>
+        </label>
+        <label class="flex items-center gap-2 text-sm"><input id="angemeldet-bleiben" name="angemeldet-bleiben" type="checkbox" class="checkbox checkbox-sm">Angemeldet bleiben</label>
+        <button type="submit" class="btn btn-primary w-full">Anmelden</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

@@ -18,6 +18,9 @@ services:
       IM_DB_URL: jdbc:postgresql://db:5432/im
       IM_DB_USER: im
       IM_DB_PASSWORD: e2e-only
+      IM_ADMIN_USERNAME: admin
+      IM_ADMIN_PASSWORD: e2e-admin-passwort
+      IM_REMEMBER_ME_KEY: e2e-only
       TZ: Europe/Berlin
     depends_on:
       db:

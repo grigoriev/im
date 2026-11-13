@@ -40,7 +40,10 @@ Package `io.github.grigoriev.im`:
   the PDF/A-3B layout (`InvoicePdfRenderer`, template `templates/pdf/invoice.html`), the Mustang mapping
   and export (`MustangInvoiceMapper`, `EInvoiceWriter`), the validators (`ZugferdValidator`: Mustang,
   `XRechnungValidator`: KoSIT) and `EInvoiceService`, which issues and validates per format
-- `web`: controllers and Thymeleaf pages, styled with Tailwind and daisyUI (`src/main/frontend/app.css`)
+- `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`
+- `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
+- `web`: controllers and Thymeleaf pages, styled with Tailwind and daisyUI (`src/main/frontend/app.css`).
+  Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
 
 Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers, PDF baselines in
 `src/test/resources/visual/pdf`, Playwright tests and screenshot baselines in `e2e/tests`.

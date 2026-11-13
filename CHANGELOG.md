@@ -8,6 +8,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Login with password (Argon2), "Angemeldet bleiben", roles user and admin, the first admin from the environment, and the admin page "Benutzer".
+- App shell with sidebar menu, German error pages, a strict content security policy.
 - Implementation plan (`docs/PLAN.md`) and clickable UI mockup (`docs/mockup`).
 - Regular VAT at 19 % and 7 % next to the exempt categories, with net total, VAT per rate and gross total.
 - Invoice lines are lump sums by default: the PDF shows text and amount, the quantity columns appear only when a line has a quantity.
