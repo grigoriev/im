@@ -1,10 +1,19 @@
 package io.github.grigoriev.im.seller;
 
+import static io.github.grigoriev.im.validation.Fields.compact;
+import static io.github.grigoriev.im.validation.Fields.checkCountry;
+import static io.github.grigoriev.im.validation.Fields.checkEmail;
+import static io.github.grigoriev.im.validation.Fields.matches;
+import static io.github.grigoriev.im.validation.Fields.optional;
+import static io.github.grigoriev.im.validation.Fields.required;
+import static io.github.grigoriev.im.validation.Fields.text;
+import static io.github.grigoriev.im.validation.Fields.upper;
+import static io.github.grigoriev.im.validation.Fields.checkVatId;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -21,10 +30,7 @@ public class SellerService {
     /** The ID of the one profile row. */
     static final int ID = 1;
 
-    static final Pattern COUNTRY = Pattern.compile("[A-Z]{2}");
-    static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
     static final Pattern PHONE = Pattern.compile("\\+?[\\d ()/-]{5,49}");
-    static final Pattern VAT_ID = Pattern.compile("[A-Z]{2}[A-Z0-9]{2,12}");
     static final Pattern IBAN = Pattern.compile("[A-Z]{2}\\d{2}[A-Z0-9]{11,30}");
 
     /** The IBAN length of the SEPA countries (ISO 13616 registry). Other countries only need 15 to 34 characters. */
@@ -116,14 +122,11 @@ public class SellerService {
         required(problems, profile.postcode(), "PLZ", 16);
         required(problems, profile.city(), "Ort", 100);
         optional(problems, profile.contactName(), "Ansprechpartner", 200);
-        matches(problems, profile.countryCode(), COUNTRY, "Das Land ist ein Code aus zwei Buchstaben, zum Beispiel DE.");
-        matches(problems, profile.email(), EMAIL, "Bitte eine gültige E-Mail-Adresse angeben.");
-        optional(problems, profile.email(), "E-Mail", 254);
+        checkCountry(problems, profile.countryCode());
+        checkEmail(problems, profile.email());
         matches(problems, profile.phone(), PHONE, "Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567.");
         optional(problems, profile.taxNumber(), "Steuernummer", 32);
-        if (profile.vatId() != null && !VAT_ID.matcher(profile.vatId()).matches()) {
-            problems.add("Die USt-IdNr. beginnt mit dem Ländercode, zum Beispiel DE123456789.");
-        }
+        checkVatId(problems, profile.vatId());
         if (profile.taxNumber() == null && profile.vatId() == null) {
             problems.add("Bitte die Steuernummer oder die USt-IdNr. angeben.");
         }
@@ -153,39 +156,5 @@ public class SellerService {
         StringBuilder digits = new StringBuilder();
         rotated.chars().forEach(c -> digits.append(Character.getNumericValue(c)));
         return new BigInteger(digits.toString()).mod(NINETY_SEVEN).equals(BigInteger.ONE);
-    }
-
-    private static void required(List<String> problems, String value, String field, int max) {
-        if (value == null) {
-            problems.add("Bitte " + field + " angeben.");
-        } else {
-            optional(problems, value, field, max);
-        }
-    }
-
-    private static void optional(List<String> problems, String value, String field, int max) {
-        if (value != null && value.length() > max) {
-            problems.add(field + " hat höchstens " + max + " Zeichen.");
-        }
-    }
-
-    private static void matches(List<String> problems, String value, Pattern pattern, String message) {
-        if (value == null || !pattern.matcher(value).matches()) {
-            problems.add(message);
-        }
-    }
-
-    private static String text(String value) {
-        return value == null || value.isBlank() ? null : value.strip();
-    }
-
-    private static String upper(String value) {
-        String text = text(value);
-        return text == null ? null : text.toUpperCase(Locale.ROOT);
-    }
-
-    private static String compact(String value) {
-        String text = upper(value);
-        return text == null ? null : text.replaceAll("\\s+", "");
     }
 }

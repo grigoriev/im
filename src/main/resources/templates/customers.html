@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Kunden · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Kunden', 'customers', ~{::content})}">
+  <div th:fragment="content" class="max-w-6xl mx-auto grid gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">Kunden</h1>
+      <a th:href="@{/kunden/neu}" class="btn btn-ghost"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
+    </div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <div class="grid gap-4 grid-cols-[minmax(0,1fr)] md:grid-cols-[18rem_minmax(0,1fr)] items-start">
+      <nav aria-label="Kundenliste" class="bg-base-100 rounded-box border border-base-300 p-2">
+        <p class="text-sm text-base-content/75 p-3" th:if="${customers.isEmpty()}">Noch keine Kunden.</p>
+        <ul class="menu w-full p-0" th:unless="${customers.isEmpty()}" id="customer-list">
+          <li th:each="item : ${customers}">
+            <a th:href="@{/kunden/{id}(id=${item.id})}" th:classappend="${customer != null && customer.id == item.id} ? 'menu-active'"
+               th:attr="aria-current=${customer != null && customer.id == item.id} ? 'page'">
+              <span class="min-w-0 grid">
+                <span class="truncate" th:text="${item.name}">Name</span>
+                <span class="text-xs opacity-75 truncate" th:text="${item.postcode + ' ' + item.city + ' · ' + item.countryCode}">Ort</span>
+              </span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 text-sm text-base-content/75" th:if="${customer == null}">
+        Wählen Sie einen Kunden aus der Liste oder legen Sie einen neuen an.
+      </section>
+
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-5 min-w-0 @container" th:if="${customer != null}">
+        <h2 class="text-lg font-semibold [overflow-wrap:anywhere]" th:text="${customer.id == null ? 'Neuer Kunde' : customer.name}">Kunde</h2>
+        <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${problems}">
+          <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
+        </div>
+        <form class="grid gap-5" method="post" th:object="${customer}"
+              th:action="${customer.id == null} ? @{/kunden} : @{/kunden/{id}(id=${customer.id})}">
+          <fieldset class="grid gap-3">
+            <legend class="text-sm font-medium mb-2">Anschrift</legend>
+            <label class="floating-label"><span>Name</span>
+              <input id="customer-name" th:field="*{name}" class="input w-full" maxlength="200" required>
+            </label>
+            <label class="floating-label"><span>Straße und Hausnummer</span>
+              <input id="customer-street" th:field="*{street}" class="input w-full" maxlength="200" required>
+            </label>
+            <div class="grid gap-3 grid-cols-[minmax(0,6rem)_minmax(0,1fr)] @lg:grid-cols-[minmax(0,7rem)_minmax(0,1fr)_minmax(0,5rem)]">
+              <label class="floating-label"><span>PLZ</span>
+                <input id="customer-postcode" th:field="*{postcode}" class="input w-full" maxlength="16" required>
+              </label>
+              <label class="floating-label"><span>Ort</span>
+                <input id="customer-city" th:field="*{city}" class="input w-full" maxlength="100" required>
+              </label>
+              <label class="floating-label"><span>Land</span>
+                <input id="customer-country" th:field="*{countryCode}" class="input w-full uppercase" maxlength="2" required>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grid gap-3">
+            <legend class="text-sm font-medium mb-2">Kontakt</legend>
+            <div class="grid gap-3 @lg:grid-cols-2">
+              <label class="floating-label"><span>E-Mail für Rechnungen</span>
+                <input id="customer-email" th:field="*{email}" type="email" class="input w-full" maxlength="254">
+              </label>
+              <label class="floating-label"><span>Ansprechpartner</span>
+                <input id="customer-contact" th:field="*{contactName}" class="input w-full" maxlength="200">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="grid gap-3">
+            <legend class="text-sm font-medium mb-2">E-Rechnung</legend>
+            <label class="floating-label"><span>E-Rechnungsformat</span>
+              <select id="customer-format" th:field="*{format}" class="select w-full">
+                <option th:each="format : ${formatOrder}" th:value="${format}" th:text="${formats.get(format)}">Format</option>
+              </select>
+            </label>
+            <div class="grid gap-3 @lg:grid-cols-2">
+              <label class="floating-label"><span>Käuferreferenz (Leitweg-ID)</span>
+                <input id="customer-reference" th:field="*{buyerReference}" class="input w-full" maxlength="200">
+              </label>
+              <label class="floating-label"><span>USt-IdNr.</span>
+                <input id="customer-vat-id" th:field="*{vatId}" class="input w-full uppercase" maxlength="20">
+              </label>
+            </div>
+            <p class="text-xs text-base-content/75">Die XRechnung braucht Käuferreferenz und E-Mail. Die USt-IdNr. braucht
+              eine Leistung mit Reverse Charge an einen Kunden in der EU.</p>
+          </fieldset>
+
+          <div><button type="submit" class="btn btn-primary" th:text="${customer.id == null ? 'Anlegen' : 'Speichern'}">Speichern</button></div>
+        </form>
+
+        <details class="border-t border-base-300 pt-4" th:if="${customer.id != null}">
+          <summary class="text-sm cursor-pointer w-fit">Kunden löschen</summary>
+          <form class="mt-3 flex flex-wrap items-center gap-3" method="post" th:action="@{/kunden/{id}/loeschen(id=${customer.id})}">
+            <span class="text-sm">Der Kunde wird endgültig gelöscht.</span>
+            <button type="submit" class="btn btn-sm btn-error">Endgültig löschen</button>
+          </form>
+        </details>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>
