@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import io.github.grigoriev.im.seller.SettingsException;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -21,6 +22,26 @@ class NumberPatternTest {
     })
     void formatsTheNumber(String pattern, int year, int counter, String number) {
         assertThat(NumberPattern.parse(pattern).format(year, counter)).isEqualTo(number);
+    }
+
+    @Test
+    void writesAsciiDigitsWhateverTheLocale() {
+        Locale before = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-EG-u-nu-arab"));
+            assertThat(NumberPattern.parse("{YYYY}/{YY}-{NNN}").format(2027, 7)).isEqualTo("2027/27-007");
+        } finally {
+            Locale.setDefault(before);
+        }
+    }
+
+    @Test
+    void scansManyOpenBracesQuickly() {
+        String braces = "{".repeat(32);
+        assertThat(catchThrowableOfType(SettingsException.class, () -> NumberPattern.parse(braces)).problems())
+                .contains("Fester Text besteht aus Buchstaben, Ziffern und - _ . /");
+        assertThat(catchThrowableOfType(SettingsException.class, () -> NumberPattern.parse("{{|".repeat(100))).problems())
+                .containsExactly("Das Muster hat höchstens 32 Zeichen.");
     }
 
     @Test

@@ -3,7 +3,6 @@ package io.github.grigoriev.im.numbering;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -23,7 +22,6 @@ public record NumberPattern(String value) {
     /** Maximum length of a pattern. */
     static final int MAX_LENGTH = 32;
 
-    private static final Pattern TOKEN = Pattern.compile("\\{([^}]*)}");
     private static final Pattern COUNTER = Pattern.compile("N{1,6}");
     private static final Pattern TEXT = Pattern.compile("[A-Za-z0-9._/-]*");
 
@@ -36,28 +34,24 @@ public record NumberPattern(String value) {
      */
     public static NumberPattern parse(String text) {
         String value = text == null ? "" : text.strip();
-        List<String> problems = new ArrayList<>();
         if (value.length() > MAX_LENGTH) {
-            problems.add("Das Muster hat höchstens " + MAX_LENGTH + " Zeichen.");
+            throw new SettingsException(List.of("Das Muster hat höchstens " + MAX_LENGTH + " Zeichen."));
         }
+        List<String> problems = new ArrayList<>();
         boolean year = false;
         int counters = 0;
-        Matcher token = TOKEN.matcher(value);
         StringBuilder fixed = new StringBuilder();
-        int end = 0;
-        while (token.find()) {
-            fixed.append(value, end, token.start());
-            end = token.end();
-            String name = token.group(1);
-            if (name.equals("YYYY") || name.equals("YY")) {
+        for (Part part : parts(value)) {
+            if (!part.token()) {
+                fixed.append(part.text());
+            } else if (part.text().equals("YYYY") || part.text().equals("YY")) {
                 year = true;
-            } else if (COUNTER.matcher(name).matches()) {
+            } else if (COUNTER.matcher(part.text()).matches()) {
                 counters++;
             } else {
-                problems.add("Unbekannter Platzhalter {" + name + "}.");
+                problems.add("Unbekannter Platzhalter {" + part.text() + "}.");
             }
         }
-        fixed.append(value.substring(end));
         if (!TEXT.matcher(fixed).matches()) {
             problems.add("Fester Text besteht aus Buchstaben, Ziffern und - _ . /");
         }
@@ -74,25 +68,52 @@ public record NumberPattern(String value) {
     }
 
     /**
-     * Returns the number of an invoice.
+     * Returns the number of an invoice. The digits are always ASCII, whatever the locale of the server.
      *
      * @param year the year of the issue date
      * @param counter the counter in that year, from 1
      * @return the invoice number
      */
     public String format(int year, int counter) {
-        Matcher token = TOKEN.matcher(value);
         StringBuilder number = new StringBuilder();
-        while (token.find()) {
-            String name = token.group(1);
-            String replacement = switch (name) {
-                case "YYYY" -> String.format("%04d", year);
-                case "YY" -> String.format("%02d", year % 100);
-                default -> String.format("%0" + name.length() + "d", counter);
-            };
-            token.appendReplacement(number, replacement);
+        for (Part part : parts(value)) {
+            if (!part.token()) {
+                number.append(part.text());
+            } else if (part.text().equals("YYYY")) {
+                number.append(padded(year, 4));
+            } else if (part.text().equals("YY")) {
+                number.append(padded(year % 100, 2));
+            } else {
+                number.append(padded(counter, part.text().length()));
+            }
         }
-        token.appendTail(number);
         return number.toString();
+    }
+
+    /** A piece of a pattern: fixed text, or the name of a token without its braces. */
+    private record Part(String text, boolean token) {
+    }
+
+    /** Splits a pattern into fixed text and tokens in one pass, without a regular expression. */
+    private static List<Part> parts(String value) {
+        List<Part> parts = new ArrayList<>();
+        int position = 0;
+        while (position != value.length()) {
+            int open = value.indexOf('{', position);
+            int close = open == -1 ? -1 : value.indexOf('}', open);
+            if (close == -1) {
+                parts.add(new Part(value.substring(position), false));
+                break;
+            }
+            parts.add(new Part(value.substring(position, open), false));
+            parts.add(new Part(value.substring(open + 1, close), true));
+            position = close + 1;
+        }
+        return parts;
+    }
+
+    private static String padded(int value, int digits) {
+        String text = Integer.toString(value);
+        return "0".repeat(Math.max(0, digits - text.length())) + text;
     }
 }

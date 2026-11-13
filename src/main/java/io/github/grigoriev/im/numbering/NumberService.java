@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -114,13 +115,14 @@ public class NumberService {
     }
 
     /**
-     * Assigns the next number. The caller runs it in the transaction that issues the invoice: a rollback
-     * returns the number, so no gap remains.
+     * Assigns the next number. It runs only in the transaction that issues the invoice: a rollback returns
+     * the number, so no gap remains. Without such a transaction it fails, rather than commit a number alone.
      *
      * @param issueDate the issue date of the invoice
      * @return the invoice number
+     * @throws org.springframework.transaction.IllegalTransactionStateException without a transaction
      */
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public String assign(LocalDate issueDate) {
         int year = issueDate.getYear();
         jdbc.sql(CREATE_YEAR).param("year", year).update();
