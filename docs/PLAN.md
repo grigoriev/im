@@ -80,10 +80,14 @@ Currency: EUR only.
 
 1. The first admin account comes from environment variables at the first start.
 2. The admin creates the user account in the admin panel.
-3. Each user registers one or more passkeys: Face ID or Touch ID, synced by iCloud Keychain.
-4. A password stays as a fallback login. Passwords use Argon2 hashes.
-5. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
-6. nginx additionally allows only the home LAN (10.10.10.0/24).
+3. A new account logs in with a password first.
+4. After login, the user links a passkey to the existing account: Face ID or Touch ID, synced by iCloud Keychain.
+5. The profile page lists the passkeys of the user. The user adds, renames and removes them.
+6. One account can have several passkeys, for example Mac and iPhone.
+7. The login page offers the passkey first. The password stays as a fallback. Passwords use Argon2 hashes.
+8. The admin can remove the passkeys of a user and reset the password.
+9. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
+10. nginx additionally allows only the home LAN (10.10.10.0/24).
 
 Not chosen:
 
