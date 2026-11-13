@@ -4,6 +4,8 @@ export const ROUTES = [
   { name: 'start', path: '/', anonymous: false },
   { name: 'users', path: '/admin/benutzer', anonymous: false },
   { name: 'account', path: '/konto', anonymous: false },
+  { name: 'customers', path: '/kunden', anonymous: false },
+  { name: 'customer-new', path: '/kunden/neu', anonymous: false },
   { name: 'settings', path: '/einstellungen', anonymous: false },
   { name: 'tax-notes', path: '/admin/steuerhinweise', anonymous: false },
   { name: 'numbers', path: '/admin/nummernkreis', anonymous: false },

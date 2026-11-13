@@ -43,6 +43,8 @@ Package `io.github.grigoriev.im`:
 - `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`,
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
 - `seller`: the seller profile (`SellerService`, one row, IBAN checksum) and the default tax notes (`TaxNoteService`)
+- `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
+- `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
 - `web`: controllers and Thymeleaf pages, styled with Tailwind and daisyUI (`src/main/frontend/app.css`).

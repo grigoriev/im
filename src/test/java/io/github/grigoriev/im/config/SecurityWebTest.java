@@ -38,7 +38,11 @@ import io.github.grigoriev.im.seller.TaxStatus;
 import io.github.grigoriev.im.numbering.NumberPattern;
 import io.github.grigoriev.im.numbering.NumberSequence;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.customer.CustomerException;
+import io.github.grigoriev.im.customer.CustomerService;
+import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.web.AccountController;
+import io.github.grigoriev.im.web.CustomerController;
 import io.github.grigoriev.im.web.NumberController;
 import io.github.grigoriev.im.web.SettingsController;
 import io.github.grigoriev.im.web.TaxNoteController;
@@ -61,7 +65,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
-        SettingsController.class, TaxNoteController.class, NumberController.class})
+        SettingsController.class, TaxNoteController.class, NumberController.class,
+        CustomerController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -97,6 +102,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private NumberService numbers;
+
+    @MockitoBean
+    private CustomerService customers;
 
     private void knownUsers() {
         when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
@@ -351,6 +359,58 @@ class SecurityWebTest {
         mvc.perform(post("/admin/nummernkreis/start").param("year", "2028").param("start", "1")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listsCustomersAndShowsOne() throws Exception {
+        when(customers.list()).thenReturn(List.of());
+        mvc.perform(get("/kunden").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Kunden.")));
+        when(customers.list()).thenReturn(List.of(CustomerTestData.verlag().withId(3L), CustomerTestData.vhs().withId(4L)));
+        when(customers.find(4)).thenReturn(Optional.of(CustomerTestData.vhs().withId(4L)));
+        mvc.perform(get("/kunden/4").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Verlag am Fluss GmbH")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"09162000-VHS01-42\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("XRechnung: nur XML</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-current=\"page\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Endgültig löschen")));
+        mvc.perform(get("/kunden/neu").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Neuer Kunde")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Endgültig löschen"))));
+        when(customers.find(9)).thenReturn(Optional.empty());
+        mvc.perform(get("/kunden/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createsChangesAndDeletesCustomersAndReportsProblems() throws Exception {
+        when(customers.create(any())).thenReturn(CustomerTestData.verlag().withId(3L));
+        mvc.perform(post("/kunden").param("name", "Verlag am Fluss GmbH").param("format", "ZUGFERD_EN16931")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/kunden/3"))
+                .andExpect(flash().attribute("success", "Kunde „Verlag am Fluss GmbH“ angelegt."));
+        when(customers.create(any())).thenThrow(new CustomerException(List.of("Bitte Ort angeben.")));
+        mvc.perform(post("/kunden").param("id", "77").param("name", "Neu GmbH").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte Ort angeben.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Neu GmbH\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("action=\"/kunden\"")));
+
+        mvc.perform(post("/kunden/3").param("name", "Verlag").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/kunden/3")).andExpect(flash().attribute("success", "Änderungen gespeichert."));
+        verify(customers).update(eq(3L), argThat(customer -> customer.name().equals("Verlag")));
+        when(customers.update(eq(4L), any())).thenThrow(new CustomerException(List.of("Diesen Kunden gibt es nicht.")));
+        mvc.perform(post("/kunden/4").param("name", "Verlag").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Diesen Kunden gibt es nicht.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("action=\"/kunden/4\"")));
+
+        when(customers.delete(3)).thenReturn(CustomerTestData.verlag().withId(3L));
+        mvc.perform(post("/kunden/3/loeschen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/kunden"))
+                .andExpect(flash().attribute("success", "Kunde „Verlag am Fluss GmbH“ gelöscht."));
+        when(customers.delete(4)).thenThrow(new CustomerException(List.of("Diesen Kunden gibt es nicht.")));
+        mvc.perform(post("/kunden/4/loeschen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("error", "Diesen Kunden gibt es nicht."));
     }
 
     @Test
