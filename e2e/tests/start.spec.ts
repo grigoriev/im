@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { ADMIN } from './accounts';
 import { ROUTES } from './routes';
 
@@ -36,8 +36,8 @@ test('loads every asset from the app itself', async ({ page, baseURL }) => {
 });
 
 for (const route of ROUTES) {
-  test(`${route.name} has no accessibility violations`, async ({ browser }) => {
-    const context = await browser.newContext(route.anonymous ? { storageState: { cookies: [], origins: [] } } : {});
+  test(`${route.name} has no accessibility violations`, async ({ browser, adminState }) => {
+    const context = await browser.newContext({ storageState: route.anonymous ? { cookies: [], origins: [] } : adminState });
     const page = await context.newPage();
     await page.goto(route.path);
     const results = await new AxeBuilder({ page }).analyze();

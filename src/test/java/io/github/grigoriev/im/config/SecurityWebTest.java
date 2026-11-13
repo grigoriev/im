@@ -435,7 +435,7 @@ class SecurityWebTest {
 
         SellerProfile p = SellerTestData.profile();
         SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
-                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus());
+                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null);
         when(sellers.find()).thenReturn(Optional.of(kosovo));
         when(countries.options("XK", null)).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))

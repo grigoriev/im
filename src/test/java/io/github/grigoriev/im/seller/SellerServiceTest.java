@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,7 +45,11 @@ class SellerServiceTest {
                 field.equals("vatId") ? value : p.vatId(),
                 field.equals("iban") ? value : p.iban(),
                 field.equals("bic") ? value : p.bic(),
-                p.taxStatus());
+                p.taxStatus(),
+                field.equals("tagline") ? value : p.tagline(),
+                field.equals("website") ? value : p.website(),
+                field.equals("bankName") ? value : p.bankName(),
+                field.equals("holder") ? value : p.accountHolder());
     }
 
     @Test
@@ -73,6 +78,10 @@ class SellerServiceTest {
         verify(statement).param("iban", SellerTestData.IBAN);
         verify(statement).param("bic", "COBADEFFXXX");
         verify(statement).param("taxStatus", "KLEINUNTERNEHMER");
+        verify(statement).param("tagline", "Freiberufliche Dozentin");
+        verify(statement).param("website", "www.erika.example");
+        verify(statement).param("bankName", "Commerzbank");
+        verify(statement).param("accountHolder", null);
         verify(statement).update();
         assertThat(SellerService.UPSERT).contains("ON CONFLICT (id) DO UPDATE");
     }
@@ -82,7 +91,7 @@ class SellerServiceTest {
         SellerProfile p = SellerTestData.profile();
         SellerProfile input = new SellerProfile("  Erika Mustermann ", p.street(), p.postcode(), p.city(), " de ", "  ",
                 p.email(), p.phone(), "", " de 123 456 789 ", "de89 3704 0044 0532 0130 00", " cobadeffxxx ",
-                TaxStatus.REGULAR);
+                TaxStatus.REGULAR, null, null, null, null);
         SellerProfile saved = service.save(input);
         assertThat(saved.name()).isEqualTo("Erika Mustermann");
         assertThat(saved.countryCode()).isEqualTo("DE");
@@ -121,7 +130,8 @@ class SellerServiceTest {
 
     @ParameterizedTest
     @CsvSource({"name, 200, Name", "street, 200, Straße", "postcode, 16, PLZ", "city, 100, Ort",
-        "contact, 200, Ansprechpartner", "taxNumber, 32, Steuernummer"})
+        "contact, 200, Ansprechpartner", "taxNumber, 32, Steuernummer", "tagline, 200, Zusatz",
+        "bankName, 100, Kreditinstitut", "holder, 200, Kontoinhaber"})
     void limitsTheLength(String field, int max, String label) {
         SellerProfile longest = with(field, "x".repeat(max));
         assertThat(SellerService.check(SellerService.normalize(longest))).isEmpty();
@@ -133,7 +143,7 @@ class SellerServiceTest {
     void needsATaxNumberOrAVatIdAndATaxStatus() {
         SellerProfile p = SellerTestData.profile();
         SellerProfile none = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null,
-                p.email(), p.phone(), null, null, p.iban(), p.bic(), null);
+                p.email(), p.phone(), null, null, p.iban(), p.bic(), null, null, null, null, null);
         assertThat(SellerService.check(none)).containsExactly("Bitte die Steuernummer oder die USt-IdNr. angeben.",
                 "Bitte den Steuerstatus wählen.");
         assertThat(SellerService.check(with("vatId", "DE123456789"))).isEmpty();
@@ -160,6 +170,38 @@ class SellerServiceTest {
     void acceptsAnIbanOfAnyLengthFromACountryOutsideSepa() {
         // Saint Lucia (LC), 32 characters: valid checksum, not in the SEPA table.
         assertThat(SellerService.check(with("iban", "LC55HEMM000100010012001200023015"))).isEmpty();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"www.erika.example, true", "https://erika.example/kurse, true", "http://a-b.example.de, true",
+        "erika, false", "https://, false", "www.erika example.de, false", "mailto:erika@example.org, false",
+        ".example.de, false", "example.de., false", "www..example.de, false", "https://example.de/a b, false",
+        "www.müller-sprachkurse.de, true", "HTTPS://Example.DE, true", "www.straße.de/kurse, true",
+        "www.exa_mple.de, false", "ftp://example.de, false"})
+    void checksTheWebsite(String website, boolean valid) {
+        assertThat(SellerService.check(with("website", website))).isEqualTo(valid ? List.of()
+                : List.of("Bitte eine Website wie www.example.de angeben."));
+    }
+
+    @Test
+    void limitsTheWebsiteTo200Characters() {
+        // 200 characters in labels of at most 63, as DNS allows: 4 + 3 * 61 - 1 + 14.
+        String label = "a".repeat(60);
+        String host = "www." + label + "." + label + "." + label + ".bbbbb.example";
+        assertThat(SellerService.check(with("website", host))).isEmpty();
+        assertThat(SellerService.check(with("website", host + "x"))).containsExactly("Website hat höchstens 200 Zeichen.");
+    }
+
+    @Test
+    void stripsTheOptionalLinesAndDropsEmptyOnes() {
+        SellerProfile p = SellerTestData.profile();
+        SellerProfile normalized = SellerService.normalize(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
+                "  Dozentin ", null, " Commerzbank ", "  "));
+        assertThat(normalized.tagline()).isEqualTo("Dozentin");
+        assertThat(normalized.accountHolder()).isNull();
+        assertThat(normalized.bankName()).isEqualTo("Commerzbank");
+        assertThat(SellerService.normalize(with("website", " www.erika.example ")).website()).isEqualTo("www.erika.example");
     }
 
     @Test

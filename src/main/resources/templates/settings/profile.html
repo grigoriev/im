@@ -26,6 +26,9 @@
         <label class="floating-label"><span>Name</span>
           <input id="seller-name" th:field="*{name}" class="input w-full" autocomplete="name" maxlength="200" required>
         </label>
+        <label class="floating-label"><span>Zusatz unter dem Namen, z. B. der Beruf</span>
+          <input id="seller-tagline" th:field="*{tagline}" class="input w-full" autocomplete="organization-title" maxlength="200">
+        </label>
         <label class="floating-label"><span>Straße und Hausnummer</span>
           <input id="seller-street" th:field="*{street}" class="input w-full" autocomplete="address-line1" maxlength="200" required>
         </label>
@@ -58,6 +61,9 @@
             <input id="seller-phone" th:field="*{phone}" type="tel" class="input w-full" autocomplete="tel" maxlength="50" required>
           </label>
         </div>
+        <label class="floating-label"><span>Website, z. B. www.example.de</span>
+          <input id="seller-website" th:field="*{website}" class="input w-full" autocomplete="url" maxlength="200">
+        </label>
       </fieldset>
 
       <fieldset class="grid gap-3 @container">
@@ -86,6 +92,14 @@
           </label>
           <label class="floating-label"><span>BIC</span>
             <input id="seller-bic" th:field="*{bic}" class="input w-full uppercase font-mono" maxlength="11" required>
+          </label>
+        </div>
+        <div class="grid gap-3 @lg:grid-cols-2">
+          <label class="floating-label"><span>Kreditinstitut</span>
+            <input id="seller-bank" th:field="*{bankName}" class="input w-full" maxlength="100">
+          </label>
+          <label class="floating-label"><span>Kontoinhaber (leer: der Name)</span>
+            <input id="seller-holder" th:field="*{accountHolder}" class="input w-full" maxlength="200">
           </label>
         </div>
       </fieldset>

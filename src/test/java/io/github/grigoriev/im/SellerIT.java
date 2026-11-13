@@ -44,13 +44,19 @@ class SellerIT {
 
         SellerProfile p = SellerTestData.profile();
         sellers.save(new SellerProfile(p.name(), "Neuer Weg 2", p.postcode(), p.city(), p.countryCode(), "Max Mustermann",
-                p.email(), p.phone(), null, "DE123456789", p.iban(), p.bic(), TaxStatus.REGULAR));
+                p.email(), p.phone(), null, "DE123456789", p.iban(), p.bic(), TaxStatus.REGULAR, null, null, null, null));
         SellerProfile stored = sellers.find().orElseThrow();
         assertThat(stored.street()).isEqualTo("Neuer Weg 2");
         assertThat(stored.contactName()).isEqualTo("Max Mustermann");
         assertThat(stored.taxNumber()).isNull();
         assertThat(stored.vatId()).isEqualTo("DE123456789");
         assertThat(stored.taxStatus()).isEqualTo(TaxStatus.REGULAR);
+        assertThat(stored.tagline()).isNull();
+        assertThat(sellers.save(SellerTestData.profile()).bankName()).isEqualTo("Commerzbank");
+        SellerProfile withDetails = sellers.find().orElseThrow();
+        assertThat(withDetails.tagline()).isEqualTo("Freiberufliche Dozentin");
+        assertThat(withDetails.website()).isEqualTo("www.erika.example");
+        assertThat(withDetails.accountHolder()).isNull();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM seller_profile", Integer.class)).isEqualTo(1);
     }
 

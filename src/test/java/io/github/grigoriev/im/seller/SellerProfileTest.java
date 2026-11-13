@@ -35,8 +35,19 @@ class SellerProfileTest {
     void keepsAnExplicitContact() {
         SellerProfile p = SellerTestData.profile();
         SellerProfile withContact = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
-                "Max Mustermann", p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus());
+                "Max Mustermann", p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus(), null, null, null, null);
         assertThat(withContact.toParty().contactName()).isEqualTo("Max Mustermann");
+    }
+
+    @Test
+    void theNameHoldsTheAccountUnlessAnotherHolderIsSet() {
+        SellerProfile p = SellerTestData.profile();
+        assertThat(p.holder()).isEqualTo("Erika Mustermann");
+        SellerProfile other = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null,
+                p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null,
+                "Mustermann Sprachkurse GbR");
+        assertThat(other.holder()).isEqualTo("Mustermann Sprachkurse GbR");
+        assertThat(SellerProfile.empty().tagline()).isNull();
     }
 
     @Test
@@ -44,6 +55,6 @@ class SellerProfileTest {
         assertThat(SellerTestData.profile().ibanGrouped()).isEqualTo("DE89 3704 0044 0532 0130 00");
         SellerProfile p = SellerTestData.profile();
         assertThat(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(),
-                p.phone(), p.taxNumber(), p.vatId(), null, p.bic(), p.taxStatus()).ibanGrouped()).isEmpty();
+                p.phone(), p.taxNumber(), p.vatId(), null, p.bic(), p.taxStatus(), null, null, null, null).ibanGrouped()).isEmpty();
     }
 }

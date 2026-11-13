@@ -18,6 +18,10 @@ import io.github.grigoriev.im.einvoice.Party;
  * @param iban IBAN without spaces
  * @param bic BIC
  * @param taxStatus how the seller charges VAT
+ * @param tagline line below the name, for example the profession, may be {@code null}
+ * @param website website, may be {@code null}
+ * @param bankName name of the bank, may be {@code null}
+ * @param accountHolder holder of the account, {@code null} means the name
  */
 public record SellerProfile(
         String name,
@@ -32,7 +36,11 @@ public record SellerProfile(
         String vatId,
         String iban,
         String bic,
-        TaxStatus taxStatus) {
+        TaxStatus taxStatus,
+        String tagline,
+        String website,
+        String bankName,
+        String accountHolder) {
 
     /**
      * Returns an empty profile for the first form: Germany, Kleinunternehmer.
@@ -40,7 +48,8 @@ public record SellerProfile(
      * @return the empty profile
      */
     public static SellerProfile empty() {
-        return new SellerProfile("", "", "", "", "DE", null, "", "", null, null, "", "", TaxStatus.KLEINUNTERNEHMER);
+        return new SellerProfile("", "", "", "", "DE", null, "", "", null, null, "", "", TaxStatus.KLEINUNTERNEHMER,
+                null, null, null, null);
     }
 
     /**
@@ -52,6 +61,15 @@ public record SellerProfile(
     public Party toParty() {
         return new Party(name, street, postcode, city, countryCode, email, phone,
                 contactName == null ? name : contactName, taxNumber, vatId);
+    }
+
+    /**
+     * Returns the holder of the account: the account holder, or the name if none is set.
+     *
+     * @return the holder
+     */
+    public String holder() {
+        return accountHolder == null ? name : accountHolder;
     }
 
     /**

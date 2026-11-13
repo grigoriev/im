@@ -15,8 +15,6 @@ export default defineConfig({
     locale: 'de-DE',
     timezoneId: 'Europe/Berlin',
     trace: 'retain-on-failure',
-    // Logged in as the admin of docker-compose.yml. Tests of the login page reset it.
-    storageState: '.auth/admin.json',
   },
   expect: {
     // Strict on purpose: the default threshold 0.2 misses dark theme changes, and a ratio misses one new menu item.

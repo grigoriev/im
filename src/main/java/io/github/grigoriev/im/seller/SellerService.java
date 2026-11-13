@@ -11,6 +11,7 @@ import static io.github.grigoriev.im.validation.Fields.upper;
 import static io.github.grigoriev.im.validation.Fields.checkVatId;
 
 import java.math.BigInteger;
+import java.net.IDN;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,14 +48,22 @@ public class SellerService {
     /** Inserts the one row or replaces it, atomic even if two users save the first profile at once. */
     static final String UPSERT = """
             INSERT INTO seller_profile (id, name, street, postcode, city, country_code, contact_name, email, phone,
-                                        tax_number, vat_id, iban, bic, tax_status)
+                                        tax_number, vat_id, iban, bic, tax_status, tagline, website, bank_name,
+                                        account_holder)
             VALUES (1, :name, :street, :postcode, :city, :countryCode, :contactName, :email, :phone,
-                    :taxNumber, :vatId, :iban, :bic, :taxStatus)
+                    :taxNumber, :vatId, :iban, :bic, :taxStatus, :tagline, :website, :bankName, :accountHolder)
             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, street = EXCLUDED.street,
                 postcode = EXCLUDED.postcode, city = EXCLUDED.city, country_code = EXCLUDED.country_code,
                 contact_name = EXCLUDED.contact_name, email = EXCLUDED.email, phone = EXCLUDED.phone,
                 tax_number = EXCLUDED.tax_number, vat_id = EXCLUDED.vat_id, iban = EXCLUDED.iban,
-                bic = EXCLUDED.bic, tax_status = EXCLUDED.tax_status""";
+                bic = EXCLUDED.bic, tax_status = EXCLUDED.tax_status, tagline = EXCLUDED.tagline,
+                website = EXCLUDED.website, bank_name = EXCLUDED.bank_name, account_holder = EXCLUDED.account_holder""";
+    /** The scheme of a website, in any case. */
+    static final Pattern SCHEME = Pattern.compile("^https?://", Pattern.CASE_INSENSITIVE);
+
+    /** A host in ASCII, after {@link IDN#toASCII(String)}: letters, digits, dots and hyphens. */
+    static final Pattern HOST = Pattern.compile("[A-Za-z0-9.-]+");
+
     static final Pattern BIC = Pattern.compile("[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?");
 
     private static final BigInteger NINETY_SEVEN = BigInteger.valueOf(97);
@@ -104,6 +113,8 @@ public class SellerService {
                 .param("taxNumber", profile.taxNumber()).param("vatId", profile.vatId())
                 .param("iban", profile.iban()).param("bic", profile.bic())
                 .param("taxStatus", profile.taxStatus().name())
+                .param("tagline", profile.tagline()).param("website", profile.website())
+                .param("bankName", profile.bankName()).param("accountHolder", profile.accountHolder())
                 .update();
         return profile;
     }
@@ -112,7 +123,8 @@ public class SellerService {
         return new SellerProfile(text(input.name()), text(input.street()), text(input.postcode()), text(input.city()),
                 upper(input.countryCode()), text(input.contactName()), text(input.email()), text(input.phone()),
                 text(input.taxNumber()), compact(input.vatId()), compact(input.iban()), compact(input.bic()),
-                input.taxStatus());
+                input.taxStatus(), text(input.tagline()), text(input.website()), text(input.bankName()),
+                text(input.accountHolder()));
     }
 
     static List<String> check(SellerProfile profile) {
@@ -132,6 +144,13 @@ public class SellerService {
         }
         checkIban(problems, profile.iban());
         matches(problems, profile.bic(), BIC, "Die BIC hat 8 oder 11 Zeichen.");
+        optional(problems, profile.tagline(), "Zusatz", 200);
+        optional(problems, profile.website(), "Website", 200);
+        if (profile.website() != null && !websiteOk(profile.website())) {
+            problems.add("Bitte eine Website wie www.example.de angeben.");
+        }
+        optional(problems, profile.bankName(), "Kreditinstitut", 100);
+        optional(problems, profile.accountHolder(), "Kontoinhaber", 200);
         if (profile.taxStatus() == null) {
             problems.add("Bitte den Steuerstatus wählen.");
         }
@@ -148,6 +167,25 @@ public class SellerService {
         if (length != null && iban.length() != length) {
             problems.add("Eine IBAN aus " + country + " hat " + length + " Zeichen.");
         }
+    }
+
+    /**
+     * A website needs a host with a dot inside, such as {@code www.example.de} or {@code www.müller.de}, no empty
+     * part and no space. The scheme {@code http://} or {@code https://} is optional.
+     */
+    static boolean websiteOk(String website) {
+        String[] parts = SCHEME.matcher(website).replaceFirst("").split("/", 2);
+        if (website.chars().anyMatch(Character::isWhitespace)) {
+            return false;
+        }
+        String host;
+        try {
+            host = IDN.toASCII(parts[0]);
+        } catch (IllegalArgumentException _) {
+            return false;
+        }
+        // IDN.toASCII already refuses empty labels such as ".example.de" or "www..example.de".
+        return HOST.matcher(host).matches() && host.contains(".") && !host.endsWith(".");
     }
 
     /** ISO 13616: the IBAN with its first four characters moved to the end, letters as numbers, mod 97 is 1. */

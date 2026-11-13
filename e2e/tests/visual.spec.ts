@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { ANONYMOUS } from './accounts';
 import { ROUTES } from './routes';
 
@@ -13,11 +13,11 @@ const VIEWPORTS = [
 for (const route of ROUTES) {
   for (const viewport of VIEWPORTS) {
     for (const scheme of ['light', 'dark'] as const) {
-      test(`${route.name} ${viewport.name} ${scheme}`, async ({ browser }) => {
+      test(`${route.name} ${viewport.name} ${scheme}`, async ({ browser, adminState }) => {
         const context = await browser.newContext({
           colorScheme: scheme,
           viewport: { width: viewport.width, height: viewport.height },
-          ...(route.anonymous ? { storageState: ANONYMOUS } : {}),
+          storageState: route.anonymous ? ANONYMOUS : adminState,
         });
         const page = await context.newPage();
         await page.goto(route.path);
