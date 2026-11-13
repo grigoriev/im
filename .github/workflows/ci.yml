@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older run. Each push to main gets
+# its own group, so a queued main run is never replaced by a newer one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Checks the workflows themselves: expressions, inputs, shell in run.
+      - name: actionlint
+        uses: docker://rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+
+      # Security audit of the workflows, for example template injection or
+      # credentials left in the checkout. Informational findings do not fail.
+      - name: zizmor
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          advanced-security: false
+          min-severity: low
+          version: 1.31.1
+
+      - name: No em-dash
+        run: |
+          if git grep -n -I $'—' -- . ':!LICENSE'; then
+            echo "::error::Replace the em-dashes above with a hyphen, comma or period."
+            exit 1
+          fi
