@@ -48,12 +48,14 @@ class PdfVisualTest {
                         TaxCategory.EXEMPT_4_21)));
         return Stream.of(
                 Arguments.of("one-line", invoice(PUBLISHER, null, InvoiceFormat.ZUGFERD_EN16931,
-                        line("Lesung aus „Der stille Hafen“, 90 Min.", "1", "400.00", TaxCategory.KLEINUNTERNEHMER))),
+                        SampleInvoices.lump("Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.", "400.00",
+                                TaxCategory.KLEINUNTERNEHMER))),
+                Arguments.of("lump-sums", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931)),
                 Arguments.of("page-break", invoice(SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
                         many.toArray(InvoiceLine[]::new))),
                 Arguments.of("mixed-categories", invoice(SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
                         line("Unterricht Deutsch B2, je 45 Min.", "16", "45.00", TaxCategory.EXEMPT_4_21),
-                        line("Lesung aus „Der stille Hafen“", "1", "400.00", TaxCategory.KLEINUNTERNEHMER))),
+                        SampleInvoices.lump("Lesung aus „Der stille Hafen“", "400.00", TaxCategory.KLEINUNTERNEHMER))),
                 Arguments.of("xrechnung-buyer-reference", invoice(SCHOOL, "04011000-12345-67", InvoiceFormat.XRECHNUNG,
                         line("Integrationskurs Modul 4, je 45 Min.", "24", "41.00", TaxCategory.EXEMPT_4_21))),
                 Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,

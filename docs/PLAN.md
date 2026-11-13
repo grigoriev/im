@@ -165,7 +165,12 @@ The admin edits the default tax notes. A template and an invoice can override th
 5. The user edits every field of the draft: texts, tax note, lines, dates.
 6. A preview shows the final PDF before issue.
 7. A template change does not affect existing invoices.
-8. Validation before issue: a VAT-exempt line needs a tax note. Both XRechnung formats need a buyer reference (BR-DE-15).
+8. A line is a lump sum by default: the PDF shows the text and the amount only. The scope of the service goes into the text,
+   for example "Lesung am 16.03.2027, 90 Min." (§14 Abs. 4 Nr. 5 UStG). A line can carry a quantity instead.
+   Then the PDF shows quantity, unit price and amount. The quantity and unit price columns appear only if a line has a quantity.
+   The user never picks a unit: the XML carries `LS` for a lump sum and `C62` for a quantity, as EN 16931 needs one.
+   Switching a line from quantity to lump sum keeps its amount.
+9. Validation before issue: a VAT-exempt line needs a tax note. Both XRechnung formats need a buyer reference (BR-DE-15).
    The validation of the format must pass.
 
 ### Invoice numbers

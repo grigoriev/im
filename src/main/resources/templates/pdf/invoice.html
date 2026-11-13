@@ -64,16 +64,18 @@
 
   <table class="lines">
     <thead>
-      <tr><th>Leistung</th><th class="num">Menge</th><th class="num">Einzelpreis</th><th class="num">Betrag</th></tr>
+      <tr><th>Leistung</th><th:block th:if="${invoice.showsQuantities()}"><th class="num">Menge</th><th class="num">Einzelpreis</th></th:block><th class="num">Betrag</th></tr>
     </thead>
     <tbody>
       <tr th:each="line : ${invoice.lines}">
         <td th:text="${line.text}">Leistung</td>
-        <td class="num" th:text="${fmt.quantity(line.quantity) + ' ' + line.unitLabel}">1 Stk</td>
-        <td class="num" th:text="${fmt.price(line.unitPrice)}">0,00 €</td>
+        <th:block th:if="${invoice.showsQuantities()}">
+          <td class="num" th:text="${line.lumpSum ? '' : fmt.quantity(line.quantity)}">1</td>
+          <td class="num" th:text="${line.lumpSum ? '' : fmt.price(line.unitPrice)}">0,00 €</td>
+        </th:block>
         <td class="num" th:text="${fmt.money(line.netAmount())}">0,00 €</td>
       </tr>
-      <tr class="total"><td colspan="3" class="num">Gesamtbetrag</td><td class="num" th:text="${fmt.money(invoice.total())}">0,00 €</td></tr>
+      <tr class="total"><td th:colspan="${invoice.showsQuantities() ? 3 : 1}" class="num">Gesamtbetrag</td><td class="num" th:text="${fmt.money(invoice.total())}">0,00 €</td></tr>
     </tbody>
   </table>
 

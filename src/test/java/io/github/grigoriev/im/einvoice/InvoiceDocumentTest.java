@@ -45,6 +45,14 @@ class InvoiceDocumentTest {
     }
 
     @Test
+    void showsQuantitiesOnlyWhenALineHasItsOwn() {
+        InvoiceLine lump = SampleInvoices.lump("Lesung", "400.00", KLEINUNTERNEHMER);
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, lump, lump).showsQuantities()).isFalse();
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, lump, EX).showsQuantities()).isTrue();
+        assertThat(invoice(PUBLISHER, null, ZUGFERD, EX).showsQuantities()).isTrue();
+    }
+
+    @Test
     void sumsTheLines() {
         assertThat(invoice(PUBLISHER, null, ZUGFERD, KU, EX).total()).isEqualTo(new BigDecimal("1120.00"));
     }

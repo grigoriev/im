@@ -96,11 +96,11 @@ main dd, main .badge { overflow-wrap: anywhere; }
 /* A grid without explicit columns gets one track that may shrink below its content. */
 main .grid:not([class*="grid-cols"]) { grid-template-columns: minmax(0, 1fr); }
 main .badge { height: auto; min-height: var(--size); }
-.line-grid { grid-template-columns: minmax(0, 1fr) 4.5rem 4.5rem 6.5rem 8.5rem 6rem 2rem; gap: 0.5rem; align-items: center; }
+.line-grid { grid-template-columns: minmax(0, 1fr) 6.5rem 4.5rem 6.5rem 8.5rem 6rem 2rem; gap: 0.5rem; align-items: center; }
 .line-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; align-items: end; }
 .line-row .l-text { grid-column: 1 / -1; }
 @container (min-width: 48rem) {
-  .line-row { grid-template-columns: minmax(0, 1fr) 4.5rem 4.5rem 6.5rem 8.5rem 6rem 2rem; align-items: center; }
+  .line-row { grid-template-columns: minmax(0, 1fr) 6.5rem 4.5rem 6.5rem 8.5rem 6rem 2rem; align-items: center; }
   .line-row .l-text { grid-column: auto; }
   .line-row .l-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
@@ -239,17 +239,17 @@ const CAT = {
 
 const CUSTOMERS = [
   { id: 'lindenhof', name: 'Sprachschule Lindenhof GmbH', city: '80469 München', country: 'DE', format: 'zugferd', mail: 'rechnung@lindenhof.example', templates: [
-    { name: 'Deutschkurs B2, monatlich', cat: 'ex', lines: [['Unterricht Deutsch B2, je 45 Min.', 16, 'UE', 45]] },
-    { name: 'Prüfungsvorbereitung', cat: 'ex', lines: [['Prüfungstraining telc B2, je 45 Min.', 8, 'UE', 50]] } ] },
+    { name: 'Deutschkurs B2, monatlich', cat: 'ex', lines: [['Unterricht Deutsch B2, März 2027, je 45 Min.', 16, 'Menge', 45]] },
+    { name: 'Prüfungsvorbereitung', cat: 'ex', lines: [['Prüfungstraining telc B2, 8 × 45 Min.', 1, 'pauschal', 400]] } ] },
   { id: 'vhs', name: 'Volkshochschule Musterstadt', city: '86150 Musterstadt', country: 'DE', format: 'xrechnung', leitweg: '09162000-VHS01-42', mail: 'erechnung@vhs-musterstadt.example', templates: [
-    { name: 'Integrationskurs, Modul', cat: 'ex', lines: [['Integrationskurs Modul 4, je 45 Min.', 24, 'UE', 41]] } ] },
+    { name: 'Integrationskurs, Modul', cat: 'ex', lines: [['Integrationskurs Modul 4, je 45 Min.', 24, 'Menge', 41]] } ] },
   { id: 'verlag', name: 'Verlag am Fluss GmbH', city: '20457 Hamburg', country: 'DE', format: 'zugferd', mail: 'buchhaltung@verlag-am-fluss.example', templates: [
-    { name: 'Lesung mit Gespräch', cat: 'ku', lines: [['Lesung aus „Der stille Hafen“, 90 Min.', 1, 'Stk', 400], ['Reisekosten, pauschal', 1, 'Stk', 80]] },
-    { name: 'Lektorat', cat: 'ku', lines: [['Lektorat Manuskript, je Normseite', 120, 'Seite', 4.5]] } ] },
+    { name: 'Lesung mit Gespräch', cat: 'ku', lines: [['Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.', 1, 'pauschal', 400], ['Reisekosten', 1, 'pauschal', 80]] },
+    { name: 'Lektorat', cat: 'ku', lines: [['Lektorat Manuskript „Der stille Hafen“, 120 Normseiten', 1, 'pauschal', 540]] } ] },
   { id: 'lingua', name: 'Lingua Lab B.V.', city: '3511 Utrecht', country: 'NL', format: 'zugferd', vat: 'NL123456789B01', mail: 'invoices@lingualab.example', templates: [
-    { name: 'Online-Workshop', cat: 'rc', lines: [['Online-Workshop „Deutsch im Beruf“, 3 Std.', 1, 'Stk', 600]] } ] },
+    { name: 'Online-Workshop', cat: 'rc', lines: [['Online-Workshop „Deutsch im Beruf“, 3 Std.', 1, 'pauschal', 600]] } ] },
   { id: 'kulturforum', name: 'Kulturforum Zürich AG', city: '8001 Zürich', country: 'CH', format: 'zugferd', mail: 'kreditoren@kulturforum.example', templates: [
-    { name: 'Lesung', cat: 'out', lines: [['Lesung und Signierstunde', 1, 'Stk', 350]] } ] },
+    { name: 'Lesung', cat: 'out', lines: [['Lesung und Signierstunde', 1, 'pauschal', 350]] } ] },
 ];
 const cust = id => CUSTOMERS.find(c => c.id === id);
 const FORMATS = {
@@ -472,7 +472,7 @@ const VIEWS = {
           <section class="bg-base-100 rounded-box border border-base-300 p-4 grid gap-3">
             <label class="floating-label"><span>Einleitung</span><textarea id="f-intro" class="textarea w-full h-16"></textarea></label>
             <div class="fit">
-              <div class="hidden @3xl:grid line-grid text-xs font-semibold opacity-60 px-1 pb-1"><span>Leistung</span><span class="text-right">Menge</span><span>Einheit</span><span class="text-right">Preis €</span><span>Steuer</span><span class="text-right">Summe</span><span></span></div>
+              <div class="hidden @3xl:grid line-grid text-xs font-semibold opacity-60 px-1 pb-1"><span>Leistung</span><span>Art</span><span class="text-right">Menge</span><span class="text-right">Preis €</span><span>Steuer</span><span class="text-right">Summe</span><span></span></div>
               <div id="lines" class="grid gap-3 @3xl:gap-1.5"></div>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-2">
@@ -759,8 +759,10 @@ function renderLines() {
     const opts = Object.entries(CAT).map(([k, c]) => '<option value="' + k + '"' + (k === l.cat ? ' selected' : '') + '>' + c.label + '</option>').join('');
     return '<div class="line-row border-b border-base-300 pb-3 @3xl:border-0 @3xl:pb-0" data-line="' + n + '">'
       + lineField(n, 'text', 'Leistung', '<input id="l-text-' + n + '" class="input input-sm w-full" data-f="text" value="' + esc(l.text) + '">', 'l-text')
-      + lineField(n, 'qty', 'Menge', '<input id="l-qty-' + n + '" class="input input-sm w-full text-right num" data-f="qty" value="' + String(l.qty).replace('.', ',') + '">')
-      + lineField(n, 'unit', 'Einheit', '<input id="l-unit-' + n + '" class="input input-sm w-full" data-f="unit" value="' + esc(l.unit) + '">')
+      + lineField(n, 'unit', 'Art', '<select id="l-unit-' + n + '" class="select select-sm w-full" data-f="unit">'
+        + ['pauschal', 'Menge'].map(k => '<option' + (k === l.unit ? ' selected' : '') + '>' + k + '</option>').join('') + '</select>')
+      + lineField(n, 'qty', 'Menge', '<input id="l-qty-' + n + '" class="input input-sm w-full text-right num" data-f="qty" value="'
+        + String(l.qty).replace('.', ',') + '"' + (l.unit === 'pauschal' ? ' disabled' : '') + '>')
       + lineField(n, 'price', 'Preis €', '<input id="l-price-' + n + '" class="input input-sm w-full text-right num" data-f="price" value="' + l.price.toFixed(2).replace('.', ',') + '">')
       + lineField(n, 'cat', 'Steuer', '<select id="l-cat-' + n + '" class="select select-sm w-full" data-f="cat">' + opts + '</select>')
       + '<div class="line-sum text-right num font-medium self-center">' + eur.format(l.qty * l.price) + '</div>'
@@ -793,11 +795,17 @@ function buyerBlock(c) {
   return '<div><div class="font-medium">' + c.name + '</div><div>' + c.city + '</div><div>' + COUNTRY[c.country] + '</div>' + extra + '</div>';
 }
 
+const showsQuantities = () => state.lines.some(l => l.unit !== 'pauschal');
+
 function previewLines() {
-  return state.lines.map(l => '<tr class="border-b rule align-top"><td class="py-1 pr-2">' + esc(l.text) + '</td>'
-    + '<td class="text-right">' + String(l.qty).replace('.', ',') + ' ' + esc(l.unit) + '</td>'
-    + '<td class="text-right">' + eur.format(l.price) + '</td>'
-    + '<td class="text-right">' + eur.format(l.qty * l.price) + '</td></tr>').join('');
+  const counted = showsQuantities();
+  return state.lines.map(l => {
+    const lump = l.unit === 'pauschal';
+    const extra = counted ? '<td class="text-right">' + (lump ? '' : String(l.qty).replace('.', ',')) + '</td>'
+      + '<td class="text-right">' + (lump ? '' : eur.format(l.price)) + '</td>' : '';
+    return '<tr class="border-b rule align-top"><td class="py-1 pr-2">' + esc(l.text) + '</td>' + extra
+      + '<td class="text-right">' + eur.format(l.qty * l.price) + '</td></tr>';
+  }).join('');
 }
 
 function previewHtml(c, f) {
@@ -812,9 +820,9 @@ function previewHtml(c, f) {
     <div class="font-semibold text-[12px] mt-3">Rechnung</div>
     <div>Sehr geehrte Damen und Herren,</div>
     <div>${esc(f.intro)}</div>
-    <table class="w-full num"><thead><tr class="border-b rule text-left"><th class="py-1 font-medium">Leistung</th><th class="text-right font-medium">Menge</th><th class="text-right font-medium">Preis</th><th class="text-right font-medium">Summe</th></tr></thead>
+    <table class="w-full num"><thead><tr class="border-b rule text-left"><th class="py-1 font-medium">Leistung</th>${showsQuantities() ? '<th class="text-right font-medium">Menge</th><th class="text-right font-medium">Einzelpreis</th>' : ''}<th class="text-right font-medium">Betrag</th></tr></thead>
       <tbody>${previewLines()}</tbody>
-      <tfoot><tr><td colspan="3" class="text-right pt-1 font-semibold">Gesamtbetrag</td><td class="text-right pt-1 font-semibold">${eur.format(lineSum(state.lines))}</td></tr></tfoot></table>
+      <tfoot><tr><td colspan="${showsQuantities() ? 3 : 1}" class="text-right pt-1 font-semibold">Gesamtbetrag</td><td class="text-right pt-1 font-semibold">${eur.format(lineSum(state.lines))}</td></tr></tfoot></table>
     <div class="whitespace-pre-line">${esc(f.note)}</div>
     <div>${esc(f.closing).replace('14 Tagen', paymentText(f.terms, f.due))}</div>
     <div class="mt-auto border-t rule pt-2 text-[7px] opacity-70 grid grid-cols-3 gap-2 leading-tight"><div>Elena Sommer<br>Lindenstraße 12<br>80331 München</div><div>IBAN DE02 1203 0000 0000 2020 51<br>BIC BYLADEM1001</div><div>kontakt@sommer.example<br>Steuernr. 143/123/45678</div></div>`;
@@ -951,7 +959,7 @@ const CLICK_HANDLERS = [
   }],
   ['[data-tok]', el => { document.getElementById('num-pattern').value += el.dataset.tok; renderNext(); }],
   ['[data-del]', el => { state.lines.splice(Number(el.dataset.del), 1); syncNote(); renderLines(); }],
-  ['#add-line', () => { state.lines.push({ text: 'Neue Leistung', qty: 1, unit: 'Stk', price: 0, cat: state.lines[0]?.cat ?? 'ku' }); renderLines(); }],
+  ['#add-line', () => { state.lines.push({ text: 'Neue Leistung', qty: 1, unit: 'pauschal', price: 0, cat: state.lines[0]?.cat ?? 'ku' }); renderLines(); }],
   ['#btn-issue', issueInvoice],
   ['button[data-toast], a[data-toast]', el => {
     if (el.closest('form')) return;
@@ -982,6 +990,7 @@ document.addEventListener('input', e => {
     const l = state.lines[+tr.dataset.line], f = e.target.dataset.f;
     l[f] = (f === 'qty' || f === 'price') ? (Number.parseFloat(e.target.value.replaceAll('.', '').replace(',', '.')) || 0) : e.target.value;
     if (f === 'cat') { syncNote(); renderLines(); return; }
+    if (f === 'unit') { if (l.unit === 'pauschal') { l.price = Math.round((l.qty * l.price + Number.EPSILON) * 100) / 100; l.qty = 1; } renderLines(); return; }
     if (f === 'qty' || f === 'price') tr.querySelector('.line-sum').textContent = eur.format(l.qty * l.price);
     renderPreview(); return;
   }
