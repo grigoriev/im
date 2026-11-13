@@ -47,14 +47,19 @@ public class SellerService {
     /** Inserts the one row or replaces it, atomic even if two users save the first profile at once. */
     static final String UPSERT = """
             INSERT INTO seller_profile (id, name, street, postcode, city, country_code, contact_name, email, phone,
-                                        tax_number, vat_id, iban, bic, tax_status)
+                                        tax_number, vat_id, iban, bic, tax_status, tagline, website, bank_name,
+                                        account_holder)
             VALUES (1, :name, :street, :postcode, :city, :countryCode, :contactName, :email, :phone,
-                    :taxNumber, :vatId, :iban, :bic, :taxStatus)
+                    :taxNumber, :vatId, :iban, :bic, :taxStatus, :tagline, :website, :bankName, :accountHolder)
             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, street = EXCLUDED.street,
                 postcode = EXCLUDED.postcode, city = EXCLUDED.city, country_code = EXCLUDED.country_code,
                 contact_name = EXCLUDED.contact_name, email = EXCLUDED.email, phone = EXCLUDED.phone,
                 tax_number = EXCLUDED.tax_number, vat_id = EXCLUDED.vat_id, iban = EXCLUDED.iban,
-                bic = EXCLUDED.bic, tax_status = EXCLUDED.tax_status""";
+                bic = EXCLUDED.bic, tax_status = EXCLUDED.tax_status, tagline = EXCLUDED.tagline,
+                website = EXCLUDED.website, bank_name = EXCLUDED.bank_name, account_holder = EXCLUDED.account_holder""";
+    /** A host name with a dot, with or without {@code https://} and a path. */
+    static final Pattern WEBSITE = Pattern.compile("(https?://)?[\\w-]+(\\.[\\w-]+)+(/\\S*)?");
+
     static final Pattern BIC = Pattern.compile("[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?");
 
     private static final BigInteger NINETY_SEVEN = BigInteger.valueOf(97);
@@ -104,6 +109,8 @@ public class SellerService {
                 .param("taxNumber", profile.taxNumber()).param("vatId", profile.vatId())
                 .param("iban", profile.iban()).param("bic", profile.bic())
                 .param("taxStatus", profile.taxStatus().name())
+                .param("tagline", profile.tagline()).param("website", profile.website())
+                .param("bankName", profile.bankName()).param("accountHolder", profile.accountHolder())
                 .update();
         return profile;
     }
@@ -112,7 +119,8 @@ public class SellerService {
         return new SellerProfile(text(input.name()), text(input.street()), text(input.postcode()), text(input.city()),
                 upper(input.countryCode()), text(input.contactName()), text(input.email()), text(input.phone()),
                 text(input.taxNumber()), compact(input.vatId()), compact(input.iban()), compact(input.bic()),
-                input.taxStatus());
+                input.taxStatus(), text(input.tagline()), text(input.website()), text(input.bankName()),
+                text(input.accountHolder()));
     }
 
     static List<String> check(SellerProfile profile) {
@@ -132,6 +140,13 @@ public class SellerService {
         }
         checkIban(problems, profile.iban());
         matches(problems, profile.bic(), BIC, "Die BIC hat 8 oder 11 Zeichen.");
+        optional(problems, profile.tagline(), "Zusatz", 200);
+        optional(problems, profile.website(), "Website", 200);
+        if (profile.website() != null && !WEBSITE.matcher(profile.website()).matches()) {
+            problems.add("Bitte eine Website wie www.example.de angeben.");
+        }
+        optional(problems, profile.bankName(), "Kreditinstitut", 100);
+        optional(problems, profile.accountHolder(), "Kontoinhaber", 200);
         if (profile.taxStatus() == null) {
             problems.add("Bitte den Steuerstatus wählen.");
         }

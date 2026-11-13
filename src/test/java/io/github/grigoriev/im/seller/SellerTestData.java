@@ -17,6 +17,6 @@ public final class SellerTestData {
     public static SellerProfile profile() {
         return new SellerProfile("Erika Mustermann", "Musterweg 1", "12345", "Musterstadt", "DE", null,
                 "erika@example.org", "+49 30 1234567", "12/345/67890", null, IBAN, "COBADEFFXXX",
-                TaxStatus.KLEINUNTERNEHMER);
+                TaxStatus.KLEINUNTERNEHMER, "Freiberufliche Dozentin", "www.erika.example", "Commerzbank", null);
     }
 }
