@@ -1,0 +1,19 @@
+# Build output
+target/
+node_modules/
+
+# Test output
+e2e/test-results/
+e2e/playwright-report/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# Local configuration and secrets
+.env
+*.local.*
