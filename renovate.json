@@ -10,48 +10,52 @@
     {
       "customType": "regex",
       "description": "The Node version of frontend-maven-plugin in pom.xml. It moves with .node-version.",
-      "managerFilePatterns": ["/^pom\\.xml$/"],
-      "matchStrings": ["<node\\.version>v(?<currentValue>[\\d.]+)</node\\.version>"],
+      "managerFilePatterns": [
+        "/^pom\\.xml$/"
+      ],
+      "matchStrings": [
+        "<node\\.version>v(?<currentValue>[\\d.]+)</node\\.version>"
+      ],
       "depNameTemplate": "node",
       "datasourceTemplate": "node-version"
     },
     {
       "customType": "regex",
       "description": "The KoSIT XRechnung configuration in pom.xml. A new release also needs the file name and SHA-256 in the same pull request.",
-      "managerFilePatterns": ["/^pom\\.xml$/"],
-      "matchStrings": ["<!-- renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) -->\\s*<xrechnung-config\\.version>(?<currentValue>[^<]+)</xrechnung-config\\.version>"],
+      "managerFilePatterns": [
+        "/^pom\\.xml$/"
+      ],
+      "matchStrings": [
+        "<!-- renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) -->\\s*<xrechnung-config\\.version>(?<currentValue>[^<]+)</xrechnung-config\\.version>"
+      ],
       "versioningTemplate": "loose"
     },
     {
       "customType": "regex",
       "description": "The PostgreSQL image of the Testcontainers tests, below a renovate comment.",
-      "managerFilePatterns": ["/^src/test/java/.+\\.java$/"],
-      "matchStrings": ["// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+static final String \\w+ = \"[^:]+:(?<currentValue>[^\"]+)\";"]
+      "managerFilePatterns": [
+        "/^src/test/java/.+\\.java$/"
+      ],
+      "matchStrings": [
+        "// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+static final String \\w+ = \"[^:]+:(?<currentValue>[^\"]+)\";"
+      ]
     }
   ],
   "packageRules": [
     {
       "description": "Node of the CSS build: .node-version and pom.xml move together.",
-      "matchDepNames": ["node"],
+      "matchDepNames": [
+        "node"
+      ],
       "groupName": "node"
     },
     {
-      "description": "The Playwright package drives the browsers of the pinned image, so both move together. A human checks the screenshot baselines.",
-      "matchDepNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
-      "groupName": "playwright",
-      "automerge": false
-    },
-    {
-      "description": "Libraries that shape the legal output never merge by themselves (docs/PLAN.md, section 11).",
-      "matchPackageNames": ["org.mustangproject:**", "org.kosit:validator", "org.verapdf:**", "itplr-kosit/validator-configuration-xrechnung"],
-      "automerge": false,
-      "labels": ["legal-output"]
-    },
-    {
-      "description": "PostgreSQL: tests and production stay on the same major version. A major upgrade needs dump and restore, so it is reviewed by hand.",
-      "matchDepNames": ["postgres"],
-      "matchUpdateTypes": ["major"],
-      "automerge": false
+      "description": "The Playwright package drives the browsers of the pinned image, so both move together. The screenshot tests guard the update.",
+      "matchDepNames": [
+        "@playwright/test",
+        "mcr.microsoft.com/playwright"
+      ],
+      "groupName": "playwright"
     }
   ]
 }
