@@ -63,7 +63,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
 | Tests | JUnit 5, jqwik, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
 | Packaging | Container image on GHCR, multi-arch, attested | Same pattern as sb-stack |
-| Quality | SonarCloud, Renovate, CodeRabbit, Claude review | Standard for public repositories |
+| Quality | SonarCloud, Renovate, Claude review, Greptile | Standard for public repositories |
 
 Group ID: `io.github.grigoriev`, artifact `im`, base package `io.github.grigoriev.im`.
 
@@ -253,7 +253,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 1. Unit test coverage 100 %, lines and branches, measured by JaCoCo and enforced in the build.
    Integration tests add to the report, but do not count toward the 100 %.
 2. PIT mutation score of the domain core at least 80 %.
-3. SonarCloud quality gate green. No open findings from any review: Claude, Greptile, CodeRabbit, Sonar.
+3. SonarCloud quality gate green. No open findings from any review: Claude, Greptile, Sonar.
 
 ### Definition of done
 
@@ -299,7 +299,7 @@ Every dependency lives in a file that Renovate reads. No version hides in code.
 
 | # | Milestone | Content | Target |
 |---|---|---|---|
-| M0 | Skeleton | Maven project, Spring Boot, CI, image on GHCR, Sonar, Renovate, CodeRabbit. PDF/A-3 spike | 2026-11 |
+| M0 | Skeleton | Maven project, Spring Boot, CI, image on GHCR, Sonar, Renovate. PDF/A-3 spike | 2026-11 |
 | M1 | Base | Login with passkeys, roles, seller profile, customers, settings, audit log | 2026-11 |
 | M2 | Invoices | Templates, drafts, preview, issue, numbers, PDF, ZUGFeRD, XRechnung, KoSIT, archive | 2026-12 |
 | M3 | Sending and payments | SMTP sending, manual dispatch, payments, Stornorechnung | 2026-12 |
