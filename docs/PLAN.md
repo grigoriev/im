@@ -60,7 +60,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |
 | UI | Thymeleaf + htmx | Server-side CRUD. No SPA build for 10 invoices per month |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
-| Tests | JUnit 5, Testcontainers, AssertJ | Real PostgreSQL in tests |
+| Tests | JUnit 5, jqwik, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
 | Packaging | Container image on GHCR, multi-arch, attested | Same pattern as sb-stack |
 | Quality | SonarCloud, Renovate, CodeRabbit, Claude review | Standard for public repositories |
 
@@ -211,12 +211,59 @@ The admin edits the default tax notes. A template and an invoice can override th
 
 ## 10. Testing
 
-1. Unit tests for the number generator, tax rules and threshold calculation.
-2. Every generated invoice passes KoSIT validation in the test suite.
-3. Golden files for XML output, one per tax category and format.
-4. Integration tests with Testcontainers (PostgreSQL) and a fake SMTP server.
-5. Coverage gate in SonarCloud.
-6. Before the go-live: send test invoices to free online validators and to a test recipient.
+Every feature ships with unit tests, integration tests where relevant, an E2E scenario and visual baselines.
+
+### Levels
+
+| Level | Scope | Tools | Runs |
+|---|---|---|---|
+| Unit | Domain rules: numbers, tax categories, §19 threshold, amounts, template placeholders | JUnit 5, AssertJ, jqwik | `mvn test` |
+| Mutation | Domain core: tax rules, threshold, numbers, amounts | PIT | `mvn verify`, gate in CI |
+| Integration | Spring context, database, security, mail, e-invoice formats | Spring Boot Test, Testcontainers, GreenMail | `mvn verify` (`*IT`) |
+| E2E | User flows in the browser against the built image | Playwright Test (TypeScript) in `e2e/` | CI job |
+| Visual, UI | Screenshots of screens and states | Playwright `toHaveScreenshot` | CI job, with E2E |
+| Visual, PDF | Invoice layout | PDFBox renders pages to PNG, compared with baselines | `mvn verify` |
+
+### Integration suite
+
+1. E-invoice chain: Flying Saucer, Mustang, veraPDF, KoSIT, then Mustang reads the file back. One case per tax category and format.
+2. Database: Flyway on an empty database. After the go-live also upgrades from the last release with data.
+3. Security: access to each URL for `USER`, `ADMIN` and anonymous. CSRF. Password login.
+4. Passkeys: registration and login with the Chromium virtual authenticator in Playwright.
+5. Numbers under load: parallel issue gives no duplicates and no gaps.
+6. Mail: GreenMail checks recipient, subject, attachments and the dispatch record.
+7. Export and import: a full ZIP into an empty system gives the same data and the same SHA-256 values.
+8. Backup and restore: a `pg_dump` restored into a new container. The app starts and the data is complete.
+9. Image smoke test: the built image with its database starts through compose. Health and login work.
+
+### Visual tests
+
+1. A fixed `Clock`, generated data and embedded fonts make the output deterministic.
+2. Screenshots come only from the pinned Playwright Linux image. A script runs the same image locally.
+3. UI baselines: each new screen and each relevant state (empty, filled, validation error, threshold warning).
+4. PDF baselines: one line, page break, mixed categories, Stornorechnung, XRechnung with Leitweg-ID.
+5. On failure, CI uploads the diff images as an artifact.
+6. A separate command updates the baselines. Commit the new baselines on purpose.
+7. Playwright also runs axe accessibility checks.
+
+### Gates
+
+1. Coverage of new code at least 80 %, unit and integration tests merged by JaCoCo.
+2. PIT mutation score of the domain core at least 80 %.
+3. No new SonarCloud issues. No new CodeRabbit findings.
+
+### Definition of done
+
+1. Unit tests for the logic.
+2. Integration test if the feature touches the database, security, mail or a format.
+3. E2E scenario for the user flow.
+4. Visual baselines for new screens and states, and for the PDF if its layout changed.
+5. All gates green.
+
+### Before the go-live
+
+1. Send test invoices to free online validators.
+2. Send test invoices to a test recipient.
 
 ## 11. Milestones
 
