@@ -9,4 +9,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Added
 
 - Implementation plan (`docs/PLAN.md`) and clickable UI mockup (`docs/mockup`).
+- E-invoice chain: PDF/A-3B layout, ZUGFeRD (EN16931, XRECHNUNG) and XRechnung, validated with Mustang and KoSIT.
+- Start page with light and dark theme, served with its own fonts and libraries.
+- Container image, PostgreSQL with Flyway, and the release workflow to ghcr.io.
 - Repository baseline: security policy, contribution guide, Claude Code review, Scorecard, Renovate.

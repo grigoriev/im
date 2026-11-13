@@ -19,11 +19,31 @@ The repository is public. It must never contain real customer, invoice or person
 - **Database**: PostgreSQL with Flyway
 - **UI**: Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons. German only
 - **Security**: Spring Security with passkeys (WebAuthn) and password login, roles `USER` and `ADMIN`
-- **Tests**: JUnit 5, jqwik, PIT, Testcontainers, GreenMail, Playwright Test (TypeScript) in `e2e/`
+- **Tests**: JUnit 5, PIT, Testcontainers, GreenMail, Playwright Test (TypeScript) in `e2e/`
 
 ## Common Commands
 
-The code arrives with milestone M0. Commands follow then.
+```sh
+mvn verify                                   # unit tests (100 % coverage gate), integration tests, PIT
+mvn test -Dtest=PdfVisualTest -Dvisual.update=true   # write new PDF baselines, commit them on purpose
+mvn package -DskipTests && scripts/e2e.sh    # E2E and visual tests in Docker against the image
+scripts/e2e.sh --update                      # write new screenshot baselines
+```
+
+Maven installs Node and builds the CSS (`npm run build`) by itself. Java 25 is required.
+
+## Architecture
+
+Package `io.github.grigoriev.im`:
+
+- `einvoice`: the issued invoice (`InvoiceDocument`, `InvoiceLine`, `Party`, `TaxCategory`, `InvoiceFormat`),
+  the PDF/A-3B layout (`InvoicePdfRenderer`, template `templates/pdf/invoice.html`), the Mustang mapping
+  and export (`MustangInvoiceMapper`, `EInvoiceWriter`), the validators (`ZugferdValidator`: Mustang,
+  `XRechnungValidator`: KoSIT) and `EInvoiceService`, which issues and validates per format
+- `web`: controllers and Thymeleaf pages, styled with Tailwind and daisyUI (`src/main/frontend/app.css`)
+
+Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers, PDF baselines in
+`src/test/resources/visual/pdf`, Playwright tests and screenshot baselines in `e2e/tests`.
 
 ## Code Style
 

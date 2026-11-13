@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="de">
 <head>
   <meta charset="utf-8"/>
@@ -5,8 +6,8 @@
   <style>
     @page { size: A4; margin: 22mm 20mm 30mm 22mm;
       @bottom-left { content: element(footer); vertical-align: top; }
-      @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-family: "Inter"; font-size: 7pt; color: #616e7c; vertical-align: top; padding-top: 2.6mm; } }
-    body { font-family: "Inter"; font-size: 9.5pt; line-height: 1.45; color: #1f2933; }
+      @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-family: "Inter", sans-serif; font-size: 7pt; color: #616e7c; vertical-align: top; padding-top: 2.6mm; } }
+    body { font-family: "Inter", sans-serif; font-size: 9.5pt; line-height: 1.45; color: #1f2933; }
     .footer { position: running(footer); width: 140mm; font-size: 7pt; color: #616e7c; border-top: 0.5pt solid #cbd2d9; padding-top: 2mm; }
     .footer td { vertical-align: top; width: 33%; }
     .sender { font-size: 7pt; color: #616e7c; margin-bottom: 2mm; }
@@ -26,7 +27,7 @@
   </style>
 </head>
 <body>
-  <table class="footer">
+  <table class="footer" role="presentation">
     <tr>
       <td><span th:text="${invoice.seller.name}">Name</span><br/><span th:text="${invoice.seller.street}">Straße</span><br/><span th:text="${invoice.seller.postcode + ' ' + invoice.seller.city}">Ort</span></td>
       <td>IBAN <span th:text="${fmt.iban(invoice.iban)}">IBAN</span><br/>BIC <span th:text="${invoice.bic}">BIC</span></td>
@@ -35,7 +36,7 @@
   </table>
 
   <div class="sender" th:text="${invoice.seller.name + ' · ' + invoice.seller.street + ' · ' + invoice.seller.postcode + ' ' + invoice.seller.city}">Absender</div>
-  <table class="head">
+  <table class="head" role="presentation">
     <tr>
       <td>
         <div class="strong" th:text="${invoice.buyer.name}">Kunde</div>
@@ -46,7 +47,7 @@
         <div th:if="${invoice.buyerReference != null}" th:text="'Käuferreferenz ' + ${invoice.buyerReference}">Käuferreferenz</div>
       </td>
       <td>
-        <table class="meta" align="right">
+        <table class="meta" align="right" role="presentation">
           <tr><td>Rechnungsnummer</td><td class="strong" th:text="${invoice.number}">2027-01</td></tr>
           <tr><td>Rechnungsdatum</td><td th:text="${fmt.date(invoice.issueDate)}">01.01.2027</td></tr>
           <tr><td>Leistungszeitraum</td><td th:text="${fmt.period(invoice.serviceFrom, invoice.serviceTo)}">01.01.2027</td></tr>

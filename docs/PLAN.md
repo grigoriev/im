@@ -65,7 +65,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | UI | Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons | Server-side CRUD. CSS classes only, no SPA |
 | Design | Light and dark theme, Inter font in app and PDF, German formats | Mac and iPhone |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
-| Tests | JUnit 5, jqwik, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
+| Tests | JUnit 5, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
 | Packaging | Container image on GHCR, multi-arch, attested | Same pattern as sb-stack |
 | Quality | SonarCloud, Renovate, Claude review, Greptile | Standard for public repositories |
 
@@ -232,7 +232,7 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 
 | Level | Scope | Tools | Runs |
 |---|---|---|---|
-| Unit | Domain rules: numbers, tax categories, §19 threshold, amounts, template placeholders | JUnit 5, AssertJ, jqwik | `mvn test` |
+| Unit | Domain rules: numbers, tax categories, §19 threshold, amounts, template placeholders | JUnit 5, AssertJ | `mvn test` |
 | Mutation | Domain core: tax rules, threshold, numbers, amounts | PIT | `mvn verify`, gate in CI |
 | Integration | Spring context, database, security, mail, e-invoice formats | Spring Boot Test, Testcontainers, GreenMail | `mvn verify` (`*IT`) |
 | E2E | User flows in the browser against the built image | Playwright Test (TypeScript) in `e2e/` | CI job |

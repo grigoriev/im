@@ -52,7 +52,11 @@
         <sonar.projectKey>grigoriev_im</sonar.projectKey>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco-merged/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-        <sonar.exclusions>docs/**,e2e/**</sonar.exclusions>
+        <sonar.sources>src/main/java,src/main/resources,src/main/frontend,scripts,pom.xml,Dockerfile</sonar.sources>
+        <sonar.tests>src/test/java,e2e/tests</sonar.tests>
+        <sonar.exclusions>**/*.ttf,**/*.woff2</sonar.exclusions>
+        <!-- Browser code and build scripts are covered by the Playwright E2E tests, not by JaCoCo. -->
+        <sonar.coverage.exclusions>src/main/resources/static/**,src/main/frontend/**,scripts/**</sonar.coverage.exclusions>
     </properties>
 
     <dependencyManagement>

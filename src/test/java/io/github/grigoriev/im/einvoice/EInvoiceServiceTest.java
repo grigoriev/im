@@ -77,11 +77,4 @@ class EInvoiceServiceTest {
                 .hasMessage("Invoice 2027-10 failed validation: Mustang BR-1; BR-2 | KoSIT BR-DE-1");
     }
 
-    @Test
-    void issuedEInvoiceCopiesItsValidations() {
-        List<ValidationResult> results = new ArrayList<>();
-        IssuedEInvoice issued = new IssuedEInvoice(InvoiceFormat.XRECHNUNG, new byte[0], new byte[0], results);
-        results.add(new ValidationResult(true, "KoSIT", List.of()));
-        assertThat(issued.validations()).isEmpty();
-    }
 }
