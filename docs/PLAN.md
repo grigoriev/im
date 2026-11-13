@@ -287,29 +287,32 @@ Every feature ships with unit tests, integration tests where relevant, an E2E sc
 
 The repository extends the shared preset `github>grigoriev/renovate-config`.
 Every dependency lives in a file that Renovate reads. No version hides in code.
+Renovate updates everything by itself (owner decision 2026-11-13): an update merges once CI is green.
 
-| Dependency | Where | Manager | Policy |
-|---|---|---|---|
-| Spring Boot, test libraries | `pom.xml` | maven | Minor and patch automerge after green CI |
-| Mustang, veraPDF, KoSIT validator | `pom.xml` | maven | Manual review. They shape the legal output |
-| Maven plugins, PIT, JaCoCo | `pom.xml` | maven | Automerge, as above |
-| Tailwind, daisyUI, htmx, Alpine.js, Lucide, Inter | `package.json` | npm | Automerge, as above. Visual tests guard the look |
-| Playwright | `e2e/package.json` and the Playwright image tag | npm, docker | One group. Manual review, the baselines can change |
-| Node version for the CSS build | `.node-version`, read by `frontend-maven-plugin` | nodenv | Automerge |
-| Java base image | `Dockerfile`, tag and digest | dockerfile | Digest and patch automerge. Major manual |
-| Testcontainers PostgreSQL image | one constant, with a `# renovate:` comment | regex | Same major as production |
-| XRechnung validator configuration | `pom.xml` property, with a `# renovate:` comment | regex, GitHub releases | Manual review. A new version can change the rules |
-| GitHub Actions | `.github/workflows` | github-actions | SHA pinned, grouped, automerge |
-| `im` image on lemming | intranet repository, compose file | docker | Automerge. The nightly `update.sh` deploys it |
-| PostgreSQL image on lemming | intranet repository, compose file | docker | Minor automerge. Major manual: dump and restore needed |
+| Dependency | Where | Manager |
+|---|---|---|
+| Spring Boot, Mustang, veraPDF, KoSIT, Maven plugins, test libraries | `pom.xml` | maven |
+| Tailwind, daisyUI, htmx, Alpine.js, Lucide, Inter | `package.json` | npm |
+| Playwright and its image, as one group | `e2e/package.json`, `e2e/docker-compose.yml` | npm, docker-compose |
+| Node for the CSS build, as one group | `.node-version`, `pom.xml` | nodenv, regex |
+| Java base image, tag and digest | `Dockerfile` | dockerfile |
+| PostgreSQL image of the tests, limited to the production major | one constant with a `// renovate:` comment | regex |
+| XRechnung validator configuration | `pom.xml` property with a `renovate:` comment | regex, GitHub releases |
+| GitHub Actions, SHA pinned | `.github/workflows` | github-actions |
+| `im` image on lemming | intranet repository, compose file | docker |
 
 ### Rules
 
-1. Automerge needs the full CI: unit, integration, mutation, E2E and visual tests.
-2. Libraries that touch the legal output never automerge: Mustang, veraPDF, KoSIT, the XRechnung configuration.
-3. A visual change after an update fails the build. A human checks the diff and updates the baselines.
-4. The PostgreSQL version in tests matches production.
-5. The frontend libraries come from npm and go into the jar at build time. No CDN at runtime.
+1. Automerge needs the full CI: lint, unit, integration, mutation, E2E and visual tests, Sonar.
+2. The tests guard the legal output: every format and every mix of categories runs through Mustang and KoSIT.
+3. A visual change after an update fails the build. The pull request stays open until the baselines are reviewed.
+4. A red pull request stays open. It gets a fix in its own pull request.
+5. A new XRechnung configuration needs the file name and SHA-256 in `pom.xml`. Renovate changes only the version.
+6. The root `.npmrc` sets `allow-remote=all`: npm 12 otherwise refuses a bundled Tailwind package, and Renovate cannot update the lock file.
+   `e2e/` has no such package and keeps the npm default.
+7. The PostgreSQL image of the tests stays on the production major. A major upgrade runs first on lemming (dump and restore),
+   then the limit in `renovate.json` moves in the same step.
+8. The frontend libraries come from npm and go into the jar at build time. No CDN at runtime.
 
 ## 12. Milestones
 

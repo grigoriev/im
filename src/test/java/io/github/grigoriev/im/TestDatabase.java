@@ -9,7 +9,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestDatabase {
 
-    /** The image, kept equal to the production database (docs/PLAN.md, section 11). */
+    /** The image. Renovate keeps it on the production major (docs/PLAN.md, section 11, rule 7). */
     // renovate: datasource=docker depName=postgres
     static final String IMAGE = "postgres:18.7-alpine";
 
