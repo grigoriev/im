@@ -176,7 +176,7 @@ class AccessRulesIT {
             MockHttpServletResponse response = mvc.perform(request(rule).with(ACTORS.get("admin")))
                     .andReturn().getResponse();
             assertThat(response.getStatus()).isEqualTo(302);
-            assertThat(response.getHeader("Location")).contains("/login");
+            assertThat(response.getHeader("Location")).endsWith("/login?abgelaufen");
         }));
     }
 
@@ -186,7 +186,7 @@ class AccessRulesIT {
                 .map(rule -> DynamicTest.dynamicTest(rule, () -> {
                     MockHttpServletResponse response = mvc.perform(request(rule)).andReturn().getResponse();
                     assertThat(response.getStatus()).isEqualTo(302);
-                    assertThat(response.getHeader("Location")).contains("/login");
+                    assertThat(response.getHeader("Location")).endsWith("/login?abgelaufen");
                 }));
     }
 
