@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Einstellungen · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Einstellungen', 'settings', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+    <div th:replace="~{fragments/settings :: tabs('profile')}"></div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${problems}">
+      <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
+    </div>
+
+    <form class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-5" th:action="@{/einstellungen}" th:object="${profile}" method="post">
+      <div>
+        <h2 class="font-semibold">Profil</h2>
+        <p class="text-sm text-base-content/75">So stehen Sie als Rechnungssteller auf jeder Rechnung.</p>
+      </div>
+
+      <fieldset class="grid gap-3 @container">
+        <legend class="text-sm font-medium mb-2">Anschrift</legend>
+        <label class="floating-label"><span>Name</span>
+          <input id="seller-name" th:field="*{name}" class="input w-full" autocomplete="name" maxlength="200" required>
+        </label>
+        <label class="floating-label"><span>Straße und Hausnummer</span>
+          <input id="seller-street" th:field="*{street}" class="input w-full" autocomplete="address-line1" maxlength="200" required>
+        </label>
+        <div class="grid gap-3 grid-cols-[minmax(0,6rem)_minmax(0,1fr)] @lg:grid-cols-[minmax(0,7rem)_minmax(0,1fr)_minmax(0,5rem)]">
+          <label class="floating-label"><span>PLZ</span>
+            <input id="seller-postcode" th:field="*{postcode}" class="input w-full" autocomplete="postal-code" maxlength="16" required>
+          </label>
+          <label class="floating-label"><span>Ort</span>
+            <input id="seller-city" th:field="*{city}" class="input w-full" autocomplete="address-level2" maxlength="100" required>
+          </label>
+          <label class="floating-label"><span>Land</span>
+            <input id="seller-country" th:field="*{countryCode}" class="input w-full uppercase" autocomplete="country" maxlength="2" required>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="grid gap-3 @container">
+        <legend class="text-sm font-medium mb-2">Kontakt</legend>
+        <p class="text-xs text-base-content/75 -mt-1">Die XRechnung verlangt Ansprechpartner, Telefon und E-Mail.</p>
+        <label class="floating-label"><span>Ansprechpartner (leer: der Name)</span>
+          <input id="seller-contact" th:field="*{contactName}" class="input w-full" maxlength="200">
+        </label>
+        <div class="grid gap-3 @lg:grid-cols-2">
+          <label class="floating-label"><span>E-Mail</span>
+            <input id="seller-email" th:field="*{email}" type="email" class="input w-full" autocomplete="email" maxlength="254" required>
+          </label>
+          <label class="floating-label"><span>Telefon</span>
+            <input id="seller-phone" th:field="*{phone}" type="tel" class="input w-full" autocomplete="tel" maxlength="50" required>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="grid gap-3 @container">
+        <legend class="text-sm font-medium mb-2">Steuer</legend>
+        <label class="floating-label"><span>Steuerstatus</span>
+          <select id="seller-tax-status" th:field="*{taxStatus}" class="select w-full">
+            <option th:each="status : ${statuses}" th:value="${status}" th:text="${status.label}">Status</option>
+          </select>
+        </label>
+        <div class="grid gap-3 @lg:grid-cols-2">
+          <label class="floating-label"><span>Steuernummer</span>
+            <input id="seller-tax-number" th:field="*{taxNumber}" class="input w-full" maxlength="32">
+          </label>
+          <label class="floating-label"><span>USt-IdNr.</span>
+            <input id="seller-vat-id" th:field="*{vatId}" class="input w-full uppercase" maxlength="20">
+          </label>
+        </div>
+        <p class="text-xs text-base-content/75">Die Rechnung nennt die Steuernummer oder die USt-IdNr. (§ 14 Abs. 4 Nr. 2 UStG).</p>
+      </fieldset>
+
+      <fieldset class="grid gap-3 @container">
+        <legend class="text-sm font-medium mb-2">Bankverbindung</legend>
+        <div class="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_12rem]">
+          <label class="floating-label"><span>IBAN</span>
+            <input id="seller-iban" name="iban" th:value="*{ibanGrouped()}" class="input w-full uppercase font-mono" maxlength="42" required>
+          </label>
+          <label class="floating-label"><span>BIC</span>
+            <input id="seller-bic" th:field="*{bic}" class="input w-full uppercase font-mono" maxlength="11" required>
+          </label>
+        </div>
+      </fieldset>
+
+      <div><button type="submit" class="btn btn-primary">Speichern</button></div>
+    </form>
+  </div>
+</div>
+</body>
+</html>
