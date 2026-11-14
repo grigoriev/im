@@ -78,7 +78,7 @@ class LoginIT {
         HttpClient client = browser();
         String token = csrf(get(client, "/login").body());
         HttpResponse<String> login = post(client, "/login", "username=" + username + "&password=" + password
-                + "&_csrf=" + token + (remember ? "&angemeldet-bleiben=on" : ""));
+                + "&_csrf=" + token + (remember ? "&remember-me=on" : ""));
         assertThat(login.statusCode()).isEqualTo(302);
         assertThat(login.headers().firstValue("Location")).hasValueSatisfying(url -> assertThat(url).endsWith("/"));
         return client;
@@ -95,16 +95,16 @@ class LoginIT {
     @Test
     void letsTheAdminManageUsersAndKeepsTheUserOut() throws Exception {
         HttpClient admin = loggedIn("chef", "chef-passwort-123", false);
-        HttpResponse<String> page = get(admin, "/admin/benutzer");
+        HttpResponse<String> page = get(admin, "/admin/users");
         assertThat(page.statusCode()).isEqualTo(200);
-        HttpResponse<String> created = post(admin, "/admin/benutzer", "username=elena&displayName=Elena+Sommer"
+        HttpResponse<String> created = post(admin, "/admin/users", "username=elena&displayName=Elena+Sommer"
                 + "&password=elena-passwort-123&confirm=elena-passwort-123&role=USER&_csrf=" + csrf(page.body()));
         assertThat(created.statusCode()).isEqualTo(302);
-        assertThat(get(admin, "/admin/benutzer").body()).contains("Benutzer „elena“ angelegt.").contains("Elena Sommer");
+        assertThat(get(admin, "/admin/users").body()).contains("Benutzer „elena“ angelegt.").contains("Elena Sommer");
 
         HttpClient elena = loggedIn("elena", "elena-passwort-123", false);
-        assertThat(get(elena, "/").body()).contains("Guten Tag, Elena Sommer").doesNotContain("/admin/benutzer");
-        HttpResponse<String> forbidden = get(elena, "/admin/benutzer");
+        assertThat(get(elena, "/").body()).contains("Guten Tag, Elena Sommer").doesNotContain("/admin/users");
+        HttpResponse<String> forbidden = get(elena, "/admin/users");
         assertThat(forbidden.statusCode()).isEqualTo(403);
         assertThat(forbidden.body()).contains("Kein Zugriff");
     }
@@ -125,7 +125,7 @@ class LoginIT {
         CookieManager jar = new CookieManager();
         HttpClient device = HttpClient.newBuilder().cookieHandler(jar).build();
         String token = csrf(get(device, "/login").body());
-        post(device, "/login", "username=tablet&password=tablet-passwort-123&angemeldet-bleiben=on&_csrf=" + token);
+        post(device, "/login", "username=tablet&password=tablet-passwort-123&remember-me=on&_csrf=" + token);
         String count = "SELECT count(*) FROM persistent_logins WHERE username = 'tablet'";
         assertThat(jdbc.queryForObject(count, Integer.class)).isEqualTo(1);
 
@@ -137,13 +137,13 @@ class LoginIT {
                 .header("Content-Type", "application/x-www-form-urlencoded").header("Origin", "https://boese.example")
                 .POST(HttpRequest.BodyPublishers.ofString("_csrf=veraltet")).build(), HttpResponse.BodyHandlers.ofString());
         assertThat(forged.headers().firstValue("Location"))
-                .hasValueSatisfying(url -> assertThat(url).endsWith("/login?abgelaufen"));
+                .hasValueSatisfying(url -> assertThat(url).endsWith("/login?expired"));
         assertThat(jdbc.queryForObject(count, Integer.class)).as("a forged form changes nothing").isEqualTo(1);
         HttpResponse<String> logout = device.send(HttpRequest.newBuilder(uri("/logout"))
                 .header("Content-Type", "application/x-www-form-urlencoded").header("Origin", "http://localhost:" + port)
                 .POST(HttpRequest.BodyPublishers.ofString("_csrf=veraltet")).build(), HttpResponse.BodyHandlers.ofString());
         assertThat(logout.headers().firstValue("Location"))
-                .hasValueSatisfying(url -> assertThat(url).endsWith("/login?abgemeldet"));
+                .hasValueSatisfying(url -> assertThat(url).endsWith("/login?logout"));
         assertThat(jdbc.queryForObject(count, Integer.class)).isZero();
         HttpResponse<String> start = get(device, "/");
         assertThat(start.statusCode()).as("no silent login after the logout").isEqualTo(302);

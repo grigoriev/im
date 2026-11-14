@@ -31,7 +31,7 @@ test.describe('without session', () => {
 
 test('the admin creates a user, who sees no admin area', async ({ page, browser }) => {
   const username = uniqueUsername('elena');
-  await page.goto('/admin/benutzer');
+  await page.goto('/admin/users');
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Elena Sommer');
   await page.locator('#new-password').fill('elena-passwort-123');
@@ -47,14 +47,14 @@ test('the admin creates a user, who sees no admin area', async ({ page, browser 
   await user.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(user.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Elena Sommer');
   await expect(user.getByRole('link', { name: 'Benutzer' })).toHaveCount(0);
-  await user.goto('/admin/benutzer');
+  await user.goto('/admin/users');
   await expect(user.getByRole('heading', { level: 1 })).toHaveText('Kein Zugriff');
   await context.close();
 });
 
 test('the admin sets a new password', async ({ page, browser }) => {
   const username = uniqueUsername('gast');
-  await page.goto('/admin/benutzer');
+  await page.goto('/admin/users');
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Gast');
   await page.locator('#new-password').fill('erstes-passwort-123');
@@ -81,7 +81,7 @@ test('the admin sets a new password', async ({ page, browser }) => {
 test('a long name without spaces stays inside the menu and the page', async ({ page, browser }) => {
   const username = uniqueUsername('lang');
   const name = 'Sehrlangername'.repeat(9).slice(0, 120);
-  await page.goto('/admin/benutzer');
+  await page.goto('/admin/users');
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.locator('#new-password').fill('lang-passwort-123');

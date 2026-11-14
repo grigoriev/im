@@ -3,7 +3,7 @@ import { expect, test } from './fixtures';
 
 test('the audit log shows who created a customer', async ({ page }) => {
   const name = `Protokoll Kunde ${randomUUID().slice(0, 8)}`;
-  await page.goto('/kunden/neu');
+  await page.goto('/customers/new');
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Straße und Hausnummer').fill('Am Markt 1');
   await page.getByLabel('PLZ').fill('86150');

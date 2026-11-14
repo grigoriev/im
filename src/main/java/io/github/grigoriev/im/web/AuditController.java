@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 /** The page "Protokoll": who did what and when, for the admin only. */
 @Controller
-@RequestMapping("/admin/protokoll")
+@RequestMapping("/admin/audit")
 public class AuditController {
 
     static final String VIEW = "admin/audit";

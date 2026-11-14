@@ -65,10 +65,10 @@ public class StaleFormHandler implements AccessDeniedHandler {
                 session.invalidate();
             }
             SecurityContextHolder.clearContext();
-            response.sendRedirect(request.getContextPath() + "/login?abgemeldet");
+            response.sendRedirect(request.getContextPath() + "/login?logout");
             return;
         }
-        response.sendRedirect(request.getContextPath() + "/login?abgelaufen");
+        response.sendRedirect(request.getContextPath() + "/login?expired");
     }
 
     /**

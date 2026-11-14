@@ -30,14 +30,14 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <button type="button" class="btn btn-sm" th:attr="data-dialog='passkey-rename-' + ${passkeyStat.index}"><i data-lucide="pencil" class="size-4"></i>Umbenennen</button>
-            <form th:action="@{/konto/passkeys/{id}/loeschen(id=${passkey.id})}" method="post">
+            <form th:action="@{/account/passkeys/{id}/delete(id=${passkey.id})}" method="post">
               <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>
             </form>
           </div>
           <dialog class="modal" th:id="'passkey-rename-' + ${passkeyStat.index}" th:attr="aria-labelledby='passkey-rename-' + ${passkeyStat.index} + '-title'">
             <div class="modal-box">
               <div th:replace="~{fragments/dialog :: dialogTitle('passkey-rename-' + ${passkeyStat.index}, 'Passkey umbenennen')}"></div>
-              <form th:action="@{/konto/passkeys/{id}/name(id=${passkey.id})}" method="post">
+              <form th:action="@{/account/passkeys/{id}/rename(id=${passkey.id})}" method="post">
                 <div class="modal-body">
                   <label class="floating-label"><span>Name</span>
                     <input th:id="'label-' + ${passkeyStat.index}" name="label" class="input w-full" th:value="${passkey.label}" maxlength="64" required>
@@ -64,7 +64,7 @@
 
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3">
       <h2 class="font-semibold">Passwort ändern</h2>
-      <form class="grid gap-3 sm:grid-cols-2" th:action="@{/konto/passwort}" method="post">
+      <form class="grid gap-3 sm:grid-cols-2" th:action="@{/account/password}" method="post">
         <label class="floating-label"><span>Aktuelles Passwort</span>
           <input id="current-password" name="current" type="password" class="input w-full" autocomplete="current-password" required>
         </label>

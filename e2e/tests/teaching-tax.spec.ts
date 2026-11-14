@@ -7,13 +7,13 @@ import { randomUUID } from 'node:crypto';
 // so the test removes the second number at the end.
 test('teaching with its own tax number gets its own invoices and its own Anlage EÜR', async ({ page }) => {
   await ensureProfile(page);
-  await page.goto('/einstellungen?teil=steuer');
+  await page.goto('/settings?part=tax');
   await page.getByLabel('Steuernummer für Unterricht (§ 4 Nr. 21)').fill('98/765/43210');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toContainText('Steuer gespeichert.');
   try {
     const customer = await newCustomer(page, `Kursteilnehmer ${randomUUID().slice(0, 8)}`);
-    await page.goto('/rechnungen');
+    await page.goto('/invoices');
     await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
     await page.getByRole('button', { name: 'Neue Rechnung' }).click();
     await page.locator('#invoice-date').fill('2021-02-01');
@@ -40,14 +40,14 @@ test('teaching with its own tax number gets its own invoices and its own Anlage 
     await page.getByRole('button', { name: 'Erfassen' }).click();
     await expect(page.getByRole('status')).toHaveText('Zahlung erfasst. Die Rechnung ist bezahlt.');
 
-    await page.goto('/berichte?jahr=2021');
-    await expect(page.locator('#report-euer-unterricht')).toContainText('98/765/43210');
-    await expect(page.locator('#euer-111-unterricht')).toHaveText('300,00 €');
-    await expect(page.locator('#euer-119-unterricht')).toHaveText('300,00 €');
-    await expect(page.locator('#euer-111-uebrige')).toHaveText('0,00 €');
-    await expect(page.locator('#report-euer-unterricht')).toHaveScreenshot('report-euer-unterricht.png');
+    await page.goto('/reports?year=2021');
+    await expect(page.locator('#report-income-teaching')).toContainText('98/765/43210');
+    await expect(page.locator('#income-111-teaching')).toHaveText('300,00 €');
+    await expect(page.locator('#income-119-teaching')).toHaveText('300,00 €');
+    await expect(page.locator('#income-111-other')).toHaveText('0,00 €');
+    await expect(page.locator('#report-income-teaching')).toHaveScreenshot('report-income-teaching.png');
   } finally {
-    await page.goto('/einstellungen?teil=steuer');
+    await page.goto('/settings?part=tax');
     await page.getByLabel('Steuernummer für Unterricht (§ 4 Nr. 21)').fill('');
     await page.getByRole('button', { name: 'Speichern' }).click();
     await expect(page.getByRole('status')).toContainText('Steuer gespeichert.');

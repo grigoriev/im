@@ -101,7 +101,7 @@ class ReportControllerTest {
                 single.phone(), single.taxNumber(), null, single.iban(), single.bic(), single.taxStatus(), null, null,
                 null, null, "98/765/43210");
         List<ReportController.Business> split = ReportController.businesses(rows, two);
-        assertThat(split).extracting(ReportController.Business::key).containsExactly("-unterricht", "-uebrige");
+        assertThat(split).extracting(ReportController.Business::key).containsExactly("-teaching", "-other");
         ReportController.Business teaching = split.get(0);
         assertThat(teaching.taxNumber()).isEqualTo("98/765/43210");
         assertThat(teaching.totals().total()).isEqualByComparingTo("295.71");

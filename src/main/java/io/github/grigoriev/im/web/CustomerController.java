@@ -22,7 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The page "Kunden": the list of customers and the form of one customer. Both roles use it. */
 @Controller
-@RequestMapping("/kunden")
+@RequestMapping("/customers")
 public class CustomerController {
 
     static final String VIEW = "customers";
@@ -67,17 +67,17 @@ public class CustomerController {
      * Shows an empty form for a new customer, or a copy of a customer for another contact person of the same
      * organization.
      *
-     * @param von the customer to copy, {@code null} for an empty form
+     * @param source the customer to copy, {@code null} for an empty form
      * @param model the page model
      * @return the template name
      */
-    @GetMapping("/neu")
-    public String create(@RequestParam(required = false) Long von, Model model) {
-        Customer form = von == null ? Customer.empty()
-                : customers.find(von).map(Customer::forAnotherContact)
+    @GetMapping("/new")
+    public String create(@RequestParam(name = "from", required = false) Long source, Model model) {
+        Customer form = source == null ? Customer.empty()
+                : customers.find(source).map(Customer::forAnotherContact)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         // A copied country stays in the list, even if the admin removed it from the short list.
-        return page(model, form, von == null ? null : form.countryCode());
+        return page(model, form, source == null ? null : form.countryCode());
     }
 
     /**
@@ -106,7 +106,7 @@ public class CustomerController {
         try {
             Customer saved = customers.create(input);
             flash.addFlashAttribute(SUCCESS, "Kunde „" + saved.name() + "“ angelegt.");
-            return "redirect:/kunden/" + saved.id();
+            return "redirect:/customers/" + saved.id();
         } catch (CustomerException e) {
             model.addAttribute("problems", e.problems());
             return page(model, input.withId(null), input.countryCode());
@@ -128,7 +128,7 @@ public class CustomerController {
         try {
             customers.update(id, input);
             flash.addFlashAttribute(SUCCESS, "Änderungen gespeichert.");
-            return "redirect:/kunden/" + id;
+            return "redirect:/customers/" + id;
         } catch (CustomerException e) {
             model.addAttribute("problems", e.problems());
             return page(model, input.withId(id), input.countryCode());
@@ -142,7 +142,7 @@ public class CustomerController {
      * @param flash messages for the next page
      * @return a redirect to the list
      */
-    @PostMapping("/{id}/loeschen")
+    @PostMapping("/{id}/delete")
     public String remove(@PathVariable long id, RedirectAttributes flash) {
         try {
             Customer removed = customers.delete(id);
@@ -150,7 +150,7 @@ public class CustomerController {
         } catch (CustomerException e) {
             flash.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/kunden";
+        return "redirect:/customers";
     }
 
     /** The country stored for the customer: a new customer has none, its default comes from the list. */

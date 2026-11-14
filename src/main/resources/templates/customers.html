@@ -10,7 +10,7 @@
   <div th:fragment="content" class="max-w-6xl mx-auto grid gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold tracking-tight">Kunden</h1>
-      <a th:href="@{/kunden/neu}" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
+      <a th:href="@{/customers/new}" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -20,7 +20,7 @@
         <p class="text-sm text-base-content/75 p-3" th:if="${customerList.isEmpty()}">Noch keine Kunden.</p>
         <ul class="menu w-full p-0" th:unless="${customerList.isEmpty()}" id="customer-list">
           <li th:each="item : ${customerList}">
-            <a th:href="@{/kunden/{id}(id=${item.id})}" th:classappend="${customer != null && customer.id == item.id} ? 'menu-active'"
+            <a th:href="@{/customers/{id}(id=${item.id})}" th:classappend="${customer != null && customer.id == item.id} ? 'menu-active'"
                th:attr="aria-current=${customer != null && customer.id == item.id} ? 'page'">
               <span class="min-w-0 grid">
                 <span class="[overflow-wrap:anywhere]" th:text="${item.name}">Name</span>
@@ -39,14 +39,14 @@
       <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-5 min-w-0 @container" th:if="${customer != null}">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <h2 class="text-lg font-semibold [overflow-wrap:anywhere] min-w-0" th:text="${customer.id == null ? 'Neuer Kunde' : customer.label()}">Kunde</h2>
-          <a class="btn btn-sm" th:if="${customer.id != null}" th:href="@{/kunden/neu(von=${customer.id})}" id="customer-copy"
+          <a class="btn btn-sm" th:if="${customer.id != null}" th:href="@{/customers/new(from=${customer.id})}" id="customer-copy"
              title="Neuer Kunde mit derselben Anschrift, für einen weiteren Ansprechpartner"><i data-lucide="copy" class="size-4"></i>Weiterer Ansprechpartner</a>
         </div>
         <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${problems}">
           <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
         </div>
         <form class="grid gap-5" method="post" th:object="${customer}"
-              th:action="${customer.id == null} ? @{/kunden} : @{/kunden/{id}(id=${customer.id})}">
+              th:action="${customer.id == null} ? @{/customers} : @{/customers/{id}(id=${customer.id})}">
           <fieldset class="grid gap-3">
             <legend class="text-sm font-medium mb-2">Anschrift</legend>
             <label class="floating-label"><span>Name</span>
@@ -107,18 +107,18 @@
         <div class="border-t border-base-300 pt-4 grid gap-3" th:if="${customer.id != null}" id="customer-templates">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="font-semibold">Vorlagen</h3>
-            <form method="post" th:action="@{/kunden/{id}/vorlagen(id=${customer.id})}">
+            <form method="post" th:action="@{/customers/{id}/templates(id=${customer.id})}">
               <button type="submit" class="btn btn-sm"><i data-lucide="plus" class="size-4"></i>Neue Vorlage</button>
             </form>
           </div>
           <p class="text-sm text-base-content/75" th:if="${templates.isEmpty()}">Noch keine Vorlage.</p>
           <div th:each="template : ${templates}" class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
             <div class="min-w-0 flex-1 basis-56">
-              <a class="font-medium link link-hover [overflow-wrap:anywhere]" th:href="@{/kunden/{c}/vorlagen/{id}(c=${customer.id},id=${template.id})}"
+              <a class="font-medium link link-hover [overflow-wrap:anywhere]" th:href="@{/customers/{c}/templates/{id}(c=${customer.id},id=${template.id})}"
                  th:text="${template.name}">Vorlage</a>
               <div class="text-xs text-base-content/75 truncate" th:text="${template.summary()}">Positionen</div>
             </div>
-            <form method="post" th:action="@{/rechnungen}">
+            <form method="post" th:action="@{/invoices}">
               <input type="hidden" name="customerId" th:value="${customer.id}">
               <input type="hidden" name="templateId" th:value="${template.id}">
               <button type="submit" class="btn btn-sm"><i data-lucide="file-plus" class="size-4"></i>Rechnung erstellen</button>
@@ -131,7 +131,7 @@
           <dialog class="modal" id="customer-delete" aria-labelledby="customer-delete-title">
       <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('customer-delete', 'Kunden löschen?')}"></div>
-        <form method="post" th:action="@{/kunden/{id}/loeschen(id=${customer.id})}">
+        <form method="post" th:action="@{/customers/{id}/delete(id=${customer.id})}">
           <div class="modal-body"><p class="text-sm">Der Kunde wird endgültig gelöscht.</p></div>
           <div class="modal-foot">
             <button type="button" class="btn" data-close>Abbrechen</button>

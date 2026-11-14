@@ -8,11 +8,11 @@ import java.util.Optional;
 public enum ProfilePart {
 
     /** Name and address. */
-    ADDRESS("anschrift", "Anschrift", List.of("name", "tagline", "street", "postcode", "city", "countryCode")),
+    ADDRESS("address", "Anschrift", List.of("name", "tagline", "street", "postcode", "city", "countryCode")),
     /** Contact person, e-mail, phone and website. */
-    CONTACT("kontakt", "Kontakt", List.of("contactName", "email", "phone", "website")),
+    CONTACT("contact", "Kontakt", List.of("contactName", "email", "phone", "website")),
     /** Tax status and tax numbers. */
-    TAX("steuer", "Steuer", List.of("taxStatus", "taxNumber", "vatId", "taxNumberTeaching")),
+    TAX("tax", "Steuer", List.of("taxStatus", "taxNumber", "vatId", "taxNumberTeaching")),
     /** Bank account. */
     BANK("bank", "Bankverbindung", List.of("iban", "bic", "bankName", "accountHolder"));
 
@@ -29,7 +29,7 @@ public enum ProfilePart {
     /**
      * Returns the part of a URL slug.
      *
-     * @param slug the slug, for example {@code kontakt}
+     * @param slug the slug, for example {@code contact}
      * @return the part, empty for an unknown slug
      */
     public static Optional<ProfilePart> of(String slug) {

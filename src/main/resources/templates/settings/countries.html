@@ -19,7 +19,7 @@
         <p class="text-sm text-base-content/75">Diese Länder stehen in den Formularen zur Auswahl. Ein Kunde behält sein Land,
           auch wenn es hier fehlt.</p>
       </div>
-      <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/laender}" method="post">
+      <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/countries}" method="post">
         <label class="floating-label grow"><span>Land hinzufügen</span>
           <select id="country-add" name="code" class="select w-full">
             <option th:each="country : ${others}" th:value="${country.code}" th:text="${country.name}">Japan</option>
@@ -31,7 +31,7 @@
         <li th:each="country : ${enabled}" class="border border-base-300 rounded-field px-3 py-2 flex items-center gap-2">
           <span class="flex-1 min-w-0 truncate" th:text="${country.name}">Deutschland</span>
           <span class="text-xs text-base-content/75 font-mono" th:text="${country.code}">DE</span>
-          <form th:action="@{/admin/laender/{code}/entfernen(code=${country.code})}" method="post">
+          <form th:action="@{/admin/countries/{code}/remove(code=${country.code})}" method="post">
             <button type="submit" class="btn btn-xs btn-danger btn-square" th:attr="aria-label=${country.name} + ' entfernen'">
               <i data-lucide="x" class="size-3.5"></i>
             </button>

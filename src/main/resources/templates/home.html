@@ -15,7 +15,7 @@
     </div>
 
     <div class="grid gap-4 @2xl:grid-cols-3" id="tiles">
-      <a th:href="@{/rechnungen}" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 hover:border-primary" id="tile-open">
+      <a th:href="@{/invoices}" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 hover:border-primary" id="tile-open">
         <div class="text-xs uppercase tracking-wider text-base-content/75">Offen</div>
         <div class="text-2xl font-semibold num mt-1" th:text="${#numbers.formatDecimal(openSum, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
         <div class="text-xs text-base-content/75 mt-1" th:text="${open.size()} + (${open.size() == 1} ? ' Rechnung' : ' Rechnungen')">0 Rechnungen</div>
@@ -26,7 +26,7 @@
              th:text="${#numbers.formatDecimal(overdueSum, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
         <ul class="text-xs mt-1 grid gap-0.5">
           <li th:each="item : ${overdue}" class="[overflow-wrap:anywhere]">
-            <a class="link" th:href="@{/rechnungen/{id}(id=${item.invoice.id})}" th:text="${item.invoice.number + ', ' + item.customer}">2027-01, Kunde</a>
+            <a class="link" th:href="@{/invoices/{id}(id=${item.invoice.id})}" th:text="${item.invoice.number + ', ' + item.customer}">2027-01, Kunde</a>
           </li>
           <li th:if="${overdue.isEmpty()}" class="text-base-content/75">Nichts überfällig.</li>
         </ul>

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 test('creates a public customer with XRechnung, changes and deletes it', async ({ page }) => {
   const name = `Volkshochschule ${randomUUID().slice(0, 8)}`;
-  await page.goto('/kunden');
+  await page.goto('/customers');
   await page.getByRole('link', { name: 'Neuer Kunde' }).click();
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Straße und Hausnummer').fill('Am Markt 1');
@@ -35,7 +35,7 @@ test('creates a public customer with XRechnung, changes and deletes it', async (
 
 test('a second contact person of one organization copies its address and stays apart in the lists', async ({ page }) => {
   const name = `Sprachschule am See ${randomUUID().slice(0, 8)}`;
-  await page.goto('/kunden/neu');
+  await page.goto('/customers/new');
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Straße und Hausnummer').fill('Seeweg 5');
   await page.getByLabel('PLZ').fill('86150');
@@ -51,7 +51,7 @@ test('a second contact person of one organization copies its address and stays a
   await page.getByRole('button', { name: 'Anlegen' }).click();
   await expect(page.getByRole('heading', { level: 2 })).toHaveText(`${name} · Herr Klein`);
 
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   const choice = page.getByLabel('Kunde der neuen Rechnung');
   await expect(choice.locator('option', { hasText: `${name} · Frau Weber` })).toHaveCount(1);
   await expect(choice.locator('option', { hasText: `${name} · Herr Klein` })).toHaveCount(1);

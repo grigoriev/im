@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 // The styled list of a select: it opens on a click, picks with a click, moves with the arrows, Escape restores the
 // value it had, Tab keeps the new one, and typed letters filter a long list. The native select keeps the value.
 test('a select opens a styled list and picks, cancels and filters with mouse and keys', async ({ page }) => {
-  await page.goto('/kunden/neu');
+  await page.goto('/customers/new');
   const format = page.getByLabel('E-Rechnungsformat');
   const list = page.locator('.listbox-list').filter({ hasText: 'XRechnung: nur XML' });
   await expect(format).toHaveValue('ZUGFERD_EN16931');
@@ -41,7 +41,7 @@ test('typed letters filter a long list and Enter picks the match', async ({ page
   const token = randomUUID().slice(0, 8);
   const name = await newCustomer(page, `Filterkunde ${token}`);
   for (let i = 0; i < 9; i++) await newCustomer(page, `Füllkunde ${randomUUID().slice(0, 8)}`);
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   const customer = page.getByLabel('Kunde der neuen Rechnung');
   await customer.click();
   const list = page.locator('.listbox-list').filter({ has: page.locator('.listbox-search') }).first();

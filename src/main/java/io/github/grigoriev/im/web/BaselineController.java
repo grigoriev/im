@@ -12,11 +12,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The admin page "Vorjahre" of the settings: the §19 revenue of the years before the app. */
 @Controller
-@RequestMapping("/admin/vorjahre")
+@RequestMapping("/admin/baselines")
 public class BaselineController {
 
     static final String VIEW = "settings/baseline";
-    private static final String BACK = "redirect:/admin/vorjahre";
+    private static final String BACK = "redirect:/admin/baselines";
 
     private final ThresholdService threshold;
 

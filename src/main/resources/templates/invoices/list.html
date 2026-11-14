@@ -12,7 +12,7 @@
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/rechnungen}" method="post"
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/invoices}" method="post"
           th:unless="${customers.isEmpty()}">
       <label class="floating-label grow"><span>Kunde der neuen Rechnung</span>
         <select id="new-invoice-customer" name="customerId" class="select w-full">
@@ -22,14 +22,14 @@
       <button type="submit" class="btn btn-primary"><i data-lucide="file-plus" class="size-4"></i>Neue Rechnung</button>
     </form>
     <p class="text-sm text-base-content/75" th:if="${customers.isEmpty()}">
-      Legen Sie zuerst einen <a class="link" th:href="@{/kunden/neu}">Kunden</a> an.
+      Legen Sie zuerst einen <a class="link" th:href="@{/customers/new}">Kunden</a> an.
     </p>
 
-    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/rechnungen}" method="get" id="invoice-filter" th:if="${any}">
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/invoices}" method="get" id="invoice-filter" th:if="${any}">
       <label class="floating-label w-32"><span>Jahr</span>
-        <select id="filter-year" name="jahr" class="select select-sm w-full">
+        <select id="filter-year" name="year" class="select select-sm w-full">
           <option value="">Alle Jahre</option>
-          <option th:each="year : ${years}" th:value="${year}" th:text="${year}" th:selected="${year == jahr}">2027</option>
+          <option th:each="option : ${years}" th:value="${option}" th:text="${option}" th:selected="${option == year}">2027</option>
         </select>
       </label>
       <label class="floating-label w-36"><span>Status</span>
@@ -39,7 +39,7 @@
         </select>
       </label>
       <label class="floating-label grow basis-48"><span>Kunde oder Nummer</span>
-        <input id="filter-text" name="suche" type="search" class="input input-sm w-full" maxlength="100" th:value="${suche}">
+        <input id="filter-text" name="q" type="search" class="input input-sm w-full" maxlength="100" th:value="${q}">
       </label>
       <button type="submit" class="btn btn-sm" id="filter-apply"><i data-lucide="filter" class="size-4"></i>Filtern</button>
     </form>
@@ -49,7 +49,7 @@
       <p class="text-sm text-base-content/75 p-3" id="invoice-none" th:if="${any and rows.isEmpty()}">Keine Rechnungen gefunden.</p>
       <ul id="invoice-list" class="menu w-full p-0" th:unless="${rows.isEmpty()}">
         <li th:each="row : ${rows}">
-          <a th:href="@{/rechnungen/{id}(id=${row.invoice.id})}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3">
+          <a th:href="@{/invoices/{id}(id=${row.invoice.id})}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3">
             <span class="min-w-0 grid">
               <span class="[overflow-wrap:anywhere]" th:text="${row.customer}">Kunde</span>
               <span class="text-xs text-base-content/75"

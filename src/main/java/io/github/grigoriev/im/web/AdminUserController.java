@@ -19,7 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The admin page "Benutzer": list users, create a user, reset a password. */
 @Controller
-@RequestMapping("/admin/benutzer")
+@RequestMapping("/admin/users")
 public class AdminUserController {
 
     private static final String USERNAME = "username";
@@ -32,7 +32,7 @@ public class AdminUserController {
     private static final String ERROR = "error";
 
     static final String VIEW = "admin/users";
-    static final String BACK = "redirect:/admin/benutzer";
+    static final String BACK = "redirect:/admin/users";
 
     private final UserService users;
     private final PasskeyService passkeys;
@@ -104,7 +104,7 @@ public class AdminUserController {
      * @param flash messages for the next page
      * @return a redirect to the list
      */
-    @PostMapping("/{id}/passkeys/loeschen")
+    @PostMapping("/{id}/passkeys/delete")
     public String removePasskeys(@PathVariable long id, RedirectAttributes flash) {
         try {
             String username = users.get(id).username();
@@ -125,7 +125,7 @@ public class AdminUserController {
      * @param flash messages for the next page
      * @return a redirect to the list
      */
-    @PostMapping("/{id}/passwort")
+    @PostMapping("/{id}/password")
     public String resetPassword(@PathVariable long id, @RequestParam String password, @RequestParam String confirm,
             RedirectAttributes flash) {
         if (!password.equals(confirm)) {

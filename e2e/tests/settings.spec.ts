@@ -4,7 +4,7 @@ import { fillProfile } from './seller';
 
 // The seller profile is one record for the whole app: only this test writes it, with the values of seller.ts.
 test('saves the seller profile tab by tab and marks a wrong entry at its field', async ({ page }) => {
-  await page.goto('/einstellungen');
+  await page.goto('/settings');
   await expect(page.getByRole('tab', { name: 'Profil' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tab', { name: /^Anschrift( unvollständig)?$/ })).toHaveAttribute('aria-selected', 'true');
 
@@ -27,7 +27,7 @@ test('saves the seller profile tab by tab and marks a wrong entry at its field',
 });
 
 test('the admin changes a default tax note and restores it', async ({ page }) => {
-  await page.goto('/einstellungen');
+  await page.goto('/settings');
   await page.getByRole('tab', { name: /Steuerhinweise/ }).click();
   const note = page.getByLabel('Steuerfreie Bildungsleistung (§ 4 Nr. 21 UStG)');
   await expect(note).toHaveValue('Steuerfrei gemäß § 4 Nr. 21 UStG.');
@@ -42,7 +42,7 @@ test('the admin changes a default tax note and restores it', async ({ page }) =>
 });
 
 test('the admin changes the default e-mail text and restores it', async ({ page }) => {
-  await page.goto('/einstellungen');
+  await page.goto('/settings');
   await page.getByRole('tab', { name: /E-Mail/ }).click();
   const subject = page.getByLabel('Betreff');
   await expect(subject).toHaveValue('Rechnung {Rechnungsnummer}');
@@ -59,7 +59,7 @@ test('the admin changes the default e-mail text and restores it', async ({ page 
 
 test('the admin enters the revenue of last year, and the overview counts it', async ({ page }) => {
   const lastYear = new Date().getFullYear() - 1;
-  await page.goto('/einstellungen');
+  await page.goto('/settings');
   await page.getByRole('tab', { name: /Vorjahre/ }).click();
   await expect(page.getByLabel('Jahr')).toHaveValue(String(lastYear));
   await page.getByLabel('Umsatz in €').fill('18.250,00');
@@ -71,13 +71,13 @@ test('the admin enters the revenue of last year, and the overview counts it', as
   await expect(page.locator('#threshold')).toContainText('Mit dem Vorjahresumsatz aus den Einstellungen.');
   await expect(page.locator('#threshold-previous')).toContainText('18.250,00 €');
 
-  await page.goto('/admin/vorjahre');
+  await page.goto('/admin/baselines');
   await page.getByRole('button', { name: `Vorjahresumsatz ${lastYear} entfernen` }).click();
   await expect(page.getByText('Noch kein Vorjahresumsatz erfasst.')).toBeVisible();
 });
 
 test('the admin downloads the full export and cannot import it over data', async ({ page }) => {
-  await page.goto('/einstellungen');
+  await page.goto('/settings');
   await page.getByRole('tab', { name: /Datensicherung/ }).click();
   await expect(page.locator('#backup-overdue')).toHaveText('Es gibt noch keine automatische Sicherung.');
   await expect(page.locator('#backup-last')).toHaveText('noch keine');
@@ -96,7 +96,7 @@ test('the admin downloads the full export and cannot import it over data', async
 
 test('a user edits the profile but not the tax notes', async ({ page, browser }) => {
   const username = uniqueUsername('st');
-  await page.goto('/admin/benutzer');
+  await page.goto('/admin/users');
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Einstellungen Nutzerin');
   await page.locator('#new-password').fill('settings-passwort-123');
@@ -118,7 +118,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await expect(user.getByRole('tab', { name: /E-Mail/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Vorjahre/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Datensicherung/ })).toHaveCount(0);
-  const response = await user.goto('/admin/steuerhinweise');
+  const response = await user.goto('/admin/tax-notes');
   expect(response?.status()).toBe(403);
   await context.close();
 });

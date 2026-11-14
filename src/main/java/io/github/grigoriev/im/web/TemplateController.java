@@ -26,13 +26,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The templates of a customer: create, edit, delete. Both roles use them. */
 @Controller
-@RequestMapping("/kunden/{customerId}/vorlagen")
+@RequestMapping("/customers/{customerId}/templates")
 public class TemplateController {
 
     static final String VIEW = "invoice-templates/edit";
 
     private static final String SUCCESS = "success";
-    private static final String CUSTOMER = "redirect:/kunden/";
+    private static final String CUSTOMER = "redirect:/customers/";
 
     private final TemplateService templates;
     private final CustomerService customers;
@@ -61,10 +61,10 @@ public class TemplateController {
     @PostMapping
     public String create(@PathVariable long customerId, RedirectAttributes flash) {
         try {
-            return CUSTOMER + customerId + "/vorlagen/" + templates.create(customerId).id();
+            return CUSTOMER + customerId + "/templates/" + templates.create(customerId).id();
         } catch (InvoiceException e) {
             flash.addFlashAttribute("error", e.getMessage());
-            return "redirect:/kunden";
+            return "redirect:/customers";
         }
     }
 
@@ -83,31 +83,31 @@ public class TemplateController {
     }
 
     /**
-     * Saves a template. "position" adds a line, "entfernen" removes one; both save the rest of the form too.
+     * Saves a template. "add-line" adds a line, "remove" removes one; both save the rest of the form too.
      *
      * @param customerId the customer
      * @param id the template
      * @param form the entered values
      * @param binding problems of the binding, for example an empty payment term
-     * @param aktion "speichern" or "position"
-     * @param entfernen the index of the line to remove, if any
+     * @param action "save" or "add-line"
+     * @param remove the index of the line to remove, if any
      * @param model the page model
      * @param flash messages for the next page
      * @return a redirect to the editor, or the editor with the problems
      */
     @PostMapping("/{id}")
     public String save(@PathVariable long customerId, @PathVariable long id, @ModelAttribute("form") TemplateForm form,
-            BindingResult binding, @RequestParam(required = false) String aktion,
-            @RequestParam(required = false) Integer entfernen, Model model, RedirectAttributes flash) {
+            BindingResult binding, @RequestParam(required = false) String action,
+            @RequestParam(required = false) Integer remove, Model model, RedirectAttributes flash) {
         InvoiceTemplate template = template(customerId, id);
         if (binding.hasErrors()) {
             model.addAttribute("formProblems", List.of("Bitte gültige Daten eingeben, zum Beispiel ein Zahlungsziel."));
             return page(model, customerId, template, form);
         }
-        if (entfernen != null && entfernen >= 0 && entfernen < form.getLines().size()) {
-            form.getLines().remove(entfernen.intValue());
+        if (remove != null && remove >= 0 && remove < form.getLines().size()) {
+            form.getLines().remove(remove.intValue());
         }
-        if ("position".equals(aktion)) {
+        if ("add-line".equals(action)) {
             LineForm line = new LineForm();
             line.setCategory(invoices.defaultCategory());
             form.getLines().add(line);
@@ -118,10 +118,10 @@ public class TemplateController {
             model.addAttribute("formProblems", e.problems());
             return page(model, customerId, template, form);
         }
-        if ("speichern".equals(aktion)) {
+        if ("save".equals(action)) {
             flash.addFlashAttribute(SUCCESS, "Vorlage gespeichert.");
         }
-        return CUSTOMER + customerId + "/vorlagen/" + id;
+        return CUSTOMER + customerId + "/templates/" + id;
     }
 
     /**
@@ -132,7 +132,7 @@ public class TemplateController {
      * @param flash messages for the next page
      * @return a redirect to the customer
      */
-    @PostMapping("/{id}/loeschen")
+    @PostMapping("/{id}/delete")
     public String delete(@PathVariable long customerId, @PathVariable long id, RedirectAttributes flash) {
         try {
             flash.addFlashAttribute(SUCCESS, "Vorlage „" + templates.delete(customerId, id).name() + "“ gelöscht.");

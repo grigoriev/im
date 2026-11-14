@@ -13,11 +13,11 @@ class ProfilePartTest {
 
     @Test
     void findsAPartByItsSlug() {
-        assertThat(ProfilePart.of("anschrift")).contains(ProfilePart.ADDRESS);
-        assertThat(ProfilePart.of("kontakt")).contains(ProfilePart.CONTACT);
-        assertThat(ProfilePart.of("steuer")).contains(ProfilePart.TAX);
+        assertThat(ProfilePart.of("address")).contains(ProfilePart.ADDRESS);
+        assertThat(ProfilePart.of("contact")).contains(ProfilePart.CONTACT);
+        assertThat(ProfilePart.of("tax")).contains(ProfilePart.TAX);
         assertThat(ProfilePart.of("bank")).contains(ProfilePart.BANK);
-        assertThat(ProfilePart.of("andere")).isEmpty();
+        assertThat(ProfilePart.of("other")).isEmpty();
         assertThat(ProfilePart.of(null)).isEmpty();
         assertThat(ProfilePart.BANK.label()).isEqualTo("Bankverbindung");
     }

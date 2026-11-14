@@ -50,57 +50,57 @@ class AccessRulesIT {
             Map.entry("GET /login", Access.PUBLIC),
             Map.entry("ANY /error", Access.PUBLIC),
             Map.entry("GET /", Access.USER),
-            Map.entry("GET /konto", Access.USER),
-            Map.entry("POST /konto/passkeys/{id}/name", Access.USER),
-            Map.entry("POST /konto/passkeys/{id}/loeschen", Access.USER),
-            Map.entry("POST /konto/passwort", Access.USER),
-            Map.entry("GET /kunden", Access.USER),
-            Map.entry("GET /kunden/neu", Access.USER),
-            Map.entry("GET /kunden/{id}", Access.USER),
-            Map.entry("POST /kunden", Access.USER),
-            Map.entry("POST /kunden/{id}", Access.USER),
-            Map.entry("POST /kunden/{id}/loeschen", Access.USER),
-            Map.entry("POST /kunden/{customerId}/vorlagen", Access.USER),
-            Map.entry("GET /kunden/{customerId}/vorlagen/{id}", Access.USER),
-            Map.entry("POST /kunden/{customerId}/vorlagen/{id}", Access.USER),
-            Map.entry("POST /kunden/{customerId}/vorlagen/{id}/loeschen", Access.USER),
-            Map.entry("GET /rechnungen", Access.USER),
-            Map.entry("POST /rechnungen", Access.USER),
-            Map.entry("GET /rechnungen/{id}", Access.USER),
-            Map.entry("POST /rechnungen/{id}", Access.USER),
-            Map.entry("POST /rechnungen/{id}/loeschen", Access.USER),
-            Map.entry("GET /rechnungen/{id}/vorschau", Access.USER),
-            Map.entry("POST /rechnungen/{id}/ausstellen", Access.USER),
-            Map.entry("POST /rechnungen/{id}/stornieren", Access.USER),
-            Map.entry("GET /berichte", Access.USER),
-            Map.entry("GET /berichte/zahlungen.csv", Access.USER),
-            Map.entry("GET /berichte/archiv.zip", Access.USER),
-            Map.entry("POST /rechnungen/{id}/versand", Access.USER),
-            Map.entry("POST /rechnungen/{id}/zahlungen", Access.USER),
-            Map.entry("POST /rechnungen/{id}/senden", Access.USER),
-            Map.entry("GET /rechnungen/{id}/dokumente/{kind}", Access.USER),
-            Map.entry("GET /einstellungen", Access.USER),
-            Map.entry("POST /einstellungen", Access.USER),
-            Map.entry("GET /admin/benutzer", Access.ADMIN),
-            Map.entry("POST /admin/benutzer", Access.ADMIN),
-            Map.entry("POST /admin/benutzer/{id}/passwort", Access.ADMIN),
-            Map.entry("POST /admin/benutzer/{id}/passkeys/loeschen", Access.ADMIN),
-            Map.entry("GET /admin/steuerhinweise", Access.ADMIN),
-            Map.entry("POST /admin/steuerhinweise", Access.ADMIN),
-            Map.entry("GET /admin/e-mail", Access.ADMIN),
-            Map.entry("GET /admin/vorjahre", Access.ADMIN),
-            Map.entry("GET /admin/datensicherung", Access.ADMIN),
-            Map.entry("GET /admin/datensicherung/export.zip", Access.ADMIN),
-            Map.entry("POST /admin/datensicherung/import", Access.ADMIN),
-            Map.entry("POST /admin/vorjahre", Access.ADMIN),
-            Map.entry("POST /admin/e-mail", Access.ADMIN),
-            Map.entry("GET /admin/nummernkreis", Access.ADMIN),
-            Map.entry("POST /admin/nummernkreis/muster", Access.ADMIN),
-            Map.entry("POST /admin/nummernkreis/start", Access.ADMIN),
-            Map.entry("GET /admin/protokoll", Access.ADMIN),
-            Map.entry("GET /admin/laender", Access.ADMIN),
-            Map.entry("POST /admin/laender", Access.ADMIN),
-            Map.entry("POST /admin/laender/{code}/entfernen", Access.ADMIN));
+            Map.entry("GET /account", Access.USER),
+            Map.entry("POST /account/passkeys/{id}/rename", Access.USER),
+            Map.entry("POST /account/passkeys/{id}/delete", Access.USER),
+            Map.entry("POST /account/password", Access.USER),
+            Map.entry("GET /customers", Access.USER),
+            Map.entry("GET /customers/new", Access.USER),
+            Map.entry("GET /customers/{id}", Access.USER),
+            Map.entry("POST /customers", Access.USER),
+            Map.entry("POST /customers/{id}", Access.USER),
+            Map.entry("POST /customers/{id}/delete", Access.USER),
+            Map.entry("POST /customers/{customerId}/templates", Access.USER),
+            Map.entry("GET /customers/{customerId}/templates/{id}", Access.USER),
+            Map.entry("POST /customers/{customerId}/templates/{id}", Access.USER),
+            Map.entry("POST /customers/{customerId}/templates/{id}/delete", Access.USER),
+            Map.entry("GET /invoices", Access.USER),
+            Map.entry("POST /invoices", Access.USER),
+            Map.entry("GET /invoices/{id}", Access.USER),
+            Map.entry("POST /invoices/{id}", Access.USER),
+            Map.entry("POST /invoices/{id}/delete", Access.USER),
+            Map.entry("GET /invoices/{id}/preview", Access.USER),
+            Map.entry("POST /invoices/{id}/issue", Access.USER),
+            Map.entry("POST /invoices/{id}/cancel", Access.USER),
+            Map.entry("GET /reports", Access.USER),
+            Map.entry("GET /reports/payments.csv", Access.USER),
+            Map.entry("GET /reports/archive.zip", Access.USER),
+            Map.entry("POST /invoices/{id}/dispatches", Access.USER),
+            Map.entry("POST /invoices/{id}/payments", Access.USER),
+            Map.entry("POST /invoices/{id}/send", Access.USER),
+            Map.entry("GET /invoices/{id}/documents/{kind}", Access.USER),
+            Map.entry("GET /settings", Access.USER),
+            Map.entry("POST /settings", Access.USER),
+            Map.entry("GET /admin/users", Access.ADMIN),
+            Map.entry("POST /admin/users", Access.ADMIN),
+            Map.entry("POST /admin/users/{id}/password", Access.ADMIN),
+            Map.entry("POST /admin/users/{id}/passkeys/delete", Access.ADMIN),
+            Map.entry("GET /admin/tax-notes", Access.ADMIN),
+            Map.entry("POST /admin/tax-notes", Access.ADMIN),
+            Map.entry("GET /admin/mail", Access.ADMIN),
+            Map.entry("GET /admin/baselines", Access.ADMIN),
+            Map.entry("GET /admin/backup", Access.ADMIN),
+            Map.entry("GET /admin/backup/export.zip", Access.ADMIN),
+            Map.entry("POST /admin/backup/import", Access.ADMIN),
+            Map.entry("POST /admin/baselines", Access.ADMIN),
+            Map.entry("POST /admin/mail", Access.ADMIN),
+            Map.entry("GET /admin/numbers", Access.ADMIN),
+            Map.entry("POST /admin/numbers/pattern", Access.ADMIN),
+            Map.entry("POST /admin/numbers/start", Access.ADMIN),
+            Map.entry("GET /admin/audit", Access.ADMIN),
+            Map.entry("GET /admin/countries", Access.ADMIN),
+            Map.entry("POST /admin/countries", Access.ADMIN),
+            Map.entry("POST /admin/countries/{code}/remove", Access.ADMIN));
 
     /** The actors. Nobody exists in the database, so no request changes data that another test reads. */
     private static final Map<String, RequestPostProcessor> ACTORS = Map.of(
@@ -114,7 +114,7 @@ class AccessRulesIT {
     @Qualifier("requestMappingHandlerMapping")
     private RequestMappingHandlerMapping mappings;
 
-    /** Every method and URL pattern that a controller serves, as "GET /kunden/{id}". */
+    /** Every method and URL pattern that a controller serves, as "GET /customers/{id}". */
     private Set<String> served() {
         Set<String> served = new TreeSet<>();
         for (RequestMappingInfo info : mappings.getHandlerMethods().keySet()) {
@@ -204,7 +204,7 @@ class AccessRulesIT {
             MockHttpServletResponse response = mvc.perform(request(rule).with(ACTORS.get("admin")))
                     .andReturn().getResponse();
             assertThat(response.getStatus()).isEqualTo(302);
-            assertThat(response.getHeader("Location")).endsWith("/login?abgelaufen");
+            assertThat(response.getHeader("Location")).endsWith("/login?expired");
         }));
     }
 
@@ -214,7 +214,7 @@ class AccessRulesIT {
                 .map(rule -> DynamicTest.dynamicTest(rule, () -> {
                     MockHttpServletResponse response = mvc.perform(request(rule)).andReturn().getResponse();
                     assertThat(response.getStatus()).isEqualTo(302);
-                    assertThat(response.getHeader("Location")).endsWith("/login?abgelaufen");
+                    assertThat(response.getHeader("Location")).endsWith("/login?expired");
                 }));
     }
 
@@ -251,7 +251,7 @@ class AccessRulesIT {
         for (String asset : List.of("/css/app.css", "/js/passkeys.js", "/vendor/lucide.min.js")) {
             assertThat(send("GET " + asset, null).getStatus()).as(asset).isEqualTo(200);
         }
-        assertThat(send("GET /unbekannt", null).getHeader("Location")).endsWith("/login");
+        assertThat(send("GET /unknown", null).getHeader("Location")).endsWith("/login");
         assertThat(send("GET /admin/unbekannt", ACTORS.get("user")).getStatus()).isEqualTo(403);
     }
 }

@@ -16,12 +16,12 @@
 
     <div class="grid">
     <div role="tablist" class="tabs-folder" id="profile-tabs" aria-label="Profil">
-      <a role="tab" th:each="each : ${parts}" th:href="@{/einstellungen(teil=${each.slug()})}" th:id="'profile-tab-' + ${each.slug()}"
+      <a role="tab" th:each="each : ${parts}" th:href="@{/settings(part=${each.slug()})}" th:id="'profile-tab-' + ${each.slug()}"
          th:attr="aria-selected=${each == part}"><span th:text="${each.label()}">Anschrift</span><th:block
          th:if="${incomplete.contains(each)}"><span class="status status-error" aria-hidden="true"></span><span class="sr-only">unvollständig</span></th:block></a>
     </div>
     <form class="bg-base-100 rounded-b-box rounded-tr-box border border-t-0 border-base-300 p-5 grid gap-5"
-          th:action="@{/einstellungen(teil=${part.slug()})}" th:object="${profile}" method="post">
+          th:action="@{/settings(part=${part.slug()})}" th:object="${profile}" method="post">
       <div>
         <h2 class="font-semibold" th:text="${part.label()}">Anschrift</h2>
         <p class="text-sm text-base-content/75">So stehen Sie als Rechnungssteller auf jeder Rechnung. Sie können das Profil

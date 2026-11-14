@@ -4,14 +4,14 @@ import { expect, type Page } from '@playwright/test';
 // disagree when they run in parallel.
 // Bankverbindung is the last tab fillProfile saves, so a BIC means every tab is there.
 export async function ensureProfile(page: Page): Promise<void> {
-  await page.goto('/einstellungen?teil=bank');
+  await page.goto('/settings?part=bank');
   if ((await page.getByLabel('BIC').inputValue()) !== '') return;
   await fillProfile(page);
 }
 
 // Fills and saves every tab of the profile.
 export async function fillProfile(page: Page): Promise<void> {
-  await page.goto('/einstellungen?teil=anschrift');
+  await page.goto('/settings?part=address');
   await page.getByLabel('Name', { exact: true }).fill('Erika Mustermann');
   await page.getByLabel('Zusatz, z. B. der Beruf').fill('Freiberufliche Dozentin');
   await page.getByLabel('Straße und Hausnummer').fill('Musterweg 1');
@@ -39,7 +39,7 @@ export async function fillProfile(page: Page): Promise<void> {
 
 // A customer with a unique name, ZUGFeRD EN16931. Returns the name.
 export async function newCustomer(page: Page, name: string): Promise<string> {
-  await page.goto('/kunden/neu');
+  await page.goto('/customers/new');
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Straße und Hausnummer').fill('Hafenstraße 3');
   await page.getByLabel('PLZ').fill('20457');

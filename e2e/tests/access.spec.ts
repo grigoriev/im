@@ -8,7 +8,7 @@ const ADMIN_ROUTES = ROUTES.filter((route) => route.path.startsWith('/admin/'));
 test('a user gets no access to the admin pages', async ({ page, browser }) => {
   expect(ADMIN_ROUTES.length).toBeGreaterThan(0);
   const username = uniqueUsername('ac');
-  await page.goto('/admin/benutzer');
+  await page.goto('/admin/users');
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Zugriff Nutzerin');
   await page.locator('#new-password').fill('zugriff-passwort-123');

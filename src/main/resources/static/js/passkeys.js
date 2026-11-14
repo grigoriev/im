@@ -96,7 +96,7 @@
       },
     });
     if (!result.success) throw new Error('registration refused');
-    globalThis.location.href = '/konto?passkey=neu';
+    globalThis.location.href = '/account?passkey=new';
   }
 
   document.addEventListener('DOMContentLoaded', () => {

@@ -63,32 +63,32 @@ class BackupControllerTest {
         MockHttpSession session = new MockHttpSession();
         request.setSession(session);
         SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("admin", "x", "ROLE_ADMIN"));
-        assertThat(controller.restore(file, request, new RedirectAttributesModelMap())).isEqualTo("redirect:/login?eingespielt");
+        assertThat(controller.restore(file, request, new RedirectAttributesModelMap())).isEqualTo("redirect:/login?restored");
         assertThat(session.isInvalid()).isTrue();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verify(backups).restore(any(InputStream.class));
         verify(sessions).renew();
         assertThat(controller.restore(file, new MockHttpServletRequest(), new RedirectAttributesModelMap()))
-                .as("no session to end").isEqualTo("redirect:/login?eingespielt");
+                .as("no session to end").isEqualTo("redirect:/login?restored");
     }
 
     @Test
     void aRefusedOrUnreadableImportStays() throws IOException {
         doThrow(new BackupException("Hier gibt es schon Daten.")).when(backups).restore(any(InputStream.class));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
-        assertThat(controller.restore(file, new MockHttpServletRequest(), flash)).isEqualTo("redirect:/admin/datensicherung");
+        assertThat(controller.restore(file, new MockHttpServletRequest(), flash)).isEqualTo("redirect:/admin/backup");
         assertThat(flashOf(flash)).containsEntry("error", "Hier gibt es schon Daten.");
 
         RedirectAttributesModelMap none = new RedirectAttributesModelMap();
-        assertThat(controller.restore(null, new MockHttpServletRequest(), none)).isEqualTo("redirect:/admin/datensicherung");
+        assertThat(controller.restore(null, new MockHttpServletRequest(), none)).isEqualTo("redirect:/admin/backup");
         assertThat(flashOf(none)).containsEntry("error", "Bitte eine ZIP-Datei wählen.");
         assertThat(controller.restore(new MockMultipartFile("file", new byte[0]), new MockHttpServletRequest(),
-                new RedirectAttributesModelMap())).as("an empty file").isEqualTo("redirect:/admin/datensicherung");
+                new RedirectAttributesModelMap())).as("an empty file").isEqualTo("redirect:/admin/backup");
 
         MultipartFile broken = mock(MultipartFile.class);
         when(broken.getInputStream()).thenThrow(new IOException("gone"));
         RedirectAttributesModelMap unread = new RedirectAttributesModelMap();
-        assertThat(controller.restore(broken, new MockHttpServletRequest(), unread)).isEqualTo("redirect:/admin/datensicherung");
+        assertThat(controller.restore(broken, new MockHttpServletRequest(), unread)).isEqualTo("redirect:/admin/backup");
         assertThat(flashOf(unread)).containsEntry("error", "Die Datei ließ sich nicht lesen.");
         verify(sessions, never()).renew();
     }

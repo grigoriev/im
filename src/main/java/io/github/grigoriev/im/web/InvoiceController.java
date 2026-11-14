@@ -47,7 +47,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * the page of an issued invoice ({@link IssuedInvoicePage}). Both roles use it.
  */
 @Controller
-@RequestMapping("/rechnungen")
+@RequestMapping("/invoices")
 public class InvoiceController {
 
     static final String LIST = "invoices/list";
@@ -65,8 +65,8 @@ public class InvoiceController {
 
     private static final String SUCCESS = "success";
     private static final String ERROR = "error";
-    private static final String BACK = "redirect:/rechnungen";
-    private static final String TO_INVOICE = "redirect:/rechnungen/";
+    private static final String BACK = "redirect:/invoices";
+    private static final String TO_INVOICE = "redirect:/invoices/";
 
     /**
      * A line of the list.
@@ -113,29 +113,29 @@ public class InvoiceController {
     /**
      * Shows the list of invoices, filtered by the year of the invoice date, the status and a text.
      *
-     * @param jahr the year, {@code null} for all
+     * @param year the year, {@code null} for all
      * @param status the status, {@code null} for all
-     * @param suche a part of the customer's name or of the number, case ignored; blank for all
+     * @param q a part of the customer's name or of the number, case ignored; blank for all
      * @param model the page model
      * @return the template name
      */
     @GetMapping
-    public String list(@RequestParam(required = false) Integer jahr, @RequestParam(required = false) InvoiceStatus status,
-            @RequestParam(required = false) String suche, Model model) {
+    public String list(@RequestParam(required = false) Integer year, @RequestParam(required = false) InvoiceStatus status,
+            @RequestParam(required = false) String q, Model model) {
         List<Row> all = invoices.list().stream().map(invoice -> {
             Optional<InvoiceDocument> document = document(invoice);
             return new Row(invoice, customerName(invoice, document),
                     document.map(InvoiceDocument::total).orElse(null), invoices.cancelled(invoice).isPresent());
         }).toList();
-        String text = suche == null ? "" : suche.strip().toLowerCase(Locale.ROOT);
-        model.addAttribute("rows", all.stream().filter(row -> matches(row, jahr, status, text)).toList());
+        String text = q == null ? "" : q.strip().toLowerCase(Locale.ROOT);
+        model.addAttribute("rows", all.stream().filter(row -> matches(row, year, status, text)).toList());
         model.addAttribute("any", !all.isEmpty());
         model.addAttribute("years", all.stream().map(row -> row.invoice().issueDate().getYear()).distinct()
                 .sorted(Comparator.reverseOrder()).toList());
         model.addAttribute("statuses", InvoiceStatus.values());
-        model.addAttribute("jahr", jahr);
+        model.addAttribute("year", year);
         model.addAttribute("status", status);
-        model.addAttribute("suche", suche == null ? "" : suche.strip());
+        model.addAttribute("q", q == null ? "" : q.strip());
         model.addAttribute("customers", customers.list());
         return LIST;
     }
@@ -182,30 +182,30 @@ public class InvoiceController {
     }
 
     /**
-     * Saves a draft. "position" adds a line, "entfernen" removes one; both save the rest of the form too.
+     * Saves a draft. "add-line" adds a line, "remove" removes one; both save the rest of the form too.
      *
      * @param id the ID
      * @param form the entered values
      * @param binding problems of the binding, for example a broken date
-     * @param aktion "speichern" or "position"
-     * @param entfernen the index of the line to remove, if any
+     * @param action "save" or "add-line"
+     * @param remove the index of the line to remove, if any
      * @param model the page model
      * @param flash messages for the next page
      * @return a redirect to the editor, or the editor with the problems
      */
     @PostMapping("/{id}")
     public String save(@PathVariable long id, @ModelAttribute("form") DraftForm form, BindingResult binding,
-            @RequestParam(required = false) String aktion, @RequestParam(required = false) Integer entfernen,
+            @RequestParam(required = false) String action, @RequestParam(required = false) Integer remove,
             Model model, RedirectAttributes flash) {
         Invoice invoice = invoices.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (binding.hasErrors()) {
             model.addAttribute("formProblems", List.of("Bitte gültige Daten eingeben, zum Beispiel ein Datum."));
             return page(model, invoice, form);
         }
-        if (entfernen != null && entfernen >= 0 && entfernen < form.getLines().size()) {
-            form.getLines().remove(entfernen.intValue());
+        if (remove != null && remove >= 0 && remove < form.getLines().size()) {
+            form.getLines().remove(remove.intValue());
         }
-        if ("position".equals(aktion)) {
+        if ("add-line".equals(action)) {
             LineForm line = new LineForm();
             line.setCategory(invoices.defaultCategory());
             form.getLines().add(line);
@@ -216,7 +216,7 @@ public class InvoiceController {
             model.addAttribute("formProblems", e.problems());
             return page(model, invoice, form);
         }
-        if ("speichern".equals(aktion)) {
+        if ("save".equals(action)) {
             flash.addFlashAttribute(SUCCESS, "Entwurf gespeichert.");
         }
         return TO_INVOICE + id;
@@ -229,11 +229,11 @@ public class InvoiceController {
      * @param flash messages for the next page
      * @return the PDF, or a redirect to the editor while the draft is incomplete
      */
-    @GetMapping("/{id}/vorschau")
+    @GetMapping("/{id}/preview")
     public ResponseEntity<byte[]> preview(@PathVariable long id, RedirectAttributes flash) {
         Invoice invoice = invoices.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (!invoice.isDraft()) {
-            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/rechnungen/" + id + "/dokumente/pdf"))
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/invoices/" + id + "/documents/pdf"))
                     .build();
         }
         return invoices.document(invoice)
@@ -243,7 +243,7 @@ public class InvoiceController {
                         .body(pdf.render(document)))
                 .orElseGet(() -> {
                     flash.addFlashAttribute(ERROR, "Die Vorschau braucht einen vollständigen Entwurf.");
-                    return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/rechnungen/" + id)).build();
+                    return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/invoices/" + id)).build();
                 });
     }
 
@@ -255,7 +255,7 @@ public class InvoiceController {
      * @param flash messages for the next page
      * @return a redirect to the invoice
      */
-    @PostMapping("/{id}/ausstellen")
+    @PostMapping("/{id}/issue")
     public String issue(@PathVariable long id, @RequestParam(required = false) Long version, RedirectAttributes flash) {
         try {
             flash.addFlashAttribute(SUCCESS, "Rechnung " + issues.issue(id, version) + " ausgestellt.");
@@ -272,7 +272,7 @@ public class InvoiceController {
      * @param flash messages for the next page
      * @return a redirect to the draft, or back to the invoice with the problem
      */
-    @PostMapping("/{id}/stornieren")
+    @PostMapping("/{id}/cancel")
     public String cancel(@PathVariable long id, RedirectAttributes flash) {
         try {
             long draft = invoices.createCancellation(id).id();
@@ -291,7 +291,7 @@ public class InvoiceController {
      * @param kind "pdf" or "xml"
      * @return the file
      */
-    @GetMapping("/{id}/dokumente/{kind}")
+    @GetMapping("/{id}/documents/{kind}")
     public ResponseEntity<byte[]> download(@PathVariable long id, @PathVariable String kind) {
         DocumentKind documentKind = switch (kind) {
             case "pdf" -> DocumentKind.PDF;
@@ -313,7 +313,7 @@ public class InvoiceController {
      * @param flash messages for the next page
      * @return a redirect to the list
      */
-    @PostMapping("/{id}/loeschen")
+    @PostMapping("/{id}/delete")
     public String delete(@PathVariable long id, RedirectAttributes flash) {
         try {
             invoices.deleteDraft(id);

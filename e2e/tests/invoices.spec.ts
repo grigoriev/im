@@ -6,7 +6,7 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await ensureProfile(page);
   const customer = await newCustomer(page, `Rechnungskunde ${randomUUID().slice(0, 8)}`);
 
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(customer);
@@ -58,7 +58,7 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await expect(page.locator('#line-1-text')).toHaveCount(0);
   await expect(page.locator('#invoice-totals')).toContainText('400,00 €');
 
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   const row = page.locator('#invoice-list li').filter({ hasText: customer });
   await expect(row).toContainText('Entwurf');
   await expect(row).toContainText('400,00 €');
@@ -73,7 +73,7 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await ensureProfile(page);
   const customer = await newCustomer(page, `Ausstellkunde ${randomUUID().slice(0, 8)}`);
 
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await expect(page.locator('#invoice-issue'), 'an incomplete draft cannot be issued').toHaveCount(0);
@@ -164,7 +164,7 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await expect(page.locator('#payments-open')).toHaveText('0,00 €');
   await expect(page.locator('#invoice-history li').last()).toContainText('Zahlung erfasst');
 
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   const row = page.locator('#invoice-list li').filter({ hasText: customer });
   await expect(row).toContainText(number);
   await expect(row).toContainText('Bezahlt');
@@ -178,7 +178,7 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await page.getByRole('button', { name: 'Filtern' }).click();
   await expect(page.locator('#invoice-none')).toHaveText('Keine Rechnungen gefunden.');
 
-  await page.goto('/berichte');
+  await page.goto('/reports');
   await expect(page.locator('#report-payments li').filter({ hasText: customer })).toHaveCount(2);
   const csv = await page.request.get((await page.locator('#report-csv').getAttribute('href'))!);
   expect(csv.headers()['content-type']).toBe('text/csv;charset=UTF-8');
@@ -199,7 +199,7 @@ test('issues an invoice with its number and documents', async ({ page }) => {
 test('cancels an invoice with a Stornorechnung', async ({ page }) => {
   await ensureProfile(page);
   const customer = await newCustomer(page, `Stornokunde ${randomUUID().slice(0, 8)}`);
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await page.locator('#line-0-text').fill('Lesung');
@@ -233,14 +233,14 @@ test('cancels an invoice with a Stornorechnung', async ({ page }) => {
   await expect(page.locator('#cancelled-by')).toContainText(`Stornorechnung ${storno}`);
   await expect(page.locator('#invoice-history li').last()).toContainText('Rechnung storniert');
 
-  await page.goto(`/rechnungen?suche=${encodeURIComponent(customer)}`);
+  await page.goto(`/invoices?q=${encodeURIComponent(customer)}`);
   await expect(page.locator('#invoice-list li').filter({ hasText: `Stornorechnung · ${storno}` })).toHaveCount(1);
 });
 
 test('warns when a draft would cross the §19 limit', async ({ page }) => {
   await ensureProfile(page);
   const customer = await newCustomer(page, `Grenzkunde ${randomUUID().slice(0, 8)}`);
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await page.locator('#line-0-text').fill('Großauftrag');

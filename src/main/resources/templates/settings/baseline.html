@@ -20,7 +20,7 @@
           Start der App tragen Sie ihn hier ein, nach Zahlungseingang und ohne Unterricht nach § 4 Nr. 21. Ein leeres Feld
           entfernt den Eintrag.</p>
       </div>
-      <form class="grid gap-3 @lg:grid-cols-[8rem_minmax(0,1fr)_auto] items-end" th:action="@{/admin/vorjahre}" method="post" id="baseline-form">
+      <form class="grid gap-3 @lg:grid-cols-[8rem_minmax(0,1fr)_auto] items-end" th:action="@{/admin/baselines}" method="post" id="baseline-form">
         <label class="floating-label"><span>Jahr</span>
           <input id="baseline-year" data-volatile name="year" type="number" class="input w-full num" min="2000" th:max="${lastYear}" th:value="${defaultYear}" required>
         </label>
@@ -34,7 +34,7 @@
         <li th:each="entry : ${baselines}" class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-base-300 last:border-b-0 py-1">
           <span class="num" th:text="${entry.key}">2026</span>
           <span class="num" th:text="${#numbers.formatDecimal(entry.value, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
-          <form method="post" th:action="@{/admin/vorjahre}">
+          <form method="post" th:action="@{/admin/baselines}">
             <input type="hidden" name="year" th:value="${entry.key}">
             <input type="hidden" name="amount" value="">
             <button type="submit" class="btn btn-danger btn-xs" th:id="'baseline-remove-' + ${entry.key}"

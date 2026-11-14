@@ -18,14 +18,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * registers a new passkey through the WebAuthn endpoints of Spring Security ({@code js/passkeys.js}).
  */
 @Controller
-@RequestMapping("/konto")
+@RequestMapping("/account")
 public class AccountController {
 
     private static final String SUCCESS = "success";
     private static final String ERROR = "error";
 
     static final String VIEW = "account";
-    static final String BACK = "redirect:/konto";
+    static final String BACK = "redirect:/account";
 
     private final PasskeyService passkeys;
     private final UserService users;
@@ -63,7 +63,7 @@ public class AccountController {
      * @param flash messages for the next page
      * @return a redirect to the account page
      */
-    @PostMapping("/passkeys/{id}/name")
+    @PostMapping("/passkeys/{id}/rename")
     public String rename(Principal principal, @PathVariable String id, @RequestParam String label,
             RedirectAttributes flash) {
         try {
@@ -83,7 +83,7 @@ public class AccountController {
      * @param flash messages for the next page
      * @return a redirect to the account page
      */
-    @PostMapping("/passkeys/{id}/loeschen")
+    @PostMapping("/passkeys/{id}/delete")
     public String remove(Principal principal, @PathVariable String id, RedirectAttributes flash) {
         try {
             passkeys.remove(principal.getName(), id);
@@ -104,7 +104,7 @@ public class AccountController {
      * @param flash messages for the next page
      * @return a redirect to the account page
      */
-    @PostMapping("/passwort")
+    @PostMapping("/password")
     public String changePassword(Principal principal, @RequestParam String current, @RequestParam String password,
             @RequestParam String confirm, RedirectAttributes flash) {
         if (!password.equals(confirm)) {

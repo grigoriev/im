@@ -4,7 +4,7 @@ import { expect, test } from './fixtures';
 // (playwright.config.ts), and it restores the default.
 test('the admin sets the number pattern and the start of next year', async ({ page }) => {
   const next = new Date().getFullYear() + 1;
-  await page.goto('/einstellungen');
+  await page.goto('/settings');
   await page.getByRole('tab', { name: /Nummernkreis/ }).click();
   await expect(page.locator(`#next-${next}`)).toHaveText(`${next}-01`);
 
