@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,6 +30,7 @@ class SellerServiceTest {
     void statement() {
         when(jdbc.sql(anyString())).thenReturn(statement);
         when(statement.param(anyString(), any())).thenReturn(statement);
+        when(statement.query()).thenReturn(mock(JdbcClient.ResultQuerySpec.class));
     }
 
     private static SellerProfile with(String field, String value) {
@@ -67,6 +67,10 @@ class SellerServiceTest {
         SellerProfile bank = new SellerProfile(null, null, null, null, null, null, null, null, null, null,
                 "GB82 WEST 1234 5698 7654 32", "WESTGB2L", null, null, null, "Westbank", "Erika M.");
         SellerProfile saved = service.save(ProfilePart.BANK, bank);
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(jdbc, profiles);
+        order.verify(jdbc).sql(SellerService.LOCK);
+        order.verify(profiles).findById(SellerService.ID);
+        order.verify(jdbc).sql(SellerService.UPSERT);
         assertThat(saved.name()).isEqualTo("Erika Mustermann");
         assertThat(saved.taxNumber()).isEqualTo("12/345/67890");
         assertThat(saved.iban()).isEqualTo("GB82WEST12345698765432");
@@ -78,6 +82,24 @@ class SellerServiceTest {
         assertThat(first.name()).as("nothing stored before the first save").isNull();
         assertThat(first.countryCode()).as("the defaults of the first form").isEqualTo("DE");
         assertThat(first.taxStatus()).isEqualTo(TaxStatus.KLEINUNTERNEHMER);
+    }
+
+    @Test
+    void aContactOrHolderEqualToTheNameMeansTheName() {
+        SellerProfile p = SellerTestData.profile();
+        SellerProfile shown = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
+                " Erika Mustermann ", p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
+                null, null, "Erika Mustermann");
+        SellerProfile normalized = SellerService.normalize(shown);
+        assertThat(normalized.contactName()).isNull();
+        assertThat(normalized.accountHolder()).isNull();
+        SellerProfile other = SellerService.normalize(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), "Max Mustermann", p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(),
+                p.taxStatus(), null, null, null, "Konto GmbH"));
+        assertThat(other.contactName()).isEqualTo("Max Mustermann");
+        assertThat(other.accountHolder()).isEqualTo("Konto GmbH");
+        assertThat(SellerService.normalize(new SellerProfile(null, null, null, null, null, "Max", null, null, null,
+                null, null, null, null, null, null, null, null)).contactName()).as("no name yet").isEqualTo("Max");
     }
 
     @Test

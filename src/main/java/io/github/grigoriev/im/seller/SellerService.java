@@ -35,6 +35,24 @@ public class SellerService {
     /** The ID of the one profile row. */
     static final int ID = 1;
 
+    /** The field names of the form, as in {@link SellerProfile}. */
+    static final String NAME = "name";
+    static final String STREET = "street";
+    static final String POSTCODE = "postcode";
+    static final String CITY = "city";
+    static final String COUNTRY = "countryCode";
+    static final String EMAIL = "email";
+    static final String PHONE_FIELD = "phone";
+    static final String TAX_NUMBER = "taxNumber";
+    static final String IBAN_FIELD = "iban";
+    static final String BIC_FIELD = "bic";
+
+    /**
+     * Serializes the saves of the profile, the first one included: each tab reads the stored profile and writes it back
+     * whole, so two tabs saved at once must not overwrite each other.
+     */
+    static final String LOCK = "SELECT pg_advisory_xact_lock(hashtext('seller_profile'))";
+
     static final Pattern PHONE = Pattern.compile("\\+?[\\d ()/-]{5,49}");
     static final Pattern IBAN = Pattern.compile("[A-Z]{2}\\d{2}[A-Z0-9]{11,30}");
 
@@ -109,6 +127,7 @@ public class SellerService {
      */
     @Transactional
     public SellerProfile save(ProfilePart part, SellerProfile input) {
+        jdbc.sql(LOCK).query().listOfRows();
         SellerProfile stored = profiles.findById(ID).map(StoredProfile::profile).orElseGet(SellerProfile::empty);
         SellerProfile profile = normalize(part.merge(stored, input));
         Map<String, String> problems = check(profile);
@@ -116,12 +135,12 @@ public class SellerService {
             throw new SettingsException(problems);
         }
         jdbc.sql(UPSERT)
-                .param("name", profile.name()).param("street", profile.street())
-                .param("postcode", profile.postcode()).param("city", profile.city())
-                .param("countryCode", profile.countryCode()).param("contactName", profile.contactName())
-                .param("email", profile.email()).param("phone", profile.phone())
-                .param("taxNumber", profile.taxNumber()).param("vatId", profile.vatId())
-                .param("iban", profile.iban()).param("bic", profile.bic())
+                .param(NAME, profile.name()).param(STREET, profile.street())
+                .param(POSTCODE, profile.postcode()).param(CITY, profile.city())
+                .param(COUNTRY, profile.countryCode()).param("contactName", profile.contactName())
+                .param(EMAIL, profile.email()).param(PHONE_FIELD, profile.phone())
+                .param(TAX_NUMBER, profile.taxNumber()).param("vatId", profile.vatId())
+                .param(IBAN_FIELD, profile.iban()).param(BIC_FIELD, profile.bic())
                 .param("taxStatus", profile.taxStatus() == null ? null : profile.taxStatus().name())
                 .param("tagline", profile.tagline()).param("website", profile.website())
                 .param("bankName", profile.bankName()).param("accountHolder", profile.accountHolder())
@@ -140,16 +159,16 @@ public class SellerService {
     public static Map<String, String> missing(SellerProfile input) {
         SellerProfile profile = normalize(input);
         Map<String, String> missing = new LinkedHashMap<>();
-        need(missing, profile.name(), "name", "Name");
-        need(missing, profile.street(), "street", "Straße");
-        need(missing, profile.postcode(), "postcode", "PLZ");
-        need(missing, profile.city(), "city", "Ort");
-        need(missing, profile.countryCode(), "countryCode", "Land");
+        need(missing, profile.name(), NAME, "Name");
+        need(missing, profile.street(), STREET, "Straße");
+        need(missing, profile.postcode(), POSTCODE, "PLZ");
+        need(missing, profile.city(), CITY, "Ort");
+        need(missing, profile.countryCode(), COUNTRY, "Land");
         need(missing, profile.taxStatus(), "taxStatus", "Steuerstatus");
-        need(missing, profile.taxNumber() == null ? profile.vatId() : profile.taxNumber(), "taxNumber",
+        need(missing, profile.taxNumber() == null ? profile.vatId() : profile.taxNumber(), TAX_NUMBER,
                 "Steuernummer oder USt-IdNr.");
-        need(missing, profile.iban(), "iban", "IBAN");
-        need(missing, profile.bic(), "bic", "BIC");
+        need(missing, profile.iban(), IBAN_FIELD, "IBAN");
+        need(missing, profile.bic(), BIC_FIELD, "BIC");
         return missing;
     }
 
@@ -162,8 +181,8 @@ public class SellerService {
     public static Map<String, String> missingForXRechnung(SellerProfile input) {
         SellerProfile profile = normalize(input);
         Map<String, String> missing = new LinkedHashMap<>();
-        need(missing, profile.email(), "email", "E-Mail");
-        need(missing, profile.phone(), "phone", "Telefon");
+        need(missing, profile.email(), EMAIL, "E-Mail");
+        need(missing, profile.phone(), PHONE_FIELD, "Telefon");
         return missing;
     }
 
@@ -173,12 +192,22 @@ public class SellerService {
         }
     }
 
+    /**
+     * Trims the fields and drops empty ones. A contact person or account holder equal to the name means the name: the
+     * form shows the name there, and a later change of the name carries over.
+     */
     static SellerProfile normalize(SellerProfile input) {
-        return new SellerProfile(text(input.name()), text(input.street()), text(input.postcode()), text(input.city()),
-                upper(input.countryCode()), text(input.contactName()), text(input.email()), text(input.phone()),
-                text(input.taxNumber()), compact(input.vatId()), compact(input.iban()), compact(input.bic()),
-                input.taxStatus(), text(input.tagline()), text(input.website()), text(input.bankName()),
-                text(input.accountHolder()));
+        String name = text(input.name());
+        return new SellerProfile(name, text(input.street()), text(input.postcode()), text(input.city()),
+                upper(input.countryCode()), unlessName(input.contactName(), name), text(input.email()),
+                text(input.phone()), text(input.taxNumber()), compact(input.vatId()), compact(input.iban()),
+                compact(input.bic()), input.taxStatus(), text(input.tagline()), text(input.website()),
+                text(input.bankName()), unlessName(input.accountHolder(), name));
+    }
+
+    private static String unlessName(String value, String name) {
+        String text = text(value);
+        return text != null && text.equals(name) ? null : text;
     }
 
     /**
@@ -188,15 +217,15 @@ public class SellerService {
      */
     static Map<String, String> check(SellerProfile profile) {
         Map<String, String> problems = new LinkedHashMap<>();
-        field(problems, "name", found -> optional(found, profile.name(), "Name", 200));
+        field(problems, NAME, found -> optional(found, profile.name(), "Name", 200));
         field(problems, "tagline", found -> optional(found, profile.tagline(), "Zusatz", 200));
-        field(problems, "street", found -> optional(found, profile.street(), "Straße", 200));
-        field(problems, "postcode", found -> optional(found, profile.postcode(), "PLZ", 16));
-        field(problems, "city", found -> optional(found, profile.city(), "Ort", 100));
-        given(problems, "countryCode", profile.countryCode(), found -> checkCountry(found, profile.countryCode()));
+        field(problems, STREET, found -> optional(found, profile.street(), "Straße", 200));
+        field(problems, POSTCODE, found -> optional(found, profile.postcode(), "PLZ", 16));
+        field(problems, CITY, found -> optional(found, profile.city(), "Ort", 100));
+        given(problems, COUNTRY, profile.countryCode(), found -> checkCountry(found, profile.countryCode()));
         field(problems, "contactName", found -> optional(found, profile.contactName(), "Ansprechpartner", 200));
-        given(problems, "email", profile.email(), found -> checkEmail(found, profile.email()));
-        given(problems, "phone", profile.phone(), found -> matches(found, profile.phone(), PHONE,
+        given(problems, EMAIL, profile.email(), found -> checkEmail(found, profile.email()));
+        given(problems, PHONE_FIELD, profile.phone(), found -> matches(found, profile.phone(), PHONE,
                 "Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567."));
         given(problems, "website", profile.website(), found -> {
             optional(found, profile.website(), "Website", 200);
@@ -204,10 +233,10 @@ public class SellerService {
                 found.add("Bitte eine Website wie www.example.de angeben.");
             }
         });
-        field(problems, "taxNumber", found -> optional(found, profile.taxNumber(), "Steuernummer", 32));
+        field(problems, TAX_NUMBER, found -> optional(found, profile.taxNumber(), "Steuernummer", 32));
         field(problems, "vatId", found -> checkVatId(found, profile.vatId()));
-        given(problems, "iban", profile.iban(), found -> checkIban(found, profile.iban()));
-        given(problems, "bic", profile.bic(), found -> matches(found, profile.bic(), BIC,
+        given(problems, IBAN_FIELD, profile.iban(), found -> checkIban(found, profile.iban()));
+        given(problems, BIC_FIELD, profile.bic(), found -> matches(found, profile.bic(), BIC,
                 "Die BIC hat 8 oder 11 Zeichen."));
         field(problems, "bankName", found -> optional(found, profile.bankName(), "Kreditinstitut", 100));
         field(problems, "accountHolder", found -> optional(found, profile.accountHolder(), "Kontoinhaber", 200));

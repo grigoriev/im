@@ -61,11 +61,15 @@ class SellerIT {
     }
 
     @Test
-    void theDatabaseKeepsOneProfileWithATaxNumberOrVatId() {
-        String insert = "INSERT INTO seller_profile (id, name, street, postcode, city, country_code, email, phone, iban, "
-                + "bic, tax_status, tax_number) VALUES (?, 'n', 's', 'p', 'c', 'DE', 'e', 'p', 'i', 'b', 'REGULAR', ?)";
-        assertThatThrownBy(() -> jdbc.update(insert, 2, "1")).isInstanceOf(DataIntegrityViolationException.class);
-        assertThatThrownBy(() -> jdbc.update(insert, 1, null)).isInstanceOf(DataIntegrityViolationException.class);
+    void theDatabaseKeepsOneProfileAndAcceptsAnIncompleteOne() {
+        jdbc.update("DELETE FROM seller_profile");
+        jdbc.update("INSERT INTO seller_profile (id, name) VALUES (1, 'Erika Mustermann')");
+        assertThat(sellers.find()).map(SellerProfile::iban).isEmpty();
+        assertThat(SellerService.missing(sellers.find().orElseThrow())).containsKeys("street", "iban", "taxNumber");
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO seller_profile (id, name) VALUES (2, 'Zweites Profil')"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        SellerTestData.save(sellers, SellerTestData.profile());
+        assertThat(sellers.find()).contains(SellerTestData.profile());
     }
 
     @Test
