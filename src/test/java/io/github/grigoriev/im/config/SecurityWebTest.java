@@ -743,6 +743,16 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("disabled=\"disabled\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Position hinzufügen"))));
 
+        Invoice xStorno = new Invoice(9L, InvoiceStatus.DRAFT, 3L, null, InvoiceFormat.XRECHNUNG, storno.issueDate(),
+                storno.serviceFrom(), storno.serviceTo(), 0, "04011000-1", null, null, null, storno.lines(),
+                java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L, null, null);
+        when(invoices.find(9)).thenReturn(Optional.of(xStorno));
+        when(invoices.cancelled(xStorno)).thenReturn(Optional.of(original));
+        mvc.perform(post("/rechnungen/9").param("version", "0").param("issueDate", "kaputt")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XRECHNUNG\" selected=\"selected\">")));
+
         when(invoices.find(9)).thenReturn(Optional.of(issuedStorno));
         when(invoices.cancelled(issuedStorno)).thenReturn(Optional.of(original));
         mvc.perform(get("/rechnungen/9").with(user("elena").roles("USER")))

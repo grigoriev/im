@@ -323,7 +323,10 @@ public class InvoiceController {
         model.addAttribute("customer", customerName(invoice, document));
         model.addAttribute("document", document.orElse(null));
         model.addAttribute("formats", CustomerController.FORMATS);
-        model.addAttribute("cancelled", invoices.cancelled(invoice).orElse(null));
+        Optional<Invoice> cancelled = invoices.cancelled(invoice);
+        model.addAttribute("cancelled", cancelled.orElse(null));
+        // The disabled format select of a Stornorechnung posts nothing: after a problem, show its own format.
+        cancelled.ifPresent(original -> form.setFormat(invoice.format()));
         if (!invoice.isDraft()) {
             issuedPage.fill(model, invoice);
             return ISSUED;
