@@ -27,6 +27,9 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
   await expect(page.locator('#invoice-totals')).toContainText('425,00 €');
   await expect(page.locator('#invoice-checks')).toContainText('Vollständig.');
+  const preview = await page.request.get((await page.locator('#invoice-preview').getAttribute('href'))!);
+  expect(preview.headers()['content-type']).toBe('application/pdf');
+  expect((await preview.body()).subarray(0, 5).toString()).toBe('%PDF-');
 
   await page.locator('#line-1-price').fill('zwölf');
   await page.getByRole('button', { name: 'Speichern' }).click();

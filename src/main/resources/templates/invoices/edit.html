@@ -14,6 +14,7 @@
       <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="${customer}">Kunde</h1>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
     <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">
       <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
     </div>
@@ -73,8 +74,13 @@
 
       <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-checks">
         <h2 class="font-semibold">Prüfung</h2>
-        <p th:if="${problems.isEmpty()}" class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>
-          Vollständig. Das Ausstellen folgt im nächsten Schritt.</p>
+        <div th:if="${problems.isEmpty()}" class="flex flex-wrap items-center justify-between gap-2">
+          <p class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>
+            Vollständig. Das Ausstellen folgt im nächsten Schritt.</p>
+          <a th:href="@{/rechnungen/{id}/vorschau(id=${invoice.id})}" target="_blank" rel="noopener" class="btn btn-sm"
+             id="invoice-preview"><i data-lucide="file-search" class="size-4"></i>Vorschau (PDF)</a>
+        </div>
+        <p th:if="${problems.isEmpty()}" class="text-xs text-base-content/75">Die Vorschau zeigt den gespeicherten Stand.</p>
         <ul th:unless="${problems.isEmpty()}" class="grid gap-1">
           <li th:each="problem : ${problems}" class="flex items-start gap-2"><i data-lucide="circle-alert" class="size-4 text-warning shrink-0 mt-0.5"></i>
             <span th:text="${problem}">Problem</span></li>

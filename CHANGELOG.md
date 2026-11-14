@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Preview: a complete draft opens as the PDF it will be issued as, with "Entwurf" as number; the placeholders `{Rechnungsnummer}`, `{Rechnungsdatum}`, `{Leistungszeitraum}` and `{Zahlungsziel}` are filled in its texts.
 - Templates per customer: name, format, payment days, texts with placeholders, lines and the e-mail; "Rechnung erstellen" starts a draft that copies the template, and a later change of the template leaves the draft as it is.
 - Draft invoices: "Rechnungen" lists them; a new draft takes format, buyer reference and tax note from customer and profile; the editor changes dates, texts and lines (lump sum or with quantity, German amounts) and shows totals and what the issue still needs. A customer with invoices can no longer be deleted.
 - Audit log: logins, failed logins (naming only existing users), passkeys, passwords, users, settings and customers, on the admin page "Protokoll".

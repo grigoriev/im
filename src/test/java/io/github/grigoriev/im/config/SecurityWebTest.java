@@ -142,6 +142,9 @@ class SecurityWebTest {
     @MockitoBean
     private TemplateService templates;
 
+    @MockitoBean
+    private io.github.grigoriev.im.einvoice.InvoicePdfRenderer pdf;
+
     private static InvoiceTemplate template() {
         return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
                 null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, java.math.BigDecimal.ONE,
@@ -651,6 +654,28 @@ class SecurityWebTest {
         mvc.perform(post("/rechnungen/5").param("issueDate", "kein-datum").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte gültige Daten eingeben")));
+    }
+
+    @Test
+    void showsThePreviewOfACompleteDraftOnly() throws Exception {
+        Invoice draft = invoice(5, InvoiceStatus.DRAFT);
+        var document = io.github.grigoriev.im.einvoice.SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        when(invoices.find(5)).thenReturn(Optional.of(draft));
+        when(invoices.document(draft)).thenReturn(Optional.of(document));
+        when(pdf.render(document)).thenReturn("%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        mvc.perform(get("/rechnungen/5/vorschau").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", "inline; filename=\"Rechnungsentwurf.pdf\""))
+                .andExpect(content().string("%PDF-1.7"));
+        when(invoices.document(draft)).thenReturn(Optional.empty());
+        var refused = mvc.perform(get("/rechnungen/5/vorschau").with(user("elena").roles("USER")))
+                .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/rechnungen/5"))
+                .andExpect(flash().attribute("error", "Die Vorschau braucht einen vollständigen Entwurf.")).andReturn();
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        mvc.perform(get("/rechnungen/5").flashAttrs(refused.getFlashMap()).with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Die Vorschau braucht einen vollständigen Entwurf.")));
+        when(invoices.find(9)).thenReturn(Optional.empty());
+        mvc.perform(get("/rechnungen/9/vorschau").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
     }
 
     @Test

@@ -385,6 +385,7 @@
                         <param>io.github.grigoriev.im.invoice.DraftLine</param>
                         <param>io.github.grigoriev.im.invoice.LineForm</param>
                         <param>io.github.grigoriev.im.invoice.TemplateService</param>
+                        <param>io.github.grigoriev.im.invoice.Placeholders</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>
