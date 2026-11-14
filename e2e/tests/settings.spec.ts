@@ -83,6 +83,22 @@ test('the admin enters the revenue of last year, and the overview counts it', as
   await expect(page.getByText('Noch kein Vorjahresumsatz erfasst.')).toBeVisible();
 });
 
+test('the admin downloads the full export and cannot import it over data', async ({ page }) => {
+  await page.goto('/einstellungen');
+  await page.getByRole('tab', { name: /Datensicherung/ }).click();
+  const download = await page.request.get((await page.locator('#backup-download').getAttribute('href'))!);
+  expect(download.headers()['content-type']).toBe('application/zip');
+  expect(download.headers()['content-disposition']).toMatch(/^attachment; filename="im-datensicherung-\d{4}-\d{2}-\d{2}\.zip"$/);
+  const zip = await download.body();
+  expect(zip.subarray(0, 2).toString()).toBe('PK');
+  expect(zip.includes('manifest.json')).toBe(true);
+  expect(zip.includes('data/invoice.json')).toBe(true);
+
+  await page.locator('#backup-file').setInputFiles({ name: 'export.zip', mimeType: 'application/zip', buffer: zip });
+  await page.getByRole('button', { name: 'Einspielen' }).click();
+  await expect(page.getByRole('alert')).toContainText('Hier gibt es schon Daten.');
+});
+
 test('a user edits the profile but not the tax notes', async ({ page, browser }) => {
   const username = uniqueUsername('st');
   await page.goto('/admin/benutzer');
@@ -105,6 +121,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await expect(user.getByRole('tab', { name: /Länder/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /E-Mail/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Vorjahre/ })).toHaveCount(0);
+  await expect(user.getByRole('tab', { name: /Datensicherung/ })).toHaveCount(0);
   const response = await user.goto('/admin/steuerhinweise');
   expect(response?.status()).toBe(403);
   await context.close();

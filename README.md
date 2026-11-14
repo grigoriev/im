@@ -17,6 +17,7 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
 - Cancellation by a Stornorechnung: a validated credit note with its own number that names the cancelled invoice.
 - Payments and refunds by the day the money came in, which the income report and the threshold use.
 - Issued PDF and XML stay in the database with their SHA-256, so one `pg_dump` backs up everything.
+- Full export and import of all data and documents as one ZIP, to move to a new host.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
 - Runs as a container with PostgreSQL in a home network.
 

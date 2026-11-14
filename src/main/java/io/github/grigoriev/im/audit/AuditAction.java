@@ -29,6 +29,10 @@ public enum AuditAction {
     MAIL_TEXT_SAVED("E-Mail-Text gespeichert"),
     /** The §19 revenue of a year before the app changed. */
     BASELINE_SAVED("Vorjahresumsatz gespeichert"),
+    /** The admin downloaded the full export. */
+    DATA_EXPORTED("Datensicherung exportiert"),
+    /** The admin read a full export into an empty installation. */
+    DATA_IMPORTED("Datensicherung eingespielt"),
     /** The pattern of the invoice numbers changed. */
     NUMBER_PATTERN_SAVED("Nummernmuster gespeichert"),
     /** The start value of a year changed. */

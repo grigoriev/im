@@ -16,6 +16,8 @@
      th:classappend="${active == 'baseline'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'baseline'}">Vorjahre<span class="badge badge-xs badge-ghost">Admin</span></a>
   <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/e-mail}" class="tab gap-1.5"
      th:classappend="${active == 'mail'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'mail'}">E-Mail<span class="badge badge-xs badge-ghost">Admin</span></a>
+  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/datensicherung}" class="tab gap-1.5"
+     th:classappend="${active == 'backup'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'backup'}">Datensicherung<span class="badge badge-xs badge-ghost">Admin</span></a>
   <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/laender}" class="tab gap-1.5"
      th:classappend="${active == 'countries'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'countries'}">Länder<span class="badge badge-xs badge-ghost">Admin</span></a>
 </div>

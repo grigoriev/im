@@ -67,6 +67,7 @@ import io.github.grigoriev.im.web.AccountController;
 import io.github.grigoriev.im.web.TemplateController;
 import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.InvoiceRecordsController;
+import io.github.grigoriev.im.web.BackupController;
 import io.github.grigoriev.im.web.BaselineController;
 import io.github.grigoriev.im.web.ReportController;
 import io.github.grigoriev.im.web.MailTextController;
@@ -99,8 +100,9 @@ import org.springframework.test.web.servlet.MockMvc;
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
-        MailTextController.class, BaselineController.class, ReportController.class})
-@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class})
+        MailTextController.class, BaselineController.class, ReportController.class, BackupController.class})
+@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
+        SessionEpoch.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 
@@ -177,6 +179,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private io.github.grigoriev.im.invoice.ArchiveService archive;
+
+    @MockitoBean
+    private io.github.grigoriev.im.backup.BackupService backups;
 
     @org.junit.jupiter.api.BeforeEach
     void noRevenueNoPayments() {
@@ -841,6 +846,29 @@ class SecurityWebTest {
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnungen_2027.zip\""));
         verify(archive).write(org.mockito.ArgumentMatchers.eq(2027), any());
         mvc.perform(get("/berichte")).andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    void theAdminExportsAndImportsEverything() throws Exception {
+        mvc.perform(get("/admin/datensicherung").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Export herunterladen")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("enctype=\"multipart/form-data\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected=\"true\">Datensicherung")));
+        mvc.perform(get("/admin/datensicherung").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+        var started = mvc.perform(get("/admin/datensicherung/export.zip").with(user("admin").roles("ADMIN")))
+                .andExpect(request().asyncStarted()).andReturn();
+        mvc.perform(asyncDispatch(started)).andExpect(status().isOk());
+        verify(backups).export(any());
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile("file",
+                "export.zip", "application/zip", new byte[] {1});
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/admin/datensicherung/import")
+                        .file(file).with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/login?eingespielt"));
+        mvc.perform(get("/login").param("eingespielt", ""))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Datensicherung eingespielt.")));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/admin/datensicherung/import")
+                        .file(file).with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
     }
 
     @Test
