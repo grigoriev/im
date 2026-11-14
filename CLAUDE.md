@@ -46,7 +46,8 @@ Package `io.github.grigoriev.im`:
 - `audit`: the audit log (`AuditService.add`, joins the caller's transaction); logins come from `user.LoginAudit`,
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
-  (`problems`), `document` builds the `InvoiceDocument` of a complete draft
+  (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `TemplateService` keeps the templates
+  per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)

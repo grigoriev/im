@@ -56,7 +56,12 @@ import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
+import io.github.grigoriev.im.invoice.InvoiceTemplate;
+import io.github.grigoriev.im.invoice.TemplateForm;
+import io.github.grigoriev.im.invoice.TemplateLine;
+import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.web.AccountController;
+import io.github.grigoriev.im.web.TemplateController;
 import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.AuditController;
 import io.github.grigoriev.im.web.CountryController;
@@ -85,7 +90,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
-        AuditController.class, InvoiceController.class})
+        AuditController.class, InvoiceController.class, TemplateController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -133,6 +138,16 @@ class SecurityWebTest {
 
     @MockitoBean
     private InvoiceService invoices;
+
+    @MockitoBean
+    private TemplateService templates;
+
+    private static InvoiceTemplate template() {
+        return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
+                null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, java.math.BigDecimal.ONE,
+                        new java.math.BigDecimal("400"), TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH,
+                java.time.Instant.EPOCH, 0L);
+    }
 
     private static Invoice invoice(long id, InvoiceStatus status) {
         java.time.LocalDate day = java.time.LocalDate.of(2027, 3, 18);
@@ -549,10 +564,10 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("480,00 €")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Neue Rechnung")));
 
-        when(invoices.createDraft(3)).thenReturn(draft);
+        when(invoices.createDraft(3L, null)).thenReturn(draft);
         mvc.perform(post("/rechnungen").param("customerId", "3").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/rechnungen/5"));
-        when(invoices.createDraft(4)).thenThrow(new InvoiceException(List.of("Bitte zuerst das Profil ausfüllen.")));
+        when(invoices.createDraft(4L, null)).thenThrow(new InvoiceException(List.of("Bitte zuerst das Profil ausfüllen.")));
         mvc.perform(post("/rechnungen").param("customerId", "4").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/rechnungen")).andExpect(flash().attribute("error", "Bitte zuerst das Profil ausfüllen."));
     }
@@ -646,6 +661,93 @@ class SecurityWebTest {
         doThrow(new InvoiceException(List.of("Eine ausgestellte Rechnung ändert sich nicht mehr."))).when(invoices).deleteDraft(6);
         mvc.perform(post("/rechnungen/6/loeschen").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(flash().attribute("error", "Eine ausgestellte Rechnung ändert sich nicht mehr."));
+    }
+
+    @Test
+    void showsTheTemplatesOfACustomerAndStartsADraftFromOne() throws Exception {
+        when(customers.list()).thenReturn(List.of());
+        when(customers.find(4)).thenReturn(Optional.of(CustomerTestData.vhs().withId(4L)));
+        when(templates.list(4)).thenReturn(List.of());
+        mvc.perform(get("/kunden/4").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Vorlage.")));
+        when(templates.list(4)).thenReturn(List.of(template()));
+        mvc.perform(get("/kunden/4").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Lesung mit Gespräch")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"templateId\" value=\"7\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung erstellen")));
+        mvc.perform(get("/kunden/neu").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Neue Vorlage"))));
+
+        when(invoices.createDraft(4L, 7L)).thenReturn(invoice(5, InvoiceStatus.DRAFT));
+        mvc.perform(post("/rechnungen").param("customerId", "4").param("templateId", "7")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5"));
+    }
+
+    @Test
+    void createsEditsAndDeletesATemplate() throws Exception {
+        when(templates.create(4)).thenReturn(template());
+        mvc.perform(post("/kunden/4/vorlagen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/kunden/4/vorlagen/7"));
+        when(templates.create(9)).thenThrow(new InvoiceException(List.of("Diesen Kunden gibt es nicht.")));
+        mvc.perform(post("/kunden/9/vorlagen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/kunden")).andExpect(flash().attribute("error", "Diesen Kunden gibt es nicht."));
+
+        when(templates.find(4, 7)).thenReturn(Optional.of(template()));
+        when(customers.find(4)).thenReturn(Optional.of(CustomerTestData.vhs().withId(4L)));
+        mvc.perform(get("/kunden/4/vorlagen/7").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Lesung mit Gespr&auml;ch\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("{Leistungszeitraum}")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Volkshochschule Musterstadt")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"400,00\"")));
+        when(customers.find(4)).thenReturn(Optional.empty());
+        mvc.perform(get("/kunden/4/vorlagen/7").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("← –")));
+        when(templates.find(4, 8)).thenReturn(Optional.empty());
+        mvc.perform(get("/kunden/4/vorlagen/8").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+
+        when(invoices.defaultCategory()).thenReturn(TaxCategory.KLEINUNTERNEHMER);
+        var saved = org.mockito.ArgumentCaptor.forClass(TemplateForm.class);
+        mvc.perform(post("/kunden/4/vorlagen/7").param("aktion", "speichern").param("name", "Lesung")
+                        .param("lines[0].text", "Lesung").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/kunden/4/vorlagen/7")).andExpect(flash().attribute("success", "Vorlage gespeichert."));
+        mvc.perform(post("/kunden/4/vorlagen/7").param("aktion", "position").param("lines[0].text", "Lesung")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attributeCount(0));
+        mvc.perform(post("/kunden/4/vorlagen/7").param("entfernen", "0").param("lines[0].text", "Lesung")
+                        .param("lines[1].text", "Reise").with(user("elena").roles("USER")).with(csrf()));
+        mvc.perform(post("/kunden/4/vorlagen/7").param("entfernen", "5").param("lines[0].text", "Lesung")
+                        .with(user("elena").roles("USER")).with(csrf()));
+        mvc.perform(post("/kunden/4/vorlagen/7").param("entfernen", "-1").param("lines[0].text", "Lesung")
+                        .with(user("elena").roles("USER")).with(csrf()));
+        verify(templates, times(5)).save(eq(4L), eq(7L), saved.capture());
+        assertThat(saved.getAllValues().get(1).getLines()).hasSize(2);
+        assertThat(saved.getAllValues().get(1).getLines().get(1).getCategory()).isEqualTo(TaxCategory.KLEINUNTERNEHMER);
+        assertThat(saved.getAllValues().get(2).getLines()).extracting(io.github.grigoriev.im.invoice.LineForm::getText)
+                .containsExactly("Reise");
+        assertThat(saved.getAllValues().get(3).getLines()).hasSize(1);
+        assertThat(saved.getAllValues().get(4).getLines()).hasSize(1);
+
+        when(templates.save(eq(4L), eq(7L), any())).thenThrow(new InvoiceException(List.of("Bitte der Vorlage einen Namen geben.")));
+        mvc.perform(post("/kunden/4/vorlagen/7").param("aktion", "speichern").param("name", "")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte der Vorlage einen Namen geben.")));
+        mvc.perform(post("/kunden/4/vorlagen/8").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/kunden/4/vorlagen/7").param("aktion", "position").param("paymentDays", "")
+                        .param("lines[0].text", "Lesung").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte gültige Daten eingeben")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Lesung\"")));
+
+        when(templates.delete(4, 7)).thenReturn(template());
+        mvc.perform(post("/kunden/4/vorlagen/7/loeschen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/kunden/4"))
+                .andExpect(flash().attribute("success", "Vorlage „Lesung mit Gespräch“ gelöscht."));
+        when(templates.delete(4, 8)).thenThrow(new InvoiceException(List.of("Diese Vorlage gibt es nicht.")));
+        mvc.perform(post("/kunden/4/vorlagen/8/loeschen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("error", "Diese Vorlage gibt es nicht."));
     }
 
     @Test

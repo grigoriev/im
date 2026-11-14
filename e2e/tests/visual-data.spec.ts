@@ -23,6 +23,14 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await expect(page.getByRole('status')).toContainText('angelegt');
   const url = page.url();
 
+  // A template of this customer, for the screenshot of the list of templates.
+  await page.getByRole('button', { name: 'Neue Vorlage' }).click();
+  await page.getByLabel('Name der Vorlage').fill('Lesung mit Gespräch und Signierstunde');
+  await page.locator('#line-0-text').fill('Lesung aus „Der stille Hafen“, 90 Min.');
+  await page.locator('#line-0-amount').fill('400');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Vorlage gespeichert.');
+
   // A draft for this customer with a lump sum and a line with quantity, for the editor screenshots.
   await ensureProfile(page);
   await page.goto('/rechnungen');
@@ -58,6 +66,8 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
         `audit-entry-${viewport.name}-${scheme}.png`,
         { mask: [view.locator('[data-volatile]')] },
       );
+      await view.goto(url);
+      await expect(view.locator('#customer-templates')).toHaveScreenshot(`customer-templates-${viewport.name}-${scheme}.png`);
       await view.goto(draft);
       await expect(view.locator('#positionen')).toHaveScreenshot(`invoice-lines-${viewport.name}-${scheme}.png`);
       await context.close();

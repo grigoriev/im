@@ -42,11 +42,12 @@ class InvoiceServiceTest {
     private static final LocalDate TODAY = LocalDate.of(2027, 3, 18);
 
     private final InvoiceRepository repository = mock(InvoiceRepository.class);
+    private final TemplateRepository templates = mock(TemplateRepository.class);
     private final CustomerService customers = mock(CustomerService.class);
     private final SellerService sellers = mock(SellerService.class);
     private final TaxNoteService notes = mock(TaxNoteService.class);
     private final AuditService audit = mock(AuditService.class);
-    private final InvoiceService service = new InvoiceService(repository, customers, sellers, notes, audit,
+    private final InvoiceService service = new InvoiceService(repository, templates, customers, sellers, notes, audit,
             Clock.fixed(NOW, ZoneId.of("Europe/Berlin")));
 
     @BeforeEach
@@ -99,7 +100,7 @@ class InvoiceServiceTest {
 
     @Test
     void createsADraftFromTheCustomerAndTheTaxStatus() {
-        Invoice created = service.createDraft(2);
+        Invoice created = service.createDraft(2, null);
         assertThat(created.status()).isEqualTo(InvoiceStatus.DRAFT);
         assertThat(created.customerId()).isEqualTo(2L);
         assertThat(created.number()).isNull();
@@ -117,9 +118,35 @@ class InvoiceServiceTest {
     }
 
     @Test
+    void copiesATemplateOfTheCustomerIntoTheDraft() {
+        InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_XRECHNUNG, 30, "Hallo {x}",
+                "Danke", "Steuerfrei.", "Betreff", "Text", List.of(new TemplateLine("Kurs", false, new BigDecimal("24"),
+                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L);
+        when(templates.findById(7L)).thenReturn(Optional.of(template));
+        Invoice created = service.createDraft(2, 7L);
+        assertThat(created.format()).isEqualTo(InvoiceFormat.ZUGFERD_XRECHNUNG);
+        assertThat(created.paymentDays()).isEqualTo(30);
+        assertThat(created.intro()).isEqualTo("Hallo {x}");
+        assertThat(created.closing()).isEqualTo("Danke");
+        assertThat(created.taxNote()).isEqualTo("Steuerfrei.");
+        assertThat(created.lines()).containsExactly(new DraftLine("Kurs", false, new BigDecimal("24"), new BigDecimal("41"),
+                TaxCategory.EXEMPT_4_21));
+        assertThat(created.issueDate()).isEqualTo(TODAY);
+        assertThat(created.version()).isNull();
+        verify(audit).add(AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
+
+        when(templates.findById(8L)).thenReturn(Optional.of(new InvoiceTemplate(8L, 3L, "Fremd", InvoiceFormat.XRECHNUNG,
+                14, null, null, null, null, null, List.of(), NOW, NOW, 0L)));
+        assertThatThrownBy(() -> service.createDraft(2, 8L)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Diese Vorlage gibt es nicht.");
+        when(templates.findById(9L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.createDraft(2, 9L)).isInstanceOf(InvoiceException.class);
+    }
+
+    @Test
     void takesFormatAndBuyerReferenceFromTheCustomer() {
         when(customers.find(3)).thenReturn(Optional.of(CustomerTestData.vhs().withId(3L)));
-        Invoice created = service.createDraft(3);
+        Invoice created = service.createDraft(3, null);
         assertThat(created.format()).isEqualTo(InvoiceFormat.XRECHNUNG);
         assertThat(created.buyerReference()).isEqualTo("09162000-VHS01-42");
     }
@@ -135,10 +162,10 @@ class InvoiceServiceTest {
     @Test
     void needsTheProfileAndTheCustomer() {
         when(customers.find(9)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.createDraft(9)).isInstanceOf(InvoiceException.class)
+        assertThatThrownBy(() -> service.createDraft(9, null)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diesen Kunden gibt es nicht.");
         when(sellers.find()).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.createDraft(2)).isInstanceOf(InvoiceException.class)
+        assertThatThrownBy(() -> service.createDraft(2, null)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Bitte zuerst das Profil in den Einstellungen ausfüllen.");
         verify(repository, never()).save(any());
         verifyNoInteractions(audit);
@@ -414,14 +441,16 @@ class InvoiceServiceTest {
 
     @Test
     void knowsAnUntouchedSwitch() {
-        assertThat(InvoiceService.switchedUntouched(switched("2", "5", "10,00", "10,00"))).isTrue();
-        assertThat(InvoiceService.switchedUntouched(switched("2", "5", "10,00", "12"))).isFalse();
+        assertThat(switched("2", "5", "10,00", "10,00").switchedUntouched()).isTrue();
+        assertThat(switched("2", "5", "10,00", "12").switchedUntouched()).isFalse();
+        assertThat(switched("2", "5", null, null).switchedUntouched()).as("both fields missing").isTrue();
+        assertThat(switched("2", "5", null, "12").switchedUntouched()).isFalse();
         LineForm stayed = switched("2", "5", "10,00", "10,00");
         stayed.setShownAsLumpSum(true);
-        assertThat(InvoiceService.switchedUntouched(stayed)).isFalse();
+        assertThat(stayed.switchedUntouched()).isFalse();
         LineForm counted = switched("2", "5", "10,00", "10,00");
         counted.setLumpSum(false);
-        assertThat(InvoiceService.switchedUntouched(counted)).isFalse();
+        assertThat(counted.switchedUntouched()).isFalse();
     }
 
     @Test

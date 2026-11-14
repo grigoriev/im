@@ -10,14 +10,11 @@ import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -33,20 +30,16 @@ public class InvoiceService {
 
     static final int DEFAULT_PAYMENT_DAYS = 14;
     static final int MAX_PAYMENT_DAYS = 365;
-    static final int MAX_LINE_TEXT = 500;
     static final int MAX_TEXT = 2000;
     static final int MAX_TAX_NOTE = 1000;
     static final int MAX_REFERENCE = 200;
-    static final int MAX_DECIMALS = 4;
-    /** Digits before the comma, as {@code NUMERIC(16, 4)} in the database allows. */
-    static final int MAX_INTEGER_DIGITS = 12;
     static final String CHANGED_ELSEWHERE = "Der Entwurf wurde inzwischen in einem anderen Fenster geändert. "
             + "Bitte die Seite neu laden.";
-    private static final String AT_MOST = " hat höchstens ";
     static final String DEFAULT_INTRO = "Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag.";
     static final String DEFAULT_CLOSING = "Mit freundlichen Grüßen";
 
     private final InvoiceRepository invoices;
+    private final TemplateRepository templates;
     private final CustomerService customers;
     private final SellerService sellers;
     private final TaxNoteService notes;
@@ -57,15 +50,17 @@ public class InvoiceService {
      * Creates the service.
      *
      * @param invoices the invoice store
+     * @param templates the templates of the customers
      * @param customers the customers
      * @param sellers the seller profile
      * @param notes the default tax notes
      * @param audit the audit log
      * @param clock source of today
      */
-    public InvoiceService(InvoiceRepository invoices, CustomerService customers, SellerService sellers,
-            TaxNoteService notes, AuditService audit, Clock clock) {
+    public InvoiceService(InvoiceRepository invoices, TemplateRepository templates, CustomerService customers,
+            SellerService sellers, TaxNoteService notes, AuditService audit, Clock clock) {
         this.invoices = invoices;
+        this.templates = templates;
         this.customers = customers;
         this.sellers = sellers;
         this.notes = notes;
@@ -103,25 +98,39 @@ public class InvoiceService {
     }
 
     /**
-     * Creates a draft for a customer: today's dates, the customer's format and buyer reference, one empty line
-     * and the tax note of the seller's tax status.
+     * Creates a draft for a customer, today's dates and the customer's buyer reference. Without a template it takes the
+     * customer's format, one empty line and the tax note of the seller's tax status. With a template it copies the
+     * template's format, texts, payment days and lines; a later change of the template leaves the draft as it is.
      *
      * @param customerId the customer
+     * @param templateId the template, {@code null} for none
      * @return the saved draft
-     * @throws InvoiceException without a seller profile or customer
+     * @throws InvoiceException without a seller profile, customer or template of this customer
      */
     @Transactional
-    public Invoice createDraft(long customerId) {
+    public Invoice createDraft(long customerId, Long templateId) {
         if (sellers.find().isEmpty()) {
             throw new InvoiceException(List.of("Bitte zuerst das Profil in den Einstellungen ausfüllen."));
         }
         Customer customer = customers.find(customerId)
                 .orElseThrow(() -> new InvoiceException(List.of("Diesen Kunden gibt es nicht.")));
-        TaxCategory category = defaultCategory();
         LocalDate today = LocalDate.now(clock);
-        Invoice saved = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today,
-                today, today, DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
-                notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null));
+        Invoice draft;
+        if (templateId == null) {
+            TaxCategory category = defaultCategory();
+            draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today, today, today,
+                    DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
+                    notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null);
+        } else {
+            InvoiceTemplate template = templates.findById(templateId)
+                    .filter(found -> found.customerId() == customerId)
+                    .orElseThrow(() -> new InvoiceException(List.of("Diese Vorlage gibt es nicht.")));
+            draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, template.format(), today, today, today,
+                    template.paymentDays(), customer.buyerReference(), template.intro(), template.closing(),
+                    template.taxNote(), template.lines().stream().map(TemplateLine::toDraftLine).toList(),
+                    clock.instant(), clock.instant(), null);
+        }
+        Invoice saved = invoices.save(draft);
         audit.add(AuditAction.DRAFT_CREATED, customer.name());
         return saved;
     }
@@ -143,12 +152,12 @@ public class InvoiceService {
         List<String> problems = new ArrayList<>();
         List<DraftLine> lines = new ArrayList<>();
         for (int i = 0; i < form.getLines().size(); i++) {
-            lines.add(line(i + 1, form.getLines().get(i), problems));
+            lines.add(form.getLines().get(i).toLine(i + 1, problems));
         }
-        length(problems, form.getBuyerReference(), "Die Käuferreferenz", MAX_REFERENCE);
-        length(problems, form.getIntro(), "Die Einleitung", MAX_TEXT);
-        length(problems, form.getClosing(), "Der Schlusstext", MAX_TEXT);
-        length(problems, form.getTaxNote(), "Der Steuerhinweis", MAX_TAX_NOTE);
+        LineForm.length(problems, form.getBuyerReference(), "Die Käuferreferenz", MAX_REFERENCE);
+        LineForm.length(problems, form.getIntro(), "Die Einleitung", MAX_TEXT);
+        LineForm.length(problems, form.getClosing(), "Der Schlusstext", MAX_TEXT);
+        LineForm.length(problems, form.getTaxNote(), "Der Steuerhinweis", MAX_TAX_NOTE);
         if (form.getPaymentDays() < 0 || form.getPaymentDays() > MAX_PAYMENT_DAYS) {
             problems.add("Das Zahlungsziel liegt zwischen 0 und " + MAX_PAYMENT_DAYS + " Tagen.");
         }
@@ -232,10 +241,10 @@ public class InvoiceService {
         for (int i = 0; i < invoice.lines().size(); i++) {
             DraftLine line = invoice.lines().get(i);
             if (line.text() == null || line.text().isBlank()) {
-                problems.add(position(i + 1) + "Bitte die Leistung beschreiben.");
+                problems.add(LineForm.position(i + 1) + "Bitte die Leistung beschreiben.");
             }
             if (line.quantity().multiply(line.unitPrice()).signum() <= 0) {
-                problems.add(position(i + 1) + "Der Betrag ist größer als 0.");
+                problems.add(LineForm.position(i + 1) + "Der Betrag ist größer als 0.");
             }
         }
     }
@@ -258,10 +267,6 @@ public class InvoiceService {
                 && (seller.map(SellerProfile::vatId).isEmpty() || customer.map(Customer::vatId).isEmpty())) {
             problems.add("Reverse Charge braucht die USt-IdNr. von Ihnen und vom Kunden (§ 14a UStG).");
         }
-    }
-
-    private static String position(int number) {
-        return "Position " + number + ": ";
     }
 
     /**
@@ -289,73 +294,6 @@ public class InvoiceService {
             throw new InvoiceException(List.of("Eine ausgestellte Rechnung ändert sich nicht mehr."));
         }
         return invoice;
-    }
-
-    private static DraftLine line(int number, LineForm row, List<String> problems) {
-        String prefix = position(number);
-        String text = row.getText() == null ? "" : row.getText().strip();
-        length(problems, text, prefix + "Die Leistung", MAX_LINE_TEXT);
-        if (row.getCategory() == null) {
-            problems.add(prefix + "Bitte die Steuer wählen.");
-        }
-        if (row.isLumpSum() && !switchedUntouched(row)) {
-            return new DraftLine(text, true, BigDecimal.ONE, number(problems, row.getAmount(), prefix + "Der Betrag"),
-                    row.getCategory());
-        }
-        BigDecimal quantity = number(problems, row.getQuantity(), prefix + "Die Menge");
-        BigDecimal price = number(problems, row.getPrice(), prefix + "Der Preis");
-        if (!row.isLumpSum()) {
-            return new DraftLine(text, false, quantity, price, row.getCategory());
-        }
-        // Switched to a lump sum without a new amount: the total of the quantity and price as submitted now.
-        BigDecimal total = quantity == null || price == null ? null
-                : quantity.multiply(price).setScale(2, RoundingMode.HALF_UP);
-        if (total != null && total.precision() - total.scale() > MAX_INTEGER_DIGITS) {
-            problems.add(prefix + "Der Betrag" + AT_MOST + MAX_INTEGER_DIGITS + " Stellen vor dem Komma.");
-            total = null;
-        }
-        return new DraftLine(text, true, BigDecimal.ONE, total, row.getCategory());
-    }
-
-    /**
-     * Tells whether a line turned from "Mit Menge" into a lump sum and its amount field still shows the old total:
-     * then the quantity and price as submitted give the amount, so a changed quantity counts (docs/PLAN.md,
-     * section 7). An amount the user typed wins.
-     */
-    static boolean switchedUntouched(LineForm row) {
-        return row.isLumpSum() && !row.isShownAsLumpSum()
-                && Objects.equals(text(row.getAmount()), text(row.getShownAmount()));
-    }
-
-    /**
-     * Reads a number. An empty field is 0: a draft may be incomplete, and {@link #problems} names the missing amount.
-     * On a problem it returns {@code null}: the save then stops before it uses the line.
-     */
-    private static BigDecimal number(List<String> problems, String text, String field) {
-        if (text == null || text.isBlank()) {
-            return BigDecimal.ZERO;
-        }
-        if (DraftForm.ambiguous(text)) {
-            problems.add(field + " ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00 oder 1,5.");
-            return null;
-        }
-        BigDecimal value = DraftForm.parse(text);
-        if (value == null) {
-            problems.add(field + " ist keine Zahl, zum Beispiel 45,00.");
-        } else if (value.precision() - value.scale() > MAX_INTEGER_DIGITS) {
-            problems.add(field + AT_MOST + MAX_INTEGER_DIGITS + " Stellen vor dem Komma.");
-            value = null;
-        } else if (value.stripTrailingZeros().scale() > MAX_DECIMALS) {
-            problems.add(field + AT_MOST + MAX_DECIMALS + " Nachkommastellen.");
-            value = null;
-        }
-        return value;
-    }
-
-    private static void length(List<String> problems, String value, String field, int max) {
-        if (value != null && value.strip().length() > max) {
-            problems.add(field + AT_MOST + max + " Zeichen.");
-        }
     }
 
     private static String text(String value) {

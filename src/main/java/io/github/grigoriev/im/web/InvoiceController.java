@@ -86,16 +86,18 @@ public class InvoiceController {
     }
 
     /**
-     * Creates a draft for a customer.
+     * Creates a draft for a customer, from one of the customer's templates if given.
      *
      * @param customerId the customer
+     * @param templateId the template, if any
      * @param flash messages for the next page
      * @return a redirect to the editor, or to the list with the problem
      */
     @PostMapping
-    public String create(@RequestParam long customerId, RedirectAttributes flash) {
+    public String create(@RequestParam long customerId, @RequestParam(required = false) Long templateId,
+            RedirectAttributes flash) {
         try {
-            return "redirect:/rechnungen/" + invoices.createDraft(customerId).id();
+            return "redirect:/rechnungen/" + invoices.createDraft(customerId, templateId).id();
         } catch (InvoiceException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
             return BACK;
