@@ -1,7 +1,11 @@
 package io.github.grigoriev.im;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.user.Passkey;
 import io.github.grigoriev.im.user.PasskeyService;
 import io.github.grigoriev.im.user.PasskeyTestData;
@@ -20,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
 import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
@@ -48,6 +53,9 @@ class PasskeyIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @MockitoSpyBean
+    private AuditService audit;
 
     @Test
     void storesRenamesAndRemovesPasskeys() {
@@ -78,6 +86,20 @@ class PasskeyIT {
         entities.delete(owner.getId());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM user_credentials WHERE user_entity_user_id = ?",
                 Integer.class, owner.getId().toBase64UrlString())).isZero();
+    }
+
+    @Test
+    void aNewPasskeyAndItsAuditEntryCommitTogether() {
+        PublicKeyCredentialUserEntity owner = PasskeyTestData.entity(entities, "dora");
+        CredentialRecord saved = PasskeyTestData.passkey(credentials, owner, "MacBook Air", CREATED, CREATED);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_event WHERE action = 'PASSKEY_ADDED' AND detail = ?",
+                Integer.class, "MacBook Air")).isPositive();
+
+        doThrow(new IllegalStateException("audit down")).when(audit).add(AuditAction.PASSKEY_ADDED, "Ohne Protokoll");
+        assertThatThrownBy(() -> PasskeyTestData.passkey(credentials, owner, "Ohne Protokoll", CREATED, CREATED))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(credentials.findByUserId(owner.getId())).extracting(CredentialRecord::getLabel)
+                .as("the passkey rolled back with its entry").containsExactly(saved.getLabel());
     }
 
     @Test

@@ -1,5 +1,7 @@
 package io.github.grigoriev.im.country;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.text.Collator;
 import java.util.Comparator;
 import java.util.List;
@@ -28,14 +30,17 @@ public class CountryService {
             Comparator.comparing(Country::name, Collator.getInstance(Locale.GERMAN));
 
     private final JdbcClient jdbc;
+    private final AuditService audit;
 
     /**
      * Creates the service.
      *
      * @param jdbc the database
+     * @param audit the audit log
      */
-    public CountryService(JdbcClient jdbc) {
+    public CountryService(JdbcClient jdbc, AuditService audit) {
         this.jdbc = jdbc;
+        this.audit = audit;
     }
 
     /**
@@ -105,7 +110,9 @@ public class CountryService {
         if (!isKnown(code)) {
             throw new IllegalArgumentException("Unknown country " + code);
         }
-        jdbc.sql(ADD).param("code", code).update();
+        if (jdbc.sql(ADD).param("code", code).update() > 0) {
+            audit.add(AuditAction.COUNTRY_ADDED, code);
+        }
         return new Country(code, name(code));
     }
 
@@ -117,7 +124,9 @@ public class CountryService {
      */
     @Transactional
     public Country remove(String code) {
-        jdbc.sql(REMOVE).param("code", code).update();
+        if (jdbc.sql(REMOVE).param("code", code).update() > 0) {
+            audit.add(AuditAction.COUNTRY_REMOVED, code);
+        }
         return new Country(code, name(code));
     }
 

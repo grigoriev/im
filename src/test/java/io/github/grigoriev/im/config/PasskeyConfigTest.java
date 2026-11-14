@@ -3,11 +3,12 @@ package io.github.grigoriev.im.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.user.AuditedCredentialRepository;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.web.webauthn.management.JdbcPublicKeyCredentialUserEntityRepository;
-import org.springframework.security.web.webauthn.management.JdbcUserCredentialRepository;
 
 class PasskeyConfigTest {
 
@@ -16,7 +17,7 @@ class PasskeyConfigTest {
         PasskeyConfig config = new PasskeyConfig();
         JdbcOperations jdbc = mock(JdbcOperations.class);
         assertThat(config.passkeyUsers(jdbc)).isInstanceOf(JdbcPublicKeyCredentialUserEntityRepository.class);
-        assertThat(config.passkeyCredentials(jdbc)).isInstanceOf(JdbcUserCredentialRepository.class);
+        assertThat(config.passkeyCredentials(jdbc, mock(AuditService.class))).isInstanceOf(AuditedCredentialRepository.class);
     }
 
     @Test

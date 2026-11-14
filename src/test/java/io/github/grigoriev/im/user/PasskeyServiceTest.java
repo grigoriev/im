@@ -4,7 +4,11 @@ import static io.github.grigoriev.im.user.PasskeyTestData.entity;
 import static io.github.grigoriev.im.user.PasskeyTestData.passkey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,7 +26,8 @@ class PasskeyServiceTest {
 
     private final MapPublicKeyCredentialUserEntityRepository entities = new MapPublicKeyCredentialUserEntityRepository();
     private final MapUserCredentialRepository credentials = new MapUserCredentialRepository();
-    private final PasskeyService service = new PasskeyService(entities, credentials);
+    private final AuditService audit = mock(AuditService.class);
+    private final PasskeyService service = new PasskeyService(entities, credentials, audit);
 
     private final PublicKeyCredentialUserEntity elena = entity(entities, "elena");
     private final PublicKeyCredentialUserEntity admin = entity(entities, "admin");
@@ -57,6 +62,7 @@ class PasskeyServiceTest {
         CredentialRecord mac = passkey(credentials, elena, "MacBook Air", JAN, null);
         service.rename("elena", mac.getCredentialId().toBase64UrlString(), "  Arbeits-Mac ");
         assertThat(credentials.findByCredentialId(mac.getCredentialId()).getLabel()).isEqualTo("Arbeits-Mac");
+        verify(audit).add("elena", AuditAction.PASSKEY_RENAMED, "MacBook Air → Arbeits-Mac");
     }
 
     @ParameterizedTest
@@ -88,6 +94,7 @@ class PasskeyServiceTest {
         assertThatThrownBy(() -> service.remove("elena", id)).isInstanceOf(UserException.class);
         assertThatThrownBy(() -> service.remove("niemand", id)).isInstanceOf(UserException.class);
         assertThat(credentials.findByCredentialId(adminKey.getCredentialId()).getLabel()).isEqualTo("Admin-Mac");
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 
     @Test
@@ -107,5 +114,7 @@ class PasskeyServiceTest {
         assertThat(service.removeAll("elena")).isEqualTo(1);
         assertThat(service.count("elena")).isZero();
         assertThat(credentials.findByCredentialId(adminKey.getCredentialId())).isNotNull();
+        verify(audit).add("elena", AuditAction.PASSKEY_REMOVED, "MacBook Air");
+        verify(audit).add(AuditAction.PASSKEYS_REMOVED, "elena: 1");
     }
 }

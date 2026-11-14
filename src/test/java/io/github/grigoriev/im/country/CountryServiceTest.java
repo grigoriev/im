@@ -9,6 +9,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,8 @@ class CountryServiceTest {
     private final StatementSpec statement = mock(StatementSpec.class);
     @SuppressWarnings("unchecked")
     private final MappedQuerySpec<String> codes = mock(MappedQuerySpec.class);
-    private final CountryService service = new CountryService(jdbc);
+    private final AuditService audit = mock(AuditService.class);
+    private final CountryService service = new CountryService(jdbc, audit);
 
     @BeforeEach
     void statement() {
@@ -85,19 +88,32 @@ class CountryServiceTest {
 
     @Test
     void addsAKnownCountryOnly() {
+        when(statement.update()).thenReturn(1);
         assertThat(service.add("JP")).isEqualTo(new Country("JP", "Japan"));
         verify(jdbc).sql(CountryService.ADD);
         verify(statement).param("code", "JP");
         verify(statement).update();
         assertThatThrownBy(() -> service.add("ZZ")).isInstanceOf(IllegalArgumentException.class);
         verify(statement, never()).param("code", "ZZ");
+        verify(audit).add(AuditAction.COUNTRY_ADDED, "JP");
+        verify(audit, never()).add(AuditAction.COUNTRY_ADDED, "ZZ");
     }
 
     @Test
     void removesACountry() {
+        when(statement.update()).thenReturn(1);
         assertThat(service.remove("CH")).isEqualTo(new Country("CH", "Schweiz"));
         verify(jdbc).sql(CountryService.REMOVE);
         verify(statement).param("code", "CH");
         verify(statement).update();
+        verify(audit).add(AuditAction.COUNTRY_REMOVED, "CH");
+    }
+
+    @Test
+    void recordsNothingWhenTheListStaysTheSame() {
+        when(statement.update()).thenReturn(0);
+        service.add("DE");
+        service.remove("JP");
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 }

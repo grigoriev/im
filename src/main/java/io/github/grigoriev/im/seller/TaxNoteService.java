@@ -1,5 +1,7 @@
 package io.github.grigoriev.im.seller;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -31,16 +33,19 @@ public class TaxNoteService {
 
     private final TaxNoteRepository notes;
     private final JdbcClient jdbc;
+    private final AuditService audit;
 
     /**
      * Creates the service.
      *
      * @param notes reads and removes the changed notes
      * @param jdbc writes the changed notes
+     * @param audit the audit log
      */
-    public TaxNoteService(TaxNoteRepository notes, JdbcClient jdbc) {
+    public TaxNoteService(TaxNoteRepository notes, JdbcClient jdbc, AuditService audit) {
         this.notes = notes;
         this.jdbc = jdbc;
+        this.audit = audit;
     }
 
     /**
@@ -91,5 +96,6 @@ public class TaxNoteService {
                 }
             }
         });
+        audit.add(AuditAction.TAX_NOTES_SAVED, "");
     }
 }

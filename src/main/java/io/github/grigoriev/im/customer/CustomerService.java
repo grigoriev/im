@@ -9,6 +9,9 @@ import static io.github.grigoriev.im.validation.Fields.text;
 import static io.github.grigoriev.im.validation.Fields.upper;
 import static io.github.grigoriev.im.validation.Fields.checkVatId;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,14 +26,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerService {
 
     private final CustomerRepository customers;
+    private final AuditService audit;
 
     /**
      * Creates the service.
      *
      * @param customers the customer store
+     * @param audit the audit log
      */
-    public CustomerService(CustomerRepository customers) {
+    public CustomerService(CustomerRepository customers, AuditService audit) {
         this.customers = customers;
+        this.audit = audit;
     }
 
     /**
@@ -61,7 +67,9 @@ public class CustomerService {
      */
     @Transactional
     public Customer create(Customer input) {
-        return customers.save(checked(input).withId(null));
+        Customer saved = customers.save(checked(input).withId(null));
+        audit.add(AuditAction.CUSTOMER_CREATED, saved.name());
+        return saved;
     }
 
     /**
@@ -78,7 +86,9 @@ public class CustomerService {
         if (!customers.existsById(id)) {
             throw new CustomerException(List.of("Diesen Kunden gibt es nicht."));
         }
-        return customers.save(customer);
+        Customer saved = customers.save(customer);
+        audit.add(AuditAction.CUSTOMER_CHANGED, saved.name());
+        return saved;
     }
 
     /**
@@ -93,6 +103,7 @@ public class CustomerService {
         Customer customer = customers.findById(id)
                 .orElseThrow(() -> new CustomerException(List.of("Diesen Kunden gibt es nicht.")));
         customers.deleteById(id);
+        audit.add(AuditAction.CUSTOMER_DELETED, customer.name());
         return customer;
     }
 

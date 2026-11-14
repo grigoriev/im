@@ -1,5 +1,7 @@
 package io.github.grigoriev.im.user;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.security.web.webauthn.api.Bytes;
@@ -23,16 +25,20 @@ public class PasskeyService {
 
     private final PublicKeyCredentialUserEntityRepository entities;
     private final UserCredentialRepository credentials;
+    private final AuditService audit;
 
     /**
      * Creates the service.
      *
      * @param entities the WebAuthn user entities
      * @param credentials the passkeys
+     * @param audit the audit log
      */
-    public PasskeyService(PublicKeyCredentialUserEntityRepository entities, UserCredentialRepository credentials) {
+    public PasskeyService(PublicKeyCredentialUserEntityRepository entities, UserCredentialRepository credentials,
+            AuditService audit) {
         this.entities = entities;
         this.credentials = credentials;
+        this.audit = audit;
     }
 
     /**
@@ -77,6 +83,7 @@ public class PasskeyService {
         }
         CredentialRecord stored = owned(username, id);
         credentials.save(ImmutableCredentialRecord.fromCredentialRecord(stored).label(label.strip()).build());
+        audit.add(username, AuditAction.PASSKEY_RENAMED, stored.getLabel() + " → " + label.strip());
     }
 
     /**
@@ -88,7 +95,9 @@ public class PasskeyService {
      */
     @Transactional
     public void remove(String username, String id) {
-        credentials.delete(owned(username, id).getCredentialId());
+        CredentialRecord stored = owned(username, id);
+        credentials.delete(stored.getCredentialId());
+        audit.add(username, AuditAction.PASSKEY_REMOVED, stored.getLabel());
     }
 
     /**
@@ -101,6 +110,7 @@ public class PasskeyService {
     public int removeAll(String username) {
         List<CredentialRecord> records = records(username);
         records.forEach(stored -> credentials.delete(stored.getCredentialId()));
+        audit.add(AuditAction.PASSKEYS_REMOVED, username + ": " + records.size());
         return records.size();
     }
 

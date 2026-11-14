@@ -35,6 +35,12 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
       await expect(view.locator('a[aria-current="page"]')).toHaveScreenshot(`customer-row-${viewport.name}-${scheme}.png`);
       await expect(view.locator('section').filter({ has: view.locator('form') }).first())
         .toHaveScreenshot(`customer-form-${viewport.name}-${scheme}.png`);
+      // The entry of the audit log for this customer; its time differs per run and is masked.
+      await view.goto('/admin/protokoll');
+      await expect(view.locator('#audit-list li').filter({ hasText: LONG_NAME }).first()).toHaveScreenshot(
+        `audit-entry-${viewport.name}-${scheme}.png`,
+        { mask: [view.locator('[data-volatile]')] },
+      );
       await context.close();
     }
   }

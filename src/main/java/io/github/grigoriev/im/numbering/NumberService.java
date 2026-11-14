@@ -1,5 +1,7 @@
 package io.github.grigoriev.im.numbering;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -38,6 +40,7 @@ public class NumberService {
     private final NumberSequenceRepository sequences;
     private final JdbcClient jdbc;
     private final Clock clock;
+    private final AuditService audit;
 
     /**
      * Creates the service.
@@ -45,11 +48,13 @@ public class NumberService {
      * @param sequences reads the counters
      * @param jdbc writes the pattern and the counters
      * @param clock source of the current year
+     * @param audit the audit log
      */
-    public NumberService(NumberSequenceRepository sequences, JdbcClient jdbc, Clock clock) {
+    public NumberService(NumberSequenceRepository sequences, JdbcClient jdbc, Clock clock, AuditService audit) {
         this.sequences = sequences;
         this.jdbc = jdbc;
         this.clock = clock;
+        this.audit = audit;
     }
 
     /**
@@ -73,6 +78,7 @@ public class NumberService {
     public NumberPattern savePattern(String text) {
         NumberPattern pattern = NumberPattern.parse(text);
         jdbc.sql(WRITE_PATTERN).param("key", PATTERN_KEY).param("value", pattern.value()).update();
+        audit.add(AuditAction.NUMBER_PATTERN_SAVED, pattern.value());
         return pattern;
     }
 
@@ -112,6 +118,7 @@ public class NumberService {
         if (jdbc.sql(START).param("start", start).param("year", year).update() == 0) {
             throw new SettingsException(List.of("Für " + year + " sind schon Nummern vergeben. Der Zähler ist gesperrt."));
         }
+        audit.add(AuditAction.NUMBER_START_SET, year + ": " + start);
     }
 
     /**

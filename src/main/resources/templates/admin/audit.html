@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Protokoll · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Protokoll', 'audit', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Protokoll</h1>
+      <p class="text-sm text-base-content/75">Wer hat wann was getan. Die neuesten 200 Einträge, Zeiten in deutscher Zeit.</p>
+    </div>
+    <section class="bg-base-100 rounded-box border border-base-300 p-5">
+      <p class="text-sm text-base-content/75" th:if="${events.isEmpty()}">Noch keine Einträge.</p>
+      <ol id="audit-list" class="grid" th:unless="${events.isEmpty()}">
+        <li th:each="event : ${events}" class="py-2 border-b border-base-300 last:border-b-0 grid gap-0.5 @container">
+          <div class="flex flex-wrap items-baseline gap-x-3">
+            <time class="text-xs text-base-content/75 num" th:datetime="${event.at}" data-volatile
+                  th:text="${#temporals.format(event.at, 'dd.MM.yyyy HH:mm', 'Europe/Berlin')}">18.03.2027 09:12</time>
+            <span class="text-xs font-medium [overflow-wrap:anywhere]" th:text="${event.username}">elena</span>
+          </div>
+          <div class="text-sm [overflow-wrap:anywhere]">
+            <span th:text="${event.action.label}">Kunde angelegt</span><span th:unless="${#strings.isEmpty(event.detail)}"
+                th:text="': ' + ${event.detail}">: Verlag am Fluss GmbH</span>
+          </div>
+        </li>
+      </ol>
+    </section>
+  </div>
+</div>
+</body>
+</html>

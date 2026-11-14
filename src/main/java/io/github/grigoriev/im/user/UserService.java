@@ -1,5 +1,7 @@
 package io.github.grigoriev.im.user;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditService;
 import java.time.Clock;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -25,6 +27,7 @@ public class UserService {
     private final PasswordEncoder encoder;
     private final PersistentTokenRepository rememberMe;
     private final Clock clock;
+    private final AuditService audit;
 
     /**
      * Creates the service.
@@ -33,13 +36,15 @@ public class UserService {
      * @param encoder encodes passwords
      * @param rememberMe the "Angemeldet bleiben" tokens
      * @param clock source of the creation time
+     * @param audit the audit log
      */
     public UserService(AppUserRepository users, PasswordEncoder encoder, PersistentTokenRepository rememberMe,
-            Clock clock) {
+            Clock clock, AuditService audit) {
         this.users = users;
         this.encoder = encoder;
         this.rememberMe = rememberMe;
         this.clock = clock;
+        this.audit = audit;
     }
 
     /**
@@ -87,8 +92,10 @@ public class UserService {
         if (users.findByUsername(username).isPresent()) {
             throw new UserException("Der Benutzername „" + username + "“ ist schon vergeben.");
         }
-        return users.save(new AppUser(null, username, displayName.strip(), encoder.encode(password), role, true,
+        AppUser saved = users.save(new AppUser(null, username, displayName.strip(), encoder.encode(password), role, true,
                 clock.instant()));
+        audit.add(AuditAction.USER_CREATED, username + " (" + role + ")");
+        return saved;
     }
 
     /**
@@ -106,6 +113,7 @@ public class UserService {
         AppUser user = get(id);
         AppUser saved = users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(saved.username());
+        audit.add(AuditAction.PASSWORD_RESET, saved.username());
         return saved;
     }
 
@@ -127,6 +135,7 @@ public class UserService {
         checkPassword(password);
         users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(username);
+        audit.add(username, AuditAction.PASSWORD_CHANGED, "");
     }
 
     private static void checkPassword(String password) {

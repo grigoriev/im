@@ -1,5 +1,7 @@
 package io.github.grigoriev.im.config;
 
+import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.user.AuditedCredentialRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcOperations;
@@ -24,13 +26,14 @@ public class PasskeyConfig {
     }
 
     /**
-     * Returns the passkeys.
+     * Returns the passkeys. A new passkey gets an entry in the audit log.
      *
      * @param jdbc the database
+     * @param audit the audit log
      * @return the repository on table {@code user_credentials}
      */
     @Bean
-    public UserCredentialRepository passkeyCredentials(JdbcOperations jdbc) {
-        return new JdbcUserCredentialRepository(jdbc);
+    public UserCredentialRepository passkeyCredentials(JdbcOperations jdbc, AuditService audit) {
+        return new AuditedCredentialRepository(new JdbcUserCredentialRepository(jdbc), audit);
     }
 }

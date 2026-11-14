@@ -71,6 +71,7 @@ class AccessRulesIT {
             Map.entry("GET /admin/nummernkreis", Access.ADMIN),
             Map.entry("POST /admin/nummernkreis/muster", Access.ADMIN),
             Map.entry("POST /admin/nummernkreis/start", Access.ADMIN),
+            Map.entry("GET /admin/protokoll", Access.ADMIN),
             Map.entry("GET /admin/laender", Access.ADMIN),
             Map.entry("POST /admin/laender", Access.ADMIN),
             Map.entry("POST /admin/laender/{code}/entfernen", Access.ADMIN));

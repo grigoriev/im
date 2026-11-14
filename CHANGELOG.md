@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Audit log: logins, failed logins (naming only existing users), passkeys, passwords, users, settings and customers, on the admin page "Protokoll".
 - Countries: the forms offer a list of countries with German names; the admin keeps that list on "Länder" (only Germany at the start), and a record keeps a country the admin removed.
 - Customers: list, create, change and delete, with the e-invoice format per customer; both XRechnung formats need a buyer reference (BR-DE-15) and an e-mail address.
 - Invoice numbers: the admin sets the pattern (`{YYYY}-{NN}` by default) and the start value of a year without numbers; a number is assigned under a row lock, without gaps or duplicates.
