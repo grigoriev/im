@@ -72,20 +72,11 @@ public record SellerProfile(
     }
 
     /**
-     * Returns the seller party of an invoice. XRechnung needs a contact name (BR-DE-5): the name serves if no
-     * contact person is set.
+     * Returns the seller party of an invoice. XRechnung needs a contact name (BR-DE-5): the name serves if no contact
+     * person is set. The tax number is the one for teaching for an invoice of teaching, if the Finanzamt gave a second
+     * number, else the main one.
      *
-     * @return the party, with the tax number of everything but teaching
-     */
-    public Party toParty() {
-        return toParty(false);
-    }
-
-    /**
-     * Returns the seller party of an invoice with the tax number that fits it: the one for teaching if the invoice
-     * is teaching only and the Finanzamt gave a second number, else the main one.
-     *
-     * @param teaching whether the invoice holds teaching under §4 Nr. 21 only
+     * @param teaching whether the invoice belongs to teaching
      * @return the party
      */
     public Party toParty(boolean teaching) {

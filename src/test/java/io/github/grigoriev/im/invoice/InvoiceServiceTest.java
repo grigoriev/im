@@ -714,19 +714,19 @@ class InvoiceServiceTest {
     }
 
     @Test
-    void aStornorechnungKeepsTheTaxNumberAndTheMixOfItsInvoice() {
+    void aStornorechnungKeepsTheTaxIdsOfItsInvoice() {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
                 null, null, null, null, "98/765/43210")));
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
-                0, null, null, null, null, List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
-                        lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null, null);
+                0, null, null, null, null, List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null,
+                null, null);
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
         when(documents.restore("{}")).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
-        assertThat(service.problems(storno)).as("an invoice from before the second tax number may mix").isEmpty();
-        assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice")
+        assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice, "
+                + "even after the profile changed")
                 .isEqualTo("143/123/45678");
         InvoiceDocument withVatId = ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
         when(documents.restore("{}")).thenReturn(withVatId);

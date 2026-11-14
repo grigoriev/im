@@ -18,7 +18,7 @@ class SellerProfileTest {
 
     @Test
     void becomesTheSellerPartyWithTheNameAsContact() {
-        Party party = SellerTestData.profile().toParty();
+        Party party = SellerTestData.profile().toParty(false);
         assertThat(party.name()).isEqualTo("Erika Mustermann");
         assertThat(party.contactName()).isEqualTo("Erika Mustermann");
         assertThat(party.email()).isEqualTo("erika@example.org");
@@ -36,7 +36,7 @@ class SellerProfileTest {
         SellerProfile p = SellerTestData.profile();
         SellerProfile withContact = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
                 "Max Mustermann", p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null);
-        assertThat(withContact.toParty().contactName()).isEqualTo("Max Mustermann");
+        assertThat(withContact.toParty(false).contactName()).isEqualTo("Max Mustermann");
     }
 
     @Test
@@ -69,7 +69,6 @@ class SellerProfileTest {
         assertThat(two.twoTaxNumbers()).isTrue();
         assertThat(two.toParty(true).taxNumber()).isEqualTo("98/765/43210");
         assertThat(two.toParty(false).taxNumber()).isEqualTo("12/345/67890");
-        assertThat(two.toParty().taxNumber()).isEqualTo("12/345/67890");
         SellerProfile blank = new SellerProfile(one.name(), one.street(), one.postcode(), one.city(),
                 one.countryCode(), null, one.email(), one.phone(), one.taxNumber(), null, one.iban(), one.bic(),
                 one.taxStatus(), null, null, null, null, " ");

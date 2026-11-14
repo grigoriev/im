@@ -196,7 +196,7 @@ The category is set per line. One invoice can mix categories, with these rules:
    (`TEACHING_LINES`), and the other business no §4 Nr. 21 lines (`OTHER_LINES`). Both share one number sequence and
    one §19 threshold. "Berichte" shows one Anlage EÜR per business.
 9. `EXEMPT_4_21` never mixes with another category (decision 2026-11-14), with one tax number or two: teaching stands
-   alone on its invoice. A Stornorechnung repeats its invoice, its business included, and is exempt from rules 8 and 9.
+   alone on its invoice. A Stornorechnung repeats its invoice, its business included.
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
 They also cover the end of the Kleinunternehmer status without a redesign.
 The admin edits the default tax notes. A template and an invoice can override them.
