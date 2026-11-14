@@ -59,6 +59,7 @@ public class InvoiceController {
     private static final String SUCCESS = "success";
     private static final String ERROR = "error";
     private static final String BACK = "redirect:/rechnungen";
+    private static final String TO_INVOICE = "redirect:/rechnungen/";
 
     /**
      * A line of the list.
@@ -124,7 +125,7 @@ public class InvoiceController {
     public String create(@RequestParam long customerId, @RequestParam(required = false) Long templateId,
             RedirectAttributes flash) {
         try {
-            return "redirect:/rechnungen/" + invoices.createDraft(customerId, templateId).id();
+            return TO_INVOICE + invoices.createDraft(customerId, templateId).id();
         } catch (InvoiceException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
             return BACK;
@@ -182,7 +183,7 @@ public class InvoiceController {
         if ("speichern".equals(aktion)) {
             flash.addFlashAttribute(SUCCESS, "Entwurf gespeichert.");
         }
-        return "redirect:/rechnungen/" + id;
+        return TO_INVOICE + id;
     }
 
     /**
@@ -225,7 +226,7 @@ public class InvoiceController {
         } catch (InvoiceException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
         }
-        return "redirect:/rechnungen/" + id;
+        return TO_INVOICE + id;
     }
 
     /**

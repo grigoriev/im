@@ -144,10 +144,12 @@ class IssueIT {
     void anIssuedInvoiceNeverChanges() {
         Invoice draft = draft(verlag, LocalDate.of(2044, 5, 2));
         long id = draft.id();
-        issues.issue(id, draft.version());
+        Long version = draft.version();
+        issues.issue(id, version);
         DraftForm form = DraftForm.of(draft);
+        long other = draft(verlag, LocalDate.of(2044, 5, 3)).id();
 
-        assertThatThrownBy(() -> issues.issue(id, draft.version())).isInstanceOf(InvoiceException.class);
+        assertThatThrownBy(() -> issues.issue(id, version)).isInstanceOf(InvoiceException.class);
         assertThatThrownBy(() -> invoices.saveDraft(id, form)).isInstanceOf(InvoiceException.class);
         assertThatThrownBy(() -> invoices.deleteDraft(id)).isInstanceOf(InvoiceException.class);
         assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET number = '2044-99' WHERE id = ?", id))
@@ -161,6 +163,8 @@ class IssueIT {
                 .hasMessageContaining("immutable");
         assertThatThrownBy(() -> jdbc.update("DELETE FROM invoice_line WHERE invoice_id = ?", id))
                 .hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice_line SET invoice_id = ?, position = 99 WHERE invoice_id = ?",
+                other, id)).as("a line never leaves its issued invoice").hasMessageContaining("immutable");
         assertThatThrownBy(() -> jdbc.update("INSERT INTO invoice_line (invoice_id, position, text, lump_sum, quantity, "
                 + "unit_price, category) SELECT invoice_id, 99, text, lump_sum, quantity, unit_price, category "
                 + "FROM invoice_line WHERE invoice_id = ?", id)).hasMessageContaining("immutable");
@@ -177,8 +181,10 @@ class IssueIT {
     @Test
     void aFailedIssueLeavesNoGap() {
         Invoice first = draft(verlag, LocalDate.of(2045, 1, 10));
+        long id = first.id();
+        Long version = first.version();
         doThrow(new EInvoiceException("KoSIT said no")).when(einvoices).issue(any());
-        assertThatThrownBy(() -> issues.issue(first.id(), first.version())).isInstanceOf(InvoiceException.class)
+        assertThatThrownBy(() -> issues.issue(id, version)).isInstanceOf(InvoiceException.class)
                 .hasMessageContaining("Die Rechnung bleibt ein Entwurf.");
         Invoice still = invoices.find(first.id()).orElseThrow();
         assertThat(still.isDraft()).isTrue();
@@ -186,7 +192,7 @@ class IssueIT {
         assertThat(documents.list(first.id())).isEmpty();
 
         org.mockito.Mockito.reset(einvoices);
-        assertThat(issues.issue(first.id(), first.version())).as("the number came back").isEqualTo("2045-01");
+        assertThat(issues.issue(id, version)).as("the number came back").isEqualTo("2045-01");
     }
 
     @Test
@@ -195,7 +201,9 @@ class IssueIT {
         issues.issue(first.id(), first.version());
         jdbc.update("UPDATE number_sequence SET next_number = 1 WHERE year = 2046");
         Invoice second = draft(verlag, LocalDate.of(2046, 2, 2));
-        assertThatThrownBy(() -> issues.issue(second.id(), second.version())).isInstanceOf(InvoiceException.class)
+        long id = second.id();
+        Long version = second.version();
+        assertThatThrownBy(() -> issues.issue(id, version)).isInstanceOf(InvoiceException.class)
                 .hasMessageStartingWith("Die Rechnungsnummer 2046-01 gibt es schon.");
         assertThat(invoices.find(second.id()).orElseThrow().isDraft()).isTrue();
         assertThat(jdbc.queryForObject("SELECT next_number FROM number_sequence WHERE year = 2046", Integer.class))

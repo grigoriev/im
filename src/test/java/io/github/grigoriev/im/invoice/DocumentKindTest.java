@@ -31,15 +31,11 @@ class DocumentKindTest {
     void comparesStoredDocumentsByIdentityAndHash() {
         StoredDocument one = new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH);
         StoredDocument same = new StoredDocument(1L, 5L, DocumentKind.PDF, "b.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH);
-        assertThat(one).isEqualTo(same).hasSameHashCodeAs(same).isNotEqualTo("a.pdf");
         assertThat(one.hashCode()).isEqualTo(java.util.Objects.hash(1L, 5L, DocumentKind.PDF, "ab"));
-        assertThat(one).isNotEqualTo(new StoredDocument(2L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1,
-                Instant.EPOCH));
-        assertThat(one).isNotEqualTo(new StoredDocument(1L, 6L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1,
-                Instant.EPOCH));
-        assertThat(one).isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.XML, "a.pdf", new byte[] {1}, "ab", 1,
-                Instant.EPOCH));
-        assertThat(one).isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "cd", 1,
-                Instant.EPOCH));
+        assertThat(one).isEqualTo(same).hasSameHashCodeAs(same).isNotEqualTo("a.pdf")
+                .isNotEqualTo(new StoredDocument(2L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))
+                .isNotEqualTo(new StoredDocument(1L, 6L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))
+                .isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.XML, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))
+                .isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "cd", 1, Instant.EPOCH));
     }
 }

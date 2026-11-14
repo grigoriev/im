@@ -3,6 +3,7 @@ package io.github.grigoriev.im.invoice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,7 +41,7 @@ class DocumentStoreTest {
         byte[] abc = "abc".getBytes(StandardCharsets.US_ASCII);
         store.store(5, "RE/2027/10", new IssuedEInvoice(InvoiceFormat.XRECHNUNG, abc, new byte[] {1, 2}, List.of()), NOW);
         ArgumentCaptor<StoredDocument> saved = ArgumentCaptor.forClass(StoredDocument.class);
-        verify(repository, org.mockito.Mockito.times(2)).save(saved.capture());
+        verify(repository, times(2)).save(saved.capture());
         StoredDocument pdf = saved.getAllValues().get(0);
         assertThat(pdf.invoiceId()).isEqualTo(5L);
         assertThat(pdf.kind()).isEqualTo(DocumentKind.PDF);

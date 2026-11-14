@@ -42,13 +42,14 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER invoice_frozen BEFORE UPDATE OR DELETE ON invoice FOR EACH ROW EXECUTE FUNCTION invoice_frozen();
 
--- The lines of an issued invoice never change. A draft that is deleted takes its lines with it.
+-- The lines of an issued invoice never change. An update checks the old and the new invoice, so a line can neither
+-- leave an issued invoice nor join one. A draft that is deleted takes its lines with it.
 CREATE FUNCTION invoice_line_frozen() RETURNS trigger AS $$
-DECLARE
-    parent_status VARCHAR(16);
 BEGIN
-    SELECT status INTO parent_status FROM invoice WHERE id = COALESCE(NEW.invoice_id, OLD.invoice_id);
-    IF parent_status IS NOT NULL AND parent_status <> 'DRAFT' THEN
+    IF TG_OP <> 'INSERT' AND EXISTS (SELECT 1 FROM invoice WHERE id = OLD.invoice_id AND status <> 'DRAFT') THEN
+        RAISE EXCEPTION 'the lines of an issued invoice are immutable';
+    END IF;
+    IF TG_OP <> 'DELETE' AND EXISTS (SELECT 1 FROM invoice WHERE id = NEW.invoice_id AND status <> 'DRAFT') THEN
         RAISE EXCEPTION 'the lines of an issued invoice are immutable';
     END IF;
     RETURN COALESCE(NEW, OLD);
