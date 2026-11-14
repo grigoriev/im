@@ -276,6 +276,12 @@ public class InvoiceService {
         }
     }
 
+    /** An invoice of teaching only names the tax number for teaching, if the seller has one. */
+    static boolean teachingOnly(Invoice invoice) {
+        return !invoice.lines().isEmpty()
+                && invoice.lines().stream().allMatch(line -> line.category() == TaxCategory.EXEMPT_4_21);
+    }
+
     private static void lineProblems(Invoice invoice, List<String> problems) {
         if (invoice.lines().isEmpty()) {
             problems.add("Die Rechnung braucht mindestens eine Position.");
@@ -299,6 +305,11 @@ public class InvoiceService {
             problems.add("„Nicht steuerbar“ steht allein auf einer Rechnung (EN 16931, BR-O-12).");
         }
         TaxStatus status = cancellation ? null : seller.map(SellerProfile::taxStatus).orElse(null);
+        if (seller.map(SellerProfile::twoTaxNumbers).orElse(false) && used.contains(TaxCategory.EXEMPT_4_21)
+                && used.size() > 1) {
+            problems.add("Unterricht nach § 4 Nr. 21 hat eine eigene Steuernummer. Bitte Unterricht und andere "
+                    + "Leistungen auf getrennte Rechnungen schreiben.");
+        }
         if (status == TaxStatus.KLEINUNTERNEHMER && used.stream().anyMatch(TaxCategory::chargesVat)) {
             problems.add("Als Kleinunternehmer stellen Sie keine Umsatzsteuer in Rechnung (§ 19 UStG).");
         }
@@ -340,7 +351,8 @@ public class InvoiceService {
         InvoiceReference cancels = cancelled(invoice)
                 .map(original -> new InvoiceReference(original.number(), original.issueDate())).orElse(null);
         return Optional.of(new InvoiceDocument(number, invoice.issueDate(), invoice.serviceFrom(),
-                invoice.serviceTo(), invoice.dueDate(), seller.toParty(), customer.toParty(), invoice.buyerReference(),
+                invoice.serviceTo(), invoice.dueDate(), seller.toParty(teachingOnly(invoice)), customer.toParty(),
+                invoice.buyerReference(),
                 seller.iban(), seller.bic(), values.fill(invoice.intro()), values.fill(invoice.closing()),
                 values.fill(invoice.taxNote()), invoice.format(),
                 invoice.lines().stream().map(DraftLine::toInvoiceLine).toList(), cancels));

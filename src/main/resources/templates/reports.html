@@ -23,9 +23,11 @@
       </form>
     </div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs" id="report-euer">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs" th:each="business : ${businesses}"
+             th:id="'report-euer' + ${business.key}" th:with="totals=${business.totals}">
       <div class="p-5 pb-4 grid gap-1">
-        <h2 class="font-semibold" th:text="'Anlage EÜR ' + ${year} + ', Betriebseinnahmen'">Anlage EÜR, Betriebseinnahmen</h2>
+        <h2 class="font-semibold" th:text="'Anlage EÜR ' + ${year} + ', Betriebseinnahmen' + (${business.label} != null ? ': ' + ${business.label} : '')">Anlage EÜR, Betriebseinnahmen</h2>
+        <p class="text-sm" th:if="${business.taxNumber != null}">Steuernummer <span class="num font-medium" th:text="${business.taxNumber}">12/345/67890</span></p>
         <p class="text-xs text-base-content/75">Nach Zahlungseingang, Erstattungen abgezogen. Werte zum Übertragen in WISO Steuer.
           Die Zeilen folgen der Anlage EÜR 2025; bitte mit dem Formular des Jahres abgleichen.</p>
       </div>
@@ -36,7 +38,7 @@
               <span class="font-semibold">Einnahmen als Kleinunternehmer</span></span>
             <span class="text-xs text-base-content/75">Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer</span>
           </dt>
-          <dd class="num font-semibold text-right whitespace-nowrap text-base" id="euer-111" th:text="${#numbers.formatDecimal(totals.total, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+          <dd class="num font-semibold text-right whitespace-nowrap text-base" th:id="'euer-111' + ${business.key}" th:text="${#numbers.formatDecimal(totals.total, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
         </div>
         <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-start px-5 py-4 border-t border-base-300 bg-base-200/60 rounded-b-box">
           <dt class="grid gap-1.5 min-w-0 ps-4 border-s-2 border-base-300">
@@ -45,11 +47,11 @@
             <span class="text-xs text-base-content/75">Nicht steuerbare Umsätze und Umsätze nach § 19 Abs. 2 Satz 1 Nr. 1 und 2 UStG,
               zum Beispiel Unterricht nach § 4 Nr. 21 und Leistungen ins Ausland</span>
           </dt>
-          <dd class="num text-right whitespace-nowrap" id="euer-119" th:text="${#numbers.formatDecimal(totals.excluded, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+          <dd class="num text-right whitespace-nowrap" th:id="'euer-119' + ${business.key}" th:text="${#numbers.formatDecimal(totals.excluded, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
         </div>
       </dl>
       <div class="px-5 pb-5" th:if="${totals.vatSales.signum() != 0}">
-        <p role="alert" class="alert alert-warning text-sm" id="report-vat">
+        <p role="alert" class="alert alert-warning text-sm" th:id="'report-vat' + ${business.key}">
           <span th:text="'Einnahmen mit Umsatzsteuer von ' + ${#numbers.formatDecimal(totals.vatSales, 1, 'POINT', 2, 'COMMA')} + ' € (brutto) gehören nicht in die Zeilen 12 und 13, sondern netto in Zeile 15 und die Umsatzsteuer in Zeile 17. Die App teilt sie nicht auf.'">Hinweis</span>
         </p>
       </div>

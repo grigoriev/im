@@ -2,6 +2,8 @@ package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.seller.SellerProfile;
+import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.threshold.RevenueRow;
 import io.github.grigoriev.im.threshold.ThresholdService;
 import java.math.BigDecimal;
@@ -16,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -39,7 +42,7 @@ public class ReportController {
 
     /** The CSV head. A spreadsheet opens it with semicolons, German numbers and the BOM for UTF-8. */
     static final String CSV_HEAD = "Zahlungseingang;Rechnungsnummer;Kunde;Betrag;davon § 19 UStG;"
-            + "davon nicht für die Grenze;Notiz";
+            + "davon nicht für die Grenze;davon § 4 Nr. 21 UStG;Notiz";
 
     /** The byte order mark that tells a spreadsheet the CSV is UTF-8. */
     static final char BOM = (char) 0xFEFF;
@@ -59,18 +62,32 @@ public class ReportController {
             Map<TaxCategory, BigDecimal> byCategory) {
     }
 
+    /**
+     * One Anlage EÜR: all income, or the income of one tax number when teaching has its own.
+     *
+     * @param key the suffix of the element IDs, empty for the only one
+     * @param label the name of the business, {@code null} for the only one
+     * @param taxNumber the tax number of the business, {@code null} if none is set
+     * @param totals its totals
+     */
+    public record Business(String key, String label, String taxNumber, Totals totals) {
+    }
+
     private final ThresholdService threshold;
     private final ArchiveService archive;
+    private final SellerService sellers;
 
     /**
      * Creates the controller.
      *
      * @param threshold the payments of a year
      * @param archive the documents of a year
+     * @param sellers the tax numbers of the seller
      */
-    public ReportController(ThresholdService threshold, ArchiveService archive) {
+    public ReportController(ThresholdService threshold, ArchiveService archive, SellerService sellers) {
         this.threshold = threshold;
         this.archive = archive;
+        this.sellers = sellers;
     }
 
     /**
@@ -106,6 +123,7 @@ public class ReportController {
         model.addAttribute("years", years);
         model.addAttribute("rows", rows);
         model.addAttribute("totals", totals(rows));
+        model.addAttribute("businesses", businesses(rows, sellers.find().orElse(null)));
         model.addAttribute("categories", InvoiceController.CATEGORIES);
         return VIEW;
     }
@@ -121,7 +139,8 @@ public class ReportController {
         StringBuilder csv = new StringBuilder().append(BOM).append(CSV_HEAD).append("\r\n");
         for (RevenueRow row : threshold.rows(jahr)) {
             csv.append(String.join(";", GERMAN.format(row.paidOn()), field(row.number()), field(row.customer()),
-                    number(row.amount()), number(row.counted()), number(row.excluded()), field(row.note())))
+                    number(row.amount()), number(row.counted()), number(row.excluded()),
+                    number(row.byCategory().getOrDefault(TaxCategory.EXEMPT_4_21, BigDecimal.ZERO)), field(row.note())))
                     .append("\r\n");
         }
         return ResponseEntity.ok().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
@@ -130,15 +149,43 @@ public class ReportController {
                 .body(csv.toString().getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * The Anlagen EÜR of a year: one for all income, or one per tax number when the Finanzamt gave teaching a number
+     * of its own (decision 2026-11-14). The §19 threshold stays one for the whole business.
+     */
+    static List<Business> businesses(List<RevenueRow> rows, SellerProfile seller) {
+        String taxNumber = seller == null ? null : seller.taxNumber();
+        if (seller == null || !seller.twoTaxNumbers()) {
+            return List.of(new Business("", null, taxNumber, totals(rows)));
+        }
+        return List.of(
+                new Business("-unterricht", "Unterricht nach § 4 Nr. 21", seller.taxNumberTeaching(),
+                        totals(rows, category -> category == TaxCategory.EXEMPT_4_21)),
+                new Business("-uebrige", "Übrige Leistungen", taxNumber,
+                        totals(rows, category -> category != TaxCategory.EXEMPT_4_21)));
+    }
+
     static Totals totals(List<RevenueRow> rows) {
+        return totals(rows, category -> true);
+    }
+
+    /**
+     * The totals of the given tax categories. Zeile 12 is their income without VAT, Zeile 13 the part of it outside
+     * the §19 threshold; only the §19 category counts.
+     */
+    static Totals totals(List<RevenueRow> rows, Predicate<TaxCategory> part) {
         Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
-        rows.forEach(row -> row.byCategory().forEach((category, amount) -> byCategory.merge(category, amount,
-                BigDecimal::add)));
+        rows.forEach(row -> row.byCategory().forEach((category, amount) -> {
+            if (part.test(category)) {
+                byCategory.merge(category, amount, BigDecimal::add);
+            }
+        }));
         BigDecimal vatSales = sum(byCategory.entrySet().stream().filter(entry -> entry.getKey().chargesVat())
                 .map(Map.Entry::getValue).toList());
-        return new Totals(sum(rows.stream().map(RevenueRow::amount).toList()).subtract(vatSales),
-                sum(rows.stream().map(RevenueRow::excluded).toList()).subtract(vatSales),
-                sum(rows.stream().map(RevenueRow::counted).toList()), vatSales, byCategory);
+        BigDecimal total = sum(List.copyOf(byCategory.values())).subtract(vatSales);
+        BigDecimal counted = part.test(TaxCategory.KLEINUNTERNEHMER)
+                ? sum(rows.stream().map(RevenueRow::counted).toList()) : BigDecimal.ZERO;
+        return new Totals(total, total.subtract(counted), counted, vatSales, byCategory);
     }
 
     private static BigDecimal sum(List<BigDecimal> amounts) {

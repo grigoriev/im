@@ -53,7 +53,7 @@ class SellerServiceTest {
                 field.equals("tagline") ? value : p.tagline(),
                 field.equals("website") ? value : p.website(),
                 field.equals("bankName") ? value : p.bankName(),
-                field.equals("holder") ? value : p.accountHolder());
+                field.equals("holder") ? value : p.accountHolder(), null);
     }
 
     /** Saves a whole profile: the stored one equals the input, so every part of the merge is the input. */
@@ -66,7 +66,7 @@ class SellerServiceTest {
     void savesOnePartAndKeepsTheOthersAsStored() {
         when(profiles.findById(SellerService.ID)).thenReturn(Optional.of(new StoredProfile(1, SellerTestData.profile())));
         SellerProfile bank = new SellerProfile(null, null, null, null, null, null, null, null, null, null,
-                "GB82 WEST 1234 5698 7654 32", "WESTGB2L", null, null, null, "Westbank", "Erika M.");
+                "GB82 WEST 1234 5698 7654 32", "WESTGB2L", null, null, null, "Westbank", "Erika M.", null);
         SellerProfile saved = service.save(ProfilePart.BANK, bank);
         org.mockito.InOrder order = org.mockito.Mockito.inOrder(jdbc, profiles);
         order.verify(jdbc).sql(SellerService.LOCK);
@@ -86,21 +86,33 @@ class SellerServiceTest {
     }
 
     @Test
+    void limitsTheTaxNumberForTeaching() {
+        SellerProfile p = SellerTestData.profile();
+        java.util.function.Function<String, SellerProfile> teaching = number -> new SellerProfile(p.name(), p.street(),
+                p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(),
+                p.bic(), p.taxStatus(), null, null, null, null, number);
+        assertThat(SellerService.check(teaching.apply("1".repeat(32)))).isEmpty();
+        assertThat(SellerService.check(teaching.apply("1".repeat(33)))).containsExactly(
+                java.util.Map.entry("taxNumberTeaching", "Steuernummer für Unterricht hat höchstens 32 Zeichen."));
+        assertThat(SellerService.normalize(teaching.apply(" 98/765/43210 ")).taxNumberTeaching()).isEqualTo("98/765/43210");
+    }
+
+    @Test
     void aContactOrHolderEqualToTheNameMeansTheName() {
         SellerProfile p = SellerTestData.profile();
         SellerProfile shown = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
                 " Erika Mustermann ", p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
-                null, null, "Erika Mustermann");
+                null, null, "Erika Mustermann", null);
         SellerProfile normalized = SellerService.normalize(shown);
         assertThat(normalized.contactName()).isNull();
         assertThat(normalized.accountHolder()).isNull();
         SellerProfile other = SellerService.normalize(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), "Max Mustermann", p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(),
-                p.taxStatus(), null, null, null, "Konto GmbH"));
+                p.taxStatus(), null, null, null, "Konto GmbH", null));
         assertThat(other.contactName()).isEqualTo("Max Mustermann");
         assertThat(other.accountHolder()).isEqualTo("Konto GmbH");
         assertThat(SellerService.normalize(new SellerProfile(null, null, null, null, null, "Max", null, null, null,
-                null, null, null, null, null, null, null, null)).contactName()).as("no name yet").isEqualTo("Max");
+                null, null, null, null, null, null, null, null, null)).contactName()).as("no name yet").isEqualTo("Max");
     }
 
     @Test
@@ -143,7 +155,7 @@ class SellerServiceTest {
         SellerProfile p = SellerTestData.profile();
         SellerProfile input = new SellerProfile("  Erika Mustermann ", p.street(), p.postcode(), p.city(), " de ", "  ",
                 p.email(), p.phone(), "", " de 123 456 789 ", "de89 3704 0044 0532 0130 00", " cobadeffxxx ",
-                TaxStatus.REGULAR, null, null, null, null);
+                TaxStatus.REGULAR, null, null, null, null, null);
         SellerProfile saved = saveWhole(input);
         assertThat(saved.name()).isEqualTo("Erika Mustermann");
         assertThat(saved.countryCode()).isEqualTo("DE");
@@ -179,7 +191,7 @@ class SellerServiceTest {
     @Test
     void savesAnEmptyProfileAndNamesWhatInvoicesStillNeed() {
         SellerProfile empty = new SellerProfile(" ", null, "", null, "", null, "", null, null, null, "", null, null,
-                null, null, null, null);
+                null, null, null, null, null);
         SellerProfile saved = saveWhole(empty);
         verify(statement).param("taxStatus", null);
         verify(statement).update();
@@ -204,7 +216,7 @@ class SellerServiceTest {
         assertThat(SellerService.missing(neither)).containsOnlyKeys("taxNumber");
         assertThat(SellerService.missing(new SellerProfile(neither.name(), neither.street(), neither.postcode(),
                 neither.city(), neither.countryCode(), null, null, null, null, "DE123456789", neither.iban(),
-                neither.bic(), neither.taxStatus(), null, null, null, null))).as("a VAT ID is enough").isEmpty();
+                neither.bic(), neither.taxStatus(), null, null, null, null, null))).as("a VAT ID is enough").isEmpty();
     }
 
     @ParameterizedTest
@@ -267,7 +279,7 @@ class SellerServiceTest {
         SellerProfile p = SellerTestData.profile();
         SellerProfile normalized = SellerService.normalize(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
-                "  Dozentin ", null, " Commerzbank ", "  "));
+                "  Dozentin ", null, " Commerzbank ", "  ", null));
         assertThat(normalized.tagline()).isEqualTo("Dozentin");
         assertThat(normalized.accountHolder()).isNull();
         assertThat(normalized.bankName()).isEqualTo("Commerzbank");

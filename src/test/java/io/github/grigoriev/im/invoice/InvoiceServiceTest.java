@@ -81,7 +81,7 @@ class InvoiceServiceTest {
     private static SellerProfile seller(TaxStatus status, String vatId) {
         SellerProfile p = SellerTestData.profile();
         return new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(),
-                p.taxNumber(), vatId, p.iban(), p.bic(), status, null, null, null, null);
+                p.taxNumber(), vatId, p.iban(), p.bic(), status, null, null, null, null, null);
     }
 
     private static DraftForm form(LineForm... lines) {
@@ -351,7 +351,7 @@ class InvoiceServiceTest {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, null, null, p.taxNumber(), null, null, p.bic(), p.taxStatus(), null, null, null,
-                null)));
+                null, null)));
         Invoice zugferd = draft(List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)));
         assertThat(service.problems(zugferd))
                 .containsExactly("Im Profil fehlt noch: IBAN. Bitte in den Einstellungen ergänzen.");
@@ -360,6 +360,26 @@ class InvoiceServiceTest {
                 NOW, NOW, 0L, null, null);
         assertThat(service.problems(xrechnung))
                 .contains("Im Profil fehlt noch: IBAN, E-Mail, Telefon. Bitte in den Einstellungen ergänzen.");
+    }
+
+    @Test
+    void keepsTeachingOnItsOwnInvoiceWhenItHasItsOwnTaxNumber() {
+        SellerProfile p = SellerTestData.profile();
+        when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
+                null, null, null, null, "98/765/43210")));
+        Invoice mixed = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
+                lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
+        assertThat(service.problems(mixed)).containsExactly("Unterricht nach § 4 Nr. 21 hat eine eigene "
+                + "Steuernummer. Bitte Unterricht und andere Leistungen auf getrennte Rechnungen schreiben.");
+        Invoice teaching = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21)));
+        assertThat(service.document(teaching).orElseThrow().seller().taxNumber()).isEqualTo("98/765/43210");
+        Invoice reading = draft(List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
+        assertThat(service.document(reading).orElseThrow().seller().taxNumber()).isEqualTo("12/345/67890");
+        assertThat(InvoiceService.teachingOnly(draft(List.of()))).isFalse();
+
+        when(sellers.find()).thenReturn(Optional.of(p));
+        assertThat(service.problems(mixed)).as("one tax number: teaching may mix").isEmpty();
     }
 
     @Test
@@ -649,7 +669,7 @@ class InvoiceServiceTest {
         regular = new SellerProfile(regular.name(), regular.street(), regular.postcode(), regular.city(),
                 regular.countryCode(), regular.contactName(), regular.email(), regular.phone(), regular.taxNumber(),
                 "DE123456789", regular.iban(), regular.bic(), io.github.grigoriev.im.seller.TaxStatus.REGULAR, null, null,
-                null, null);
+                null, null, null);
         when(sellers.find()).thenReturn(Optional.of(regular));
         assertThat(service.problems(storno)).as("a new §19 draft after the change")
                 .containsExactly("Mit Regelbesteuerung gibt es keine Positionen nach § 19 UStG.");

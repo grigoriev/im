@@ -159,6 +159,10 @@ The category is set per line. One invoice can mix categories, with these rules:
 6. The VAT of a rate is computed once on the sum of its net line amounts and rounded half up (BR-CO-17).
    The PDF shows the net total, the VAT per rate with its base, and the gross total.
 7. With more than one category, the PDF shows a tax column: each line names its rate or exemption (§14 Abs. 4 Nr. 8 UStG).
+8. Two tax numbers (decision 2026-11-14): the Finanzamt may give teaching under §4 Nr. 21 a tax number of its own. The
+   profile then holds it in `taxNumberTeaching`. An invoice of teaching only names it; every other invoice names the main
+   one. Teaching and other lines never share an invoice then. Both share one number sequence and one §19 threshold.
+   "Berichte" shows one Anlage EÜR per tax number.
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
 They also cover the end of the Kleinunternehmer status without a redesign.
 The admin edits the default tax notes. A template and an invoice can override them.

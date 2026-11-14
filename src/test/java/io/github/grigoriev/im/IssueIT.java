@@ -131,6 +131,32 @@ class IssueIT {
     }
 
     @Test
+    void anInvoiceOfTeachingCarriesTheTaxNumberForTeaching() {
+        SellerProfile p = SellerTestData.profile();
+        SellerTestData.save(sellers, new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
+                null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null,
+                "98/765/43210"));
+        try {
+            Invoice teaching = draft(verlag, LocalDate.of(2049, 3, 18));
+            DraftForm form = DraftForm.of(teaching);
+            form.getLines().getFirst().setCategory(TaxCategory.EXEMPT_4_21);
+            teaching = invoices.saveDraft(teaching.id(), form);
+            assertThat(issues.issue(teaching.id(), teaching.version())).isEqualTo("2049-01");
+            Invoice issued = invoices.find(teaching.id()).orElseThrow();
+            assertThat(documents.restore(issued.snapshot()).seller().taxNumber()).isEqualTo("98/765/43210");
+            assertThat(new String(documents.list(teaching.id()).get(1).content(), StandardCharsets.UTF_8))
+                    .as("the XML names it").contains("98/765/43210").doesNotContain("12/345/67890");
+
+            Invoice reading = draft(verlag, LocalDate.of(2049, 4, 18));
+            issues.issue(reading.id(), reading.version());
+            assertThat(documents.restore(invoices.find(reading.id()).orElseThrow().snapshot()).seller().taxNumber())
+                    .isEqualTo("12/345/67890");
+        } finally {
+            SellerTestData.save(sellers, SellerTestData.profile());
+        }
+    }
+
+    @Test
     void issuesWithNumberSnapshotAndDocuments() throws Exception {
         Invoice draft = draft(verlag, LocalDate.of(2043, 3, 18));
         assertThat(issues.issue(draft.id(), draft.version())).isEqualTo("2043-01");
@@ -178,7 +204,7 @@ class IssueIT {
         SellerProfile original = SellerTestData.profile();
         SellerTestData.save(sellers, new SellerProfile("Anderer Name", original.street(), original.postcode(), original.city(),
                 original.countryCode(), original.contactName(), original.email(), original.phone(), original.taxNumber(),
-                original.vatId(), original.iban(), original.bic(), original.taxStatus(), null, null, null, null));
+                original.vatId(), original.iban(), original.bic(), original.taxStatus(), null, null, null, null, null));
         assertThat(documents.restore(invoices.find(draft.id()).orElseThrow().snapshot()).seller().name())
                 .as("the snapshot keeps the seller of the issue").isEqualTo(original.name());
     }

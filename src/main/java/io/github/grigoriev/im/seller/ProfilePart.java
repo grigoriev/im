@@ -12,7 +12,7 @@ public enum ProfilePart {
     /** Contact person, e-mail, phone and website. */
     CONTACT("kontakt", "Kontakt", List.of("contactName", "email", "phone", "website")),
     /** Tax status and tax numbers. */
-    TAX("steuer", "Steuer", List.of("taxStatus", "taxNumber", "vatId")),
+    TAX("steuer", "Steuer", List.of("taxStatus", "taxNumber", "vatId", "taxNumberTeaching")),
     /** Bank account. */
     BANK("bank", "Bankverbindung", List.of("iban", "bic", "bankName", "accountHolder"));
 
@@ -77,6 +77,6 @@ public enum ProfilePart {
         SellerProfile b = this == BANK ? input : stored;
         return new SellerProfile(a.name(), a.street(), a.postcode(), a.city(), a.countryCode(), c.contactName(),
                 c.email(), c.phone(), t.taxNumber(), t.vatId(), b.iban(), b.bic(), t.taxStatus(), a.tagline(),
-                c.website(), b.bankName(), b.accountHolder());
+                c.website(), b.bankName(), b.accountHolder(), t.taxNumberTeaching());
     }
 }
