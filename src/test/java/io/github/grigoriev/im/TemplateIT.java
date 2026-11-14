@@ -61,6 +61,10 @@ class TemplateIT {
         jdbc.update("UPDATE invoice_template SET tax_note = ? WHERE id = ?", old, template.id());
         jdbc.update("UPDATE invoice SET tax_note = ? WHERE id = ?", old, draft.id());
         jdbc.update("UPDATE invoice SET tax_note = ? WHERE id = ?", "Eigener Hinweis.", invoices.createDraft(customer.id(), null).id());
+        // A note at its limit of 1000 characters would grow beyond it: it stays as the user wrote it.
+        String full = "Steuerfrei gemäß § 4 Nr. 21 UStG." + "x".repeat(1000 - 33);
+        long longDraft = invoices.createDraft(customer.id(), null).id();
+        jdbc.update("UPDATE invoice SET tax_note = ? WHERE id = ?", full, longDraft);
 
         String migration = new String(getClass().getResourceAsStream("/db/migration/V24__tax_note_wording.sql").readAllBytes(),
                 java.nio.charset.StandardCharsets.UTF_8);
@@ -77,6 +81,8 @@ class TemplateIT {
                 .isEqualTo(expected);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM invoice WHERE tax_note = 'Eigener Hinweis.'", Integer.class))
                 .as("an own note stays").isPositive();
+        assertThat(jdbc.queryForObject("SELECT tax_note FROM invoice WHERE id = ?", String.class, longDraft))
+                .as("a note at its limit stays whole").isEqualTo(full).hasSize(1000);
     }
 
     @Test
