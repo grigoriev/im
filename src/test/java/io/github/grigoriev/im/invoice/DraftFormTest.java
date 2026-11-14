@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.Activity;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -114,13 +116,13 @@ class DraftFormTest {
 
     @Test
     void keepsTheBusinessOfTheInvoice() {
-        Invoice invoice = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, io.github.grigoriev.im.einvoice.InvoiceFormat.ZUGFERD_EN16931,
-                java.time.LocalDate.of(2027, 3, 18), java.time.LocalDate.of(2027, 3, 18), java.time.LocalDate.of(2027, 3, 18),
-                14, null, null, null, null, java.util.List.of(), java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L, null,
-                null, io.github.grigoriev.im.seller.Activity.TEACHING);
+        Invoice invoice = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931,
+                LocalDate.of(2027, 3, 18), LocalDate.of(2027, 3, 18), LocalDate.of(2027, 3, 18),
+                14, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 0L, null,
+                null, Activity.TEACHING);
         DraftForm form = DraftForm.of(invoice);
-        org.assertj.core.api.Assertions.assertThat(form.getActivity()).isEqualTo(io.github.grigoriev.im.seller.Activity.TEACHING);
-        form.setActivity(io.github.grigoriev.im.seller.Activity.OTHER);
-        org.assertj.core.api.Assertions.assertThat(form.getActivity()).isEqualTo(io.github.grigoriev.im.seller.Activity.OTHER);
+        Assertions.assertThat(form.getActivity()).isEqualTo(Activity.TEACHING);
+        form.setActivity(Activity.OTHER);
+        Assertions.assertThat(form.getActivity()).isEqualTo(Activity.OTHER);
     }
 }

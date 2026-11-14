@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.InOrder;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
 import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
@@ -94,7 +95,7 @@ class PaymentServiceTest {
     @Test
     void aFullPaymentMakesTheInvoicePaid() {
         assertThat(service.add(5, form(TODAY, "480,00", " Überweisung "))).isEqualTo(InvoiceStatus.PAID);
-        org.mockito.InOrder order = inOrder(locked, invoices);
+        InOrder order = inOrder(locked, invoices);
         order.verify(locked).optional();
         order.verify(invoices).find(5);
         verify(lock).param("id", 5L);

@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.threshold;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
  * The §19 revenue of a year and the year before, by payment received.
@@ -48,7 +49,7 @@ public record Threshold(int year, BigDecimal previous, boolean previousFromBasel
      * @return the percent, from 0 to 100
      */
     public static int percent(BigDecimal amount, BigDecimal limit) {
-        return amount.multiply(BigDecimal.valueOf(100)).divide(limit, 0, java.math.RoundingMode.DOWN)
+        return amount.multiply(BigDecimal.valueOf(100)).divide(limit, 0, RoundingMode.DOWN)
                 .max(BigDecimal.ZERO).min(BigDecimal.valueOf(100)).intValueExact();
     }
 }

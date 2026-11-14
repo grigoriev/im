@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.Party;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +42,7 @@ class CustomerTest {
 
     @Test
     void theExceptionKeepsACopyOfTheProblems() {
-        List<String> problems = new java.util.ArrayList<>(List.of("Eins.", "Zwei."));
+        List<String> problems = new ArrayList<>(List.of("Eins.", "Zwei."));
         CustomerException exception = new CustomerException(problems);
         problems.clear();
         assertThat(exception.problems()).containsExactly("Eins.", "Zwei.");

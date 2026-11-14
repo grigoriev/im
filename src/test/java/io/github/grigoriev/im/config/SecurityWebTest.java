@@ -25,34 +25,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.grigoriev.im.user.AppUserDetailsService;
-import io.github.grigoriev.im.user.AppUserRepository;
-import io.github.grigoriev.im.user.Role;
-import io.github.grigoriev.im.user.UserException;
-import io.github.grigoriev.im.user.UserService;
-import io.github.grigoriev.im.user.UserTestData;
-import io.github.grigoriev.im.user.Passkey;
-import io.github.grigoriev.im.user.PasskeyService;
-import io.github.grigoriev.im.einvoice.TaxCategory;
-import io.github.grigoriev.im.seller.SellerProfile;
-import io.github.grigoriev.im.seller.SellerService;
-import io.github.grigoriev.im.seller.SellerTestData;
-import io.github.grigoriev.im.seller.SettingsException;
-import io.github.grigoriev.im.seller.TaxNoteService;
-import io.github.grigoriev.im.seller.TaxStatus;
-import io.github.grigoriev.im.numbering.NumberPattern;
-import io.github.grigoriev.im.numbering.NumberSequence;
-import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditEvent;
+import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.backup.BackupRun;
+import io.github.grigoriev.im.backup.BackupRunService;
+import io.github.grigoriev.im.backup.BackupService;
+import io.github.grigoriev.im.backup.BackupStatus;
+import io.github.grigoriev.im.country.Country;
+import io.github.grigoriev.im.country.CountryService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
-import io.github.grigoriev.im.country.Country;
-import io.github.grigoriev.im.country.CountryService;
-import io.github.grigoriev.im.audit.AuditAction;
-import io.github.grigoriev.im.audit.AuditEvent;
-import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
+import io.github.grigoriev.im.einvoice.SampleInvoices;
+import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.invoice.DispatchChannel;
+import io.github.grigoriev.im.invoice.DispatchForm;
+import io.github.grigoriev.im.invoice.DispatchService;
+import io.github.grigoriev.im.invoice.DocumentKind;
+import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.DraftLine;
 import io.github.grigoriev.im.invoice.Invoice;
@@ -60,40 +55,88 @@ import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.InvoiceTemplate;
+import io.github.grigoriev.im.invoice.IssueService;
+import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.Payment;
+import io.github.grigoriev.im.invoice.PaymentForm;
+import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.invoice.TemplateForm;
 import io.github.grigoriev.im.invoice.TemplateLine;
 import io.github.grigoriev.im.invoice.TemplateService;
+import io.github.grigoriev.im.mail.MailService;
+import io.github.grigoriev.im.mail.MailText;
+import io.github.grigoriev.im.mail.MailTextService;
+import io.github.grigoriev.im.mail.SendForm;
+import io.github.grigoriev.im.numbering.NumberPattern;
+import io.github.grigoriev.im.numbering.NumberSequence;
+import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.seller.Activity;
+import io.github.grigoriev.im.seller.ProfilePart;
+import io.github.grigoriev.im.seller.SellerProfile;
+import io.github.grigoriev.im.seller.SellerService;
+import io.github.grigoriev.im.seller.SellerTestData;
+import io.github.grigoriev.im.seller.SettingsException;
+import io.github.grigoriev.im.seller.TaxNoteService;
+import io.github.grigoriev.im.seller.TaxStatus;
+import io.github.grigoriev.im.threshold.RevenueRow;
+import io.github.grigoriev.im.threshold.Threshold;
+import io.github.grigoriev.im.threshold.ThresholdService;
+import io.github.grigoriev.im.user.AppUserDetailsService;
+import io.github.grigoriev.im.user.AppUserRepository;
+import io.github.grigoriev.im.user.Passkey;
+import io.github.grigoriev.im.user.PasskeyService;
+import io.github.grigoriev.im.user.Role;
+import io.github.grigoriev.im.user.UserException;
+import io.github.grigoriev.im.user.UserService;
+import io.github.grigoriev.im.user.UserTestData;
 import io.github.grigoriev.im.web.AccountController;
-import io.github.grigoriev.im.web.TemplateController;
-import io.github.grigoriev.im.web.InvoiceController;
-import io.github.grigoriev.im.web.InvoiceRecordsController;
+import io.github.grigoriev.im.web.AdminUserController;
+import io.github.grigoriev.im.web.AuditController;
 import io.github.grigoriev.im.web.BackupController;
 import io.github.grigoriev.im.web.BaselineController;
-import io.github.grigoriev.im.web.ReportController;
-import io.github.grigoriev.im.web.MailTextController;
-import io.github.grigoriev.im.web.IssuedInvoicePage;
-import io.github.grigoriev.im.web.AuditController;
 import io.github.grigoriev.im.web.CountryController;
+import io.github.grigoriev.im.web.CurrentUserAdvice;
 import io.github.grigoriev.im.web.CustomerController;
+import io.github.grigoriev.im.web.HomeController;
+import io.github.grigoriev.im.web.InvoiceController;
+import io.github.grigoriev.im.web.InvoiceRecordsController;
+import io.github.grigoriev.im.web.IssuedInvoicePage;
+import io.github.grigoriev.im.web.LoginController;
+import io.github.grigoriev.im.web.MailTextController;
 import io.github.grigoriev.im.web.NumberController;
+import io.github.grigoriev.im.web.ReportController;
 import io.github.grigoriev.im.web.SettingsController;
 import io.github.grigoriev.im.web.TaxNoteController;
-import io.github.grigoriev.im.web.AdminUserController;
-import io.github.grigoriev.im.web.CurrentUserAdvice;
-import io.github.grigoriev.im.web.HomeController;
-import io.github.grigoriev.im.web.LoginController;
+import io.github.grigoriev.im.web.TemplateController;
+import jakarta.servlet.http.Cookie;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.assertj.core.api.Assertions;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
@@ -103,7 +146,7 @@ import org.springframework.test.web.servlet.MockMvc;
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
         SessionEpoch.class})
-@org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
+@EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 
     private static final String PASSWORD = "lang-genug-123";
@@ -154,63 +197,63 @@ class SecurityWebTest {
     private TemplateService templates;
 
     @MockitoBean
-    private io.github.grigoriev.im.einvoice.InvoicePdfRenderer pdf;
+    private InvoicePdfRenderer pdf;
 
     @MockitoBean
-    private io.github.grigoriev.im.invoice.IssueService issues;
+    private IssueService issues;
 
     @MockitoBean
-    private io.github.grigoriev.im.invoice.DocumentStore documents;
+    private DocumentStore documents;
 
     @MockitoBean
-    private io.github.grigoriev.im.invoice.DispatchService dispatches;
+    private DispatchService dispatches;
 
     @MockitoBean
-    private io.github.grigoriev.im.invoice.PaymentService payments;
+    private PaymentService payments;
 
     @MockitoBean
-    private io.github.grigoriev.im.mail.MailTextService mailTexts;
+    private MailTextService mailTexts;
 
     @MockitoBean
-    private io.github.grigoriev.im.mail.MailService mail;
+    private MailService mail;
 
     @MockitoBean
-    private io.github.grigoriev.im.threshold.ThresholdService threshold;
+    private ThresholdService threshold;
 
     @MockitoBean
-    private io.github.grigoriev.im.invoice.ArchiveService archive;
+    private ArchiveService archive;
 
     @MockitoBean
-    private io.github.grigoriev.im.backup.BackupService backups;
+    private BackupService backups;
 
     @MockitoBean
-    private io.github.grigoriev.im.backup.BackupRunService backupRuns;
+    private BackupRunService backupRuns;
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void noRevenueNoPayments() {
-        when(threshold.today()).thenReturn(java.time.LocalDate.of(2027, 3, 18));
-        when(threshold.current()).thenReturn(new io.github.grigoriev.im.threshold.Threshold(2027,
-                new java.math.BigDecimal("18250.00"), true, new java.math.BigDecimal("101000.00"),
-                new java.math.BigDecimal("984.00"), new java.math.BigDecimal("101984.00"),
-                new java.math.BigDecimal("30000.00")));
-        when(payments.summary(any())).thenReturn(new io.github.grigoriev.im.invoice.PaymentService.Payments(List.of(),
-                java.math.BigDecimal.ZERO, new java.math.BigDecimal("480.00")));
+        when(threshold.today()).thenReturn(LocalDate.of(2027, 3, 18));
+        when(threshold.current()).thenReturn(new Threshold(2027,
+                new BigDecimal("18250.00"), true, new BigDecimal("101000.00"),
+                new BigDecimal("984.00"), new BigDecimal("101984.00"),
+                new BigDecimal("30000.00")));
+        when(payments.summary(any())).thenReturn(new PaymentService.Payments(List.of(),
+                BigDecimal.ZERO, new BigDecimal("480.00")));
     }
 
     private static InvoiceTemplate template() {
         return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
-                null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, java.math.BigDecimal.ONE,
-                        new java.math.BigDecimal("400"), TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH,
-                java.time.Instant.EPOCH, 0L);
+                null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, BigDecimal.ONE,
+                        new BigDecimal("400"), TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH,
+                Instant.EPOCH, 0L);
     }
 
     private static Invoice invoice(long id, InvoiceStatus status) {
-        java.time.LocalDate day = java.time.LocalDate.of(2027, 3, 18);
+        LocalDate day = LocalDate.of(2027, 3, 18);
         return new Invoice(id, status, 3L, status == InvoiceStatus.DRAFT ? null : "2027-01", InvoiceFormat.ZUGFERD_EN16931,
                 day, day, day, 14, null, "Hallo", "Danke", null,
-                List.of(new DraftLine("Lesung", true, java.math.BigDecimal.ONE, new java.math.BigDecimal("400"),
-                        TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L,
-                status == InvoiceStatus.DRAFT ? null : java.time.Instant.parse("2027-03-18T09:30:00Z"),
+                List.of(new DraftLine("Lesung", true, BigDecimal.ONE, new BigDecimal("400"),
+                        TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH, Instant.EPOCH, 0L,
+                status == InvoiceStatus.DRAFT ? null : Instant.parse("2027-03-18T09:30:00Z"),
                 status == InvoiceStatus.DRAFT ? null : "{snapshot}", null);
     }
 
@@ -228,12 +271,12 @@ class SecurityWebTest {
     @Test
     void showsTheLoginPageWithItsMessagesAndTheCsp() throws Exception {
         mvc.perform(get("/login")).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Anmelden")))
+                .andExpect(content().string(Matchers.containsString("Anmelden")))
                 .andExpect(header().string("Content-Security-Policy", SecurityConfig.CSP));
         mvc.perform(get("/login").param("error", ""))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Benutzername oder Passwort ist falsch.")));
+                .andExpect(content().string(Matchers.containsString("Benutzername oder Passwort ist falsch.")));
         mvc.perform(get("/login").param("logout", ""))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Sie sind abgemeldet.")));
+                .andExpect(content().string(Matchers.containsString("Sie sind abgemeldet.")));
     }
 
     @Test
@@ -263,15 +306,15 @@ class SecurityWebTest {
                         .header("Origin", "https://boese.example"))
                 .andExpect(redirectedUrl("/login?expired"));
         when(tokens.getTokenForSeries("serie")).thenReturn(new org.springframework.security.web.authentication
-                .rememberme.PersistentRememberMeToken("elena", "serie", "wert", new java.util.Date()));
-        String cookie = java.util.Base64.getEncoder().withoutPadding().encodeToString("serie:wert".getBytes());
+                .rememberme.PersistentRememberMeToken("elena", "serie", "wert", new Date()));
+        String cookie = Base64.getEncoder().withoutPadding().encodeToString("serie:wert".getBytes());
         mvc.perform(post("/logout").with(csrf().useInvalidToken()).header("Sec-Fetch-Site", "same-origin")
-                        .cookie(new jakarta.servlet.http.Cookie("remember-me", cookie)))
+                        .cookie(new Cookie("remember-me", cookie)))
                 .andExpect(redirectedUrl("/login?logout"))
                 .andExpect(cookie().maxAge("remember-me", 0));
         verify(tokens).removeUserTokens("elena");
         mvc.perform(get("/login").param("expired", ""))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Die Sitzung ist abgelaufen.")));
+                .andExpect(content().string(Matchers.containsString("Die Sitzung ist abgelaufen.")));
     }
 
     @Test
@@ -283,8 +326,8 @@ class SecurityWebTest {
     void greetsTheUserAndHidesTheAdminMenu() throws Exception {
         knownUsers();
         mvc.perform(get("/").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Guten Tag, Name elena")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/admin/users"))));
+                .andExpect(content().string(Matchers.containsString("Guten Tag, Name elena")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("/admin/users"))));
     }
 
     @Test
@@ -295,10 +338,10 @@ class SecurityWebTest {
                 UserTestData.user(2, "elena", Role.USER)));
         when(passkeys.count("elena")).thenReturn(1);
         mvc.perform(get("/admin/users").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Name elena")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Neuer Benutzer")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("1 Passkey(s)")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Passkeys entfernen")));
+                .andExpect(content().string(Matchers.containsString("Name elena")))
+                .andExpect(content().string(Matchers.containsString("Neuer Benutzer")))
+                .andExpect(content().string(Matchers.containsString("1 Passkey(s)")))
+                .andExpect(content().string(Matchers.containsString("Passkeys entfernen")));
     }
 
     @Test
@@ -330,16 +373,16 @@ class SecurityWebTest {
     void greetsAUserWithoutAccountRecordByTheLoginName() throws Exception {
         when(repository.findByUsername("ohne-datensatz")).thenReturn(Optional.empty());
         mvc.perform(get("/").with(user("ohne-datensatz").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Guten Tag, ohne-datensatz")));
+                .andExpect(content().string(Matchers.containsString("Guten Tag, ohne-datensatz")));
     }
 
     @Test
     void offersPasskeyLoginToAnonymousVisitors() throws Exception {
-        mvc.perform(get("/login")).andExpect(content().string(org.hamcrest.Matchers.containsString("Mit Passkey anmelden")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf_header\"")));
+        mvc.perform(get("/login")).andExpect(content().string(Matchers.containsString("Mit Passkey anmelden")))
+                .andExpect(content().string(Matchers.containsString("name=\"_csrf_header\"")));
         mvc.perform(post("/webauthn/authenticate/options").with(csrf())).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"challenge\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"rpId\":\"localhost\"")));
+                .andExpect(content().string(Matchers.containsString("\"challenge\"")))
+                .andExpect(content().string(Matchers.containsString("\"rpId\":\"localhost\"")));
         mvc.perform(post("/webauthn/register/options").with(csrf())).andExpect(status().is4xxClientError());
     }
 
@@ -349,11 +392,11 @@ class SecurityWebTest {
         when(passkeys.list("elena")).thenReturn(List.of(new Passkey("id1", "MacBook Air", UserTestData.CREATED, null),
                 new Passkey("id2", "iPhone", UserTestData.CREATED, UserTestData.CREATED)));
         mvc.perform(get("/account").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("MacBook Air")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Hinzugefügt am 02.01.2027 · zuletzt 02.01.2027")));
+                .andExpect(content().string(Matchers.containsString("MacBook Air")))
+                .andExpect(content().string(Matchers.containsString("Hinzugefügt am 02.01.2027 · zuletzt 02.01.2027")));
         when(passkeys.list("admin")).thenReturn(List.of());
         mvc.perform(get("/account").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch kein Passkey.")));
+                .andExpect(content().string(Matchers.containsString("Noch kein Passkey.")));
     }
 
     @Test
@@ -405,21 +448,21 @@ class SecurityWebTest {
     void showsAnEmptyProfileAndThenTheSavedOneTabByTab() throws Exception {
         when(sellers.find()).thenReturn(Optional.empty());
         mvc.perform(get("/settings").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"seller-name\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"seller-iban\""))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span class=\"sr-only\">unvollständig</span>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Für Rechnungen nötig.")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Steuerhinweise"))));
+                .andExpect(content().string(Matchers.containsString("id=\"seller-name\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"seller-iban\""))))
+                .andExpect(content().string(Matchers.containsString("<span class=\"sr-only\">unvollständig</span>")))
+                .andExpect(content().string(Matchers.containsString("Für Rechnungen nötig.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Steuerhinweise"))));
         mvc.perform(get("/settings").param("part", "tax").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kleinunternehmer nach § 19 UStG")));
+                .andExpect(content().string(Matchers.containsString("Kleinunternehmer nach § 19 UStG")));
         when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile()));
         mvc.perform(get("/settings").param("part", "bank").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"DE89 3704 0044 0532 0130 00\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"accountHolder\" value=\"Erika Mustermann\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<span class=\"sr-only\">unvollständig</span>"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuerhinweise")));
+                .andExpect(content().string(Matchers.containsString("value=\"DE89 3704 0044 0532 0130 00\"")))
+                .andExpect(content().string(Matchers.containsString("name=\"accountHolder\" value=\"Erika Mustermann\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("<span class=\"sr-only\">unvollständig</span>"))))
+                .andExpect(content().string(Matchers.containsString("Steuerhinweise")));
         mvc.perform(get("/settings").param("part", "unknown").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")));
+                .andExpect(content().string(Matchers.containsString("value=\"Erika Mustermann\"")));
     }
 
     @Test
@@ -430,7 +473,7 @@ class SecurityWebTest {
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/settings?part=tax"))
                 .andExpect(flash().attribute("success", "Steuer gespeichert."));
-        verify(sellers).save(eq(io.github.grigoriev.im.seller.ProfilePart.TAX),
+        verify(sellers).save(eq(ProfilePart.TAX),
                 argThat(profile -> profile.taxStatus() == TaxStatus.REGULAR));
 
         when(sellers.save(any(), any())).thenReturn(new SellerProfile("Erika", null, null, null, null, null, null,
@@ -444,9 +487,9 @@ class SecurityWebTest {
         when(sellers.save(any(), any())).thenThrow(new SettingsException(Map.of("iban", "Die IBAN ist ungültig.")));
         mvc.perform(post("/settings").param("part", "bank").param("iban", "DE00").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Das Profil ist nicht gespeichert.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span id=\"iban-hint\" class=\"text-xs text-error\">Die IBAN ist ungültig.</span>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-invalid=\"true\"")));
+                .andExpect(content().string(Matchers.containsString("Das Profil ist nicht gespeichert.")))
+                .andExpect(content().string(Matchers.containsString("<span id=\"iban-hint\" class=\"text-xs text-error\">Die IBAN ist ungültig.</span>")))
+                .andExpect(content().string(Matchers.containsString("aria-invalid=\"true\"")));
         when(sellers.find()).thenReturn(Optional.empty());
         mvc.perform(post("/settings").param("part", "address").param("countryCode", "JP").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk());
@@ -459,8 +502,8 @@ class SecurityWebTest {
     void keepsTheTaxNotesForTheAdmin() throws Exception {
         when(taxNotes.notes()).thenReturn(Map.of(TaxCategory.EXEMPT_4_21, "Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG."));
         mvc.perform(get("/admin/tax-notes").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuerfreie Bildungsleistung (§ 4 Nr. 21 UStG)")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"note-EXEMPT_4_21\"")));
+                .andExpect(content().string(Matchers.containsString("Steuerfreie Bildungsleistung (§ 4 Nr. 21 UStG)")))
+                .andExpect(content().string(Matchers.containsString("name=\"note-EXEMPT_4_21\"")));
         mvc.perform(get("/admin/tax-notes").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
         mvc.perform(post("/admin/tax-notes").param("note-EXEMPT_4_21", "Neu.").param("note-STANDARD_19", "x")
                         .param("other", "y").with(user("admin").roles("ADMIN")).with(csrf()))
@@ -481,11 +524,11 @@ class SecurityWebTest {
         when(numbers.preview(used)).thenReturn("2027-08");
         when(numbers.preview(open)).thenReturn("2028-01");
         mvc.perform(get("/admin/numbers").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"{YYYY}-{NN}\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-08")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Der Zähler ist gesperrt.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"start-2028\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"start-2027\""))));
+                .andExpect(content().string(Matchers.containsString("value=\"{YYYY}-{NN}\"")))
+                .andExpect(content().string(Matchers.containsString("2027-08")))
+                .andExpect(content().string(Matchers.containsString("Der Zähler ist gesperrt.")))
+                .andExpect(content().string(Matchers.containsString("id=\"start-2028\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"start-2027\""))));
         mvc.perform(get("/admin/numbers").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
     }
 
@@ -516,18 +559,18 @@ class SecurityWebTest {
     void listsCustomersAndShowsOne() throws Exception {
         when(customers.list()).thenReturn(List.of());
         mvc.perform(get("/customers").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Kunden.")));
+                .andExpect(content().string(Matchers.containsString("Noch keine Kunden.")));
         when(customers.list()).thenReturn(List.of(CustomerTestData.verlag().withId(3L), CustomerTestData.vhs().withId(4L)));
         when(customers.find(4)).thenReturn(Optional.of(CustomerTestData.vhs().withId(4L)));
         mvc.perform(get("/customers/4").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Verlag am Fluss GmbH")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"09162000-VHS01-42\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("XRechnung: nur XML</option>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-current=\"page\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Endgültig löschen")));
+                .andExpect(content().string(Matchers.containsString("Verlag am Fluss GmbH")))
+                .andExpect(content().string(Matchers.containsString("value=\"09162000-VHS01-42\"")))
+                .andExpect(content().string(Matchers.containsString("XRechnung: nur XML</option>")))
+                .andExpect(content().string(Matchers.containsString("aria-current=\"page\"")))
+                .andExpect(content().string(Matchers.containsString("Endgültig löschen")));
         mvc.perform(get("/customers/new").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Neuer Kunde")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Endgültig löschen"))));
+                .andExpect(content().string(Matchers.containsString("Neuer Kunde")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Endgültig löschen"))));
         when(customers.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/customers/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(get("/customers/new").param("from", "9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
@@ -542,16 +585,16 @@ class SecurityWebTest {
         when(customers.list()).thenReturn(List.of(weber, klein));
         when(customers.find(5)).thenReturn(Optional.of(weber));
         mvc.perform(get("/customers/5").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Sprachschule am See · Frau Weber</h2>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Herr Klein</span>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/customers/new?from=5\"")));
+                .andExpect(content().string(Matchers.containsString(">Sprachschule am See · Frau Weber</h2>")))
+                .andExpect(content().string(Matchers.containsString(">Herr Klein</span>")))
+                .andExpect(content().string(Matchers.containsString("href=\"/customers/new?from=5\"")));
         mvc.perform(get("/customers/new").param("from", "5").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Seeweg 5\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"weber@sprachschule.example\""))));
+                .andExpect(content().string(Matchers.containsString("value=\"Seeweg 5\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("value=\"weber@sprachschule.example\""))));
         when(invoices.list()).thenReturn(List.of());
         mvc.perform(get("/invoices").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Sprachschule am See · Frau Weber</option>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Sprachschule am See · Herr Klein</option>")));
+                .andExpect(content().string(Matchers.containsString(">Sprachschule am See · Frau Weber</option>")))
+                .andExpect(content().string(Matchers.containsString(">Sprachschule am See · Herr Klein</option>")));
     }
 
     @Test
@@ -564,9 +607,9 @@ class SecurityWebTest {
         when(customers.create(any())).thenThrow(new CustomerException(List.of("Bitte Ort angeben.")));
         mvc.perform(post("/customers").param("id", "77").param("name", "Neu GmbH").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte Ort angeben.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Neu GmbH\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("action=\"/customers\"")));
+                .andExpect(content().string(Matchers.containsString("Bitte Ort angeben.")))
+                .andExpect(content().string(Matchers.containsString("value=\"Neu GmbH\"")))
+                .andExpect(content().string(Matchers.containsString("action=\"/customers\"")));
 
         mvc.perform(post("/customers/3").param("name", "Verlag").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/customers/3")).andExpect(flash().attribute("success", "Änderungen gespeichert."));
@@ -574,8 +617,8 @@ class SecurityWebTest {
         when(customers.update(eq(4L), any())).thenThrow(new CustomerException(List.of("Diesen Kunden gibt es nicht.")));
         mvc.perform(post("/customers/4").param("name", "Verlag").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Diesen Kunden gibt es nicht.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("action=\"/customers/4\"")));
+                .andExpect(content().string(Matchers.containsString("Diesen Kunden gibt es nicht.")))
+                .andExpect(content().string(Matchers.containsString("action=\"/customers/4\"")));
 
         when(customers.delete(3)).thenReturn(CustomerTestData.verlag().withId(3L));
         mvc.perform(post("/customers/3/delete").with(user("elena").roles("USER")).with(csrf()))
@@ -592,16 +635,16 @@ class SecurityWebTest {
         when(countries.options(null, null)).thenReturn(list);
         when(sellers.find()).thenReturn(Optional.empty());
         mvc.perform(get("/settings").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\">Schweiz</option>")));
+                .andExpect(content().string(Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"CH\">Schweiz</option>")));
         mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
+                .andExpect(content().string(Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
         Customer kosovar = CustomerTestData.verlag();
         when(customers.find(7)).thenReturn(Optional.of(new Customer(7L, kosovar.name(), kosovar.street(),
                 kosovar.postcode(), kosovar.city(), "XK", "Frau Krasniqi", null, null, null, kosovar.format(), null)));
         when(countries.options(null, "XK")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/customers/new").param("from", "7").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
+                .andExpect(content().string(Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
 
         SellerProfile p = SellerTestData.profile();
         SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
@@ -609,7 +652,7 @@ class SecurityWebTest {
         when(sellers.find()).thenReturn(Optional.of(kosovo));
         when(countries.options("XK", null)).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/settings").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
+                .andExpect(content().string(Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
 
         Customer swiss = CustomerTestData.verlag();
         swiss = new Customer(5L, swiss.name(), swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
@@ -617,10 +660,10 @@ class SecurityWebTest {
         when(customers.find(5)).thenReturn(Optional.of(swiss));
         when(countries.options("CH", null)).thenReturn(list);
         mvc.perform(get("/customers/5").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\" selected=\"selected\">Schweiz</option>")));
+                .andExpect(content().string(Matchers.containsString("<option value=\"CH\" selected=\"selected\">Schweiz</option>")));
         when(customers.update(eq(5L), any())).thenThrow(new CustomerException(List.of("Bitte ein Land aus der Liste wählen.")));
         mvc.perform(post("/customers/5").param("countryCode", "JP").with(user("elena").roles("USER")).with(csrf()))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte ein Land aus der Liste wählen.")));
+                .andExpect(content().string(Matchers.containsString("Bitte ein Land aus der Liste wählen.")));
         verify(countries).options("CH", "JP");
         mvc.perform(get("/customers").with(user("elena").roles("USER"))).andExpect(status().isOk());
     }
@@ -630,8 +673,8 @@ class SecurityWebTest {
         when(countries.enabled()).thenReturn(List.of(new Country("DE", "Deutschland")));
         when(countries.others()).thenReturn(List.of(new Country("JP", "Japan")));
         mvc.perform(get("/admin/countries").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"Deutschland entfernen\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"JP\">Japan</option>")));
+                .andExpect(content().string(Matchers.containsString("aria-label=\"Deutschland entfernen\"")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"JP\">Japan</option>")));
         mvc.perform(get("/admin/countries").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
 
         when(countries.add("JP")).thenReturn(new Country("JP", "Japan"));
@@ -651,16 +694,16 @@ class SecurityWebTest {
     void showsTheAuditLogToTheAdminOnly() throws Exception {
         when(audit.latest()).thenReturn(List.of());
         mvc.perform(get("/admin/audit").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Einträge.")));
+                .andExpect(content().string(Matchers.containsString("Noch keine Einträge.")));
         when(audit.latest()).thenReturn(List.of(
-                new AuditEvent(2L, java.time.Instant.parse("2027-03-18T08:12:00Z"), "elena", AuditAction.CUSTOMER_CREATED,
+                new AuditEvent(2L, Instant.parse("2027-03-18T08:12:00Z"), "elena", AuditAction.CUSTOMER_CREATED,
                         "Verlag am Fluss GmbH", null),
-                new AuditEvent(1L, java.time.Instant.parse("2027-03-18T08:10:00Z"), "elena", AuditAction.TAX_NOTES_SAVED, "",
+                new AuditEvent(1L, Instant.parse("2027-03-18T08:10:00Z"), "elena", AuditAction.TAX_NOTES_SAVED, "",
                         null)));
         mvc.perform(get("/admin/audit").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027, 09:12")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kunde angelegt</span><span\n                class=\"text-base-content/75\">: Verlag am Fluss GmbH")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Steuerhinweise gespeichert</span></span>")));
+                .andExpect(content().string(Matchers.containsString("18.03.2027, 09:12")))
+                .andExpect(content().string(Matchers.containsString("Kunde angelegt</span><span\n                class=\"text-base-content/75\">: Verlag am Fluss GmbH")))
+                .andExpect(content().string(Matchers.containsString(">Steuerhinweise gespeichert</span></span>")));
         mvc.perform(get("/admin/audit").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
     }
 
@@ -669,21 +712,21 @@ class SecurityWebTest {
         when(invoices.list()).thenReturn(List.of());
         when(customers.list()).thenReturn(List.of());
         mvc.perform(get("/invoices").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Rechnungen.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Legen Sie zuerst einen")));
+                .andExpect(content().string(Matchers.containsString("Noch keine Rechnungen.")))
+                .andExpect(content().string(Matchers.containsString("Legen Sie zuerst einen")));
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
         when(invoices.list()).thenReturn(List.of(issued, draft));
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
         when(invoices.document(draft)).thenReturn(Optional.empty());
-        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
         when(customers.list()).thenReturn(List.of(CustomerTestData.verlag().withId(3L)));
         mvc.perform(get("/invoices").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-01 · 18.03.2027")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Entwurf · 18.03.2027")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("480,00 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Neue Rechnung")));
+                .andExpect(content().string(Matchers.containsString("2027-01 · 18.03.2027")))
+                .andExpect(content().string(Matchers.containsString("Entwurf · 18.03.2027")))
+                .andExpect(content().string(Matchers.containsString("480,00 €")))
+                .andExpect(content().string(Matchers.containsString("Neue Rechnung")));
 
         when(invoices.createDraft(3L, null)).thenReturn(draft);
         mvc.perform(post("/invoices").param("customerId", "3").with(user("elena").roles("USER")).with(csrf()))
@@ -698,14 +741,14 @@ class SecurityWebTest {
         mvc.perform(post("/invoices/6/dispatches").param("sentOn", "2027-03-19").param("channel", "POST")
                         .param("recipient", "Buchhaltung").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/invoices/6")).andExpect(flash().attribute("success", "Versand vermerkt."));
-        var form = org.mockito.ArgumentCaptor.forClass(io.github.grigoriev.im.invoice.DispatchForm.class);
-        verify(dispatches).recordManual(org.mockito.ArgumentMatchers.eq(6L), form.capture());
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getSentOn()).isEqualTo(java.time.LocalDate.of(2027, 3, 19));
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getChannel())
-                .isEqualTo(io.github.grigoriev.im.invoice.DispatchChannel.POST);
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getRecipient()).isEqualTo("Buchhaltung");
+        var form = ArgumentCaptor.forClass(DispatchForm.class);
+        verify(dispatches).recordManual(ArgumentMatchers.eq(6L), form.capture());
+        Assertions.assertThat(form.getValue().getSentOn()).isEqualTo(LocalDate.of(2027, 3, 19));
+        Assertions.assertThat(form.getValue().getChannel())
+                .isEqualTo(DispatchChannel.POST);
+        Assertions.assertThat(form.getValue().getRecipient()).isEqualTo("Buchhaltung");
 
-        when(dispatches.recordManual(org.mockito.ArgumentMatchers.eq(7L), any())).thenThrow(
+        when(dispatches.recordManual(ArgumentMatchers.eq(7L), any())).thenThrow(
                 new InvoiceException(List.of("Erst ausstellen, dann versenden.")));
         mvc.perform(post("/invoices/7/dispatches").param("sentOn", "2027-03-19").param("channel", "POST")
                         .with(user("elena").roles("USER")).with(csrf()))
@@ -722,41 +765,41 @@ class SecurityWebTest {
                         .param("body", "Hallo").param("pdf", "true").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/invoices/6"))
                 .andExpect(flash().attribute("success", "E-Mail an a@b.example gesendet."));
-        var form = org.mockito.ArgumentCaptor.forClass(io.github.grigoriev.im.mail.SendForm.class);
-        verify(mail).send(org.mockito.ArgumentMatchers.eq(6L), form.capture());
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getSubject()).isEqualTo("Rechnung 2027-01");
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getBody()).isEqualTo("Hallo");
-        org.assertj.core.api.Assertions.assertThat(form.getValue().isPdf()).isTrue();
-        org.assertj.core.api.Assertions.assertThat(form.getValue().isXml()).isFalse();
+        var form = ArgumentCaptor.forClass(SendForm.class);
+        verify(mail).send(ArgumentMatchers.eq(6L), form.capture());
+        Assertions.assertThat(form.getValue().getSubject()).isEqualTo("Rechnung 2027-01");
+        Assertions.assertThat(form.getValue().getBody()).isEqualTo("Hallo");
+        Assertions.assertThat(form.getValue().isPdf()).isTrue();
+        Assertions.assertThat(form.getValue().isXml()).isFalse();
         doThrow(new InvoiceException(List.of("Die E-Mail ging nicht raus."))).when(mail)
-                .send(org.mockito.ArgumentMatchers.eq(7L), any());
+                .send(ArgumentMatchers.eq(7L), any());
         mvc.perform(post("/invoices/7/send").param("to", "a@b.example").param("subject", "Mein Betreff")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/invoices/7")).andExpect(flash().attribute("error", "Die E-Mail ging nicht raus."))
-                .andExpect(flash().attribute("mailForm", org.hamcrest.Matchers.hasProperty("subject",
-                        org.hamcrest.Matchers.is("Mein Betreff"))));
+                .andExpect(flash().attribute("mailForm", Matchers.hasProperty("subject",
+                        Matchers.is("Mein Betreff"))));
     }
 
     @Test
     void recordsAPayment() throws Exception {
-        when(payments.add(org.mockito.ArgumentMatchers.eq(6L), any()))
-                .thenReturn(io.github.grigoriev.im.invoice.InvoiceStatus.PAID);
+        when(payments.add(ArgumentMatchers.eq(6L), any()))
+                .thenReturn(InvoiceStatus.PAID);
         mvc.perform(post("/invoices/6/payments").param("paidOn", "2027-03-19").param("amount", "480,00")
                         .param("note", "Überweisung").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/invoices/6"))
                 .andExpect(flash().attribute("success", "Zahlung erfasst. Die Rechnung ist bezahlt."));
-        var form = org.mockito.ArgumentCaptor.forClass(io.github.grigoriev.im.invoice.PaymentForm.class);
-        verify(payments).add(org.mockito.ArgumentMatchers.eq(6L), form.capture());
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getPaidOn()).isEqualTo(java.time.LocalDate.of(2027, 3, 19));
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getAmount()).isEqualTo("480,00");
-        org.assertj.core.api.Assertions.assertThat(form.getValue().getNote()).isEqualTo("Überweisung");
+        var form = ArgumentCaptor.forClass(PaymentForm.class);
+        verify(payments).add(ArgumentMatchers.eq(6L), form.capture());
+        Assertions.assertThat(form.getValue().getPaidOn()).isEqualTo(LocalDate.of(2027, 3, 19));
+        Assertions.assertThat(form.getValue().getAmount()).isEqualTo("480,00");
+        Assertions.assertThat(form.getValue().getNote()).isEqualTo("Überweisung");
 
-        when(payments.add(org.mockito.ArgumentMatchers.eq(7L), any()))
-                .thenReturn(io.github.grigoriev.im.invoice.InvoiceStatus.SENT);
+        when(payments.add(ArgumentMatchers.eq(7L), any()))
+                .thenReturn(InvoiceStatus.SENT);
         mvc.perform(post("/invoices/7/payments").param("paidOn", "2027-03-19").param("amount", "100")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(flash().attribute("success", "Zahlung erfasst."));
-        when(payments.add(org.mockito.ArgumentMatchers.eq(8L), any()))
+        when(payments.add(ArgumentMatchers.eq(8L), any()))
                 .thenThrow(new InvoiceException(List.of("Der Betrag ist 0.")));
         mvc.perform(post("/invoices/8/payments").param("paidOn", "2027-03-19").param("amount", "0")
                         .with(user("elena").roles("USER")).with(csrf()))
@@ -768,24 +811,24 @@ class SecurityWebTest {
 
     @Test
     void theAdminEditsTheDefaultMailText() throws Exception {
-        when(mailTexts.defaults()).thenReturn(new io.github.grigoriev.im.mail.MailText("Rechnung {Rechnungsnummer}",
+        when(mailTexts.defaults()).thenReturn(new MailText("Rechnung {Rechnungsnummer}",
                 "Hallo & Tschüss"));
         mvc.perform(get("/admin/mail").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Rechnung {Rechnungsnummer}\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Hallo &amp; Tschüss</textarea>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected=\"true\">E-Mail")));
+                .andExpect(content().string(Matchers.containsString("value=\"Rechnung {Rechnungsnummer}\"")))
+                .andExpect(content().string(Matchers.containsString("Hallo &amp; Tschüss</textarea>")))
+                .andExpect(content().string(Matchers.containsString("aria-selected=\"true\">E-Mail")));
         mvc.perform(get("/admin/mail").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
         mvc.perform(post("/admin/mail").param("subject", "Neu").param("body", "Text")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/admin/mail")).andExpect(flash().attribute("success", "E-Mail-Text gespeichert."));
         verify(mailTexts).save("Neu", "Text");
-        doThrow(new io.github.grigoriev.im.seller.SettingsException(
+        doThrow(new SettingsException(
                 List.of("Der Betreff hat höchstens 200 Zeichen."))).when(mailTexts).save("zu lang", "Text");
         mvc.perform(post("/admin/mail").param("subject", "zu lang").param("body", "Text")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Der Betreff hat höchstens 200 Zeichen.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"zu lang\"")));
+                .andExpect(content().string(Matchers.containsString("Der Betreff hat höchstens 200 Zeichen.")))
+                .andExpect(content().string(Matchers.containsString("value=\"zu lang\"")));
     }
 
     @Test
@@ -804,195 +847,195 @@ class SecurityWebTest {
         when(invoices.find(6)).thenReturn(Optional.of(original));
         when(invoices.find(9)).thenReturn(Optional.of(storno));
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
-        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornieren…")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("action=\"/invoices/6/cancel\"")));
+                .andExpect(content().string(Matchers.containsString("Stornieren…")))
+                .andExpect(content().string(Matchers.containsString("action=\"/invoices/6/cancel\"")));
         when(invoices.cancellation(original)).thenReturn(Optional.of(storno));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Eine Stornorechnung ist als")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/invoices/9\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Stornieren…"))));
+                .andExpect(content().string(Matchers.containsString("Eine Stornorechnung ist als")))
+                .andExpect(content().string(Matchers.containsString("href=\"/invoices/9\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Stornieren…"))));
         Invoice issuedStorno = invoice(9, InvoiceStatus.ISSUED);
         when(invoices.cancellation(original)).thenReturn(Optional.of(issuedStorno));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Storniert durch die")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung 2027-01")));
+                .andExpect(content().string(Matchers.containsString("Storniert durch die")))
+                .andExpect(content().string(Matchers.containsString("Stornorechnung 2027-01")));
 
         when(invoices.cancelled(storno)).thenReturn(Optional.of(original));
         when(invoices.problems(storno)).thenReturn(List.of());
         mvc.perform(get("/invoices/9").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung · Entwurf")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Storniert vollständig die")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"cancel-lines\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("disabled=\"disabled\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Position hinzufügen"))));
-        when(invoices.document(storno)).thenReturn(Optional.of(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                .andExpect(content().string(Matchers.containsString("Stornorechnung · Entwurf")))
+                .andExpect(content().string(Matchers.containsString("Storniert vollständig die")))
+                .andExpect(content().string(Matchers.containsString("id=\"cancel-lines\"")))
+                .andExpect(content().string(Matchers.containsString("disabled=\"disabled\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Position hinzufügen"))));
+        when(invoices.document(storno)).thenReturn(Optional.of(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931)));
         when(threshold.wouldExceed(any())).thenReturn(true);
         mvc.perform(get("/invoices/9").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"cancel-total\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("über 100.000 €"))));
+                .andExpect(content().string(Matchers.containsString("id=\"cancel-total\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("über 100.000 €"))));
         when(threshold.wouldExceed(any())).thenReturn(false);
 
         Invoice xStorno = new Invoice(9L, InvoiceStatus.DRAFT, 3L, null, InvoiceFormat.XRECHNUNG, storno.issueDate(),
                 storno.serviceFrom(), storno.serviceTo(), 0, "04011000-1", null, null, null, storno.lines(),
-                java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L, null, null, null);
+                Instant.EPOCH, Instant.EPOCH, 0L, null, null, null);
         when(invoices.find(9)).thenReturn(Optional.of(xStorno));
         when(invoices.cancelled(xStorno)).thenReturn(Optional.of(original));
         mvc.perform(post("/invoices/9").param("version", "0").param("issueDate", "kaputt")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XRECHNUNG\" selected=\"selected\">")));
+                .andExpect(content().string(Matchers.containsString("<option value=\"XRECHNUNG\" selected=\"selected\">")));
 
         when(invoices.find(9)).thenReturn(Optional.of(issuedStorno));
         when(invoices.cancelled(issuedStorno)).thenReturn(Optional.of(original));
         mvc.perform(get("/invoices/9").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung zur")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/invoices/6\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Zahlung erfassen"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"invoice-payments\""))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Stornieren…"))));
+                .andExpect(content().string(Matchers.containsString("Stornorechnung zur")))
+                .andExpect(content().string(Matchers.containsString("href=\"/invoices/6\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Zahlung erfassen"))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-payments\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Stornieren…"))));
 
         when(invoices.list()).thenReturn(List.of(issuedStorno));
         when(customers.list()).thenReturn(List.of());
         mvc.perform(get("/invoices").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung · 2027-01 · 18.03.2027")));
+                .andExpect(content().string(Matchers.containsString("Stornorechnung · 2027-01 · 18.03.2027")));
     }
 
     @Test
     void showsTheThresholdOnTheStartPage() throws Exception {
         mvc.perform(get("/").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stand 18.03.2027")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.250,00 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("101.000,00 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("≈ 30.000,00 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("984,00 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("gilt nicht mehr")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Mit dem Vorjahresumsatz")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("im nächsten Jahr nicht mehr")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Nichts überfällig.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"100\"")));
+                .andExpect(content().string(Matchers.containsString("Stand 18.03.2027")))
+                .andExpect(content().string(Matchers.containsString("18.250,00 €")))
+                .andExpect(content().string(Matchers.containsString("101.000,00 €")))
+                .andExpect(content().string(Matchers.containsString("≈ 30.000,00 €")))
+                .andExpect(content().string(Matchers.containsString("984,00 €")))
+                .andExpect(content().string(Matchers.containsString("gilt nicht mehr")))
+                .andExpect(content().string(Matchers.containsString("Mit dem Vorjahresumsatz")))
+                .andExpect(content().string(Matchers.containsString("im nächsten Jahr nicht mehr")))
+                .andExpect(content().string(Matchers.containsString("Nichts überfällig.")))
+                .andExpect(content().string(Matchers.containsString("value=\"100\"")));
     }
 
     @Test
     void showsTheReportAndItsCsv() throws Exception {
         when(threshold.years()).thenReturn(List.of(2027));
-        when(threshold.rows(2027)).thenReturn(List.of(new io.github.grigoriev.im.threshold.RevenueRow(
-                java.time.LocalDate.of(2027, 3, 18), "2027-01", "Verlag am Fluss GmbH", new java.math.BigDecimal("560.00"),
-                new java.math.BigDecimal("200.00"), new java.math.BigDecimal("360.00"), java.util.Map.of(
-                        TaxCategory.KLEINUNTERNEHMER, new java.math.BigDecimal("200.00"), TaxCategory.EXEMPT_4_21,
-                        new java.math.BigDecimal("360.00")), null, null)));
+        when(threshold.rows(2027)).thenReturn(List.of(new RevenueRow(
+                LocalDate.of(2027, 3, 18), "2027-01", "Verlag am Fluss GmbH", new BigDecimal("560.00"),
+                new BigDecimal("200.00"), new BigDecimal("360.00"), Map.of(
+                        TaxCategory.KLEINUNTERNEHMER, new BigDecimal("200.00"), TaxCategory.EXEMPT_4_21,
+                        new BigDecimal("360.00")), null, null)));
         mvc.perform(get("/reports").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Anlage EÜR 2027, Betriebseinnahmen")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kz 111")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">560,00 €<")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">360,00 €<")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("§ 4 Nr. 21 UStG, steuerfrei")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 · 2027-01")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/reports/payments.csv?year=2027\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/reports/archive.zip?year=2027\"")));
-        when(threshold.rows(2026)).thenReturn(List.of(new io.github.grigoriev.im.threshold.RevenueRow(
-                java.time.LocalDate.of(2026, 3, 18), "2026-01", "Schule", new java.math.BigDecimal("119.00"),
-                java.math.BigDecimal.ZERO, new java.math.BigDecimal("119.00"), java.util.Map.of(TaxCategory.STANDARD_19,
-                        new java.math.BigDecimal("119.00")), null, null)));
+                .andExpect(content().string(Matchers.containsString("Anlage EÜR 2027, Betriebseinnahmen")))
+                .andExpect(content().string(Matchers.containsString("Kz 111")))
+                .andExpect(content().string(Matchers.containsString(">560,00 €<")))
+                .andExpect(content().string(Matchers.containsString(">360,00 €<")))
+                .andExpect(content().string(Matchers.containsString("§ 4 Nr. 21 UStG, steuerfrei")))
+                .andExpect(content().string(Matchers.containsString("18.03.2027 · 2027-01")))
+                .andExpect(content().string(Matchers.containsString("href=\"/reports/payments.csv?year=2027\"")))
+                .andExpect(content().string(Matchers.containsString("href=\"/reports/archive.zip?year=2027\"")));
+        when(threshold.rows(2026)).thenReturn(List.of(new RevenueRow(
+                LocalDate.of(2026, 3, 18), "2026-01", "Schule", new BigDecimal("119.00"),
+                BigDecimal.ZERO, new BigDecimal("119.00"), Map.of(TaxCategory.STANDARD_19,
+                        new BigDecimal("119.00")), null, null)));
         mvc.perform(get("/reports").param("year", "2026").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Einnahmen mit Umsatzsteuer von 119,00 €")));
+                .andExpect(content().string(Matchers.containsString("Einnahmen mit Umsatzsteuer von 119,00 €")));
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
                 null, null, null, "98/765/43210")));
         mvc.perform(get("/reports").param("year", "2027").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Betriebseinnahmen: Unterricht")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Betriebseinnahmen: Übrige Leistungen")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">98/765/43210</span>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"income-111-teaching\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"income-111-other\"")));
+                .andExpect(content().string(Matchers.containsString("Betriebseinnahmen: Unterricht")))
+                .andExpect(content().string(Matchers.containsString("Betriebseinnahmen: Übrige Leistungen")))
+                .andExpect(content().string(Matchers.containsString(">98/765/43210</span>")))
+                .andExpect(content().string(Matchers.containsString("id=\"income-111-teaching\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"income-111-other\"")));
         mvc.perform(get("/settings").param("part", "tax").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"98/765/43210\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuernummer für Unterricht (§ 4 Nr. 21)")));
+                .andExpect(content().string(Matchers.containsString("value=\"98/765/43210\"")))
+                .andExpect(content().string(Matchers.containsString("Steuernummer für Unterricht (§ 4 Nr. 21)")));
         mvc.perform(get("/reports").param("year", "2020").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Zahlungen in diesem Jahr.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2020\" selected=\"selected\">")));
+                .andExpect(content().string(Matchers.containsString("Keine Zahlungen in diesem Jahr.")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"2020\" selected=\"selected\">")));
         mvc.perform(get("/reports/payments.csv").param("year", "2027").with(user("elena").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"Zahlungen_2027.csv\""))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027;\"2027-01\";\"Verlag am Fluss GmbH\";560,00;200,00;360,00;")));
+                .andExpect(content().string(Matchers.containsString("18.03.2027;\"2027-01\";\"Verlag am Fluss GmbH\";560,00;200,00;360,00;")));
         var started = mvc.perform(get("/reports/archive.zip").param("year", "2027").with(user("elena").roles("USER")))
                 .andExpect(request().asyncStarted()).andReturn();
         mvc.perform(asyncDispatch(started)).andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnungen_2027.zip\""));
-        verify(archive).write(org.mockito.ArgumentMatchers.eq(2027), any());
+        verify(archive).write(ArgumentMatchers.eq(2027), any());
         mvc.perform(get("/reports")).andExpect(status().is3xxRedirection());
     }
 
     @Test
     void showsTheLastBackupAndWarnsWhenOneIsOverdue() throws Exception {
-        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(null, null, true, true));
+        when(backupRuns.status()).thenReturn(new BackupStatus(null, null, true, true));
         mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Es gibt noch keine automatische Sicherung.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Es gibt noch keinen Wiederherstellungstest.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">noch keine</span></dd>")));
+                .andExpect(content().string(Matchers.containsString("Es gibt noch keine automatische Sicherung.")))
+                .andExpect(content().string(Matchers.containsString("Es gibt noch keinen Wiederherstellungstest.")))
+                .andExpect(content().string(Matchers.containsString(">noch keine</span></dd>")));
 
-        java.time.OffsetDateTime night = java.time.OffsetDateTime.parse("2027-03-18T01:30:00Z");
-        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(
-                new io.github.grigoriev.im.backup.BackupRun("BACKUP", night, "Snapshot 1a2b3c4d, 1,2 MB"),
-                new io.github.grigoriev.im.backup.BackupRun("RESTORE_TEST", night.minusDays(40), ""), false, true));
+        OffsetDateTime night = OffsetDateTime.parse("2027-03-18T01:30:00Z");
+        when(backupRuns.status()).thenReturn(new BackupStatus(
+                new BackupRun("BACKUP", night, "Snapshot 1a2b3c4d, 1,2 MB"),
+                new BackupRun("RESTORE_TEST", night.minusDays(40), ""), false, true));
         mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027, 02:30 · Snapshot 1a2b3c4d, 1,2 MB")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">06.02.2027, 02:30</span></dd>")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"backup-overdue\""))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("älter als 35 Tage")));
+                .andExpect(content().string(Matchers.containsString("18.03.2027, 02:30 · Snapshot 1a2b3c4d, 1,2 MB")))
+                .andExpect(content().string(Matchers.containsString(">06.02.2027, 02:30</span></dd>")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"backup-overdue\""))))
+                .andExpect(content().string(Matchers.containsString("älter als 35 Tage")));
 
-        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(
-                new io.github.grigoriev.im.backup.BackupRun("BACKUP", night.minusDays(2), ""), null, true, true));
+        when(backupRuns.status()).thenReturn(new BackupStatus(
+                new BackupRun("BACKUP", night.minusDays(2), ""), null, true, true));
         mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("älter als 36 Stunden")));
+                .andExpect(content().string(Matchers.containsString("älter als 36 Stunden")));
     }
 
     @Test
     void theAdminExportsAndImportsEverything() throws Exception {
-        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(null, null, true, true));
+        when(backupRuns.status()).thenReturn(new BackupStatus(null, null, true, true));
         mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Export herunterladen")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("enctype=\"multipart/form-data\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected=\"true\">Datensicherung")));
+                .andExpect(content().string(Matchers.containsString("Export herunterladen")))
+                .andExpect(content().string(Matchers.containsString("enctype=\"multipart/form-data\"")))
+                .andExpect(content().string(Matchers.containsString("aria-selected=\"true\">Datensicherung")));
         mvc.perform(get("/admin/backup").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
         var started = mvc.perform(get("/admin/backup/export.zip").with(user("admin").roles("ADMIN")))
                 .andExpect(request().asyncStarted()).andReturn();
         mvc.perform(asyncDispatch(started)).andExpect(status().isOk());
         verify(backups).export(any());
-        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile("file",
+        MockMultipartFile file = new MockMultipartFile("file",
                 "export.zip", "application/zip", new byte[] {1});
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/admin/backup/import")
+        mvc.perform(MockMvcRequestBuilders.multipart("/admin/backup/import")
                         .file(file).with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/login?restored"));
         mvc.perform(get("/login").param("restored", ""))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Datensicherung eingespielt.")));
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/admin/backup/import")
+                .andExpect(content().string(Matchers.containsString("Datensicherung eingespielt.")));
+        mvc.perform(MockMvcRequestBuilders.multipart("/admin/backup/import")
                         .file(file).with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void theAdminKeepsTheBaselines() throws Exception {
-        when(threshold.baselines()).thenReturn(java.util.Map.of());
+        when(threshold.baselines()).thenReturn(Map.of());
         when(threshold.newestBaselineYear()).thenReturn(2024);
         mvc.perform(get("/admin/baselines").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch kein Vorjahresumsatz erfasst.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("max=\"2026\" value=\"2024\"")));
-        when(threshold.baselines()).thenReturn(java.util.Map.of(2026, new java.math.BigDecimal("18250.00")));
+                .andExpect(content().string(Matchers.containsString("Noch kein Vorjahresumsatz erfasst.")))
+                .andExpect(content().string(Matchers.containsString("max=\"2026\" value=\"2024\"")));
+        when(threshold.baselines()).thenReturn(Map.of(2026, new BigDecimal("18250.00")));
         mvc.perform(get("/admin/baselines").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.250,00 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"baseline-remove-2026\"")));
+                .andExpect(content().string(Matchers.containsString("18.250,00 €")))
+                .andExpect(content().string(Matchers.containsString("id=\"baseline-remove-2026\"")));
         mvc.perform(get("/admin/baselines").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
         mvc.perform(post("/admin/baselines").param("year", "2026").param("amount", "18.250,00")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/admin/baselines"))
                 .andExpect(flash().attribute("success", "Vorjahresumsatz 2026 gespeichert."));
         verify(threshold).saveBaseline(2026, "18.250,00");
-        doThrow(new io.github.grigoriev.im.seller.SettingsException(List.of("Ein Vorjahresumsatz gehört zu einem "
+        doThrow(new SettingsException(List.of("Ein Vorjahresumsatz gehört zu einem "
                 + "vergangenen Jahr."))).when(threshold).saveBaseline(2027, "1");
         mvc.perform(post("/admin/baselines").param("year", "2027").param("amount", "1")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
@@ -1006,36 +1049,36 @@ class SecurityWebTest {
         when(invoices.list()).thenReturn(List.of(issued, draft));
         when(invoices.customerName(any())).thenReturn("Volkshochschule Musterstadt");
         when(invoices.document(draft)).thenReturn(Optional.empty());
-        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
         when(customers.list()).thenReturn(List.of());
         String issuedRow = "2027-01 · 18.03.2027";
         String draftRow = "Entwurf · 18.03.2027";
         mvc.perform(get("/invoices").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(draftRow)))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2027\">2027</option>")));
+                .andExpect(content().string(Matchers.containsString(issuedRow)))
+                .andExpect(content().string(Matchers.containsString(draftRow)))
+                .andExpect(content().string(Matchers.containsString("<option value=\"2027\">2027</option>")));
         mvc.perform(get("/invoices").param("status", "DRAFT").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(issuedRow))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(draftRow)))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DRAFT\" selected=\"selected\">")));
+                .andExpect(content().string(Matchers.not(Matchers.containsString(issuedRow))))
+                .andExpect(content().string(Matchers.containsString(draftRow)))
+                .andExpect(content().string(Matchers.containsString("<option value=\"DRAFT\" selected=\"selected\">")));
         mvc.perform(get("/invoices").param("q", " FLUSS ").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(draftRow))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"FLUSS\"")));
+                .andExpect(content().string(Matchers.containsString(issuedRow)))
+                .andExpect(content().string(Matchers.not(Matchers.containsString(draftRow))))
+                .andExpect(content().string(Matchers.containsString("value=\"FLUSS\"")));
         mvc.perform(get("/invoices").param("q", "2027-0").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(draftRow))));
+                .andExpect(content().string(Matchers.containsString(issuedRow)))
+                .andExpect(content().string(Matchers.not(Matchers.containsString(draftRow))));
         mvc.perform(get("/invoices").param("q", "volkshoch").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(issuedRow))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(draftRow)));
+                .andExpect(content().string(Matchers.not(Matchers.containsString(issuedRow))))
+                .andExpect(content().string(Matchers.containsString(draftRow)));
         mvc.perform(get("/invoices").param("year", "2027").param("status", "ISSUED").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(draftRow))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2027\" selected=\"selected\">")));
+                .andExpect(content().string(Matchers.containsString(issuedRow)))
+                .andExpect(content().string(Matchers.not(Matchers.containsString(draftRow))))
+                .andExpect(content().string(Matchers.containsString("<option value=\"2027\" selected=\"selected\">")));
         mvc.perform(get("/invoices").param("year", "2026").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Rechnungen gefunden.")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Noch keine Rechnungen."))));
+                .andExpect(content().string(Matchers.containsString("Keine Rechnungen gefunden.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Noch keine Rechnungen."))));
         mvc.perform(get("/invoices").param("status", "NIX").with(user("elena").roles("USER")))
                 .andExpect(status().isBadRequest());
     }
@@ -1047,125 +1090,125 @@ class SecurityWebTest {
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
         when(invoices.problems(draft)).thenReturn(List.of("Position 1: Bitte die Leistung beschreiben."));
         mvc.perform(get("/invoices/5").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Lesung\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"400,00\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Position 1: Bitte die Leistung beschreiben.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("§ 19 UStG, Kleinunternehmer")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Entwurf löschen")));
+                .andExpect(content().string(Matchers.containsString("value=\"Lesung\"")))
+                .andExpect(content().string(Matchers.containsString("value=\"400,00\"")))
+                .andExpect(content().string(Matchers.containsString("Position 1: Bitte die Leistung beschreiben.")))
+                .andExpect(content().string(Matchers.containsString("§ 19 UStG, Kleinunternehmer")))
+                .andExpect(content().string(Matchers.containsString("Entwurf löschen")));
         when(invoices.problems(draft)).thenReturn(List.of());
-        when(invoices.document(draft)).thenReturn(Optional.of(io.github.grigoriev.im.einvoice.SampleInvoices.sale(
+        when(invoices.document(draft)).thenReturn(Optional.of(SampleInvoices.sale(
                 InvoiceFormat.ZUGFERD_EN16931)));
         mvc.perform(get("/invoices/5").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Vollständig.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Netto 130,50 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("USt 19 % 10,60 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("146,33 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung ausstellen…")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("über 100.000 €"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"version\" value=\"0\"")));
+                .andExpect(content().string(Matchers.containsString("Vollständig.")))
+                .andExpect(content().string(Matchers.containsString("Netto 130,50 €")))
+                .andExpect(content().string(Matchers.containsString("USt 19 % 10,60 €")))
+                .andExpect(content().string(Matchers.containsString("146,33 €")))
+                .andExpect(content().string(Matchers.containsString("Rechnung ausstellen…")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("über 100.000 €"))))
+                .andExpect(content().string(Matchers.containsString("name=\"version\" value=\"0\"")));
         when(threshold.wouldExceed(any())).thenReturn(true);
         mvc.perform(get("/invoices/5").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("über 100.000 €")));
+                .andExpect(content().string(Matchers.containsString("über 100.000 €")));
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
         when(invoices.find(6)).thenReturn(Optional.of(issued));
-        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
-        when(documents.list(6)).thenReturn(List.of(new io.github.grigoriev.im.invoice.StoredDocument(1L, 6L,
-                io.github.grigoriev.im.invoice.DocumentKind.PDF, "Rechnung_2027-10.pdf", new byte[] {1}, "ab12", 12345,
-                java.time.Instant.EPOCH)));
+        when(documents.list(6)).thenReturn(List.of(new StoredDocument(1L, 6L,
+                DocumentKind.PDF, "Rechnung_2027-10.pdf", new byte[] {1}, "ab12", 12345,
+                Instant.EPOCH)));
         when(audit.history(6)).thenReturn(List.of(
-                new AuditEvent(1L, java.time.Instant.parse("2027-03-18T08:00:00Z"), "elena", AuditAction.DRAFT_CREATED,
+                new AuditEvent(1L, Instant.parse("2027-03-18T08:00:00Z"), "elena", AuditAction.DRAFT_CREATED,
                         "Verlag am Fluss GmbH", 6L),
-                new AuditEvent(2L, java.time.Instant.parse("2027-03-18T09:30:00Z"), "admin", AuditAction.INVOICE_ISSUED,
+                new AuditEvent(2L, Instant.parse("2027-03-18T09:30:00Z"), "admin", AuditAction.INVOICE_ISSUED,
                         "2027-10, Verlag am Fluss GmbH", 6L)));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Unveränderbar seit")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung 2027-10")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                .andExpect(content().string(Matchers.containsString("Unveränderbar seit")))
+                .andExpect(content().string(Matchers.containsString("Rechnung 2027-10")))
+                .andExpect(content().string(Matchers.containsString(
                         "min-w-0 [overflow-wrap:anywhere]\" id=\"invoice-number\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Verlag am Fluss GmbH · 480,00 € · fällig am")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Entwurf angelegt")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 09:00")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung ausgestellt")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>admin</span>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("ZUGFeRD und PDF/A-3 geprüft")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-10, Verlag am Fluss GmbH")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-lucide=\"stamp\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Als versendet markieren…")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Zahlung.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Das Versenden per E-Mail ist nicht eingerichtet.")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Per E-Mail senden"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"amount\" value=\"480,00\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"POST\">Post</option>")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"EMAIL_APP\""))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("XRechnung geprüft"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("480,00 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 10:30")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung_2027-10.pdf")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("12.345 Byte")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("SHA-256 ab12")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/invoices/6/documents/pdf\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Rechnung ausstellen…"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Entwurf löschen"))));
+                .andExpect(content().string(Matchers.containsString("Verlag am Fluss GmbH · 480,00 € · fällig am")))
+                .andExpect(content().string(Matchers.containsString("Entwurf angelegt")))
+                .andExpect(content().string(Matchers.containsString("18.03.2027 09:00")))
+                .andExpect(content().string(Matchers.containsString("Rechnung ausgestellt")))
+                .andExpect(content().string(Matchers.containsString("<span>admin</span>")))
+                .andExpect(content().string(Matchers.containsString("ZUGFeRD und PDF/A-3 geprüft")))
+                .andExpect(content().string(Matchers.containsString("2027-10, Verlag am Fluss GmbH")))
+                .andExpect(content().string(Matchers.containsString("data-lucide=\"stamp\"")))
+                .andExpect(content().string(Matchers.containsString("Als versendet markieren…")))
+                .andExpect(content().string(Matchers.containsString("Noch keine Zahlung.")))
+                .andExpect(content().string(Matchers.containsString("Das Versenden per E-Mail ist nicht eingerichtet.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Per E-Mail senden"))))
+                .andExpect(content().string(Matchers.containsString("name=\"amount\" value=\"480,00\"")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"POST\">Post</option>")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("value=\"EMAIL_APP\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("XRechnung geprüft"))))
+                .andExpect(content().string(Matchers.containsString("480,00 €")))
+                .andExpect(content().string(Matchers.containsString("18.03.2027 10:30")))
+                .andExpect(content().string(Matchers.containsString("Rechnung_2027-10.pdf")))
+                .andExpect(content().string(Matchers.containsString("12.345 Byte")))
+                .andExpect(content().string(Matchers.containsString("SHA-256 ab12")))
+                .andExpect(content().string(Matchers.containsString("href=\"/invoices/6/documents/pdf\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Rechnung ausstellen…"))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Entwurf löschen"))));
         verify(invoices, never()).problems(issued);
-        when(audit.history(6)).thenReturn(List.of(new AuditEvent(3L, java.time.Instant.parse("2027-03-19T09:30:00Z"),
+        when(audit.history(6)).thenReturn(List.of(new AuditEvent(3L, Instant.parse("2027-03-19T09:30:00Z"),
                 "elena", AuditAction.INVOICE_SENT, "", 6L)));
-        when(dispatches.today()).thenReturn(java.time.LocalDate.of(2027, 3, 19));
+        when(dispatches.today()).thenReturn(LocalDate.of(2027, 3, 19));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-lucide=\"send\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"2027-03-19\" max=\"2027-03-19\"")));
-        when(payments.summary(any())).thenReturn(new io.github.grigoriev.im.invoice.PaymentService.Payments(List.of(
-                new io.github.grigoriev.im.invoice.Payment(1L, 6L, java.time.LocalDate.of(2027, 3, 20),
-                        new java.math.BigDecimal("500.00"), "zu viel", "elena", java.time.Instant.EPOCH)),
-                new java.math.BigDecimal("500.00"), new java.math.BigDecimal("-20.00")));
+                .andExpect(content().string(Matchers.containsString("data-lucide=\"send\"")))
+                .andExpect(content().string(Matchers.containsString("value=\"2027-03-19\" max=\"2027-03-19\"")));
+        when(payments.summary(any())).thenReturn(new PaymentService.Payments(List.of(
+                new Payment(1L, 6L, LocalDate.of(2027, 3, 20),
+                        new BigDecimal("500.00"), "zu viel", "elena", Instant.EPOCH)),
+                new BigDecimal("500.00"), new BigDecimal("-20.00")));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("20.03.2027")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("zu viel")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Überzahlt")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">20,00 €<")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"amount\" value=\"\"")));
-        io.github.grigoriev.im.mail.SendForm send = new io.github.grigoriev.im.mail.SendForm();
+                .andExpect(content().string(Matchers.containsString("20.03.2027")))
+                .andExpect(content().string(Matchers.containsString("zu viel")))
+                .andExpect(content().string(Matchers.containsString("Überzahlt")))
+                .andExpect(content().string(Matchers.containsString(">20,00 €<")))
+                .andExpect(content().string(Matchers.containsString("name=\"amount\" value=\"\"")));
+        SendForm send = new SendForm();
         send.setTo("buchhaltung@verlag.example");
         send.setSubject("Rechnung 2027-01");
         send.setBody("Hallo & Tschüss");
         send.setPdf(true);
         when(mail.configured()).thenReturn(true);
-        when(mail.form(org.mockito.ArgumentMatchers.eq(issued), any())).thenReturn(send);
+        when(mail.form(ArgumentMatchers.eq(issued), any())).thenReturn(send);
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Per E-Mail senden…")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"buchhaltung@verlag.example\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Hallo &amp; Tschüss</textarea>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"mail-pdf\" name=\"pdf\" type=\"checkbox\" class=\"checkbox checkbox-sm\"\n              value=\"true\" checked=\"checked\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("nicht eingerichtet"))));
+                .andExpect(content().string(Matchers.containsString("Per E-Mail senden…")))
+                .andExpect(content().string(Matchers.containsString("value=\"buchhaltung@verlag.example\"")))
+                .andExpect(content().string(Matchers.containsString("Hallo &amp; Tschüss</textarea>")))
+                .andExpect(content().string(Matchers.containsString("id=\"mail-pdf\" name=\"pdf\" type=\"checkbox\" class=\"checkbox checkbox-sm\"\n              value=\"true\" checked=\"checked\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("nicht eingerichtet"))));
         verify(mail).form(issued, "buchhaltung@verlag-am-fluss.example");
-        io.github.grigoriev.im.mail.SendForm typed = new io.github.grigoriev.im.mail.SendForm();
+        SendForm typed = new SendForm();
         typed.setTo("neu@kunde.example");
         typed.setSubject("Mein Betreff");
         typed.setBody("Mein Text");
         typed.setXml(true);
         mvc.perform(get("/invoices/6").flashAttr("mailForm", typed).with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"neu@kunde.example\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Mein Text</textarea>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"invoice-mail\" open=\"open\"")));
+                .andExpect(content().string(Matchers.containsString("value=\"neu@kunde.example\"")))
+                .andExpect(content().string(Matchers.containsString("Mein Text</textarea>")))
+                .andExpect(content().string(Matchers.containsString("id=\"invoice-mail\" open=\"open\"")));
         verify(mail).form(any(), any());
         when(mail.configured()).thenReturn(false);
         when(audit.history(6)).thenReturn(List.of());
         when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.CANCELLED)));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Einträge.")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Als versendet markieren"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("nicht eingerichtet"))));
+                .andExpect(content().string(Matchers.containsString("Keine Einträge.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Als versendet markieren"))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("nicht eingerichtet"))));
         when(invoices.find(6)).thenReturn(Optional.of(issued));
-        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.XRECHNUNG));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("XRechnung geprüft (KoSIT)")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("04011000-12345-67")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ZUGFeRD und PDF/A-3"))));
-        when(invoices.saveDraft(org.mockito.ArgumentMatchers.eq(6L), any())).thenThrow(
+                .andExpect(content().string(Matchers.containsString("XRechnung geprüft (KoSIT)")))
+                .andExpect(content().string(Matchers.containsString("04011000-12345-67")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("ZUGFeRD und PDF/A-3"))));
+        when(invoices.saveDraft(ArgumentMatchers.eq(6L), any())).thenThrow(
                 new InvoiceException(List.of("Eine ausgestellte Rechnung ändert sich nicht mehr.")));
         mvc.perform(post("/invoices/6").with(user("elena").roles("USER")).with(csrf())).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Eine ausgestellte Rechnung ändert sich nicht mehr.")));
+                .andExpect(content().string(Matchers.containsString("Eine ausgestellte Rechnung ändert sich nicht mehr.")));
         when(invoices.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/invoices/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(post("/invoices/9").with(user("elena").roles("USER")).with(csrf())).andExpect(status().isNotFound());
@@ -1175,32 +1218,32 @@ class SecurityWebTest {
     void offersTheBusinessWithTwoTaxNumbersOnly() throws Exception {
         when(customers.list()).thenReturn(List.of());
         mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("customer-activity"))));
+                .andExpect(content().string(Matchers.not(Matchers.containsString("customer-activity"))));
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
                 null, null, null, "98/765/43210")));
         mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"customer-activity\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Übrige Leistungen</option>")));
+                .andExpect(content().string(Matchers.containsString("id=\"customer-activity\"")))
+                .andExpect(content().string(Matchers.containsString(">Übrige Leistungen</option>")));
         when(customers.create(any())).thenReturn(CustomerTestData.verlag().withId(3L));
         mvc.perform(post("/customers").param("name", "Goethe-Zentrum").param("activity", "TEACHING")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/customers/3"));
-        verify(customers).create(argThat(customer -> customer.activity() == io.github.grigoriev.im.seller.Activity.TEACHING));
+        verify(customers).create(argThat(customer -> customer.activity() == Activity.TEACHING));
 
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
         when(invoices.find(5)).thenReturn(Optional.of(draft));
         when(invoices.customerName(any())).thenReturn("Goethe-Zentrum");
         mvc.perform(get("/invoices/5").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"invoice-activity\"")));
-        var saved = org.mockito.ArgumentCaptor.forClass(DraftForm.class);
+                .andExpect(content().string(Matchers.containsString("id=\"invoice-activity\"")));
+        var saved = ArgumentCaptor.forClass(DraftForm.class);
         mvc.perform(post("/invoices/5").param("action", "save").param("format", "ZUGFERD_EN16931").param("activity", "TEACHING")
                         .param("lines[0].text", "Kurs").param("lines[0].price", "300")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/invoices/5"));
         verify(invoices).saveDraft(eq(5L), saved.capture());
-        assertThat(saved.getValue().getActivity()).isEqualTo(io.github.grigoriev.im.seller.Activity.TEACHING);
+        assertThat(saved.getValue().getActivity()).isEqualTo(Activity.TEACHING);
     }
 
     @Test
@@ -1209,7 +1252,7 @@ class SecurityWebTest {
         when(invoices.find(5)).thenReturn(Optional.of(draft));
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
         when(invoices.defaultCategory()).thenReturn(TaxCategory.KLEINUNTERNEHMER);
-        var saved = org.mockito.ArgumentCaptor.forClass(DraftForm.class);
+        var saved = ArgumentCaptor.forClass(DraftForm.class);
 
         mvc.perform(post("/invoices/5").param("action", "save").param("format", "ZUGFERD_EN16931")
                         .param("lines[0].text", "Lesung").param("lines[0].price", "400")
@@ -1231,7 +1274,7 @@ class SecurityWebTest {
         assertThat(saved.getAllValues().get(0).getLines()).hasSize(1);
         assertThat(saved.getAllValues().get(1).getLines()).hasSize(2);
         assertThat(saved.getAllValues().get(1).getLines().get(1).getCategory()).isEqualTo(TaxCategory.KLEINUNTERNEHMER);
-        assertThat(saved.getAllValues().get(2).getLines()).extracting(io.github.grigoriev.im.invoice.LineForm::getText)
+        assertThat(saved.getAllValues().get(2).getLines()).extracting(LineForm::getText)
                 .containsExactly("Reise");
         assertThat(saved.getAllValues().get(3).getLines()).hasSize(1);
         assertThat(saved.getAllValues().get(4).getLines()).hasSize(1);
@@ -1246,20 +1289,20 @@ class SecurityWebTest {
         mvc.perform(post("/invoices/5").param("action", "save").param("lines[0].text", "Lesung")
                         .param("lines[0].price", "vierhundert").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Position 1: Der Preis ist keine Zahl.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"vierhundert\"")));
+                .andExpect(content().string(Matchers.containsString("Position 1: Der Preis ist keine Zahl.")))
+                .andExpect(content().string(Matchers.containsString("value=\"vierhundert\"")));
         mvc.perform(post("/invoices/5").param("issueDate", "kein-datum").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte gültige Daten eingeben")));
+                .andExpect(content().string(Matchers.containsString("Bitte gültige Daten eingeben")));
     }
 
     @Test
     void showsThePreviewOfACompleteDraftOnly() throws Exception {
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
-        var document = io.github.grigoriev.im.einvoice.SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        var document = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
         when(invoices.find(5)).thenReturn(Optional.of(draft));
         when(invoices.document(draft)).thenReturn(Optional.of(document));
-        when(pdf.render(document)).thenReturn("%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+        when(pdf.render(document)).thenReturn("%PDF-1.7".getBytes(StandardCharsets.US_ASCII));
         mvc.perform(get("/invoices/5/preview").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().string("Content-Disposition", "inline; filename=\"Rechnungsentwurf.pdf\""))
@@ -1270,7 +1313,7 @@ class SecurityWebTest {
                 .andExpect(flash().attribute("error", "Die Vorschau braucht einen vollständigen Entwurf.")).andReturn();
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
         mvc.perform(get("/invoices/5").flashAttrs(refused.getFlashMap()).with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Die Vorschau braucht einen vollständigen Entwurf.")));
+                .andExpect(content().string(Matchers.containsString("Die Vorschau braucht einen vollständigen Entwurf.")));
         when(invoices.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/invoices/9/preview").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
     }
@@ -1288,14 +1331,14 @@ class SecurityWebTest {
 
     @Test
     void downloadsTheDocumentsOfAnIssuedInvoice() throws Exception {
-        when(documents.find(6, io.github.grigoriev.im.invoice.DocumentKind.PDF)).thenReturn(Optional.of(
-                new io.github.grigoriev.im.invoice.StoredDocument(1L, 6L, io.github.grigoriev.im.invoice.DocumentKind.PDF,
-                        "Rechnung_2027-10.pdf", "%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII), "ab", 8,
-                        java.time.Instant.EPOCH)));
-        when(documents.find(6, io.github.grigoriev.im.invoice.DocumentKind.XML)).thenReturn(Optional.of(
-                new io.github.grigoriev.im.invoice.StoredDocument(2L, 6L, io.github.grigoriev.im.invoice.DocumentKind.XML,
-                        "Rechnung_2027-10.xml", "<x/>".getBytes(java.nio.charset.StandardCharsets.US_ASCII), "cd", 4,
-                        java.time.Instant.EPOCH)));
+        when(documents.find(6, DocumentKind.PDF)).thenReturn(Optional.of(
+                new StoredDocument(1L, 6L, DocumentKind.PDF,
+                        "Rechnung_2027-10.pdf", "%PDF-1.7".getBytes(StandardCharsets.US_ASCII), "ab", 8,
+                        Instant.EPOCH)));
+        when(documents.find(6, DocumentKind.XML)).thenReturn(Optional.of(
+                new StoredDocument(2L, 6L, DocumentKind.XML,
+                        "Rechnung_2027-10.xml", "<x/>".getBytes(StandardCharsets.US_ASCII), "cd", 4,
+                        Instant.EPOCH)));
         mvc.perform(get("/invoices/6/documents/pdf").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnung_2027-10.pdf\""))
@@ -1304,7 +1347,7 @@ class SecurityWebTest {
                 .andExpect(header().string("Content-Type", "application/xml"))
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnung_2027-10.xml\""))
                 .andExpect(content().string("<x/>"));
-        when(documents.find(5, io.github.grigoriev.im.invoice.DocumentKind.PDF)).thenReturn(Optional.empty());
+        when(documents.find(5, DocumentKind.PDF)).thenReturn(Optional.empty());
         mvc.perform(get("/invoices/5/documents/pdf").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(get("/invoices/6/documents/zip").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
 
@@ -1329,14 +1372,14 @@ class SecurityWebTest {
         when(customers.find(4)).thenReturn(Optional.of(CustomerTestData.vhs().withId(4L)));
         when(templates.list(4)).thenReturn(List.of());
         mvc.perform(get("/customers/4").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Vorlage.")));
+                .andExpect(content().string(Matchers.containsString("Noch keine Vorlage.")));
         when(templates.list(4)).thenReturn(List.of(template()));
         mvc.perform(get("/customers/4").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Lesung mit Gespräch")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"templateId\" value=\"7\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung erstellen")));
+                .andExpect(content().string(Matchers.containsString("Lesung mit Gespräch")))
+                .andExpect(content().string(Matchers.containsString("name=\"templateId\" value=\"7\"")))
+                .andExpect(content().string(Matchers.containsString("Rechnung erstellen")));
         mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Neue Vorlage"))));
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Neue Vorlage"))));
 
         when(invoices.createDraft(4L, 7L)).thenReturn(invoice(5, InvoiceStatus.DRAFT));
         mvc.perform(post("/invoices").param("customerId", "4").param("templateId", "7")
@@ -1356,18 +1399,18 @@ class SecurityWebTest {
         when(templates.find(4, 7)).thenReturn(Optional.of(template()));
         when(customers.find(4)).thenReturn(Optional.of(CustomerTestData.vhs().withId(4L)));
         mvc.perform(get("/customers/4/templates/7").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Lesung mit Gespr&auml;ch\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("{Leistungszeitraum}")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Volkshochschule Musterstadt")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"400,00\"")));
+                .andExpect(content().string(Matchers.containsString("value=\"Lesung mit Gespr&auml;ch\"")))
+                .andExpect(content().string(Matchers.containsString("{Leistungszeitraum}")))
+                .andExpect(content().string(Matchers.containsString("Volkshochschule Musterstadt")))
+                .andExpect(content().string(Matchers.containsString("value=\"400,00\"")));
         when(customers.find(4)).thenReturn(Optional.empty());
         mvc.perform(get("/customers/4/templates/7").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("← –")));
+                .andExpect(content().string(Matchers.containsString("← –")));
         when(templates.find(4, 8)).thenReturn(Optional.empty());
         mvc.perform(get("/customers/4/templates/8").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
 
         when(invoices.defaultCategory()).thenReturn(TaxCategory.KLEINUNTERNEHMER);
-        var saved = org.mockito.ArgumentCaptor.forClass(TemplateForm.class);
+        var saved = ArgumentCaptor.forClass(TemplateForm.class);
         mvc.perform(post("/customers/4/templates/7").param("action", "save").param("name", "Lesung")
                         .param("lines[0].text", "Lesung").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/customers/4/templates/7")).andExpect(flash().attribute("success", "Vorlage gespeichert."));
@@ -1383,7 +1426,7 @@ class SecurityWebTest {
         verify(templates, times(5)).save(eq(4L), eq(7L), saved.capture());
         assertThat(saved.getAllValues().get(1).getLines()).hasSize(2);
         assertThat(saved.getAllValues().get(1).getLines().get(1).getCategory()).isEqualTo(TaxCategory.KLEINUNTERNEHMER);
-        assertThat(saved.getAllValues().get(2).getLines()).extracting(io.github.grigoriev.im.invoice.LineForm::getText)
+        assertThat(saved.getAllValues().get(2).getLines()).extracting(LineForm::getText)
                 .containsExactly("Reise");
         assertThat(saved.getAllValues().get(3).getLines()).hasSize(1);
         assertThat(saved.getAllValues().get(4).getLines()).hasSize(1);
@@ -1392,14 +1435,14 @@ class SecurityWebTest {
         mvc.perform(post("/customers/4/templates/7").param("action", "save").param("name", "")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte der Vorlage einen Namen geben.")));
+                .andExpect(content().string(Matchers.containsString("Bitte der Vorlage einen Namen geben.")));
         mvc.perform(post("/customers/4/templates/8").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isNotFound());
         mvc.perform(post("/customers/4/templates/7").param("action", "add-line").param("paymentDays", "")
                         .param("lines[0].text", "Lesung").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte gültige Daten eingeben")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Lesung\"")));
+                .andExpect(content().string(Matchers.containsString("Bitte gültige Daten eingeben")))
+                .andExpect(content().string(Matchers.containsString("value=\"Lesung\"")));
 
         when(templates.delete(4, 7)).thenReturn(template());
         mvc.perform(post("/customers/4/templates/7/delete").with(user("elena").roles("USER")).with(csrf()))

@@ -16,6 +16,7 @@ import io.github.grigoriev.im.invoice.TemplateLine;
 import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -67,7 +68,7 @@ class TemplateIT {
         jdbc.update("UPDATE invoice SET tax_note = ? WHERE id = ?", full, longDraft);
 
         String migration = new String(getClass().getResourceAsStream("/db/migration/V24__tax_note_wording.sql").readAllBytes(),
-                java.nio.charset.StandardCharsets.UTF_8);
+                StandardCharsets.UTF_8);
         for (String statement : migration.replaceAll("(?m)^--.*$", "").split(";")) {
             if (!statement.isBlank()) {
                 jdbc.update(statement);

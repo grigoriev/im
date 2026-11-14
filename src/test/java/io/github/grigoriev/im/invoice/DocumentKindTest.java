@@ -3,6 +3,7 @@ package io.github.grigoriev.im.invoice;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 class DocumentKindTest {
@@ -31,7 +32,7 @@ class DocumentKindTest {
     void comparesStoredDocumentsByIdentityAndHash() {
         StoredDocument one = new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH);
         StoredDocument same = new StoredDocument(1L, 5L, DocumentKind.PDF, "b.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH);
-        assertThat(one.hashCode()).isEqualTo(java.util.Objects.hash(1L, 5L, DocumentKind.PDF, "ab"));
+        assertThat(one.hashCode()).isEqualTo(Objects.hash(1L, 5L, DocumentKind.PDF, "ab"));
         assertThat(one).isEqualTo(same).hasSameHashCodeAs(same).isNotEqualTo("a.pdf")
                 .isNotEqualTo(new StoredDocument(2L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))
                 .isNotEqualTo(new StoredDocument(1L, 6L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))

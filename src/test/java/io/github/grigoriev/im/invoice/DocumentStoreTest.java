@@ -12,6 +12,7 @@ import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -33,7 +34,7 @@ class DocumentStoreTest {
     void hashesWithSha256() {
         assertThat(DocumentStore.sha256("abc".getBytes(StandardCharsets.US_ASCII))).isEqualTo(ABC_SHA256);
         assertThatThrownBy(() -> DocumentStore.digest("SHA-0", new byte[0])).isInstanceOf(IllegalStateException.class)
-                .hasMessage("Java lacks SHA-0").hasCauseInstanceOf(java.security.NoSuchAlgorithmException.class);
+                .hasMessage("Java lacks SHA-0").hasCauseInstanceOf(NoSuchAlgorithmException.class);
     }
 
     @Test

@@ -20,6 +20,9 @@ import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.InvoiceReference;
+import io.github.grigoriev.im.einvoice.ItSamples;
+import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
@@ -39,6 +42,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 class InvoiceServiceTest {
 
@@ -571,7 +576,7 @@ class InvoiceServiceTest {
     @Test
     void reportsAConcurrentSaveAsAFormProblem() {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
-        doThrow(new org.springframework.dao.OptimisticLockingFailureException("race")).when(repository)
+        doThrow(new OptimisticLockingFailureException("race")).when(repository)
                 .save(any());
         DraftForm form = form();
         InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
@@ -656,7 +661,7 @@ class InvoiceServiceTest {
         verify(repository, never()).save(any());
 
         when(repository.cancellationId(7L)).thenReturn(Optional.empty());
-        doThrow(new org.springframework.dao.DuplicateKeyException("race")).when(repository)
+        doThrow(new DuplicateKeyException("race")).when(repository)
                 .linkCancels(9L, 7L);
         assertThatThrownBy(() -> service.createCancellation(7)).hasMessage(InvoiceService.CANCEL_TWICE);
         verify(audit, never()).add(anyLong(), any(), anyString());
@@ -678,14 +683,14 @@ class InvoiceServiceTest {
 
     @Test
     void aStornorechnungNamesItsInvoiceAndKeepsItsLinesAndFormat() {
-        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.restore("{}")).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,
                 null, null, null);
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
         InvoiceDocument document = service.document(storno, "2027-11").orElseThrow();
-        assertThat(document.cancels()).isEqualTo(new io.github.grigoriev.im.einvoice.InvoiceReference("2027-07",
+        assertThat(document.cancels()).isEqualTo(new InvoiceReference("2027-07",
                 TODAY.minusDays(10)));
 
         when(repository.findById(5L)).thenReturn(Optional.of(storno));
@@ -712,14 +717,14 @@ class InvoiceServiceTest {
                         lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null, null);
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
-        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.restore("{}")).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
         assertThat(service.problems(storno)).as("an invoice from before the second tax number may mix").isEmpty();
         assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice")
                 .isEqualTo("143/123/45678");
-        InvoiceDocument withVatId = io.github.grigoriev.im.einvoice.ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
+        InvoiceDocument withVatId = ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
         when(documents.restore("{}")).thenReturn(withVatId);
         assertThat(service.document(storno).orElseThrow().seller()).as("both tax IDs of the cancelled invoice")
-                .extracting(io.github.grigoriev.im.einvoice.Party::taxNumber, io.github.grigoriev.im.einvoice.Party::vatId)
+                .extracting(Party::taxNumber, Party::vatId)
                 .containsExactly(withVatId.seller().taxNumber(), withVatId.seller().vatId());
     }
 
@@ -731,7 +736,7 @@ class InvoiceServiceTest {
         SellerProfile regular = SellerTestData.profile();
         regular = new SellerProfile(regular.name(), regular.street(), regular.postcode(), regular.city(),
                 regular.countryCode(), regular.contactName(), regular.email(), regular.phone(), regular.taxNumber(),
-                "DE123456789", regular.iban(), regular.bic(), io.github.grigoriev.im.seller.TaxStatus.REGULAR, null, null,
+                "DE123456789", regular.iban(), regular.bic(), TaxStatus.REGULAR, null, null,
                 null, null, null);
         when(sellers.find()).thenReturn(Optional.of(regular));
         assertThat(service.problems(storno)).as("a new §19 draft after the change")

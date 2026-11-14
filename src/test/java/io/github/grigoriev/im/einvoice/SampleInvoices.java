@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.einvoice;
 
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import org.thymeleaf.spring6.SpringTemplateEngine;
@@ -142,6 +143,6 @@ public final class SampleInvoices {
     static EInvoiceService service() {
         EInvoiceWriter writer = new EInvoiceWriter(new MustangInvoiceMapper());
         return new EInvoiceService(new InvoicePdfRenderer(templates()), writer, new ZugferdValidator(),
-                new XRechnungValidator(java.nio.file.Path.of("target/kosit-xrechnung")));
+                new XRechnungValidator(Path.of("target/kosit-xrechnung")));
     }
 }

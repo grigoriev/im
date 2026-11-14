@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
@@ -47,7 +48,7 @@ class EInvoiceWriterTest {
         InvoiceDocument document = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
         byte[] notAPdf = "not a pdf".getBytes(StandardCharsets.UTF_8);
         assertThatThrownBy(() -> writer.zugferd(document, notAPdf)).isInstanceOf(EInvoiceException.class)
-                .hasMessageContaining("invoice 2027-10").hasCauseInstanceOf(java.io.IOException.class);
+                .hasMessageContaining("invoice 2027-10").hasCauseInstanceOf(IOException.class);
     }
 
     @Test

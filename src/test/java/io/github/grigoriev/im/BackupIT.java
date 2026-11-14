@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import com.zaxxer.hikari.HikariDataSource;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.backup.BackupException;
 import io.github.grigoriev.im.backup.BackupService;
@@ -189,7 +190,7 @@ class BackupIT {
 
     /** The same server as the test database, with the database im_copy. */
     private DataSource copySource() {
-        com.zaxxer.hikari.HikariDataSource main = (com.zaxxer.hikari.HikariDataSource) dataSource;
+        HikariDataSource main = (HikariDataSource) dataSource;
         DriverManagerDataSource copy = new DriverManagerDataSource(main.getJdbcUrl().replaceFirst("/[^/?]+(\\?|$)", "/im_copy$1"));
         copy.setUsername(main.getUsername());
         copy.setPassword(main.getPassword());

@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
@@ -121,7 +123,7 @@ class UserServiceTest {
         when(repository.findByUsername("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
         when(encoder.matches("alt-passwort", "{noop}x")).thenReturn(true);
         service.changePassword("elena", "alt-passwort", PASSWORD);
-        verify(repository).save(org.mockito.ArgumentMatchers.argThat(user -> user.passwordHash().equals("{enc}" + PASSWORD)));
+        verify(repository).save(ArgumentMatchers.argThat(user -> user.passwordHash().equals("{enc}" + PASSWORD)));
         verify(rememberMe).removeUserTokens("elena");
         verify(audit).add("elena", AuditAction.PASSWORD_CHANGED, "");
     }
@@ -140,7 +142,7 @@ class UserServiceTest {
         assertThatThrownBy(() -> service.changePassword("niemand", "x", PASSWORD)).isInstanceOf(UserException.class)
                 .hasMessage("Diesen Benutzer gibt es nicht.");
         verify(repository, never()).save(any());
-        org.mockito.Mockito.verifyNoInteractions(audit);
+        Mockito.verifyNoInteractions(audit);
     }
 
     @Test

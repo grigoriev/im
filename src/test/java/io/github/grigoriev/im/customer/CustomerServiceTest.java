@@ -14,11 +14,12 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import java.util.List;
-import org.springframework.dao.DataIntegrityViolationException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mockito;
+import org.springframework.dao.DataIntegrityViolationException;
 
 class CustomerServiceTest {
 
@@ -92,7 +93,7 @@ class CustomerServiceTest {
                 .when(repository).deleteById(4L);
         assertThatThrownBy(() -> service.delete(4)).isInstanceOf(CustomerException.class)
                 .hasMessage("Der Kunde hat Rechnungen und bleibt erhalten.");
-        org.mockito.Mockito.verifyNoInteractions(audit);
+        Mockito.verifyNoInteractions(audit);
     }
 
     @ParameterizedTest
@@ -110,7 +111,7 @@ class CustomerServiceTest {
         CustomerException e = catchThrowableOfType(CustomerException.class, () -> service.create(wrong));
         assertThat(e.problems()).containsExactly(problem);
         verify(repository, never()).save(any());
-        org.mockito.Mockito.verifyNoInteractions(audit);
+        Mockito.verifyNoInteractions(audit);
     }
 
     @ParameterizedTest

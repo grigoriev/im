@@ -10,8 +10,8 @@ import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.backup.BackupException;
 import io.github.grigoriev.im.backup.BackupRunService;
-import io.github.grigoriev.im.backup.BackupStatus;
 import io.github.grigoriev.im.backup.BackupService;
+import io.github.grigoriev.im.backup.BackupStatus;
 import io.github.grigoriev.im.config.SessionEpoch;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +19,8 @@ import java.io.InputStream;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
@@ -38,8 +40,8 @@ class BackupControllerTest {
             Clock.fixed(Instant.parse("2027-03-18T08:00:00Z"), ZoneOffset.UTC));
     private final MultipartFile file = new MockMultipartFile("file", "export.zip", "application/zip", new byte[] {1});
 
-    private static java.util.Map<String, Object> flashOf(RedirectAttributesModelMap flash) {
-        return new java.util.HashMap<>(flash.getFlashAttributes());
+    private static Map<String, Object> flashOf(RedirectAttributesModelMap flash) {
+        return new HashMap<>(flash.getFlashAttributes());
     }
 
     @Test

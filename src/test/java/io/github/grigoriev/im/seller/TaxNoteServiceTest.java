@@ -16,6 +16,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
@@ -28,7 +29,7 @@ class TaxNoteServiceTest {
     private final AuditService audit = mock(AuditService.class);
     private final TaxNoteService service = new TaxNoteService(repository, jdbc, audit);
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void statement() {
         when(jdbc.sql(anyString())).thenReturn(statement);
         when(statement.param(anyString(), any())).thenReturn(statement);

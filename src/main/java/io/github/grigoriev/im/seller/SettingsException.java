@@ -1,5 +1,7 @@
 package io.github.grigoriev.im.seller;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +32,7 @@ public class SettingsException extends RuntimeException {
     public SettingsException(Map<String, String> fields) {
         super(String.join(" ", fields.values()));
         this.problems = List.copyOf(fields.values());
-        this.fields = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(fields));
+        this.fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
     }
 
     /**

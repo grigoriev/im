@@ -14,6 +14,7 @@ import static io.github.grigoriev.im.einvoice.TaxCategory.REVERSE_CHARGE_EU;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Date;
@@ -33,7 +34,7 @@ class MustangInvoiceMapperTest {
         return ((Item) invoice.getZFItems()[index]).getProduct();
     }
 
-    private static Date utc(java.time.LocalDate date) {
+    private static Date utc(LocalDate date) {
         return Date.from(date.atStartOfDay(ZoneOffset.UTC).toInstant());
     }
 
