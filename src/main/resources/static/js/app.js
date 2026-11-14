@@ -73,11 +73,15 @@ function enhanceSelect(select) {
       return item;
     }));
   };
-  const activate = (item) => {
+  // The value the select had when the list opened, for Escape.
+  let before = select.selectedIndex;
+  // The active entry is also the value of the select, so a screen reader announces it as the arrows move.
+  const activate = (item, follow = true) => {
     options.querySelectorAll('[data-active]').forEach((other) => other.removeAttribute('data-active'));
     if (!item) return;
     item.dataset.active = '';
     item.scrollIntoView({ block: 'nearest' });
+    if (follow && !list.hidden && item.getAttribute('aria-disabled') !== 'true') select.selectedIndex = Number(item.dataset.index);
   };
   const filter = () => {
     const term = search.value.trim().toLocaleLowerCase('de');
@@ -87,8 +91,12 @@ function enhanceSelect(select) {
     activate(items()[0]);
   };
   const open = (show) => {
-    if (show) render();
+    if (show) {
+      before = select.selectedIndex;
+      render();
+    }
     list.hidden = !show;
+    select.setAttribute('aria-expanded', String(show));
     if (!show) return;
     if (search) {
       search.value = '';
@@ -98,14 +106,17 @@ function enhanceSelect(select) {
     activate(options.querySelector('[aria-selected="true"]') ?? items()[0]);
   };
   const choose = (item) => {
-    if (item && item.getAttribute('aria-disabled') !== 'true') {
-      const index = Number(item.dataset.index);
-      if (select.selectedIndex !== index) {
-        select.selectedIndex = index;
-        select.dispatchEvent(new Event('input', { bubbles: true }));
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+    if (item && item.getAttribute('aria-disabled') !== 'true') select.selectedIndex = Number(item.dataset.index);
+    else select.selectedIndex = before;
+    if (select.selectedIndex !== before) {
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+      select.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    open(false);
+    select.focus();
+  };
+  const cancel = () => {
+    select.selectedIndex = before;
     open(false);
     select.focus();
   };
@@ -130,10 +141,9 @@ function enhanceSelect(select) {
       choose(options.querySelector('[data-active]'));
     } else if (event.key === 'Escape') {
       event.preventDefault();
-      open(false);
-      select.focus();
+      cancel();
     } else if (event.key === 'Tab') {
-      open(false);
+      choose(options.querySelector('[data-active]'));
     }
   };
 
@@ -149,10 +159,11 @@ function enhanceSelect(select) {
   options.addEventListener('click', (event) => choose(event.target.closest('.listbox-option')));
   options.addEventListener('mousemove', (event) => {
     const item = event.target.closest('.listbox-option');
-    if (item && item.dataset.active === undefined) activate(item);
+    if (item && item.dataset.active === undefined) activate(item, false);
   });
+  select.setAttribute('aria-expanded', 'false');
   document.addEventListener('mousedown', (event) => {
-    if (!box.contains(event.target)) open(false);
+    if (!list.hidden && !box.contains(event.target)) cancel();
   });
 }
 
