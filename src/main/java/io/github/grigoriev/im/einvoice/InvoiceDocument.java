@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
  * @param taxNote tax note, {@code null} for the default notes of the categories used
  * @param format e-invoice format
  * @param lines invoice lines, at least one
+ * @param cancels the invoice this Stornorechnung cancels, {@code null} for an invoice; a Stornorechnung is a credit note
+ *     (type 381) with the lines of the cancelled invoice
  */
 public record InvoiceDocument(
         String number,
@@ -46,7 +48,8 @@ public record InvoiceDocument(
         String closing,
         String taxNote,
         InvoiceFormat format,
-        List<InvoiceLine> lines) {
+        List<InvoiceLine> lines,
+        InvoiceReference cancels) {
 
     /** Checks the mandatory fields and the EN 16931 rules on the categories used. */
     public InvoiceDocument {
@@ -80,6 +83,42 @@ public record InvoiceDocument(
         if (format.followsXRechnung() && (buyerReference == null || buyerReference.isBlank())) {
             throw new IllegalArgumentException("XRechnung needs a buyer reference (BR-DE-15)");
         }
+    }
+
+    /**
+     * Creates an invoice that cancels nothing.
+     *
+     * @param number invoice number
+     * @param issueDate invoice date
+     * @param serviceFrom first day of the service period
+     * @param serviceTo last day of the service period
+     * @param dueDate payment due date
+     * @param seller seller
+     * @param buyer buyer
+     * @param buyerReference buyer reference (BT-10), may be {@code null}
+     * @param iban IBAN of the seller
+     * @param bic BIC of the seller
+     * @param intro text above the lines
+     * @param closing text below the lines
+     * @param taxNote tax note, {@code null} for the default notes of the categories used
+     * @param format e-invoice format
+     * @param lines invoice lines, at least one
+     */
+    @SuppressWarnings("java:S107") // the fields of an invoice
+    public InvoiceDocument(String number, LocalDate issueDate, LocalDate serviceFrom, LocalDate serviceTo,
+            LocalDate dueDate, Party seller, Party buyer, String buyerReference, String iban, String bic, String intro,
+            String closing, String taxNote, InvoiceFormat format, List<InvoiceLine> lines) {
+        this(number, issueDate, serviceFrom, serviceTo, dueDate, seller, buyer, buyerReference, iban, bic, intro, closing,
+                taxNote, format, lines, null);
+    }
+
+    /**
+     * Tells whether this is a Stornorechnung.
+     *
+     * @return {@code true} if it cancels an invoice
+     */
+    public boolean cancellation() {
+        return cancels != null;
     }
 
     private static Set<TaxCategory> categoriesOf(List<InvoiceLine> lines) {

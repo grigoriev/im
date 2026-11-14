@@ -63,6 +63,7 @@ class PdfVisualTest {
                                 TaxCategory.KLEINUNTERNEHMER))),
                 Arguments.of("lump-sums", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931)),
                 Arguments.of("sale-19-and-7", SampleInvoices.sale(InvoiceFormat.ZUGFERD_EN16931)),
+                Arguments.of("cancellation", SampleInvoices.cancellation(InvoiceFormat.ZUGFERD_EN16931)),
                 Arguments.of("page-break", invoice(SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
                         many.toArray(InvoiceLine[]::new))),
                 Arguments.of("mixed-categories", invoice(SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,

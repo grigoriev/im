@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.mustangproject.BankDetails;
 import org.mustangproject.Contact;
 import org.mustangproject.Invoice;
+import org.mustangproject.ReferencedDocument;
 import org.mustangproject.Item;
 import org.mustangproject.Product;
 import org.mustangproject.TradeParty;
@@ -56,6 +57,13 @@ public class MustangInvoiceMapper {
                 .setPaymentTermDescription("Zahlbar bis " + document.dueDate());
         if (document.buyerReference() != null) {
             invoice.setReferenceNumber(document.buyerReference());
+        }
+        if (document.cancellation()) {
+            // A Stornorechnung is a credit note (381) that names the invoice it cancels (BT-25, BT-26).
+            invoice.setCreditNote()
+                    .addInvoiceReferencedDocument(new ReferencedDocument(document.cancels().number(),
+                            date(document.cancels().issueDate())))
+                    .setPaymentTermDescription("Storno der Rechnung " + document.cancels().number());
         }
         String exemptReason = exemptReason(document);
         for (InvoiceLine line : document.lines()) {

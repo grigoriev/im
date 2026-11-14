@@ -76,4 +76,24 @@ class DocumentStoreTest {
         assertThat(restored).isEqualTo(document);
         assertThat(restored.total()).isEqualByComparingTo("146.33");
     }
+
+    @Test
+    void restoresAStornorechnungWithTheInvoiceItCancels() {
+        InvoiceDocument document = SampleInvoices.cancellation(InvoiceFormat.XRECHNUNG);
+        String json = store.snapshot(document);
+        assertThat(json).contains("\"cancels\":{\"number\":\"2027-07\",\"issueDate\":\"2027-03-08\"}")
+                .as("no derived values").doesNotContain("\"cancellation\"").doesNotContain("\"total\"");
+        assertThat(store.restore(json)).isEqualTo(document);
+    }
+
+    @Test
+    void restoresASnapshotFromBeforeTheStornorechnung() {
+        String json = store.snapshot(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(json).contains("\"cancels\":null");
+        String older = json.replace(",\"cancels\":null", "");
+        assertThat(older).doesNotContain("cancels");
+        InvoiceDocument restored = store.restore(older);
+        assertThat(restored.cancels()).isNull();
+        assertThat(restored).isEqualTo(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+    }
 }

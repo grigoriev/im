@@ -35,6 +35,19 @@ class InvoicePdfRendererTest {
     }
 
     @Test
+    void printsAStornorechnungWithItsInvoice() throws IOException {
+        String text = text(renderer.render(SampleInvoices.cancellation(InvoiceFormat.ZUGFERD_EN16931)));
+        assertThat(text)
+                .contains("Stornorechnung")
+                .contains("Storno zu 2027-07 vom 08.03.2027")
+                .contains("Diese Stornorechnung hebt die Rechnung 2027-07 vom 08.03.2027 vollständig auf.")
+                .contains("480,00\u00a0€")
+                .doesNotContain("Bitte überweisen");
+        assertThat(text(renderer.render(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931))))
+                .doesNotContain("Storno");
+    }
+
+    @Test
     void printsTheInvoiceContent() throws IOException {
         String text = text(renderer.render(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931)));
         assertThat(text)
