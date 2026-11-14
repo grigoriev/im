@@ -10,7 +10,6 @@ import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -99,25 +98,12 @@ public class InvoiceService {
     }
 
     /**
-     * Creates a draft for a customer: today's dates, the customer's format and buyer reference, one empty line
-     * and the tax note of the seller's tax status.
+     * Creates a draft for a customer, today's dates and the customer's buyer reference. Without a template it takes the
+     * customer's format, one empty line and the tax note of the seller's tax status. With a template it copies the
+     * template's format, texts, payment days and lines; a later change of the template leaves the draft as it is.
      *
      * @param customerId the customer
-     * @return the saved draft
-     * @throws InvoiceException without a seller profile or customer
-     */
-    @Transactional
-    public Invoice createDraft(long customerId) {
-        return createDraft(customerId, null);
-    }
-
-    /**
-     * Creates a draft for a customer from one of the customer's templates: the template's format, texts, payment days
-     * and lines, today's dates and the customer's buyer reference. A later change of the template leaves the draft as
-     * it is.
-     *
-     * @param customerId the customer
-     * @param templateId the template, {@code null} for the defaults of {@link #createDraft(long)}
+     * @param templateId the template, {@code null} for none
      * @return the saved draft
      * @throws InvoiceException without a seller profile, customer or template of this customer
      */

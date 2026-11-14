@@ -23,8 +23,12 @@ public class TemplateService {
     static final int MAX_BODY = 4000;
     static final String DEFAULT_NAME = "Neue Vorlage";
     static final String DEFAULT_SUBJECT = "Rechnung {Rechnungsnummer}";
-    static final String DEFAULT_BODY = "Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie die Rechnung "
-            + "{Rechnungsnummer} über die Leistung im Zeitraum {Leistungszeitraum}.\n\nMit freundlichen Grüßen";
+    static final String DEFAULT_BODY = """
+            Sehr geehrte Damen und Herren,
+
+            anbei erhalten Sie die Rechnung {Rechnungsnummer} über die Leistung im Zeitraum {Leistungszeitraum}.
+
+            Mit freundlichen Grüßen""";
     static final String CHANGED_ELSEWHERE = "Die Vorlage wurde inzwischen in einem anderen Fenster geändert. "
             + "Bitte die Seite neu laden.";
 

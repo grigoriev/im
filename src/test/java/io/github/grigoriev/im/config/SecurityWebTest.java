@@ -735,6 +735,11 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte der Vorlage einen Namen geben.")));
         mvc.perform(post("/kunden/4/vorlagen/8").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isNotFound());
+        mvc.perform(post("/kunden/4/vorlagen/7").param("aktion", "position").param("paymentDays", "")
+                        .param("lines[0].text", "Lesung").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte gültige Daten eingeben")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Lesung\"")));
 
         when(templates.delete(4, 7)).thenReturn(template());
         mvc.perform(post("/kunden/4/vorlagen/7/loeschen").with(user("elena").roles("USER")).with(csrf()))

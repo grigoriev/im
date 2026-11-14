@@ -61,7 +61,7 @@ class InvoiceIT {
 
     @Test
     void storesADraftWithItsLinesInOrder() {
-        Invoice draft = invoices.createDraft(customer.id());
+        Invoice draft = invoices.createDraft(customer.id(), null);
         assertThat(invoices.find(draft.id()).orElseThrow().lines()).containsExactly(DraftLine.empty(TaxCategory.KLEINUNTERNEHMER));
 
         DraftForm form = DraftForm.of(draft);
@@ -91,7 +91,7 @@ class InvoiceIT {
 
     @Test
     void aCustomerWithInvoicesStays() {
-        Invoice draft = invoices.createDraft(customer.id());
+        Invoice draft = invoices.createDraft(customer.id(), null);
         long customerId = customer.id();
         assertThatThrownBy(() -> customers.delete(customerId)).isInstanceOf(CustomerException.class)
                 .hasMessage("Der Kunde hat Rechnungen und bleibt erhalten.");
@@ -103,7 +103,7 @@ class InvoiceIT {
 
     @Test
     void aDraftHasNoNumberAndAnIssuedInvoiceHasOne() {
-        Invoice draft = invoices.createDraft(customer.id());
+        Invoice draft = invoices.createDraft(customer.id(), null);
         long id = draft.id();
         assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET number = '2027-01' WHERE id = ?", id))
                 .isInstanceOf(DataIntegrityViolationException.class);

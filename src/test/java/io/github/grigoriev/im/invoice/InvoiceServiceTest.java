@@ -100,7 +100,7 @@ class InvoiceServiceTest {
 
     @Test
     void createsADraftFromTheCustomerAndTheTaxStatus() {
-        Invoice created = service.createDraft(2);
+        Invoice created = service.createDraft(2, null);
         assertThat(created.status()).isEqualTo(InvoiceStatus.DRAFT);
         assertThat(created.customerId()).isEqualTo(2L);
         assertThat(created.number()).isNull();
@@ -146,7 +146,7 @@ class InvoiceServiceTest {
     @Test
     void takesFormatAndBuyerReferenceFromTheCustomer() {
         when(customers.find(3)).thenReturn(Optional.of(CustomerTestData.vhs().withId(3L)));
-        Invoice created = service.createDraft(3);
+        Invoice created = service.createDraft(3, null);
         assertThat(created.format()).isEqualTo(InvoiceFormat.XRECHNUNG);
         assertThat(created.buyerReference()).isEqualTo("09162000-VHS01-42");
     }
@@ -162,10 +162,10 @@ class InvoiceServiceTest {
     @Test
     void needsTheProfileAndTheCustomer() {
         when(customers.find(9)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.createDraft(9)).isInstanceOf(InvoiceException.class)
+        assertThatThrownBy(() -> service.createDraft(9, null)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diesen Kunden gibt es nicht.");
         when(sellers.find()).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.createDraft(2)).isInstanceOf(InvoiceException.class)
+        assertThatThrownBy(() -> service.createDraft(2, null)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Bitte zuerst das Profil in den Einstellungen ausfüllen.");
         verify(repository, never()).save(any());
         verifyNoInteractions(audit);

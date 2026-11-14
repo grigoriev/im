@@ -14,6 +14,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +32,7 @@ public class TemplateController {
     static final String VIEW = "invoice-templates/edit";
 
     private static final String SUCCESS = "success";
+    private static final String CUSTOMER = "redirect:/kunden/";
 
     private final TemplateService templates;
     private final CustomerService customers;
@@ -59,7 +61,7 @@ public class TemplateController {
     @PostMapping
     public String create(@PathVariable long customerId, RedirectAttributes flash) {
         try {
-            return "redirect:/kunden/" + customerId + "/vorlagen/" + templates.create(customerId).id();
+            return CUSTOMER + customerId + "/vorlagen/" + templates.create(customerId).id();
         } catch (InvoiceException e) {
             flash.addFlashAttribute("error", e.getMessage());
             return "redirect:/kunden";
@@ -86,6 +88,7 @@ public class TemplateController {
      * @param customerId the customer
      * @param id the template
      * @param form the entered values
+     * @param binding problems of the binding, for example an empty payment term
      * @param aktion "speichern" or "position"
      * @param entfernen the index of the line to remove, if any
      * @param model the page model
@@ -94,9 +97,13 @@ public class TemplateController {
      */
     @PostMapping("/{id}")
     public String save(@PathVariable long customerId, @PathVariable long id, @ModelAttribute("form") TemplateForm form,
-            @RequestParam(required = false) String aktion, @RequestParam(required = false) Integer entfernen,
-            Model model, RedirectAttributes flash) {
+            BindingResult binding, @RequestParam(required = false) String aktion,
+            @RequestParam(required = false) Integer entfernen, Model model, RedirectAttributes flash) {
         InvoiceTemplate template = template(customerId, id);
+        if (binding.hasErrors()) {
+            model.addAttribute("formProblems", List.of("Bitte gültige Daten eingeben, zum Beispiel ein Zahlungsziel."));
+            return page(model, customerId, template, form);
+        }
         if (entfernen != null && entfernen >= 0 && entfernen < form.getLines().size()) {
             form.getLines().remove(entfernen.intValue());
         }
@@ -114,7 +121,7 @@ public class TemplateController {
         if ("speichern".equals(aktion)) {
             flash.addFlashAttribute(SUCCESS, "Vorlage gespeichert.");
         }
-        return "redirect:/kunden/" + customerId + "/vorlagen/" + id;
+        return CUSTOMER + customerId + "/vorlagen/" + id;
     }
 
     /**
@@ -132,7 +139,7 @@ public class TemplateController {
         } catch (InvoiceException e) {
             flash.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/kunden/" + customerId;
+        return CUSTOMER + customerId;
     }
 
     private InvoiceTemplate template(long customerId, long id) {
