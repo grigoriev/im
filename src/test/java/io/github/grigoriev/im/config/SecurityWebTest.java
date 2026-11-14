@@ -65,6 +65,7 @@ import io.github.grigoriev.im.web.AccountController;
 import io.github.grigoriev.im.web.TemplateController;
 import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.InvoiceRecordsController;
+import io.github.grigoriev.im.web.BaselineController;
 import io.github.grigoriev.im.web.MailTextController;
 import io.github.grigoriev.im.web.IssuedInvoicePage;
 import io.github.grigoriev.im.web.AuditController;
@@ -95,7 +96,7 @@ import org.springframework.test.web.servlet.MockMvc;
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
-        MailTextController.class})
+        MailTextController.class, BaselineController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -168,8 +169,16 @@ class SecurityWebTest {
     @MockitoBean
     private io.github.grigoriev.im.mail.MailService mail;
 
+    @MockitoBean
+    private io.github.grigoriev.im.threshold.ThresholdService threshold;
+
     @org.junit.jupiter.api.BeforeEach
-    void noPayments() {
+    void noRevenueNoPayments() {
+        when(threshold.today()).thenReturn(java.time.LocalDate.of(2027, 3, 18));
+        when(threshold.current()).thenReturn(new io.github.grigoriev.im.threshold.Threshold(2027,
+                new java.math.BigDecimal("18250.00"), true, new java.math.BigDecimal("101000.00"),
+                new java.math.BigDecimal("984.00"), new java.math.BigDecimal("101984.00"),
+                new java.math.BigDecimal("30000.00")));
         when(payments.summary(any())).thenReturn(new io.github.grigoriev.im.invoice.PaymentService.Payments(List.of(),
                 java.math.BigDecimal.ZERO, new java.math.BigDecimal("480.00")));
     }
@@ -769,6 +778,43 @@ class SecurityWebTest {
     }
 
     @Test
+    void showsTheThresholdOnTheStartPage() throws Exception {
+        mvc.perform(get("/").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stand 18.03.2027")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.250,00 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("101.000,00 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("≈ 30.000,00 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("984,00 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("gilt nicht mehr")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Mit dem Vorjahresumsatz")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("im nächsten Jahr nicht mehr")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Nichts überfällig.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"100\"")));
+    }
+
+    @Test
+    void theAdminKeepsTheBaselines() throws Exception {
+        when(threshold.baselines()).thenReturn(java.util.Map.of());
+        mvc.perform(get("/admin/vorjahre").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch kein Vorjahresumsatz erfasst.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("max=\"2026\" value=\"2026\"")));
+        when(threshold.baselines()).thenReturn(java.util.Map.of(2026, new java.math.BigDecimal("18250.00")));
+        mvc.perform(get("/admin/vorjahre").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.250,00 €")));
+        mvc.perform(get("/admin/vorjahre").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/vorjahre").param("year", "2026").param("amount", "18.250,00")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/vorjahre"))
+                .andExpect(flash().attribute("success", "Vorjahresumsatz 2026 gespeichert."));
+        verify(threshold).saveBaseline(2026, "18.250,00");
+        doThrow(new io.github.grigoriev.im.seller.SettingsException(List.of("Ein Vorjahresumsatz gehört zu einem "
+                + "vergangenen Jahr."))).when(threshold).saveBaseline(2027, "1");
+        mvc.perform(post("/admin/vorjahre").param("year", "2027").param("amount", "1")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Ein Vorjahresumsatz gehört zu einem vergangenen Jahr."));
+    }
+
+    @Test
     void filtersTheListByYearStatusAndText() throws Exception {
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
@@ -830,7 +876,11 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("USt 19 % 10,60 €")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("146,33 €")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung ausstellen…")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("über 100.000 €"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"version\" value=\"0\"")));
+        when(threshold.wouldExceed(any())).thenReturn(true);
+        mvc.perform(get("/rechnungen/5").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("über 100.000 €")));
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
         when(invoices.find(6)).thenReturn(Optional.of(issued));
         when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(

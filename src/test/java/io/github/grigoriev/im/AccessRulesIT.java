@@ -85,6 +85,8 @@ class AccessRulesIT {
             Map.entry("GET /admin/steuerhinweise", Access.ADMIN),
             Map.entry("POST /admin/steuerhinweise", Access.ADMIN),
             Map.entry("GET /admin/e-mail", Access.ADMIN),
+            Map.entry("GET /admin/vorjahre", Access.ADMIN),
+            Map.entry("POST /admin/vorjahre", Access.ADMIN),
             Map.entry("POST /admin/e-mail", Access.ADMIN),
             Map.entry("GET /admin/nummernkreis", Access.ADMIN),
             Map.entry("POST /admin/nummernkreis/muster", Access.ADMIN),

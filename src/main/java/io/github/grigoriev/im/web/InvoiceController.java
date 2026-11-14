@@ -15,6 +15,7 @@ import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.StoredDocument;
+import io.github.grigoriev.im.threshold.ThresholdService;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.Comparator;
@@ -82,6 +83,7 @@ public class InvoiceController {
     private final CustomerService customers;
     private final InvoicePdfRenderer pdf;
     private final IssuedInvoicePage issuedPage;
+    private final ThresholdService threshold;
 
     /**
      * Creates the controller.
@@ -92,15 +94,18 @@ public class InvoiceController {
      * @param customers the customers for a new draft
      * @param pdf renders the preview
      * @param issuedPage fills the page of an issued invoice
+     * @param threshold warns when a draft would cross the §19 limit
      */
     public InvoiceController(InvoiceService invoices, IssueService issues, DocumentStore documents,
-            CustomerService customers, InvoicePdfRenderer pdf, IssuedInvoicePage issuedPage) {
+            CustomerService customers, InvoicePdfRenderer pdf, IssuedInvoicePage issuedPage,
+            ThresholdService threshold) {
         this.invoices = invoices;
         this.issues = issues;
         this.documents = documents;
         this.customers = customers;
         this.pdf = pdf;
         this.issuedPage = issuedPage;
+        this.threshold = threshold;
     }
 
     /**
@@ -333,6 +338,7 @@ public class InvoiceController {
         }
         model.addAttribute("form", form);
         model.addAttribute("problems", invoices.problems(invoice));
+        model.addAttribute("overLimit", document.isPresent() && threshold.wouldExceed(document.get()));
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("categories", CATEGORIES);
         model.addAttribute("categoryOrder", TaxCategory.values());

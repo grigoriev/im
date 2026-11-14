@@ -12,6 +12,8 @@
      th:classappend="${active == 'tax-notes'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'tax-notes'}">Steuerhinweise<span class="badge badge-xs badge-ghost">Admin</span></a>
   <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/nummernkreis}" class="tab gap-1.5"
      th:classappend="${active == 'numbers'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'numbers'}">Nummernkreis<span class="badge badge-xs badge-ghost">Admin</span></a>
+  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/vorjahre}" class="tab gap-1.5"
+     th:classappend="${active == 'baseline'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'baseline'}">Vorjahre<span class="badge badge-xs badge-ghost">Admin</span></a>
   <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/e-mail}" class="tab gap-1.5"
      th:classappend="${active == 'mail'} ? 'tab-active' : 'text-base-content/75'" th:attr="aria-selected=${active == 'mail'}">E-Mail<span class="badge badge-xs badge-ghost">Admin</span></a>
   <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/laender}" class="tab gap-1.5"

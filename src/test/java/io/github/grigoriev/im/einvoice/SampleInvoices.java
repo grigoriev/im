@@ -57,6 +57,25 @@ public final class SampleInvoices {
                 lump("Reisekosten", "80.00", TaxCategory.KLEINUNTERNEHMER));
     }
 
+    /** Teaching under §4 Nr. 21 only: 24 × 41,00 €, total 984,00 €. */
+    public static InvoiceDocument school(InvoiceFormat format) {
+        return invoice(SCHOOL, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                line("Unterricht Deutsch B2, je 45 Min.", "24", "41.00", TaxCategory.EXEMPT_4_21));
+    }
+
+    /** Teaching and a reading: 16 × 45,00 € under §4 Nr. 21 and 400,00 € under §19, total 1 120,00 €. */
+    public static InvoiceDocument mixed(InvoiceFormat format) {
+        return invoice(SCHOOL, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                line("Unterricht Deutsch B2, je 45 Min.", "16", "45.00", TaxCategory.EXEMPT_4_21),
+                lump("Lesung", "400.00", TaxCategory.KLEINUNTERNEHMER));
+    }
+
+    /** A free §19 line: total 0,00 €. */
+    public static InvoiceDocument free(InvoiceFormat format) {
+        return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                lump("Gratis", "0", TaxCategory.KLEINUNTERNEHMER));
+    }
+
     /** The Stornorechnung 2027-10 of the reading, invoice 2027-07 of March 8, with the same lines. */
     public static InvoiceDocument cancellation(InvoiceFormat format) {
         InvoiceDocument d = reading(format);

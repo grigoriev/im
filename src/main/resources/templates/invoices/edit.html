@@ -92,6 +92,8 @@
 
       <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-checks">
         <h2 class="font-semibold">Prüfung</h2>
+        <p th:if="${overLimit}" class="flex items-start gap-2 text-warning" id="over-limit"><i data-lucide="triangle-alert" class="size-4 shrink-0 mt-0.5"></i>
+          <span>Mit dieser Rechnung läge der Umsatz nach § 19 in diesem Jahr über 100.000 €. Ab dann gilt die Regelbesteuerung.</span></p>
         <div th:if="${problems.isEmpty()}" class="flex flex-wrap items-center justify-between gap-2">
           <p class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>
             Vollständig.</p>
