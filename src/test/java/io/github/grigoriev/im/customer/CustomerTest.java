@@ -47,4 +47,21 @@ class CustomerTest {
         assertThat(exception.problems()).containsExactly("Eins.", "Zwei.");
         assertThat(exception.getMessage()).isEqualTo("Eins. Zwei.");
     }
+
+    @Test
+    void namesTheContactPersonInLists() {
+        Customer verlag = CustomerTestData.verlag();
+        assertThat(Customer.label("Goethe-Institut", "Frau Weber")).isEqualTo("Goethe-Institut · Frau Weber");
+        assertThat(Customer.label("Goethe-Institut", null)).isEqualTo("Goethe-Institut");
+        assertThat(Customer.label("Goethe-Institut", " ")).isEqualTo("Goethe-Institut");
+        assertThat(verlag.label()).isEqualTo(Customer.label(verlag.name(), verlag.contactName()));
+    }
+
+    @Test
+    void copiesTheOrganizationForAnotherContact() {
+        Customer original = new Customer(7L, "Goethe-Institut", "Dachauer Str. 122", "80637", "München", "DE",
+                "Frau Weber", "weber@goethe.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG);
+        assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Goethe-Institut", "Dachauer Str. 122",
+                "80637", "München", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG));
+    }
 }

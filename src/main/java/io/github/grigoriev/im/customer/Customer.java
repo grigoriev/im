@@ -55,6 +55,37 @@ public record Customer(
     }
 
     /**
+     * Returns the name in lists: the organization and, if set, the contact person, so two contacts of one
+     * organization stay apart.
+     *
+     * @return for example "Goethe-Institut · Frau Weber"
+     */
+    public String label() {
+        return label(name, contactName);
+    }
+
+    /**
+     * Returns the name of an organization with its contact person, as {@link #label()} does.
+     *
+     * @param name the name
+     * @param contactName the contact person, may be {@code null} or blank
+     * @return the label
+     */
+    public static String label(String name, String contactName) {
+        return contactName == null || contactName.isBlank() ? name : name + " · " + contactName;
+    }
+
+    /**
+     * Returns a new customer for another contact person of the same organization: the address, VAT ID, buyer
+     * reference and format stay, the contact person and e-mail are empty.
+     *
+     * @return the copy, without an ID
+     */
+    public Customer forAnotherContact() {
+        return new Customer(null, name, street, postcode, city, countryCode, null, null, vatId, buyerReference, format);
+    }
+
+    /**
      * Returns the buyer party of an invoice.
      *
      * @return the party

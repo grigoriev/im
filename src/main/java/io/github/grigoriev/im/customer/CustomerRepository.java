@@ -11,5 +11,5 @@ interface CustomerRepository extends ListCrudRepository<Customer, Long> {
      *
      * @return the customers
      */
-    List<Customer> findAllByOrderByNameAsc();
+    List<Customer> findAllByOrderByNameAscContactNameAsc();
 }

@@ -43,7 +43,7 @@ class CustomerServiceTest {
 
     @Test
     void listsAndFindsCustomers() {
-        when(repository.findAllByOrderByNameAsc()).thenReturn(List.of(CustomerTestData.verlag()));
+        when(repository.findAllByOrderByNameAscContactNameAsc()).thenReturn(List.of(CustomerTestData.verlag()));
         assertThat(service.list()).containsExactly(CustomerTestData.verlag());
         when(repository.findById(3L)).thenReturn(Optional.of(CustomerTestData.verlag().withId(3L)));
         assertThat(service.find(3)).contains(CustomerTestData.verlag().withId(3L));

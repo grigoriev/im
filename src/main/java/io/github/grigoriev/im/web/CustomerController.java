@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -63,14 +64,19 @@ public class CustomerController {
     }
 
     /**
-     * Shows an empty form for a new customer.
+     * Shows an empty form for a new customer, or a copy of a customer for another contact person of the same
+     * organization.
      *
+     * @param von the customer to copy, {@code null} for an empty form
      * @param model the page model
      * @return the template name
      */
     @GetMapping("/neu")
-    public String create(Model model) {
-        return page(model, Customer.empty());
+    public String create(@RequestParam(required = false) Long von, Model model) {
+        Customer form = von == null ? Customer.empty()
+                : customers.find(von).map(Customer::forAnotherContact)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return page(model, form);
     }
 
     /**

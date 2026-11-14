@@ -1,9 +1,11 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
+import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
@@ -349,7 +351,11 @@ public class InvoiceController {
 
     /** The current customer of a draft, or the frozen buyer of an issued invoice. */
     private String customerName(Invoice invoice, Optional<InvoiceDocument> document) {
-        return invoice.isDraft() ? invoices.customerName(invoice) : document.orElseThrow().buyer().name();
+        if (invoice.isDraft()) {
+            return invoices.customerName(invoice);
+        }
+        Party buyer = document.orElseThrow().buyer();
+        return Customer.label(buyer.name(), buyer.contactName());
     }
 
     /** The document of a draft from the current data, or the frozen snapshot of an issued invoice. */

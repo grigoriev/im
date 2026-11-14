@@ -530,6 +530,28 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Endgültig löschen"))));
         when(customers.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/kunden/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+        mvc.perform(get("/kunden/neu").param("von", "9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void tellsTwoContactsOfOneOrganizationApartAndCopiesOne() throws Exception {
+        Customer weber = new Customer(5L, "Goethe-Institut", "Dachauer Str. 122", "80637", "München", "DE",
+                "Frau Weber", "weber@goethe.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
+        Customer klein = new Customer(6L, "Goethe-Institut", "Dachauer Str. 122", "80637", "München", "DE",
+                "Herr Klein", "klein@goethe.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
+        when(customers.list()).thenReturn(List.of(weber, klein));
+        when(customers.find(5)).thenReturn(Optional.of(weber));
+        mvc.perform(get("/kunden/5").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Goethe-Institut · Frau Weber</h2>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Herr Klein</span>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/kunden/neu?von=5\"")));
+        mvc.perform(get("/kunden/neu").param("von", "5").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Dachauer Str. 122\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"weber@goethe.example\""))));
+        when(invoices.list()).thenReturn(List.of());
+        mvc.perform(get("/rechnungen").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Goethe-Institut · Frau Weber</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Goethe-Institut · Herr Klein</option>")));
     }
 
     @Test

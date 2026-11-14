@@ -46,7 +46,7 @@ public class CustomerService {
      * @return the customers
      */
     public List<Customer> list() {
-        return customers.findAllByOrderByNameAsc();
+        return customers.findAllByOrderByNameAscContactNameAsc();
     }
 
     /**

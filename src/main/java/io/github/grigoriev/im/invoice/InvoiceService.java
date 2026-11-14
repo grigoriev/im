@@ -226,7 +226,7 @@ public class InvoiceService {
      * @return the name, or a dash if the customer is gone
      */
     public String customerName(Invoice invoice) {
-        return customers.find(invoice.customerId()).map(Customer::name).orElse("–");
+        return customers.find(invoice.customerId()).map(Customer::label).orElse("–");
     }
 
     /**
