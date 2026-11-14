@@ -29,7 +29,7 @@
           <div><dt class="text-xs text-base-content/75">Fällig am</dt><dd class="num" th:text="${#temporals.format(document.dueDate(), 'dd.MM.yyyy')}">01.04.2027</dd></div>
           <div><dt class="text-xs text-base-content/75">Leistungszeitraum</dt><dd class="num" th:text="${#temporals.format(document.serviceFrom(), 'dd.MM.yyyy') + ' – ' + #temporals.format(document.serviceTo(), 'dd.MM.yyyy')}">01.03.2027 – 18.03.2027</dd></div>
           <div><dt class="text-xs text-base-content/75">Gesamtbetrag</dt><dd class="num font-semibold" id="invoice-total" th:text="${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd></div>
-          <div><dt class="text-xs text-base-content/75">Ausgestellt</dt><dd class="num" data-volatile th:text="${#temporals.format(invoice.issuedAt, 'dd.MM.yyyy HH:mm')}">18.03.2027 10:00</dd></div>
+          <div><dt class="text-xs text-base-content/75">Ausgestellt</dt><dd class="num" data-volatile th:text="${#temporals.format(invoice.issuedAt, 'dd.MM.yyyy HH:mm', 'Europe/Berlin')}">18.03.2027 10:00</dd></div>
         </dl>
       </section>
       <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="invoice-documents">

@@ -1,6 +1,7 @@
 import { expect, test } from './fixtures';
 
-// The pattern is one setting for the whole app: only this test changes it, and it restores the default.
+// The pattern is one setting for the whole app: only this test changes it, in its own project after all others
+// (playwright.config.ts), and it restores the default.
 test('the admin sets the number pattern and the start of next year', async ({ page }) => {
   const next = new Date().getFullYear() + 1;
   await page.goto('/einstellungen');
