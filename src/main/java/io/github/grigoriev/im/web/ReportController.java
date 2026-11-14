@@ -35,7 +35,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
  * the CSV of its payments and the archive of its documents. Both roles use it.
  */
 @Controller
-@RequestMapping("/berichte")
+@RequestMapping("/reports")
 public class ReportController {
 
     static final String VIEW = "reports";
@@ -93,28 +93,28 @@ public class ReportController {
     /**
      * Downloads the archive of a year: the PDF and XML of every invoice issued in it, and their table of contents.
      *
-     * @param jahr the year of the invoice dates
+     * @param year the year of the invoice dates
      * @return the ZIP, written while it goes out
      */
-    @GetMapping("/archiv.zip")
-    public ResponseEntity<StreamingResponseBody> zip(@RequestParam int jahr) {
-        StreamingResponseBody body = out -> archive.write(jahr, out);
+    @GetMapping("/archive.zip")
+    public ResponseEntity<StreamingResponseBody> zip(@RequestParam int year) {
+        StreamingResponseBody body = out -> archive.write(year, out);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/zip"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename("Rechnungen_" + jahr + ".zip").build().toString())
+                        ContentDisposition.attachment().filename("Rechnungen_" + year + ".zip").build().toString())
                 .body(body);
     }
 
     /**
      * Shows the report of a year.
      *
-     * @param jahr the year, this year if not given
+     * @param year the year, this year if not given
      * @param model the page model
      * @return the template name
      */
     @GetMapping
-    public String show(@RequestParam(required = false) Integer jahr, Model model) {
-        int year = jahr == null ? threshold.today().getYear() : jahr;
+    public String show(@RequestParam(name = "year", required = false) Integer asked, Model model) {
+        int year = asked == null ? threshold.today().getYear() : asked;
         List<RevenueRow> rows = threshold.rows(year);
         model.addAttribute("year", year);
         SortedSet<Integer> years = new TreeSet<>(Comparator.reverseOrder());
@@ -131,13 +131,13 @@ public class ReportController {
     /**
      * Downloads the payments of a year as CSV.
      *
-     * @param jahr the year
+     * @param year the year
      * @return the CSV file
      */
-    @GetMapping("/zahlungen.csv")
-    public ResponseEntity<byte[]> csv(@RequestParam int jahr) {
+    @GetMapping("/payments.csv")
+    public ResponseEntity<byte[]> csv(@RequestParam int year) {
         StringBuilder csv = new StringBuilder().append(BOM).append(CSV_HEAD).append("\r\n");
-        for (RevenueRow row : threshold.rows(jahr)) {
+        for (RevenueRow row : threshold.rows(year)) {
             csv.append(String.join(";", GERMAN.format(row.paidOn()), field(row.number()), field(row.customer()),
                     number(row.amount()), number(row.counted()), number(row.excluded()),
                     number(row.byCategory().getOrDefault(TaxCategory.EXEMPT_4_21, BigDecimal.ZERO)), field(row.note())))
@@ -145,7 +145,7 @@ public class ReportController {
         }
         return ResponseEntity.ok().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename("Zahlungen_" + jahr + ".csv").build().toString())
+                        ContentDisposition.attachment().filename("Zahlungen_" + year + ".csv").build().toString())
                 .body(csv.toString().getBytes(StandardCharsets.UTF_8));
     }
 
@@ -159,9 +159,9 @@ public class ReportController {
             return List.of(new Business("", null, taxNumber, totals(rows)));
         }
         return List.of(
-                new Business("-unterricht", "Unterricht nach § 4 Nr. 21", seller.taxNumberTeaching(),
+                new Business("-teaching", "Unterricht nach § 4 Nr. 21", seller.taxNumberTeaching(),
                         totals(rows, category -> category == TaxCategory.EXEMPT_4_21)),
-                new Business("-uebrige", "Übrige Leistungen", taxNumber,
+                new Business("-other", "Übrige Leistungen", taxNumber,
                         totals(rows, category -> category != TaxCategory.EXEMPT_4_21)));
     }
 

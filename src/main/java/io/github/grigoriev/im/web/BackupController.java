@@ -30,11 +30,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * into an empty installation.
  */
 @Controller
-@RequestMapping("/admin/datensicherung")
+@RequestMapping("/admin/backup")
 public class BackupController {
 
     static final String VIEW = "settings/backup";
-    private static final String BACK = "redirect:/admin/datensicherung";
+    private static final String BACK = "redirect:/admin/backup";
     private static final String ERROR = "error";
 
     private final BackupService backups;
@@ -115,6 +115,6 @@ public class BackupController {
         if (session != null) {
             session.invalidate();
         }
-        return "redirect:/login?eingespielt";
+        return "redirect:/login?restored";
     }
 }

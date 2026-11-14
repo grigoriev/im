@@ -13,7 +13,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The admin page "E-Mail" of the settings: the default text of the e-mail with an invoice. */
 @Controller
-@RequestMapping("/admin/e-mail")
+@RequestMapping("/admin/mail")
 public class MailTextController {
 
     static final String VIEW = "settings/mail";
@@ -64,6 +64,6 @@ public class MailTextController {
             return VIEW;
         }
         flash.addFlashAttribute("success", "E-Mail-Text gespeichert.");
-        return "redirect:/admin/e-mail";
+        return "redirect:/admin/mail";
     }
 }

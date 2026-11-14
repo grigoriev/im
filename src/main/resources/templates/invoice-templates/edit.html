@@ -8,7 +8,7 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Vorlage', 'customers', ~{::content})}">
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
-    <a th:href="@{/kunden/{id}(id=${customerId})}" class="link link-hover text-sm text-base-content/75 w-fit [overflow-wrap:anywhere]"
+    <a th:href="@{/customers/{id}(id=${customerId})}" class="link link-hover text-sm text-base-content/75 w-fit [overflow-wrap:anywhere]"
        th:text="'← ' + ${customer}">← Kunde</a>
     <div>
       <div class="text-xs uppercase tracking-wider text-base-content/75">Vorlage</div>
@@ -19,7 +19,7 @@
       <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
     </div>
 
-    <form class="grid gap-4" th:action="@{/kunden/{c}/vorlagen/{id}(c=${customerId},id=${template.id})}" th:object="${form}" method="post">
+    <form class="grid gap-4" th:action="@{/customers/{c}/templates/{id}(c=${customerId},id=${template.id})}" th:object="${form}" method="post">
       <input type="hidden" th:field="*{version}">
       <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3 @container">
         <label class="floating-label"><span>Name der Vorlage</span>
@@ -40,7 +40,7 @@
           Sie werden beim Ausstellen ersetzt.</p>
       </section>
 
-      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="positionen">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="lines">
         <label class="floating-label"><span>Einleitung</span>
           <textarea id="template-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
@@ -63,7 +63,7 @@
         </label>
       </section>
 
-      <div class="form-actions"><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
+      <div class="form-actions"><button type="submit" name="action" value="save" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
 
     <div class="border-t border-base-300 pt-4 form-actions">
@@ -72,7 +72,7 @@
     <dialog class="modal" id="template-delete" aria-labelledby="template-delete-title">
       <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('template-delete', 'Vorlage löschen?')}"></div>
-        <form method="post" th:action="@{/kunden/{c}/vorlagen/{id}/loeschen(c=${customerId},id=${template.id})}">
+        <form method="post" th:action="@{/customers/{c}/templates/{id}/delete(c=${customerId},id=${template.id})}">
           <div class="modal-body"><p class="text-sm">Die Vorlage wird gelöscht. Rechnungen aus dieser Vorlage bleiben, wie sie sind.</p></div>
           <div class="modal-foot">
             <button type="button" class="btn" data-close>Abbrechen</button>

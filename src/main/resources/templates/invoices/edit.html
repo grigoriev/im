@@ -8,13 +8,13 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Rechnung', 'invoices', ~{::content})}">
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
-    <a th:href="@{/rechnungen}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
+    <a th:href="@{/invoices}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
     <div>
       <div class="text-xs uppercase tracking-wider text-base-content/75"
            th:text="${cancelled != null ? 'Stornorechnung · ' + invoice.status.label : invoice.status.label}">Entwurf</div>
       <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="${customer}">Kunde</h1>
       <p class="text-sm text-base-content/75 mt-1" th:if="${cancelled != null}" id="cancels">
-        Storniert vollständig die <a class="link" th:href="@{/rechnungen/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
+        Storniert vollständig die <a class="link" th:href="@{/invoices/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
         Positionen und Format kommen aus dieser Rechnung. Mit dem Ausstellen ist sie storniert.</p>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
@@ -23,7 +23,7 @@
       <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
     </div>
 
-    <form class="grid gap-4" th:action="@{/rechnungen/{id}(id=${invoice.id})}" th:object="${form}" method="post">
+    <form class="grid gap-4" th:action="@{/invoices/{id}(id=${invoice.id})}" th:object="${form}" method="post">
       <input type="hidden" th:field="*{version}">
       <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3 @container">
         <h2 class="font-semibold">Rechnungsdaten</h2>
@@ -51,7 +51,7 @@
         </label>
       </section>
 
-      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="positionen">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="lines">
         <label class="floating-label"><span>Einleitung</span>
           <textarea id="invoice-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
@@ -97,7 +97,7 @@
         <div th:if="${problems.isEmpty()}" class="flex flex-wrap items-center justify-between gap-2">
           <p class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>
             Vollständig.</p>
-          <a th:href="@{/rechnungen/{id}/vorschau(id=${invoice.id})}" target="_blank" rel="noopener" class="btn btn-sm"
+          <a th:href="@{/invoices/{id}/preview(id=${invoice.id})}" target="_blank" rel="noopener" class="btn btn-sm"
              id="invoice-preview"><i data-lucide="file-search" class="size-4"></i>Vorschau (PDF)</a>
         </div>
         <p th:if="${problems.isEmpty()}" class="text-xs text-base-content/75">Vorschau und Ausstellen nehmen den gespeicherten Stand.</p>
@@ -107,7 +107,7 @@
         </ul>
       </section>
 
-      <div class="form-actions"><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
+      <div class="form-actions"><button type="submit" name="action" value="save" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
 
     <div class="form-actions">
@@ -117,7 +117,7 @@
     <dialog class="modal" id="invoice-issue" aria-labelledby="invoice-issue-title" th:if="${problems.isEmpty()}">
       <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('invoice-issue', 'Rechnung ausstellen?')}"></div>
-        <form method="post" th:action="@{/rechnungen/{id}/ausstellen(id=${invoice.id})}">
+        <form method="post" th:action="@{/invoices/{id}/issue(id=${invoice.id})}">
           <input type="hidden" name="version" th:value="${invoice.version}">
           <div class="modal-body"><p class="text-sm">Die Rechnung bekommt ihre Nummer, PDF und XML werden geprüft und gespeichert. Danach ändert sie sich nicht mehr.</p></div>
           <div class="modal-foot">
@@ -131,7 +131,7 @@
     <dialog class="modal" id="invoice-delete" aria-labelledby="invoice-delete-title">
       <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('invoice-delete', 'Entwurf löschen?')}"></div>
-        <form method="post" th:action="@{/rechnungen/{id}/loeschen(id=${invoice.id})}">
+        <form method="post" th:action="@{/invoices/{id}/delete(id=${invoice.id})}">
           <div class="modal-body"><p class="text-sm">Der Entwurf wird endgültig gelöscht.</p></div>
           <div class="modal-foot">
             <button type="button" class="btn" data-close>Abbrechen</button>

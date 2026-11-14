@@ -8,7 +8,7 @@ const PASSWORD = 'passkey-passwort-123';
 // A fresh user, so parallel tests never share passkeys. Returns a page logged in with the password.
 async function newUser(page: Page, browser: Browser, name: string): Promise<{ user: Page; username: string }> {
   const username = uniqueUsername('pk');
-  await page.goto('/admin/benutzer');
+  await page.goto('/admin/users');
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.locator('#new-password').fill(PASSWORD);
@@ -29,7 +29,7 @@ test('links a passkey to the account, logs in with it, renames and removes it', 
   const { user } = await newUser(page, browser, 'Passkey Nutzerin');
   const credentials = await addVirtualAuthenticator(user);
 
-  await user.goto('/konto');
+  await user.goto('/account');
   await expect(user.getByText('Noch kein Passkey.')).toBeVisible();
   await user.getByLabel('Name des Geräts').fill('MacBook Air');
   await user.getByRole('button', { name: 'Passkey hinzufügen' }).click();
@@ -42,7 +42,7 @@ test('links a passkey to the account, logs in with it, renames and removes it', 
   await user.getByRole('button', { name: 'Mit Passkey anmelden' }).click();
   await expect(user.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Passkey Nutzerin');
 
-  await user.goto('/konto');
+  await user.goto('/account');
   await expect(user.locator('#passkey-list')).toContainText('zuletzt');
   await user.locator('#passkey-list').getByRole('button', { name: 'Umbenennen' }).click();
   const rename = user.locator('dialog[open]');
@@ -64,12 +64,12 @@ test('links a passkey to the account, logs in with it, renames and removes it', 
 test('the admin removes the passkeys of a user', async ({ page, browser }) => {
   const { user, username } = await newUser(page, browser, 'Verlorenes Telefon');
   await addVirtualAuthenticator(user);
-  await user.goto('/konto');
+  await user.goto('/account');
   await user.getByLabel('Name des Geräts').fill('Telefon');
   await user.getByRole('button', { name: 'Passkey hinzufügen' }).click();
   await expect(user.getByRole('status')).toHaveText('Passkey hinzugefügt.');
 
-  await page.goto('/admin/benutzer');
+  await page.goto('/admin/users');
   const row = page.locator('#user-list > div', { hasText: username });
   await expect(row).toContainText('1 Passkey(s)');
   await row.getByRole('button', { name: 'Passkeys entfernen' }).click();
@@ -80,7 +80,7 @@ test('the admin removes the passkeys of a user', async ({ page, browser }) => {
 
 test('changes the own password', async ({ page, browser }) => {
   const { user, username } = await newUser(page, browser, 'Neues Passwort');
-  await user.goto('/konto');
+  await user.goto('/account');
   await user.getByLabel('Aktuelles Passwort').fill(PASSWORD);
   await user.getByLabel('Neues Passwort', { exact: true }).fill('ganz-neues-passwort');
   await user.getByLabel('Neues Passwort wiederholen').fill('ganz-anderes-passwort');

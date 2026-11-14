@@ -22,7 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * Both roles edit it.
  */
 @Controller
-@RequestMapping("/einstellungen")
+@RequestMapping("/settings")
 public class SettingsController {
 
     static final String VIEW = "settings/profile";
@@ -44,13 +44,13 @@ public class SettingsController {
     /**
      * Shows one tab of the profile, an empty form before the first save.
      *
-     * @param teil the slug of the tab, the address if missing or unknown
+     * @param slug the slug of the tab, the address if missing or unknown
      * @param model the page model
      * @return the template name
      */
     @GetMapping
-    public String show(@RequestParam(required = false) String teil, Model model) {
-        ProfilePart part = ProfilePart.of(teil).orElse(ProfilePart.ADDRESS);
+    public String show(@RequestParam(name = "part", required = false) String slug, Model model) {
+        ProfilePart part = ProfilePart.of(slug).orElse(ProfilePart.ADDRESS);
         SellerProfile stored = sellers.find().orElseGet(SellerProfile::empty);
         return form(model, part, stored, stored.withNameAsDefault(), null);
     }
@@ -59,22 +59,22 @@ public class SettingsController {
      * Saves one tab of the profile; the other tabs stay as stored. On a problem the tab shows again with the entered
      * values and the problem at each field.
      *
-     * @param teil the slug of the tab
+     * @param slug the slug of the tab
      * @param profile the tab as entered; the fields of other tabs are empty
      * @param model the page model
      * @param flash messages for the next page
      * @return a redirect to the tab, or the tab with the problems
      */
     @PostMapping
-    public String save(@RequestParam String teil, @ModelAttribute("profile") SellerProfile profile, Model model,
+    public String save(@RequestParam(name = "part") String slug, @ModelAttribute("profile") SellerProfile profile, Model model,
             RedirectAttributes flash) {
-        ProfilePart part = ProfilePart.of(teil).orElse(ProfilePart.ADDRESS);
+        ProfilePart part = ProfilePart.of(slug).orElse(ProfilePart.ADDRESS);
         try {
             SellerProfile saved = sellers.save(part, profile);
             Map<String, String> missing = SellerService.missing(saved);
             flash.addFlashAttribute("success", part.label() + " gespeichert." + (missing.isEmpty() ? ""
                     : " Für Rechnungen fehlt noch: " + String.join(", ", missing.values()) + "."));
-            return "redirect:/einstellungen?teil=" + part.slug();
+            return "redirect:/settings?part=" + part.slug();
         } catch (SettingsException e) {
             model.addAttribute("invalid", e.fields());
             SellerProfile stored = sellers.find().orElseGet(SellerProfile::empty);

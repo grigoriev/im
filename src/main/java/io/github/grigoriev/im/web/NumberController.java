@@ -15,11 +15,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The page "Einstellungen", tab "Nummernkreis": the pattern and the start values, for the admin only. */
 @Controller
-@RequestMapping("/admin/nummernkreis")
+@RequestMapping("/admin/numbers")
 public class NumberController {
 
     static final String VIEW = "settings/numbers";
-    static final String BACK = "redirect:/admin/nummernkreis";
+    static final String BACK = "redirect:/admin/numbers";
 
     private static final String SUCCESS = "success";
     private static final String ERROR = "error";
@@ -57,7 +57,7 @@ public class NumberController {
      * @param flash messages for the next page
      * @return a redirect to the page
      */
-    @PostMapping("/muster")
+    @PostMapping("/pattern")
     public String savePattern(@RequestParam String pattern, RedirectAttributes flash) {
         try {
             numbers.savePattern(pattern);

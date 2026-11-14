@@ -15,7 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The page "Einstellungen", tab "Steuerhinweise": the default tax notes, for the admin only. */
 @Controller
-@RequestMapping("/admin/steuerhinweise")
+@RequestMapping("/admin/tax-notes")
 public class TaxNoteController {
 
     static final String VIEW = "settings/tax-notes";
@@ -72,6 +72,6 @@ public class TaxNoteController {
         } catch (SettingsException e) {
             flash.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/admin/steuerhinweise";
+        return "redirect:/admin/tax-notes";
     }
 }

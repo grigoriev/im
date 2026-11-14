@@ -19,7 +19,7 @@
         <p class="text-sm text-base-content/75">Die Nummer wird erst beim Ausstellen vergeben. Lückenlos, ohne Dubletten.
           Der Zähler beginnt jedes Jahr neu.</p>
       </div>
-      <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/nummernkreis/muster}" method="post">
+      <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/numbers/pattern}" method="post">
         <label class="floating-label grow"><span>Muster</span>
           <input id="number-pattern" name="pattern" class="input w-full font-mono" th:value="${pattern}" maxlength="32" required>
         </label>
@@ -44,7 +44,7 @@
           <p class="text-xs text-base-content/75" th:if="${sequence.used}">
             <i data-lucide="lock" class="size-3.5 inline"></i> Für dieses Jahr sind schon Nummern vergeben. Der Zähler ist gesperrt.
           </p>
-          <form class="flex flex-wrap justify-end gap-2 items-end" th:unless="${sequence.used}" th:action="@{/admin/nummernkreis/start}" method="post">
+          <form class="flex flex-wrap justify-end gap-2 items-end" th:unless="${sequence.used}" th:action="@{/admin/numbers/start}" method="post">
             <input type="hidden" name="year" th:value="${sequence.year}">
             <label class="floating-label grow basis-full sm:basis-48"><span th:text="'Startnummer ' + ${sequence.year}" data-volatile>Startnummer</span>
               <input th:id="'start-' + ${sequence.year}" name="start" type="number" min="1" max="999999" class="input w-full"

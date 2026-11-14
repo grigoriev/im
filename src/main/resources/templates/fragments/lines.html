@@ -41,12 +41,12 @@
             </label>
           </div>
           <div class="flex justify-end">
-            <button type="submit" name="entfernen" th:value="${row.index}" class="btn btn-sm btn-danger" formnovalidate
+            <button type="submit" name="remove" th:value="${row.index}" class="btn btn-sm btn-danger" formnovalidate
                     th:attr="aria-label='Position ' + ${row.count} + ' entfernen'"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>
           </div>
         </div>
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <button type="submit" name="aktion" value="position" class="btn btn-sm" formnovalidate>
+          <button type="submit" name="action" value="add-line" class="btn btn-sm" formnovalidate>
             <i data-lucide="plus" class="size-4"></i>Position hinzufügen
           </button>
           <th:block th:replace="${totals}"></th:block>

@@ -13,11 +13,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** The page "Einstellungen", tab "Länder": the countries that the forms offer, for the admin only. */
 @Controller
-@RequestMapping("/admin/laender")
+@RequestMapping("/admin/countries")
 public class CountryController {
 
     static final String VIEW = "settings/countries";
-    static final String BACK = "redirect:/admin/laender";
+    static final String BACK = "redirect:/admin/countries";
 
     private static final String SUCCESS = "success";
 
@@ -70,7 +70,7 @@ public class CountryController {
      * @param flash messages for the next page
      * @return a redirect to the page
      */
-    @PostMapping("/{code}/entfernen")
+    @PostMapping("/{code}/remove")
     public String remove(@PathVariable String code, RedirectAttributes flash) {
         flash.addFlashAttribute(SUCCESS, countries.remove(code).name() + " entfernt.");
         return BACK;

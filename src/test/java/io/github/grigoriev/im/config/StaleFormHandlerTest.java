@@ -52,11 +52,11 @@ class StaleFormHandlerTest {
         MockHttpServletRequest login = new MockHttpServletRequest("POST", "/login");
         MockHttpServletResponse response = new MockHttpServletResponse();
         handler.handle(login, response, new MissingCsrfTokenException("x"));
-        assertThat(response.getRedirectedUrl()).isEqualTo("/login?abgelaufen");
+        assertThat(response.getRedirectedUrl()).isEqualTo("/login?expired");
         MockHttpServletRequest getLogout = new MockHttpServletRequest("GET", "/logout");
         MockHttpServletResponse second = new MockHttpServletResponse();
         handler.handle(getLogout, second, new MissingCsrfTokenException("x"));
-        assertThat(second.getRedirectedUrl()).isEqualTo("/login?abgelaufen");
+        assertThat(second.getRedirectedUrl()).isEqualTo("/login?expired");
     }
 
     @Test
@@ -83,7 +83,7 @@ class StaleFormHandlerTest {
         assertThat(cleared.getSecure()).isTrue();
         assertThat(session.isInvalid()).isTrue();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-        assertThat(response.getRedirectedUrl()).isEqualTo("/app/login?abgemeldet");
+        assertThat(response.getRedirectedUrl()).isEqualTo("/app/login?logout");
     }
 
     @Test
@@ -91,7 +91,7 @@ class StaleFormHandlerTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         handler.handle(logout(""), response, new MissingCsrfTokenException("x"));
         assertThat(response.getCookie("remember-me")).isNull();
-        assertThat(response.getRedirectedUrl()).isEqualTo("/login?abgemeldet");
+        assertThat(response.getRedirectedUrl()).isEqualTo("/login?logout");
         verify(tokens, never()).removeUserTokens(any());
     }
 
@@ -119,7 +119,7 @@ class StaleFormHandlerTest {
         request.setSession(session);
         MockHttpServletResponse response = new MockHttpServletResponse();
         handler.handle(request, response, new MissingCsrfTokenException("x"));
-        assertThat(response.getRedirectedUrl()).isEqualTo("/login?abgelaufen");
+        assertThat(response.getRedirectedUrl()).isEqualTo("/login?expired");
         assertThat(response.getCookie("remember-me")).isNull();
         assertThat(session.isInvalid()).isFalse();
         verify(tokens, never()).getTokenForSeries(any());

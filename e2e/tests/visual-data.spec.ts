@@ -13,7 +13,7 @@ const LONG_NAME = 'Gemeinnützige Gesellschaft für Sprachförderung und interku
 test('a saved customer with a long name', async ({ page, browser, adminState }) => {
   // Three invoices and many screenshots in four contexts: more than the default time on a CI runner.
   test.slow();
-  await page.goto('/kunden/neu');
+  await page.goto('/customers/new');
   await page.getByLabel('Name', { exact: true }).fill(LONG_NAME);
   await page.getByLabel('Straße und Hausnummer').fill('Lange Straße 123');
   await page.getByLabel('PLZ').fill('86150');
@@ -35,7 +35,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
 
   // A draft for this customer with a lump sum and a line with quantity, for the editor screenshots.
   await ensureProfile(page);
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await page.locator('#line-0-text').fill('Lesung aus „Der stille Hafen“ mit anschließendem Gespräch, 16.03.2027, 90 Min.');
@@ -51,7 +51,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
 
   // An issued invoice of this customer, alone in its year, so its number and dates stay the same. The times of the
   // history and the issue, the size and the hash differ per run and are masked.
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await page.locator('#line-0-text').fill('Sprachkurs Deutsch B1, 10 Termine');
@@ -68,7 +68,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
 
   // A second invoice of this customer in 2032, cancelled by a Stornorechnung of the same year: numbers 2032-01 and
   // 2032-02, all dates fixed.
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await page.locator('#line-0-text').fill('Workshop Kreatives Schreiben, 2 Tage');
@@ -91,7 +91,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await expect(page.getByRole('status')).toHaveText('Rechnung 2032-02 ausgestellt.');
   const storno = page.url();
   // A third invoice, 2033-01, whose Stornorechnung stays a draft: its lines show read-only.
-  await page.goto('/rechnungen');
+  await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await page.locator('#line-0-text').fill('Lesung mit Gespräch');
@@ -121,7 +121,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
       await expect(view.locator('section').filter({ has: view.locator('form') }).first())
         .toHaveScreenshot(`customer-form-${viewport.name}-${scheme}.png`);
       // The entry of the audit log for this customer; its time differs per run and is masked.
-      await view.goto('/admin/protokoll');
+      await view.goto('/admin/audit');
       await expect(view.locator('#audit-list li').filter({ hasText: LONG_NAME }).filter({ hasText: 'Kunde angelegt' }))
         .toHaveScreenshot(
         `audit-entry-${viewport.name}-${scheme}.png`,
@@ -130,7 +130,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
       await view.goto(url);
       await expect(view.locator('#customer-templates')).toHaveScreenshot(`customer-templates-${viewport.name}-${scheme}.png`);
       await view.goto(draft);
-      await expect(view.locator('#positionen')).toHaveScreenshot(`invoice-lines-${viewport.name}-${scheme}.png`);
+      await expect(view.locator('#lines')).toHaveScreenshot(`invoice-lines-${viewport.name}-${scheme}.png`);
       await view.goto(issued);
       const masks = { mask: [view.locator('[data-volatile]')] };
       await expect(view.locator('#invoice-issued')).toHaveScreenshot(`invoice-issued-${viewport.name}-${scheme}.png`, masks);
@@ -161,9 +161,9 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
       await view.goto(stornoDraft);
       await expect(view.locator('#cancels')).toHaveScreenshot(`invoice-cancel-draft-${viewport.name}-${scheme}.png`);
       await expect(view.locator('#cancel-lines')).toHaveScreenshot(`invoice-cancel-lines-${viewport.name}-${scheme}.png`);
-      await view.goto('/rechnungen?suche=2032-02');
+      await view.goto('/invoices?q=2032-02');
       await expect(view.locator('#invoice-list li')).toHaveScreenshot(`invoice-list-storno-${viewport.name}-${scheme}.png`);
-      await view.goto('/rechnungen');
+      await view.goto('/invoices');
       await expect(view.locator('#invoice-filter')).toHaveScreenshot(`invoice-filter-${viewport.name}-${scheme}.png`);
       await context.close();
     }

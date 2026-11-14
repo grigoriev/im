@@ -24,14 +24,14 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="btn btn-sm" th:attr="data-dialog='password-dialog-' + ${user.id}"><i data-lucide="key-round" class="size-4"></i>Passwort setzen</button>
-          <form th:if="${passkeyCounts[user.username] > 0}" th:action="@{/admin/benutzer/{id}/passkeys/loeschen(id=${user.id})}" method="post">
+          <form th:if="${passkeyCounts[user.username] > 0}" th:action="@{/admin/users/{id}/passkeys/delete(id=${user.id})}" method="post">
             <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="size-4"></i>Passkeys entfernen</button>
           </form>
         </div>
         <dialog class="modal" th:id="'password-dialog-' + ${user.id}" th:attr="aria-labelledby='password-dialog-' + ${user.id} + '-title'">
           <div class="modal-box">
             <div th:replace="~{fragments/dialog :: dialogTitle('password-dialog-' + ${user.id}, 'Neues Passwort für ' + ${user.displayName})}"></div>
-            <form th:action="@{/admin/benutzer/{id}/passwort(id=${user.id})}" method="post">
+            <form th:action="@{/admin/users/{id}/password(id=${user.id})}" method="post">
               <div class="modal-body">
                 <label class="floating-label"><span>Neues Passwort</span>
                   <input th:id="'password-' + ${user.id}" name="password" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
@@ -53,7 +53,7 @@
 
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3">
       <h2 class="font-semibold">Neuer Benutzer</h2>
-      <form class="grid gap-3 sm:grid-cols-2" th:action="@{/admin/benutzer}" method="post">
+      <form class="grid gap-3 sm:grid-cols-2" th:action="@{/admin/users}" method="post">
         <label class="floating-label"><span>Benutzername</span>
           <input id="new-username" name="username" class="input w-full" th:value="${username}" autocomplete="off" pattern="[a-z0-9._\-]{3,32}" required>
         </label>

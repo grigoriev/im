@@ -18,12 +18,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /** Records what happens to an issued invoice: its e-mail, its dispatches and its payments. Both roles use it. */
 @Controller
-@RequestMapping("/rechnungen/{id}")
+@RequestMapping("/invoices/{id}")
 public class InvoiceRecordsController {
 
     private static final String SUCCESS = "success";
     private static final String ERROR = "error";
-    private static final String TO_INVOICE = "redirect:/rechnungen/";
+    private static final String TO_INVOICE = "redirect:/invoices/";
     private static final String BROKEN = "Bitte gültige Daten eingeben, zum Beispiel ein Datum.";
 
     private final DispatchService dispatches;
@@ -51,7 +51,7 @@ public class InvoiceRecordsController {
      * @param flash messages for the next page
      * @return a redirect to the invoice
      */
-    @PostMapping("/senden")
+    @PostMapping("/send")
     public String send(@PathVariable long id, @ModelAttribute SendForm form, RedirectAttributes flash) {
         try {
             mail.send(id, form);
@@ -72,7 +72,7 @@ public class InvoiceRecordsController {
      * @param flash messages for the next page
      * @return a redirect to the invoice
      */
-    @PostMapping("/versand")
+    @PostMapping("/dispatches")
     public String dispatch(@PathVariable long id, @ModelAttribute DispatchForm form, BindingResult binding,
             RedirectAttributes flash) {
         if (binding.hasErrors()) {
@@ -97,7 +97,7 @@ public class InvoiceRecordsController {
      * @param flash messages for the next page
      * @return a redirect to the invoice
      */
-    @PostMapping("/zahlungen")
+    @PostMapping("/payments")
     public String payment(@PathVariable long id, @ModelAttribute PaymentForm form, BindingResult binding,
             RedirectAttributes flash) {
         if (binding.hasErrors()) {

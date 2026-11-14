@@ -8,7 +8,7 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Rechnung', 'invoices', ~{::content})}">
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4 @container">
-    <a th:href="@{/rechnungen}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
+    <a th:href="@{/invoices}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
     <div>
       <div class="flex flex-wrap items-center gap-2">
         <h1 class="text-2xl font-semibold tracking-tight num min-w-0 [overflow-wrap:anywhere]" id="invoice-number"
@@ -20,14 +20,14 @@
         Kunde · 0,00 € · fällig am 01.04.2027</p>
     </div>
     <p class="text-sm" th:if="${cancelled != null}" id="cancels">
-      Stornorechnung zur <a class="link" th:href="@{/rechnungen/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
+      Stornorechnung zur <a class="link" th:href="@{/invoices/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
       Erstattungen gehören zu dieser Rechnung.</p>
     <p class="alert text-sm" th:if="${cancellation != null}" id="cancelled-by">
       <i data-lucide="undo-2" class="size-4"></i>
       <span th:if="${cancellation.draft}">Eine Stornorechnung ist als
-        <a class="link" th:href="@{/rechnungen/{id}(id=${cancellation.id})}">Entwurf</a> angelegt. Mit ihrem Ausstellen ist diese Rechnung storniert.</span>
+        <a class="link" th:href="@{/invoices/{id}(id=${cancellation.id})}">Entwurf</a> angelegt. Mit ihrem Ausstellen ist diese Rechnung storniert.</span>
       <span th:unless="${cancellation.draft}">Storniert durch die
-        <a class="link" th:href="@{/rechnungen/{id}(id=${cancellation.id})}" th:text="'Stornorechnung ' + ${cancellation.number}">Stornorechnung 2027-02</a>.</span>
+        <a class="link" th:href="@{/invoices/{id}(id=${cancellation.id})}" th:text="'Stornorechnung ' + ${cancellation.number}">Stornorechnung 2027-02</a>.</span>
     </p>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -38,7 +38,7 @@
     <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-mail"
              th:if="${mailConfigured and invoice.status.name() != 'CANCELLED'}" th:open="${mailForm != null}">
       <summary class="btn btn-primary w-fit"><i data-lucide="send" class="size-4"></i>Per E-Mail senden…</summary>
-      <form class="mt-3 grid gap-3" method="post" th:action="@{/rechnungen/{id}/senden(id=${invoice.id})}" data-once>
+      <form class="mt-3 grid gap-3" method="post" th:action="@{/invoices/{id}/send(id=${invoice.id})}" data-once>
         <label class="floating-label"><span>An</span>
           <input id="mail-to" name="to" type="email" class="input w-full" required maxlength="254" th:value="${mail.to}">
         </label>
@@ -64,7 +64,7 @@
     <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-dispatch"
              th:if="${invoice.status.name() != 'CANCELLED'}">
       <summary class="btn w-fit"><i data-lucide="hand" class="size-4"></i>Als versendet markieren…</summary>
-      <form class="mt-3 grid gap-3 @container" method="post" th:action="@{/rechnungen/{id}/versand(id=${invoice.id})}">
+      <form class="mt-3 grid gap-3 @container" method="post" th:action="@{/invoices/{id}/dispatches(id=${invoice.id})}">
         <p class="text-sm text-base-content/75">Für Rechnungen, die Sie selbst aus Ihrem Mailprogramm, per Post oder über ein Portal verschickt haben.</p>
         <div class="grid gap-3 @lg:grid-cols-2">
           <label class="floating-label"><span>Versanddatum</span>
@@ -88,7 +88,7 @@
 
     <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-payment" th:if="${cancelled == null}">
       <summary class="btn w-fit"><i data-lucide="banknote" class="size-4"></i>Zahlung erfassen…</summary>
-      <form class="mt-3 grid gap-3 @container" method="post" th:action="@{/rechnungen/{id}/zahlungen(id=${invoice.id})}">
+      <form class="mt-3 grid gap-3 @container" method="post" th:action="@{/invoices/{id}/payments(id=${invoice.id})}">
         <p class="text-sm text-base-content/75">Der Tag des Zahlungseingangs zählt für die EÜR und die Kleinunternehmergrenze.
           Eine Rückzahlung oder Korrektur bekommt ein Minus, zum Beispiel -50,00.</p>
         <div class="grid gap-3 @lg:grid-cols-3">
@@ -139,7 +139,7 @@
                 <span class="text-xs text-base-content/75 num" data-volatile th:text="${#numbers.formatInteger(file.size(), 1, 'POINT') + ' Byte'}">1.000 Byte</span>
                 <span class="text-xs text-base-content/75 num [overflow-wrap:anywhere]" data-volatile th:text="${'SHA-256 ' + file.sha256()}">SHA-256</span>
               </span>
-              <a class="btn btn-sm" th:href="@{/rechnungen/{id}/dokumente/{kind}(id=${invoice.id},kind=${#strings.toLowerCase(file.kind())})}"
+              <a class="btn btn-sm" th:href="@{/invoices/{id}/documents/{kind}(id=${invoice.id},kind=${#strings.toLowerCase(file.kind())})}"
                  th:id="${'download-' + #strings.toLowerCase(file.kind())}"><i data-lucide="download" class="size-4"></i>Herunterladen</a>
             </li>
           </ul>
@@ -196,7 +196,7 @@
     <dialog class="modal" id="invoice-cancel" aria-labelledby="invoice-cancel-title" th:if="${invoice.status.name() != 'CANCELLED' and cancelled == null and cancellation == null}">
       <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('invoice-cancel', 'Rechnung stornieren?')}"></div>
-        <form method="post" th:action="@{/rechnungen/{id}/stornieren(id=${invoice.id})}">
+        <form method="post" th:action="@{/invoices/{id}/cancel(id=${invoice.id})}">
           <div class="modal-body"><p class="text-sm">Legt eine Stornorechnung als Entwurf an, mit denselben Positionen. Sie bekommt beim Ausstellen ihre eigene Nummer, dann ist diese Rechnung storniert. Eine Erstattung erfassen Sie danach hier als Zahlung mit Minus.</p></div>
           <div class="modal-foot">
             <button type="button" class="btn" data-close>Abbrechen</button>
