@@ -56,6 +56,7 @@ class EInvoiceServiceTest {
                     line("Lehrbuch", "2", "19.90", TaxCategory.STANDARD_19),
                     line("Workshop", "1", "600.00", REVERSE_CHARGE_EU))));
             cases.add(Arguments.of(format, "O", invoice(SWISS, ref, format, line("Lesung", "1", "350.00", NOT_TAXABLE_ABROAD))));
+            cases.add(Arguments.of(format, "Stornorechnung", SampleInvoices.cancellation(format)));
         }
         return cases.stream();
     }
@@ -72,6 +73,14 @@ class EInvoiceServiceTest {
         assertThat(xml).as("Mustang computes the same totals")
                 .contains("<ram:GrandTotalAmount>" + document.total().toPlainString() + "</ram:GrandTotalAmount>")
                 .contains("<ram:TaxBasisTotalAmount>" + document.netTotal().toPlainString() + "</ram:TaxBasisTotalAmount>");
+        if (document.isCancellation()) {
+            assertThat(xml).as("a credit note that names the cancelled invoice")
+                    .contains("<ram:TypeCode>381</ram:TypeCode>")
+                    .containsPattern("<ram:InvoiceReferencedDocument>\\s*<ram:IssuerAssignedID>2027-07</ram:IssuerAssignedID>")
+                    .contains("20270308");
+        } else {
+            assertThat(xml).contains("<ram:TypeCode>380</ram:TypeCode>").doesNotContain("InvoiceReferencedDocument");
+        }
         List<String> validators = issued.validations().stream().map(ValidationResult::validator).toList();
         switch (format) {
             case ZUGFERD_EN16931 -> assertThat(validators).containsExactly("Mustang");

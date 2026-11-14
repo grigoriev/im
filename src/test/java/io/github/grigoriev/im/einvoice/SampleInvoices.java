@@ -57,6 +57,14 @@ public final class SampleInvoices {
                 lump("Reisekosten", "80.00", TaxCategory.KLEINUNTERNEHMER));
     }
 
+    /** The Stornorechnung 2027-10 of the reading, invoice 2027-07 of March 8, with the same lines. */
+    public static InvoiceDocument cancellation(InvoiceFormat format) {
+        InvoiceDocument d = reading(format);
+        return new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(), d.dueDate(), d.seller(),
+                d.buyer(), d.buyerReference(), d.iban(), d.bic(), null, d.closing(), d.taxNote(), d.format(), d.lines(),
+                new InvoiceReference("2027-07", DAY.minusDays(10)));
+    }
+
     /**
      * A sale of goods with both VAT rates: 3 × 24,90 € at 7 %, 10 × 4,99 € and 5,90 € shipping at 19 %.
      * Net 130,50 €, VAT 5,23 € and 10,60 €, total 146,33 €.

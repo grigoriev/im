@@ -57,6 +57,13 @@ public class MustangInvoiceMapper {
         if (document.buyerReference() != null) {
             invoice.setReferenceNumber(document.buyerReference());
         }
+        if (document.isCancellation()) {
+            // A Stornorechnung is a credit note (381) that names the invoice it cancels (BT-25, BT-26).
+            invoice.setCreditNote()
+                    .setInvoiceReferencedDocumentID(document.cancels().number())
+                    .setInvoiceReferencedIssueDate(date(document.cancels().issueDate()))
+                    .setPaymentTermDescription("Storno der Rechnung " + document.cancels().number());
+        }
         String exemptReason = exemptReason(document);
         for (InvoiceLine line : document.lines()) {
             invoice.addItem(item(line, document, exemptReason));

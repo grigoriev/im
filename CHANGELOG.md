@@ -13,6 +13,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Stornorechnung as an e-invoice: a credit note (type 381) with the lines of the cancelled invoice, which it names (BT-25, BT-26). The PDF says "Stornorechnung", shows "Storno zu" with number and date, and asks for no payment. Mustang and KoSIT validate it in every format.
 - Sending by e-mail: "Per E-Mail senden" sends an issued invoice over SMTP with its stored PDF, XML or both, byte for byte, to the buyer's address with the e-mail text of its template or the default. A sent e-mail records a dispatch "E-Mail aus der App"; a failed one records nothing and keeps the typed form. The form posts once. The server comes from `IM_SMTP_*` and `IM_MAIL_*`; without it the page offers the manual dispatch only.
 - E-mail text: the admin sets the default subject and text of the e-mail with an invoice on "E-Mail", with the placeholders of the invoice texts. An invoice remembers the template it came from, whose e-mail subject and text override the default field by field.
 - Payments: "Zahlung erfassen" records the day the money came in, the amount (German style, the open amount by default) and a note. A negative amount is a refund or a correction. The invoice is "Bezahlt" while the payments cover the total, and goes back to "Versendet" or "Ausgestellt" after a refund. A cancelled invoice takes refunds only. Payments are written once and show in the history and in "Zahlungen" with the paid and open amount.

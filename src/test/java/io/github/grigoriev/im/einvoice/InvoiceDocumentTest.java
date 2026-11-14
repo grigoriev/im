@@ -13,6 +13,7 @@ import static io.github.grigoriev.im.einvoice.TaxCategory.KLEINUNTERNEHMER;
 import static io.github.grigoriev.im.einvoice.TaxCategory.NOT_TAXABLE_ABROAD;
 import static io.github.grigoriev.im.einvoice.TaxCategory.REVERSE_CHARGE_EU;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
@@ -249,5 +250,15 @@ class InvoiceDocumentTest {
         assertThatNullPointerException()
                 .isThrownBy(() -> build("1", DAY, DAY, DAY, DAY, SELLER, PUBLISHER, "I", "B", null))
                 .withMessage("format");
+    }
+
+    @Test
+    void knowsAStornorechnung() {
+        assertThat(SampleInvoices.reading(ZUGFERD).isCancellation()).isFalse();
+        InvoiceDocument cancellation = SampleInvoices.cancellation(ZUGFERD);
+        assertThat(cancellation.isCancellation()).isTrue();
+        assertThat(cancellation.cancels()).isEqualTo(new InvoiceReference("2027-07", DAY.minusDays(10)));
+        assertThatThrownBy(() -> new InvoiceReference(null, DAY)).hasMessage("number");
+        assertThatThrownBy(() -> new InvoiceReference("1", null)).hasMessage("issueDate");
     }
 }
