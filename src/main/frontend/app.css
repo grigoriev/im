@@ -150,6 +150,7 @@
   color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
 }
 .floating-label ::placeholder { opacity: 1; translate: none; scale: 1; }
+.field-label { font-size: 0.8125rem; font-weight: 500; line-height: 1.25rem; color: color-mix(in oklab, var(--color-base-content) 72%, transparent); }
 
 /* Fields: a thin gray frame, a blue frame and soft ring on focus, red when wrong. */
 .input, .select, .textarea { border-color: var(--color-base-300); box-shadow: none; }

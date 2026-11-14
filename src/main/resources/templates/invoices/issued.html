@@ -45,7 +45,7 @@
         <label class="floating-label"><span>Betreff</span>
           <input id="mail-subject" name="subject" class="input w-full" required maxlength="200" th:value="${mail.subject}">
         </label>
-        <label class="grid gap-1.5"><span class="text-sm font-medium">Nachricht</span>
+        <label class="grid gap-1.5"><span class="field-label">Nachricht</span>
           <textarea id="mail-body" name="body" class="textarea w-full h-40" required maxlength="4000" th:text="${mail.body}">Text</textarea>
         </label>
         <div class="flex flex-wrap gap-4 text-sm">
