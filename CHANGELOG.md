@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- The label of a focused field cuts through the focus ring as well as the frame, so the ring no longer runs above the label.
+
 ## [0.1.3] - 2026-11-14
 
 ### Changed

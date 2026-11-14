@@ -160,7 +160,11 @@
   position: static; translate: none; padding: 0; background: none; white-space: normal; max-width: none; overflow: visible;
   font-size: 0.8125rem;
 }
-.floating-label:focus-within > span { color: var(--color-primary); }
+/* A focused field has a ring outside its frame. The label then covers the ring too, so the gap cuts through both. */
+.floating-label:focus-within > span {
+  color: var(--color-primary);
+  background: linear-gradient(to bottom, transparent calc(50% - 3px), var(--color-base-100) calc(50% - 3px));
+}
 .floating-label:has([aria-invalid="true"], .input-error, .select-error) > span { color: var(--color-error); }
 /* A field that a form needs: a red star after its label. The empty alternative keeps it out of the label text. */
 .floating-label:has(:required) > span::after { content: " *" / ""; color: var(--color-error); }
