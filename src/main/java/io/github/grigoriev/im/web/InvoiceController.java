@@ -3,6 +3,7 @@ package io.github.grigoriev.im.web;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.Invoice;
@@ -12,7 +13,12 @@ import io.github.grigoriev.im.invoice.LineForm;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.net.URI;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -58,16 +64,19 @@ public class InvoiceController {
 
     private final InvoiceService invoices;
     private final CustomerService customers;
+    private final InvoicePdfRenderer pdf;
 
     /**
      * Creates the controller.
      *
      * @param invoices the invoice service
      * @param customers the customers for a new draft
+     * @param pdf renders the preview
      */
-    public InvoiceController(InvoiceService invoices, CustomerService customers) {
+    public InvoiceController(InvoiceService invoices, CustomerService customers, InvoicePdfRenderer pdf) {
         this.invoices = invoices;
         this.customers = customers;
+        this.pdf = pdf;
     }
 
     /**
@@ -156,6 +165,27 @@ public class InvoiceController {
             flash.addFlashAttribute(SUCCESS, "Entwurf gespeichert.");
         }
         return "redirect:/rechnungen/" + id;
+    }
+
+    /**
+     * Shows the PDF of a complete draft as it will be issued, with "Entwurf" as number.
+     *
+     * @param id the ID
+     * @param flash messages for the next page
+     * @return the PDF, or a redirect to the editor while the draft is incomplete
+     */
+    @GetMapping("/{id}/vorschau")
+    public ResponseEntity<byte[]> preview(@PathVariable long id, RedirectAttributes flash) {
+        Invoice invoice = invoices.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return invoices.document(invoice)
+                .map(document -> ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                                .filename("Rechnungsentwurf.pdf").build().toString())
+                        .body(pdf.render(document)))
+                .orElseGet(() -> {
+                    flash.addFlashAttribute(ERROR, "Die Vorschau braucht einen vollständigen Entwurf.");
+                    return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/rechnungen/" + id)).build();
+                });
     }
 
     /**

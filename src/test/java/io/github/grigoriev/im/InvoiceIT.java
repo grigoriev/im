@@ -40,6 +40,9 @@ class InvoiceIT {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private io.github.grigoriev.im.einvoice.InvoicePdfRenderer pdf;
+
     private Customer customer;
 
     @BeforeEach
@@ -74,6 +77,8 @@ class InvoiceIT {
         assertThat(stored.lines()).extracting(DraftLine::text).containsExactly("Lesung", "Reisekosten", "Signierstunde");
         assertThat(invoices.problems(stored)).isEmpty();
         assertThat(invoices.document(stored).orElseThrow().total()).isEqualByComparingTo("531.00");
+        byte[] preview = pdf.render(invoices.document(stored).orElseThrow());
+        assertThat(new String(preview, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
 
         DraftForm again = DraftForm.of(stored);
         again.getLines().remove(1);

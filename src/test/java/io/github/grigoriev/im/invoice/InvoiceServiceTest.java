@@ -291,6 +291,17 @@ class InvoiceServiceTest {
     }
 
     @Test
+    void fillsThePlaceholdersOfTheDocument() {
+        Invoice draft = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
+                14, null, "Rechnung {Rechnungsnummer} vom {Rechnungsdatum}", "Bitte bis {Zahlungsziel} zahlen.",
+                "Leistung am {Leistungszeitraum}.", List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L);
+        InvoiceDocument document = service.document(draft).orElseThrow();
+        assertThat(document.intro()).isEqualTo("Rechnung Entwurf vom 18.03.2027");
+        assertThat(document.closing()).isEqualTo("Bitte bis 01.04.2027 zahlen.");
+        assertThat(document.taxNote()).isEqualTo("Leistung am 18.03.2027.");
+    }
+
+    @Test
     void namesEveryProblemOfAnIncompleteDraft() {
         Invoice empty = draft(List.of());
         assertThat(service.problems(empty)).containsExactly("Die Rechnung braucht mindestens eine Position.");

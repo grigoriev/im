@@ -29,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvoiceService {
 
     static final int DEFAULT_PAYMENT_DAYS = 14;
+    /** The number of a draft in its texts and its preview. */
+    static final String DRAFT_NUMBER = "Entwurf";
     static final int MAX_PAYMENT_DAYS = 365;
     static final int MAX_TEXT = 2000;
     static final int MAX_TAX_NOTE = 1000;
@@ -270,7 +272,8 @@ public class InvoiceService {
     }
 
     /**
-     * Returns the document of a complete draft, with "Entwurf" as number, for the totals and the preview.
+     * Returns the document of a complete draft, with "Entwurf" as number and the placeholders of its texts filled,
+     * for the totals and the preview.
      *
      * @param invoice the draft
      * @return the document, empty while {@link #problems(Invoice)} is not empty
@@ -281,9 +284,11 @@ public class InvoiceService {
         }
         SellerProfile seller = sellers.find().orElseThrow();
         Customer customer = customers.find(invoice.customerId()).orElseThrow();
-        return Optional.of(new InvoiceDocument("Entwurf", invoice.issueDate(), invoice.serviceFrom(),
+        Placeholders values = Placeholders.of(invoice, DRAFT_NUMBER);
+        return Optional.of(new InvoiceDocument(DRAFT_NUMBER, invoice.issueDate(), invoice.serviceFrom(),
                 invoice.serviceTo(), invoice.dueDate(), seller.toParty(), customer.toParty(), invoice.buyerReference(),
-                seller.iban(), seller.bic(), invoice.intro(), invoice.closing(), invoice.taxNote(), invoice.format(),
+                seller.iban(), seller.bic(), values.fill(invoice.intro()), values.fill(invoice.closing()),
+                values.fill(invoice.taxNote()), invoice.format(),
                 invoice.lines().stream().map(DraftLine::toInvoiceLine).toList()));
     }
 
