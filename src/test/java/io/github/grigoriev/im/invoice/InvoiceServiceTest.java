@@ -347,6 +347,22 @@ class InvoiceServiceTest {
     }
 
     @Test
+    void namesWhatTheProfileStillMissesAndTheXRechnungContactOnlyForXRechnung() {
+        SellerProfile p = SellerTestData.profile();
+        when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), null, null, null, p.taxNumber(), null, null, p.bic(), p.taxStatus(), null, null, null,
+                null)));
+        Invoice zugferd = draft(List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)));
+        assertThat(service.problems(zugferd))
+                .containsExactly("Im Profil fehlt noch: IBAN. Bitte in den Einstellungen ergänzen.");
+        Invoice xrechnung = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.XRECHNUNG, TODAY,
+                TODAY, TODAY, 14, "04011000-12345-67", null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)),
+                NOW, NOW, 0L, null, null);
+        assertThat(service.problems(xrechnung))
+                .contains("Im Profil fehlt noch: IBAN, E-Mail, Telefon. Bitte in den Einstellungen ergänzen.");
+    }
+
+    @Test
     void appliesTheRulesOfTheCategories() {
         assertThat(service.problems(draft(List.of(lump("Ausland", "1", TaxCategory.NOT_TAXABLE_ABROAD),
                 lump("Lesung", "1", TaxCategory.KLEINUNTERNEHMER)))))

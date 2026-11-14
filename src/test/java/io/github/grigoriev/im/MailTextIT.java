@@ -53,7 +53,7 @@ class MailTextIT {
 
     @Test
     void anIssuedInvoiceSendsTheTextOfItsTemplateUntilTheTemplateGoes() {
-        sellers.save(SellerTestData.profile());
+        SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
         Customer customer = customers.create(CustomerTestData.verlag());
         InvoiceTemplate template = templates.create(customer.id());

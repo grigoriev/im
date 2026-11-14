@@ -39,11 +39,11 @@ class SellerIT {
 
     @Test
     void insertsTheProfileOnceAndUpdatesItThen() {
-        SellerProfile first = sellers.save(SellerTestData.profile());
+        SellerProfile first = SellerTestData.save(sellers, SellerTestData.profile());
         assertThat(sellers.find()).contains(first);
 
         SellerProfile p = SellerTestData.profile();
-        sellers.save(new SellerProfile(p.name(), "Neuer Weg 2", p.postcode(), p.city(), p.countryCode(), "Max Mustermann",
+        SellerTestData.save(sellers, new SellerProfile(p.name(), "Neuer Weg 2", p.postcode(), p.city(), p.countryCode(), "Max Mustermann",
                 p.email(), p.phone(), null, "DE123456789", p.iban(), p.bic(), TaxStatus.REGULAR, null, null, null, null));
         SellerProfile stored = sellers.find().orElseThrow();
         assertThat(stored.street()).isEqualTo("Neuer Weg 2");
@@ -52,7 +52,7 @@ class SellerIT {
         assertThat(stored.vatId()).isEqualTo("DE123456789");
         assertThat(stored.taxStatus()).isEqualTo(TaxStatus.REGULAR);
         assertThat(stored.tagline()).isNull();
-        assertThat(sellers.save(SellerTestData.profile()).bankName()).isEqualTo("Commerzbank");
+        assertThat(SellerTestData.save(sellers, SellerTestData.profile()).bankName()).isEqualTo("Commerzbank");
         SellerProfile withDetails = sellers.find().orElseThrow();
         assertThat(withDetails.tagline()).isEqualTo("Freiberufliche Dozentin");
         assertThat(withDetails.website()).isEqualTo("www.erika.example");
@@ -61,11 +61,15 @@ class SellerIT {
     }
 
     @Test
-    void theDatabaseKeepsOneProfileWithATaxNumberOrVatId() {
-        String insert = "INSERT INTO seller_profile (id, name, street, postcode, city, country_code, email, phone, iban, "
-                + "bic, tax_status, tax_number) VALUES (?, 'n', 's', 'p', 'c', 'DE', 'e', 'p', 'i', 'b', 'REGULAR', ?)";
-        assertThatThrownBy(() -> jdbc.update(insert, 2, "1")).isInstanceOf(DataIntegrityViolationException.class);
-        assertThatThrownBy(() -> jdbc.update(insert, 1, null)).isInstanceOf(DataIntegrityViolationException.class);
+    void theDatabaseKeepsOneProfileAndAcceptsAnIncompleteOne() {
+        jdbc.update("DELETE FROM seller_profile");
+        jdbc.update("INSERT INTO seller_profile (id, name) VALUES (1, 'Erika Mustermann')");
+        assertThat(sellers.find()).map(SellerProfile::iban).isEmpty();
+        assertThat(SellerService.missing(sellers.find().orElseThrow())).containsKeys("street", "iban", "taxNumber");
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO seller_profile (id, name) VALUES (2, 'Zweites Profil')"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        SellerTestData.save(sellers, SellerTestData.profile());
+        assertThat(sellers.find()).contains(SellerTestData.profile());
     }
 
     @Test
@@ -74,7 +78,7 @@ class SellerIT {
         Map<TaxCategory, String> note = Map.of(TaxCategory.REVERSE_CHARGE_EU, "Reverse Charge, § 13b UStG.");
         try (ExecutorService pool = Executors.newFixedThreadPool(8)) {
             List<Callable<Object>> saves = IntStream.range(0, 16).<Callable<Object>>mapToObj(n -> n % 2 == 0
-                    ? () -> sellers.save(SellerTestData.profile())
+                    ? () -> SellerTestData.save(sellers, SellerTestData.profile())
                     : () -> {
                         notes.save(note);
                         return null;

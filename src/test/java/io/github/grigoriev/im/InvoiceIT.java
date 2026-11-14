@@ -47,7 +47,7 @@ class InvoiceIT {
 
     @BeforeEach
     void profileAndCustomer() {
-        sellers.save(SellerTestData.profile());
+        SellerTestData.save(sellers, SellerTestData.profile());
         customer = customers.create(CustomerTestData.verlag());
     }
 

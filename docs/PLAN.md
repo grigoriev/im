@@ -105,7 +105,7 @@ Not chosen:
 |---|---|
 | `AppUser` | Login, role, password hash |
 | `Passkey` | WebAuthn credential of a user |
-| `SellerProfile` | Name, a line below it (for example the profession), address, contact data, website, tax status, tax number or VAT ID, IBAN, BIC, bank name, account holder (empty: the name). No logo |
+| `SellerProfile` | Name, a line below it (for example the profession), address, contact data, website, tax status, tax number or VAT ID, IBAN, BIC, bank name, account holder (the form fills in the name). No logo. Four tabs (Anschrift, Kontakt, Steuer, Bankverbindung) save on their own; an incomplete profile saves, and the issue names what is missing. E-mail and phone are needed for XRechnung only (BR-DE-6, BR-DE-7) |
 | `Customer` | Address, country, e-mail, USt-IdNr, buyer reference (the Leitweg-ID for a public buyer), format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
 | `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), e-mail text |
 | `Invoice` | Number, status, format, title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |

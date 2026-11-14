@@ -42,7 +42,7 @@ Package `io.github.grigoriev.im`:
   `XRechnungValidator`: KoSIT) and `EInvoiceService`, which issues and validates per format
 - `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`,
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
-- `seller`: the seller profile (`SellerService`, one row, IBAN checksum) and the default tax notes (`TaxNoteService`)
+- `seller`: the seller profile (`SellerService`, one row, IBAN checksum; `ProfilePart` saves one tab, `missing` names what invoices still need) and the default tax notes (`TaxNoteService`)
 - `audit`: the audit log (`AuditService.add`, joins the caller's transaction; with an invoice ID the entry joins its `history`); logins come from `user.LoginAudit`,
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue

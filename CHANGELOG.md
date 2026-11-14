@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- Profil: four tabs, Anschrift, Kontakt, Steuer and Bankverbindung, each with its own "Speichern". An incomplete profile saves; every empty field an invoice needs shows in red with "Für Rechnungen nötig", marked with a star, and a tab with such a field carries a red dot. A wrong value, such as an IBAN with a wrong checksum, shows its problem at the field and the tab is not saved. Issuing an invoice names what the profile still misses. E-mail and phone are needed for XRechnung only. Ansprechpartner and Kontoinhaber show the name until they are changed.
+
 ## [0.1.1] - 2026-11-14
 
 ### Added

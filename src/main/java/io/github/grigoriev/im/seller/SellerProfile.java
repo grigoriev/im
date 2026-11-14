@@ -53,6 +53,22 @@ public record SellerProfile(
     }
 
     /**
+     * Returns the profile with the name as contact person and account holder where they are empty: what the
+     * invoice shows anyway, so the form shows it too.
+     *
+     * @return the profile for the form
+     */
+    public SellerProfile withNameAsDefault() {
+        return new SellerProfile(name, street, postcode, city, countryCode, isBlank(contactName) ? name : contactName,
+                email, phone, taxNumber, vatId, iban, bic, taxStatus, tagline, website, bankName,
+                isBlank(accountHolder) ? name : accountHolder);
+    }
+
+    private static boolean isBlank(String text) {
+        return text == null || text.isBlank();
+    }
+
+    /**
      * Returns the seller party of an invoice. XRechnung needs a contact name (BR-DE-5): the name serves if no
      * contact person is set.
      *

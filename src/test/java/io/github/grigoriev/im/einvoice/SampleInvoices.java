@@ -12,6 +12,9 @@ public final class SampleInvoices {
 
     static final Party SELLER = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
             "kontakt@sommer.example", "+49 89 1234567", "Elena Sommer", "143/123/45678", null);
+    /** The seller without e-mail and phone: ZUGFeRD EN16931 needs neither, only XRechnung does (BR-DE-6, BR-DE-7). */
+    static final Party SELLER_NO_CONTACT = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
+            null, null, "Elena Sommer", "143/123/45678", null);
     /** The seller with a VAT ID, as reverse charge needs it (§14a UStG). */
     static final Party SELLER_EU = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
             "kontakt@sommer.example", "+49 89 1234567", "Elena Sommer", "143/123/45678", "DE123456789");

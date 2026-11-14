@@ -52,7 +52,7 @@ class TemplateIT {
 
     @Test
     void aDraftCopiesItsTemplateAndKeepsItsCopy() {
-        sellers.save(SellerTestData.profile());
+        SellerTestData.save(sellers, SellerTestData.profile());
         Customer customer = customers.create(CustomerTestData.verlag());
         InvoiceTemplate template = templates.create(customer.id());
         TemplateForm form = TemplateForm.of(template);

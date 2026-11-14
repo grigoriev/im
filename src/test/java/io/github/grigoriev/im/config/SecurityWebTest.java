@@ -388,36 +388,57 @@ class SecurityWebTest {
     }
 
     @Test
-    void showsAnEmptyProfileAndThenTheSavedOne() throws Exception {
+    void showsAnEmptyProfileAndThenTheSavedOneTabByTab() throws Exception {
         when(sellers.find()).thenReturn(Optional.empty());
         mvc.perform(get("/einstellungen").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kleinunternehmer nach § 19 UStG")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"seller-name\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"seller-iban\""))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span class=\"sr-only\">unvollständig</span>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Für Rechnungen nötig.")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Steuerhinweise"))));
+        mvc.perform(get("/einstellungen").param("teil", "steuer").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kleinunternehmer nach § 19 UStG")));
         when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile()));
-        mvc.perform(get("/einstellungen").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")))
+        mvc.perform(get("/einstellungen").param("teil", "bank").with(user("admin").roles("ADMIN")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"DE89 3704 0044 0532 0130 00\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"accountHolder\" value=\"Erika Mustermann\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<span class=\"sr-only\">unvollständig</span>"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuerhinweise")));
+        mvc.perform(get("/einstellungen").param("teil", "unbekannt").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")));
     }
 
     @Test
-    void savesTheProfileOrShowsTheFormWithTheProblems() throws Exception {
-        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE89 3704")
-                        .param("taxStatus", "REGULAR").with(user("elena").roles("USER")).with(csrf()))
-                .andExpect(redirectedUrl("/einstellungen")).andExpect(flash().attribute("success", "Profil gespeichert."));
-        verify(sellers).save(argThat(profile -> profile.name().equals("Erika Mustermann")
-                && profile.taxStatus() == TaxStatus.REGULAR));
-        when(sellers.save(any())).thenThrow(new SettingsException(List.of("Die IBAN ist ungültig.", "Bitte Ort angeben.")));
-        mvc.perform(post("/einstellungen").param("name", "Erika Mustermann").param("iban", "DE00").param("countryCode", "JP")
+    void savesATabOrShowsItWithTheProblemAtTheField() throws Exception {
+        SellerProfile saved = SellerTestData.profile();
+        when(sellers.save(any(), any())).thenReturn(saved);
+        mvc.perform(post("/einstellungen").param("teil", "steuer").param("taxStatus", "REGULAR")
                         .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/einstellungen?teil=steuer"))
+                .andExpect(flash().attribute("success", "Steuer gespeichert."));
+        verify(sellers).save(eq(io.github.grigoriev.im.seller.ProfilePart.TAX),
+                argThat(profile -> profile.taxStatus() == TaxStatus.REGULAR));
+
+        when(sellers.save(any(), any())).thenReturn(new SellerProfile("Erika", null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null));
+        mvc.perform(post("/einstellungen").param("teil", "anschrift").param("name", "Erika")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("success", "Anschrift gespeichert. Für Rechnungen fehlt noch: Straße, PLZ, "
+                        + "Ort, Land, Steuerstatus, Steuernummer oder USt-IdNr., IBAN, BIC."));
+
+        when(sellers.find()).thenReturn(Optional.of(saved));
+        when(sellers.save(any(), any())).thenThrow(new SettingsException(Map.of("iban", "Die IBAN ist ungültig.")));
+        mvc.perform(post("/einstellungen").param("teil", "bank").param("iban", "DE00").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Die IBAN ist ungültig.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte Ort angeben.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Das Profil ist nicht gespeichert.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span id=\"iban-hint\" class=\"text-xs text-error\">Die IBAN ist ungültig.</span>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-invalid=\"true\"")));
+        when(sellers.find()).thenReturn(Optional.empty());
+        mvc.perform(post("/einstellungen").param("teil", "anschrift").param("countryCode", "JP").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk());
         verify(countries).options(null, "JP");
-        mvc.perform(post("/einstellungen").param("name", "x").with(csrf())).andExpect(status().is3xxRedirection())
+        mvc.perform(post("/einstellungen").param("teil", "x").param("name", "x").with(csrf())).andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login"));
-        verify(sellers, times(2)).save(any());
     }
 
     @Test

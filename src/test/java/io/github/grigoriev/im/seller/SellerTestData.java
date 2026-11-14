@@ -10,6 +10,21 @@ public final class SellerTestData {
     }
 
     /**
+     * Saves a whole profile, tab by tab, as the user would.
+     *
+     * @param sellers the service
+     * @param profile the profile
+     * @return the saved profile
+     */
+    public static SellerProfile save(SellerService sellers, SellerProfile profile) {
+        SellerProfile saved = null;
+        for (ProfilePart part : ProfilePart.values()) {
+            saved = sellers.save(part, profile);
+        }
+        return saved;
+    }
+
+    /**
      * Returns a valid Kleinunternehmer profile.
      *
      * @return the profile
