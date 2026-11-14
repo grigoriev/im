@@ -50,6 +50,35 @@ class TemplateIT {
         return row;
     }
 
+    /** V24 replaces the old default wording in the copies that templates and drafts hold. */
+    @Test
+    void theMigrationOfTheTaxNoteWordingReachesTemplatesAndDrafts() throws Exception {
+        SellerTestData.save(sellers, SellerTestData.profile());
+        Customer customer = customers.create(CustomerTestData.verlag());
+        InvoiceTemplate template = templates.create(customer.id());
+        Invoice draft = invoices.createDraft(customer.id(), template.id());
+        String old = "Steuerfrei gemäß § 4 Nr. 21 UStG.\nGemäß § 19 UStG wird keine Umsatzsteuer berechnet.";
+        jdbc.update("UPDATE invoice_template SET tax_note = ? WHERE id = ?", old, template.id());
+        jdbc.update("UPDATE invoice SET tax_note = ? WHERE id = ?", old, draft.id());
+        jdbc.update("UPDATE invoice SET tax_note = ? WHERE id = ?", "Eigener Hinweis.", invoices.createDraft(customer.id(), null).id());
+
+        String migration = new String(getClass().getResourceAsStream("/db/migration/V24__tax_note_wording.sql").readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        for (String statement : migration.replaceAll("(?m)^--.*$", "").split(";")) {
+            if (!statement.isBlank()) {
+                jdbc.update(statement);
+            }
+        }
+        String expected = "Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG.\nFür diese Leistung gilt die "
+                + "Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).";
+        assertThat(jdbc.queryForObject("SELECT tax_note FROM invoice_template WHERE id = ?", String.class, template.id()))
+                .isEqualTo(expected);
+        assertThat(jdbc.queryForObject("SELECT tax_note FROM invoice WHERE id = ?", String.class, draft.id()))
+                .isEqualTo(expected);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM invoice WHERE tax_note = 'Eigener Hinweis.'", Integer.class))
+                .as("an own note stays").isPositive();
+    }
+
     @Test
     void aDraftCopiesItsTemplateAndKeepsItsCopy() {
         SellerTestData.save(sellers, SellerTestData.profile());
