@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-14
+
 ### Changed
 
 - Legal review: the default note of §19 invoices quotes §34a UStDV, "Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG)", since §19 is a tax exemption from 2025. The note of teaching names the service, "Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG". Zeile 13 of the report quotes the Anlage EÜR 2025 in full ("sowie Satz 2"). Issued invoices keep their text.
