@@ -66,8 +66,11 @@ public class DraftForm {
             row.setLumpSum(line.lumpSum());
             row.setQuantity(quantity(line.quantity()));
             row.setPrice(price(line.unitPrice()));
-            // A lump sum shows its amount; a line with quantity shows its total there, for a switch to a lump sum.
-            row.setAmount(price(line.quantity().multiply(line.unitPrice()).setScale(2, RoundingMode.HALF_UP)));
+            // A lump sum shows its amount as stored; a line with quantity shows its total, for a switch to a lump sum.
+            row.setAmount(line.lumpSum() ? price(line.unitPrice())
+                    : price(line.quantity().multiply(line.unitPrice()).setScale(2, RoundingMode.HALF_UP)));
+            row.setShownAsLumpSum(line.lumpSum());
+            row.setShownAmount(row.getAmount());
             row.setCategory(line.category());
             form.lines.add(row);
         }

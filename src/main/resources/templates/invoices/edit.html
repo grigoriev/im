@@ -56,6 +56,8 @@
         <p class="text-sm text-base-content/75" th:if="*{lines.isEmpty()}">Noch keine Position.</p>
         <div th:each="line, row : *{lines}" class="invoice-line border border-base-300 rounded-field p-3 grid gap-3" th:id="'line-' + ${row.index}">
           <label class="grid gap-1.5"><span class="text-sm font-medium" th:text="'Position ' + ${row.count}">Position 1</span>
+            <input type="hidden" th:field="*{lines[__${row.index}__].shownAsLumpSum}">
+            <input type="hidden" th:field="*{lines[__${row.index}__].shownAmount}">
             <input th:id="'line-' + ${row.index} + '-text'" th:field="*{lines[__${row.index}__].text}" class="input w-full"
                    maxlength="500" placeholder="z. B. Lesung am 16.03.2027, 90 Min." aria-label="Leistung">
           </label>

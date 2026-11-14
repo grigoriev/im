@@ -85,6 +85,18 @@ class DraftFormTest {
         assertThat(first.getCategory()).isEqualTo(TaxCategory.EXEMPT_4_21);
         assertThat(form.getLines().get(1).isLumpSum()).isTrue();
         assertThat(form.getLines().get(1).getAmount()).isEqualTo("400,00");
+        assertThat(first.isShownAsLumpSum()).isFalse();
+        assertThat(first.getShownAmount()).isEqualTo("720,00");
+        assertThat(form.getLines().get(1).isShownAsLumpSum()).isTrue();
+    }
+
+    @Test
+    void keepsFourDecimalsOfALumpSum() {
+        LocalDate day = LocalDate.of(2027, 3, 18);
+        Invoice invoice = new Invoice(1L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14,
+                null, null, null, null, List.of(new DraftLine("Gebühr", true, BigDecimal.ONE, new BigDecimal("400.125"),
+                        TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH, Instant.EPOCH, 0L);
+        assertThat(DraftForm.of(invoice).getLines().getFirst().getAmount()).isEqualTo("400,125");
     }
 
     @Test
@@ -95,6 +107,8 @@ class DraftFormTest {
         assertThat(line.getText()).isEmpty();
         assertThat(line.getPrice()).isEmpty();
         assertThat(line.getAmount()).isEmpty();
+        assertThat(line.isShownAsLumpSum()).isTrue();
+        assertThat(line.getShownAmount()).isEmpty();
         assertThat(new DraftForm().getLines()).isEmpty();
     }
 }

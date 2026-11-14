@@ -376,6 +376,54 @@ class InvoiceServiceTest {
         assertThat(saved.lines().get(1).unitPrice()).isEqualByComparingTo("12.50");
     }
 
+    private static LineForm switched(String quantity, String price, String shown, String amount) {
+        LineForm row = row("Unterricht", true, quantity, price, TaxCategory.EXEMPT_4_21);
+        row.setShownAsLumpSum(false);
+        row.setShownAmount(shown);
+        row.setAmount(amount);
+        return row;
+    }
+
+    @Test
+    void aSwitchTakesTheSubmittedQuantityUnlessTheUserTypedAnAmount() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        Invoice saved = service.saveDraft(5, form(switched("3", "50", "100,00", "100,00"),
+                switched("3", "50", "100,00", "120"), switched("1,5", "33,33", "", " ")));
+        assertThat(saved.lines()).extracting(DraftLine::unitPrice).usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(new BigDecimal("150.00"), new BigDecimal("120"), new BigDecimal("50.00"));
+        assertThat(saved.lines()).allSatisfy(line -> assertThat(line.quantity()).isEqualByComparingTo("1"));
+    }
+
+    @Test
+    void acceptsASwitchedTotalOfTwelveDigits() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        Invoice saved = service.saveDraft(5, form(switched("1000", "999999999", "", "")));
+        assertThat(saved.lines().getFirst().unitPrice()).isEqualByComparingTo("999999999000");
+    }
+
+    @Test
+    void refusesASwitchedTotalThatIsTooLargeOrUnreadable() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        DraftForm form = form(switched("1000", "1000000000", "x", "x"), switched("viel", "50", "", ""),
+                switched("2", "teuer", "", ""));
+        InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
+        assertThat(e.problems()).containsExactly("Position 1: Der Betrag hat höchstens 12 Stellen vor dem Komma.",
+                "Position 2: Die Menge ist keine Zahl, zum Beispiel 45,00.",
+                "Position 3: Der Preis ist keine Zahl, zum Beispiel 45,00.");
+    }
+
+    @Test
+    void knowsAnUntouchedSwitch() {
+        assertThat(InvoiceService.switchedUntouched(switched("2", "5", "10,00", "10,00"))).isTrue();
+        assertThat(InvoiceService.switchedUntouched(switched("2", "5", "10,00", "12"))).isFalse();
+        LineForm stayed = switched("2", "5", "10,00", "10,00");
+        stayed.setShownAsLumpSum(true);
+        assertThat(InvoiceService.switchedUntouched(stayed)).isFalse();
+        LineForm counted = switched("2", "5", "10,00", "10,00");
+        counted.setLumpSum(false);
+        assertThat(InvoiceService.switchedUntouched(counted)).isFalse();
+    }
+
     @Test
     void reportsAConcurrentSaveAsAFormProblem() {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));

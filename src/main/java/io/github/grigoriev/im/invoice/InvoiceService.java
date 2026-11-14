@@ -11,11 +11,13 @@ import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -296,13 +298,33 @@ public class InvoiceService {
         if (row.getCategory() == null) {
             problems.add(prefix + "Bitte die Steuer wählen.");
         }
-        if (row.isLumpSum()) {
+        if (row.isLumpSum() && !switchedUntouched(row)) {
             return new DraftLine(text, true, BigDecimal.ONE, number(problems, row.getAmount(), prefix + "Der Betrag"),
                     row.getCategory());
         }
         BigDecimal quantity = number(problems, row.getQuantity(), prefix + "Die Menge");
         BigDecimal price = number(problems, row.getPrice(), prefix + "Der Preis");
-        return new DraftLine(text, false, quantity, price, row.getCategory());
+        if (!row.isLumpSum()) {
+            return new DraftLine(text, false, quantity, price, row.getCategory());
+        }
+        // Switched to a lump sum without a new amount: the total of the quantity and price as submitted now.
+        BigDecimal total = quantity == null || price == null ? null
+                : quantity.multiply(price).setScale(2, RoundingMode.HALF_UP);
+        if (total != null && total.precision() - total.scale() > MAX_INTEGER_DIGITS) {
+            problems.add(prefix + "Der Betrag" + AT_MOST + MAX_INTEGER_DIGITS + " Stellen vor dem Komma.");
+            total = null;
+        }
+        return new DraftLine(text, true, BigDecimal.ONE, total, row.getCategory());
+    }
+
+    /**
+     * Tells whether a line turned from "Mit Menge" into a lump sum and its amount field still shows the old total:
+     * then the quantity and price as submitted give the amount, so a changed quantity counts (docs/PLAN.md,
+     * section 7). An amount the user typed wins.
+     */
+    static boolean switchedUntouched(LineForm row) {
+        return row.isLumpSum() && !row.isShownAsLumpSum()
+                && Objects.equals(text(row.getAmount()), text(row.getShownAmount()));
     }
 
     /**

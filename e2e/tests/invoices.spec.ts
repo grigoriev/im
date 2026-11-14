@@ -42,6 +42,15 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.locator('#invoice-totals')).toContainText('430,00 €');
 
+  // A quantity changed right before the switch counts, when no new amount was typed.
+  await page.locator('#line-1-kind').selectOption('false');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.locator('#line-1-quantity').fill('4');
+  await page.locator('#line-1-price').fill('12,50');
+  await page.locator('#line-1-kind').selectOption('true');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#invoice-totals')).toContainText('450,00 €');
+
   await page.getByRole('button', { name: 'Position 2 entfernen' }).click();
   await expect(page.locator('#line-1-text')).toHaveCount(0);
   await expect(page.locator('#invoice-totals')).toContainText('400,00 €');

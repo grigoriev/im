@@ -10,6 +10,8 @@ public class LineForm {
     private String quantity = "1";
     private String price = "";
     private String amount = "";
+    private boolean shownAsLumpSum = true;
+    private String shownAmount = "";
     private TaxCategory category;
 
     /**
@@ -101,6 +103,42 @@ public class LineForm {
      */
     public void setAmount(String amount) {
         this.amount = amount;
+    }
+
+    /**
+     * Tells whether the line was a lump sum when the page showed it.
+     *
+     * @return {@code true} if it was a lump sum
+     */
+    public boolean isShownAsLumpSum() {
+        return shownAsLumpSum;
+    }
+
+    /**
+     * Sets whether the line was a lump sum when the page showed it.
+     *
+     * @param shownAsLumpSum {@code true} if it was a lump sum
+     */
+    public void setShownAsLumpSum(boolean shownAsLumpSum) {
+        this.shownAsLumpSum = shownAsLumpSum;
+    }
+
+    /**
+     * Returns the amount field as the page showed it.
+     *
+     * @return the amount as shown
+     */
+    public String getShownAmount() {
+        return shownAmount;
+    }
+
+    /**
+     * Sets the amount field as the page showed it.
+     *
+     * @param shownAmount the amount as shown
+     */
+    public void setShownAmount(String shownAmount) {
+        this.shownAmount = shownAmount;
     }
 
     /**
