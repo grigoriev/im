@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-14
+
 ### Changed
 
 - `scripts/e2e.sh` refreshes the timestamp of the jar before the image build: with the fixed timestamp of the reproducible build, Docker Desktop could build the image with an old jar.
