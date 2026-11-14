@@ -255,6 +255,8 @@ class IssueIT {
         long first = dispatches.recordManual(id, form).id();
         assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.SENT);
         form.setChannel(DispatchChannel.OWN_MAIL);
+        form.setRecipient("r".repeat(200));
+        form.setNote("n".repeat(499) + "!");
         dispatches.recordManual(id, form);
         assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.SENT);
         assertThat(dispatches.list(id)).extracting(d -> d.channel())
@@ -262,6 +264,8 @@ class IssueIT {
         assertThat(audit.history(id)).extracting(AuditEvent::action).containsExactly(AuditAction.DRAFT_CREATED,
                 AuditAction.INVOICE_ISSUED, AuditAction.INVOICE_SENT, AuditAction.INVOICE_SENT);
         assertThat(audit.history(id).get(2).detail()).isEqualTo("2019-01, 02.04.2019, Post, Buchhaltung, Notiz: mit Begleitbrief");
+        assertThat(audit.history(id).get(3).detail()).as("the longest recipient and note stay whole")
+                .contains("r".repeat(200)).endsWith("n".repeat(499) + "!");
 
         assertThatThrownBy(() -> jdbc.update("UPDATE dispatch SET note = 'neu' WHERE id = ?", first))
                 .hasMessageContaining("immutable");

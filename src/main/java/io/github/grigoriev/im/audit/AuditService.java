@@ -20,7 +20,7 @@ public class AuditService {
 
     /** Maximum length of a login name and of a detail, as in the database. */
     static final int MAX_USERNAME = 64;
-    static final int MAX_DETAIL = 500;
+    static final int MAX_DETAIL = 2000;
 
     private final AuditRepository events;
     private final Clock clock;
