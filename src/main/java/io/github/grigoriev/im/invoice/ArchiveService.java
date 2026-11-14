@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
+import io.github.grigoriev.im.customer.Customer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
@@ -63,7 +64,7 @@ public class ArchiveService {
                     zip.putNextEntry(new ZipEntry(name));
                     zip.write(file.content());
                     contents.append(String.join(";", quoted(invoice.number()), GERMAN.format(invoice.issueDate()),
-                            quoted(document.buyer().name()), name, Integer.toString(file.size()), file.sha256()))
+                            quoted(Customer.label(document.buyer().name(), document.buyer().contactName())), name, Integer.toString(file.size()), file.sha256()))
                             .append("\r\n");
                 }
             }
