@@ -50,10 +50,12 @@ class DocumentIT {
                 .containsExactly(second.id(), first.id());
         assertThat(documents.file(first.id()).orElseThrow().content()).isEqualTo(PDF);
         assertThat(documents.ofYear(2026)).extracting(BusinessDocument::id).contains(first.id(), second.id());
+        assertThat(documents.years()).contains(2026);
         assertThat(documents.change(second.id(), form(title + " geändert", LocalDate.of(2027, 8, 2))).title())
                 .endsWith(" geändert");
-        assertThatThrownBy(() -> documents.replace(first.id(), form(title, LocalDate.of(2027, 9, 1)), "x.pdf", PDF))
-                .isInstanceOf(DocumentException.class);
+        DocumentForm late = form(title, LocalDate.of(2027, 9, 1));
+        long firstId = first.id();
+        assertThatThrownBy(() -> documents.replace(firstId, late, "x.pdf", PDF)).isInstanceOf(DocumentException.class);
         assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_event WHERE action LIKE 'DOCUMENT_%' AND detail LIKE ?",
                 Integer.class, "%" + title + "%")).isEqualTo(3);
     }

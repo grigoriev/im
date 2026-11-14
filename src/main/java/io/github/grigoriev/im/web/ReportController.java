@@ -119,6 +119,7 @@ public class ReportController {
         model.addAttribute("year", year);
         SortedSet<Integer> years = new TreeSet<>(Comparator.reverseOrder());
         years.addAll(threshold.years());
+        years.addAll(archive.years());
         years.add(year);
         model.addAttribute("years", years);
         model.addAttribute("rows", rows);

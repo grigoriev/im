@@ -29,8 +29,8 @@ public record DocumentFile(String filename, String mediaType, byte[] content) {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof DocumentFile that && filename.equals(that.filename) && mediaType.equals(that.mediaType)
-                && Arrays.equals(content, that.content);
+        return other instanceof DocumentFile(String otherName, String otherType, byte[] otherContent)
+                && filename.equals(otherName) && mediaType.equals(otherType) && Arrays.equals(content, otherContent);
     }
 
     @Override

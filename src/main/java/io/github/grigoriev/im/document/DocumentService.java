@@ -18,6 +18,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -67,6 +68,12 @@ public class DocumentService {
             UPDATE business_document SET category = :category, title = :title, document_date = :documentDate,
                 year = :year, note = :note
              WHERE id = :id""";
+
+    private static final String CATEGORY = "category";
+    private static final String TITLE = "title";
+    private static final String DOCUMENT_DATE = "documentDate";
+    private static final String YEAR = "year";
+    private static final String NOTE = "note";
 
     private final JdbcClient jdbc;
     private final AuditService audit;
@@ -150,6 +157,15 @@ public class DocumentService {
     }
 
     /**
+     * Returns the years the archive has documents for.
+     *
+     * @return the archive year of every document
+     */
+    public Set<Integer> years() {
+        return all().stream().map(BusinessDocument::archiveYear).collect(Collectors.toSet());
+    }
+
+    /**
      * Returns the file of a document.
      *
      * @param id the ID
@@ -208,9 +224,9 @@ public class DocumentService {
     public BusinessDocument change(long id, DocumentForm form) {
         current(id);
         Description description = describe(form, new ArrayList<>());
-        jdbc.sql(UPDATE).param("id", id).param("category", description.category().name())
-                .param("title", description.title()).param("documentDate", description.form().getDocumentDate())
-                .param("year", description.form().getYear()).param("note", description.note()).update();
+        jdbc.sql(UPDATE).param("id", id).param(CATEGORY, description.category().name())
+                .param(TITLE, description.title()).param(DOCUMENT_DATE, description.form().getDocumentDate())
+                .param(YEAR, description.form().getYear()).param(NOTE, description.note()).update();
         BusinessDocument changed = find(id).orElseThrow();
         audit.add(AuditAction.DOCUMENT_CHANGED, detail(changed));
         return changed;
@@ -230,9 +246,9 @@ public class DocumentService {
         List<String> problems = new ArrayList<>();
         String mediaType = mediaType(problems, content).orElse(null);
         Description description = describe(form, problems);
-        return jdbc.sql(INSERT).param("category", description.category().name()).param("title", description.title())
-                .param("documentDate", form.getDocumentDate()).param("year", form.getYear())
-                .param("note", description.note()).param("replacesId", replacesId)
+        return jdbc.sql(INSERT).param(CATEGORY, description.category().name()).param(TITLE, description.title())
+                .param(DOCUMENT_DATE, form.getDocumentDate()).param(YEAR, form.getYear())
+                .param(NOTE, description.note()).param("replacesId", replacesId)
                 .param("filename", filename(filename, mediaType)).param("mediaType", mediaType)
                 .param("content", content).param("sha256", sha256(content)).param("size", content.length)
                 .param("createdAt", Timestamp.from(clock.instant())).param("createdBy", AuditService.currentUser())
@@ -339,9 +355,9 @@ public class DocumentService {
     }
 
     private static BusinessDocument row(ResultSet rs, int n) throws SQLException {
-        return new BusinessDocument(rs.getLong("id"), DocumentCategory.valueOf(rs.getString("category")),
-                rs.getString("title"), rs.getObject("document_date", LocalDate.class),
-                rs.getObject("year", Integer.class), rs.getString("note"), rs.getObject("replaces_id", Long.class),
+        return new BusinessDocument(rs.getLong("id"), DocumentCategory.valueOf(rs.getString(CATEGORY)),
+                rs.getString(TITLE), rs.getObject("document_date", LocalDate.class),
+                rs.getObject(YEAR, Integer.class), rs.getString(NOTE), rs.getObject("replaces_id", Long.class),
                 rs.getObject("replaced_by", Long.class), rs.getString("filename"), rs.getString("media_type"),
                 rs.getString("sha256"), rs.getInt("size"), rs.getTimestamp("created_at").toInstant(),
                 rs.getString("created_by"));

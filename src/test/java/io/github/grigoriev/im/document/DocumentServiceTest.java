@@ -80,7 +80,7 @@ class DocumentServiceTest {
             List<Map<String, Object>> all = new ArrayList<>(rows.values());
             all.sort((a, b) -> {
                 int byDate = ((LocalDate) b.get("document_date")).compareTo((LocalDate) a.get("document_date"));
-                return byDate != 0 ? byDate : Long.compare((Long) b.get("id"), (Long) a.get("id"));
+                return byDate == 0 ? Long.compare((Long) b.get("id"), (Long) a.get("id")) : byDate;
             });
             found.addAll(all);
         } else if (rows.containsKey((Long) params.get("id"))) {
@@ -321,6 +321,7 @@ class DocumentServiceTest {
         assertThat(service.ofYear(2026)).extracting(BusinessDocument::id).containsExactly(3L, 5L, 2L, 1L);
         assertThat(service.ofYear(2027)).extracting(BusinessDocument::title).containsExactly("Später");
         assertThat(service.ofYear(2025)).isEmpty();
+        assertThat(service.years()).containsExactlyInAnyOrder(2026, 2027);
     }
 
     @Test

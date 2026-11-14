@@ -1592,11 +1592,12 @@ class SecurityWebTest {
 
     @Test
     void downloadsTheStoredFile() throws Exception {
-        when(businessDocuments.file(2)).thenReturn(Optional.of(new DocumentFile("Bescheid 2026.pdf", "application/pdf",
-                new byte[] {'%', 'P'})));
+        when(businessDocuments.file(2)).thenReturn(Optional.of(new DocumentFile("Bescheid 2026 geändert.pdf",
+                "application/pdf", new byte[] {'%', 'P'})));
         mvc.perform(get("/documents/2/file").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
-                .andExpect(header().string("Content-Disposition", Matchers.startsWith("attachment;")))
+                .andExpect(header().string("Content-Disposition", Matchers.containsString(
+                        "filename*=UTF-8''Bescheid%202026%20ge%C3%A4ndert.pdf")))
                 .andExpect(content().bytes(new byte[] {'%', 'P'}));
         mvc.perform(get("/documents/9/file").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(get("/documents")).andExpect(status().is3xxRedirection());

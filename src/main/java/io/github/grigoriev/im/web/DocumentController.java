@@ -7,6 +7,7 @@ import io.github.grigoriev.im.document.DocumentFile;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -40,6 +41,7 @@ public class DocumentController {
     private static final String SUCCESS = "success";
     private static final String PROBLEMS = "problems";
     private static final String FORM = "form";
+    private static final String TO_DOCUMENT = "redirect:/documents/";
 
     private final DocumentService documents;
     private final Clock clock;
@@ -99,7 +101,7 @@ public class DocumentController {
         try {
             BusinessDocument added = documents.add(form, name(file), bytes(file));
             flash.addFlashAttribute(SUCCESS, "Dokument „" + added.title() + "“ abgelegt.");
-            return "redirect:/documents/" + added.id();
+            return TO_DOCUMENT + added.id();
         } catch (DocumentException e) {
             model.addAttribute(PROBLEMS, e.problems());
             return page(model, null, form);
@@ -134,7 +136,7 @@ public class DocumentController {
         try {
             documents.change(id, form);
             flash.addFlashAttribute(SUCCESS, "Änderungen gespeichert.");
-            return "redirect:/documents/" + id;
+            return TO_DOCUMENT + id;
         } catch (DocumentException e) {
             model.addAttribute(PROBLEMS, e.problems());
             return page(model, found(id), form);
@@ -159,7 +161,7 @@ public class DocumentController {
         try {
             BusinessDocument added = documents.replace(id, form, name(file), bytes(file));
             flash.addFlashAttribute(SUCCESS, "Neue Fassung abgelegt.");
-            return "redirect:/documents/" + added.id();
+            return TO_DOCUMENT + added.id();
         } catch (DocumentException e) {
             model.addAttribute(PROBLEMS, e.problems());
             return page(model, found(id), form);
@@ -177,7 +179,7 @@ public class DocumentController {
         DocumentFile file = documents.file(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename(file.filename()).build().toString())
+                        ContentDisposition.attachment().filename(file.filename(), StandardCharsets.UTF_8).build().toString())
                 .body(file.content());
     }
 

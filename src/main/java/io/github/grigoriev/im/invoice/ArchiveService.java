@@ -52,6 +52,15 @@ public class ArchiveService {
     }
 
     /**
+     * Returns the years with business documents, so the year picker of the archive offers them too.
+     *
+     * @return the archive years of the documents
+     */
+    public Set<Integer> years() {
+        return businessDocuments.years();
+    }
+
+    /**
      * Writes the archive of a year. It reads one invoice's documents at a time.
      *
      * @param year the year of the invoice dates
@@ -102,7 +111,7 @@ public class ArchiveService {
                     document.current() ? "aktuell" : "ersetzt", quoted(name), Integer.toString(document.size()),
                     document.sha256())).append("\r\n");
         }
-        zip.putNextEntry(new ZipEntry(FOLDER + "Inhalt.csv"));
+        zip.putNextEntry(new ZipEntry(FOLDER + CONTENTS));
         zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
     }
 

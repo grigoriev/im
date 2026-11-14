@@ -180,11 +180,16 @@ class ArchiveServiceTest {
         Map<String, String> entries = unzip(out.toByteArray());
         assertThat(entries.keySet()).containsExactly("Inhalt.csv", "Dokumente/Bescheid.pdf", "Dokumente/Bescheid_2.pdf",
                 "Dokumente/Inhalt.csv");
-        assertThat(entries.get("Dokumente/Bescheid.pdf")).isEqualTo("alt");
-        assertThat(entries.get("Dokumente/Bescheid_2.pdf")).isEqualTo("neu");
-        assertThat(entries.get("Dokumente/Inhalt.csv")).isEqualTo(String.valueOf((char) 0xFEFF)
+        assertThat(entries).containsEntry("Dokumente/Bescheid.pdf", "alt").containsEntry("Dokumente/Bescheid_2.pdf", "neu")
+                .containsEntry("Dokumente/Inhalt.csv", String.valueOf((char) 0xFEFF)
                 + ArchiveService.DOCUMENT_HEAD + "\r\n"
                 + "\"Steuerbescheid\";\"Bescheid 2026\";10.05.2027;2026;ersetzt;\"Dokumente/Bescheid.pdf\";3;sha-1\r\n"
                 + "\"Steuerbescheid\";\"'=Bescheid 2026\";10.05.2027;;aktuell;\"Dokumente/Bescheid_2.pdf\";3;sha-2\r\n");
+    }
+
+    @Test
+    void offersTheYearsOfTheDocuments() {
+        when(businessDocuments.years()).thenReturn(Set.of(2024));
+        assertThat(service.years()).containsExactly(2024);
     }
 }
