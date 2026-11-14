@@ -26,6 +26,20 @@ class CustomerIT {
     private JdbcTemplate jdbc;
 
     @Test
+    void listsTheContactsOfOneOrganizationByTheirName() {
+        String name = "Sprachschule am See " + System.nanoTime();
+        Customer copy = CustomerTestData.verlag();
+        Customer zeller = customers.create(new Customer(null, name, copy.street(), copy.postcode(), copy.city(), "DE",
+                "Zoe Zeller", null, null, null, InvoiceFormat.ZUGFERD_EN16931));
+        Customer arndt = customers.create(new Customer(null, name, copy.street(), copy.postcode(), copy.city(), "DE",
+                "Anna Arndt", null, null, null, InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(customers.list()).filteredOn(customer -> customer.name().equals(name))
+                .extracting(Customer::contactName).containsExactly("Anna Arndt", "Zoe Zeller");
+        customers.delete(zeller.id());
+        customers.delete(arndt.id());
+    }
+
+    @Test
     void createsChangesListsAndDeletesCustomers() {
         Customer vhs = customers.create(CustomerTestData.vhs());
         Customer verlag = customers.create(CustomerTestData.verlag());

@@ -149,7 +149,7 @@ public class TemplateController {
     private String page(Model model, long customerId, InvoiceTemplate template, TemplateForm form) {
         model.addAttribute("template", template);
         model.addAttribute("form", form);
-        model.addAttribute("customer", customers.find(customerId).map(Customer::name).orElse("–"));
+        model.addAttribute("customer", customers.find(customerId).map(Customer::label).orElse("–"));
         model.addAttribute("customerId", customerId);
         model.addAttribute("formats", CustomerController.FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());

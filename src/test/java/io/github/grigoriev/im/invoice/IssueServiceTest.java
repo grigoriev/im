@@ -49,7 +49,8 @@ class IssueServiceTest {
 
     private final Invoice draft = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
             TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 3L, null, null);
-    private final InvoiceDocument document = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+    private final InvoiceDocument document = io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+            SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg");
     private final IssuedEInvoice files = new IssuedEInvoice(InvoiceFormat.ZUGFERD_EN16931, new byte[] {1},
             new byte[] {2}, List.of());
 
@@ -96,7 +97,7 @@ class IssueServiceTest {
         verify(statement).param("id", 5L);
         verify(statement).param("version", 3L);
         verify(store).store(5, "2027-10", files, NOW);
-        verify(audit).add(5L, AuditAction.INVOICE_ISSUED, "2027-10, Verlag am Fluss GmbH");
+        verify(audit).add(5L, AuditAction.INVOICE_ISSUED, "2027-10, Verlag am Fluss GmbH · Frau Berg");
         verify(jdbc, never()).sql(IssueService.CANCEL);
     }
 

@@ -41,12 +41,12 @@ public class CustomerService {
     }
 
     /**
-     * Lists all customers by name.
+     * Lists all customers by name, the contact persons of one organization by their name.
      *
      * @return the customers
      */
     public List<Customer> list() {
-        return customers.findAllByOrderByNameAsc();
+        return customers.findAllByOrderByNameAscContactNameAsc();
     }
 
     /**

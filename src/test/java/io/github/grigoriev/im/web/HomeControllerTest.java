@@ -59,7 +59,8 @@ class HomeControllerTest {
         open(dueToday, "20.00");
         open(settled, "0.00");
         when(invoices.cancelled(storno)).thenReturn(Optional.of(due));
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+                SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(threshold.today()).thenReturn(TODAY);
         Threshold current = new Threshold(2027, BigDecimal.ONE, true, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN,
                 BigDecimal.TEN);
@@ -70,7 +71,7 @@ class HomeControllerTest {
         @SuppressWarnings("unchecked")
         List<HomeController.Open> open = (List<HomeController.Open>) model.get("open");
         assertThat(open).extracting(item -> item.invoice().id()).containsExactly(1L, 2L, 3L);
-        assertThat(open).extracting(HomeController.Open::customer).containsOnly("Verlag am Fluss GmbH");
+        assertThat(open).extracting(HomeController.Open::customer).containsOnly("Verlag am Fluss GmbH · Frau Berg");
         assertThat(model).containsEntry("openSum", new BigDecimal("600.00"));
         @SuppressWarnings("unchecked")
         List<HomeController.Open> overdue = (List<HomeController.Open>) model.get("overdue");

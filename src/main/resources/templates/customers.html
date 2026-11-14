@@ -24,6 +24,7 @@
                th:attr="aria-current=${customer != null && customer.id == item.id} ? 'page'">
               <span class="min-w-0 grid">
                 <span class="[overflow-wrap:anywhere]" th:text="${item.name}">Name</span>
+                <span class="text-xs font-medium [overflow-wrap:anywhere]" th:if="${item.contactName != null}" th:text="${item.contactName}">Ansprechpartner</span>
                 <span class="text-xs opacity-75 [overflow-wrap:anywhere]" th:text="${item.postcode + ' ' + item.city + ' · ' + item.countryCode}">Ort</span>
               </span>
             </a>
@@ -36,7 +37,11 @@
       </section>
 
       <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-5 min-w-0 @container" th:if="${customer != null}">
-        <h2 class="text-lg font-semibold [overflow-wrap:anywhere]" th:text="${customer.id == null ? 'Neuer Kunde' : customer.name}">Kunde</h2>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <h2 class="text-lg font-semibold [overflow-wrap:anywhere] min-w-0" th:text="${customer.id == null ? 'Neuer Kunde' : customer.label()}">Kunde</h2>
+          <a class="btn btn-sm" th:if="${customer.id != null}" th:href="@{/kunden/neu(von=${customer.id})}" id="customer-copy"
+             title="Neuer Kunde mit derselben Anschrift, für einen weiteren Ansprechpartner"><i data-lucide="copy" class="size-4"></i>Weiterer Ansprechpartner</a>
+        </div>
         <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${problems}">
           <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
         </div>

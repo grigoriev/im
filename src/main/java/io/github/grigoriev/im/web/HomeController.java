@@ -6,6 +6,7 @@ import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.threshold.ThresholdService;
+import io.github.grigoriev.im.customer.Customer;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -65,7 +66,7 @@ public class HomeController {
             if (waiting && invoices.cancelled(invoice).isEmpty()) {
                 BigDecimal amount = payments.summary(invoice).open();
                 if (amount.signum() > 0) {
-                    open.add(new Open(invoice, documents.restore(invoice.snapshot()).buyer().name(), amount,
+                    open.add(new Open(invoice, label(documents.restore(invoice.snapshot()).buyer()), amount,
                             invoice.dueDate().isBefore(today)));
                 }
             }
@@ -78,5 +79,9 @@ public class HomeController {
         model.addAttribute("overdueSum", overdue.stream().map(Open::open).reduce(BigDecimal.ZERO, BigDecimal::add));
         model.addAttribute("threshold", threshold.current());
         return "home";
+    }
+
+    private static String label(io.github.grigoriev.im.einvoice.Party buyer) {
+        return Customer.label(buyer.name(), buyer.contactName());
     }
 }

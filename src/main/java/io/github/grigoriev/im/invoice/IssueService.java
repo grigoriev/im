@@ -7,6 +7,7 @@ import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.customer.Customer;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
@@ -122,7 +123,8 @@ public class IssueService {
                     + number);
         }
         store.store(id, number, files, at);
-        audit.add(id, AuditAction.INVOICE_ISSUED, number + ", " + document.buyer().name());
+        audit.add(id, AuditAction.INVOICE_ISSUED, number + ", "
+                + Customer.label(document.buyer().name(), document.buyer().contactName()));
         return number;
     }
 }

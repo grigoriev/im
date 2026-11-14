@@ -16,7 +16,7 @@
           th:unless="${customers.isEmpty()}">
       <label class="floating-label grow"><span>Kunde der neuen Rechnung</span>
         <select id="new-invoice-customer" name="customerId" class="select w-full">
-          <option th:each="customer : ${customers}" th:value="${customer.id}" th:text="${customer.name}">Kunde</option>
+          <option th:each="customer : ${customers}" th:value="${customer.id}" th:text="${customer.label()}">Kunde</option>
         </select>
       </label>
       <button type="submit" class="btn btn-primary"><i data-lucide="file-plus" class="size-4"></i>Neue Rechnung</button>

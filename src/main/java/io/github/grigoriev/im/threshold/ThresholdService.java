@@ -8,6 +8,7 @@ import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.seller.SettingsException;
+import io.github.grigoriev.im.customer.Customer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -222,7 +223,8 @@ public class ThresholdService {
             byCategory.putAll(split(amount, gross(document), document.total()));
         }
         BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS));
-        return new RevenueRow(paidOn, number, document.buyer().name(), amount, counted, amount.subtract(counted),
+        return new RevenueRow(paidOn, number,
+                Customer.label(document.buyer().name(), document.buyer().contactName()), amount, counted, amount.subtract(counted),
                 byCategory, note);
     }
 
