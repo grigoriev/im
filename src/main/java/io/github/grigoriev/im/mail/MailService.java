@@ -29,6 +29,8 @@ public class MailService {
     static final String NOT_CONFIGURED = "Das Versenden per E-Mail ist nicht eingerichtet.";
     static final String FAILED = "Die E-Mail ging nicht raus. Bitte später noch einmal versuchen oder den Versand "
             + "von Hand vermerken.";
+    static final String NOT_RECORDED = "Die E-Mail ist raus, aber der Versand ließ sich nicht vermerken. Bitte den "
+            + "Versand von Hand vermerken.";
     static final int MAX_SUBJECT = 200;
     static final int MAX_BODY = 4000;
 
@@ -124,8 +126,13 @@ public class MailService {
             LOG.warn("Sending invoice {} to {} failed: {}", invoice.number(), to, e.getMessage());
             throw new InvoiceException(List.of(FAILED));
         }
-        dispatches.recordEmail(invoiceId, to,
-                String.join(", ", attachments.stream().map(file -> file.kind().name()).toList()));
+        try {
+            dispatches.recordEmail(invoiceId, to,
+                    String.join(", ", attachments.stream().map(file -> file.kind().name()).toList()));
+        } catch (RuntimeException e) {
+            LOG.warn("Invoice {} went to {}, but its dispatch was not recorded", invoice.number(), to, e);
+            throw new InvoiceException(List.of(NOT_RECORDED));
+        }
     }
 
     /** Requires a value of at most {@code max} characters, with German grammar in both messages. */

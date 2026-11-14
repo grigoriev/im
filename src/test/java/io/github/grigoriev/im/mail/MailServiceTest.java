@@ -107,8 +107,8 @@ class MailServiceTest {
         service(ON).send(5, form(" buchhaltung@verlag.example ", " Rechnung 2027-07 ", "Hallo,\n\nanbei.\n", true, true));
         MimeMessage message = sent();
         message.saveChanges();
-        assertThat(message.getFrom()[0].toString()).isEqualTo("rechnung@elena.example");
-        assertThat(message.getRecipients(Message.RecipientType.TO)[0].toString()).isEqualTo("buchhaltung@verlag.example");
+        assertThat(message.getFrom()[0]).hasToString("rechnung@elena.example");
+        assertThat(message.getRecipients(Message.RecipientType.TO)[0]).hasToString("buchhaltung@verlag.example");
         assertThat(message.getRecipients(Message.RecipientType.BCC)).isNull();
         assertThat(message.getSubject()).isEqualTo("Rechnung 2027-07");
         List<Part> parts = parts(message);
@@ -128,7 +128,7 @@ class MailServiceTest {
                 "elena@elena.example"));
         service.send(5, form("a@b.example", "Rechnung", "Text", false, true));
         MimeMessage message = sent();
-        assertThat(message.getRecipients(Message.RecipientType.BCC)[0].toString()).isEqualTo("elena@elena.example");
+        assertThat(message.getRecipients(Message.RecipientType.BCC)[0]).hasToString("elena@elena.example");
         assertThat(parts(message)).extracting(Part::getFileName).containsExactly(null, "Rechnung_2027-07.xml");
         verify(dispatches).recordEmail(5, "a@b.example", "XML");
         verify(documents, never()).find(5, DocumentKind.PDF);
@@ -159,6 +159,15 @@ class MailServiceTest {
         assertThatThrownBy(() -> service(ON).send(5, form("a@b.example", "Betreff", "Text", true, false)))
                 .hasMessage(MailService.FAILED);
         verify(dispatches, never()).recordEmail(anyLong(), anyString(), anyString());
+    }
+
+    @Test
+    void aSentMailWhoseRecordFailsSaysSo() {
+        doThrow(new InvoiceException(List.of("Eine stornierte Rechnung wird nicht mehr versendet."))).when(dispatches)
+                .recordEmail(5, "a@b.example", "PDF");
+        assertThatThrownBy(() -> service(ON).send(5, form("a@b.example", "Betreff", "Text", true, false)))
+                .hasMessage(MailService.NOT_RECORDED);
+        verify(sender).send(any(MimeMessage.class));
     }
 
     @Test
@@ -200,7 +209,9 @@ class MailServiceTest {
     void knowsWhenItIsSetUpAndHidesThePassword() {
         assertThat(new MailProperties("h", 25, "", "", false, "", "").configured()).isFalse();
         assertThat(new MailProperties(" ", 25, "", "", false, "a@b.example", "").configured()).isFalse();
-        assertThat(ON).hasToString("MailProperties[host=smtp.example.org, port=587, username=elena, "
+        MailProperties properties = new MailProperties("smtp.example.org", 587, "elena", "geheim", true,
+                "rechnung@elena.example", "");
+        assertThat(properties).hasToString("MailProperties[host=smtp.example.org, port=587, username=elena, "
                 + "from=rechnung@elena.example]");
     }
 }

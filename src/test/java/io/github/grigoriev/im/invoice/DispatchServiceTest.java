@@ -96,11 +96,11 @@ class DispatchServiceTest {
     @Test
     void refusesWrongValues() {
         InvoiceException e = catchThrowableOfType(InvoiceException.class,
-                () -> service.recordManual(5, form(null, null, "r".repeat(201), "n".repeat(501))));
+                () -> service.recordManual(5, form(null, null, "r".repeat(255), "n".repeat(501))));
         assertThat(e.problems()).containsExactly("Bitte das Versanddatum angeben.", "Bitte den Weg wählen.",
-                "Der Empfänger hat höchstens 200 Zeichen.", "Die Notiz hat höchstens 500 Zeichen.");
+                "Der Empfänger hat höchstens 254 Zeichen.", "Die Notiz hat höchstens 500 Zeichen.");
         assertThat(catchThrowableOfType(InvoiceException.class,
-                () -> service.recordManual(5, form(TODAY.plusDays(1), DispatchChannel.EMAIL_APP, "r".repeat(200),
+                () -> service.recordManual(5, form(TODAY.plusDays(1), DispatchChannel.EMAIL_APP, "r".repeat(254),
                         "n".repeat(500)))).problems())
                 .containsExactly("Das Versanddatum liegt in der Zukunft.", "Bitte den Weg wählen.");
         assertThat(catchThrowableOfType(InvoiceException.class,

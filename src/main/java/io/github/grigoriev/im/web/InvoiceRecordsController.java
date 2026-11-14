@@ -44,7 +44,7 @@ public class InvoiceRecordsController {
     }
 
     /**
-     * Sends an issued invoice by e-mail and records the dispatch.
+     * Sends an issued invoice by e-mail and records the dispatch. On a problem the next page shows the form as typed.
      *
      * @param id the ID
      * @param form the entered values
@@ -58,6 +58,7 @@ public class InvoiceRecordsController {
             flash.addFlashAttribute(SUCCESS, "E-Mail an " + form.getTo().strip() + " gesendet.");
         } catch (InvoiceException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
+            flash.addFlashAttribute(IssuedInvoicePage.MAIL_FORM, form);
         }
         return TO_INVOICE + id;
     }

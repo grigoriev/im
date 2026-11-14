@@ -20,6 +20,9 @@ public class IssuedInvoicePage {
     static final Map<String, String> HISTORY_ICONS = Map.of("DRAFT_CREATED", "file-plus", "INVOICE_ISSUED", "stamp",
             "INVOICE_SENT", "send", "PAYMENT_RECORDED", "banknote");
 
+    /** The flash attribute that carries a mail form back after a problem. */
+    static final String MAIL_FORM = "mailForm";
+
     private final DocumentStore documents;
     private final AuditService audit;
     private final DispatchService dispatches;
@@ -58,7 +61,9 @@ public class IssuedInvoicePage {
         model.addAttribute("channels", Arrays.stream(DispatchChannel.values()).filter(DispatchChannel::isManual).toList());
         model.addAttribute("payments", payments.summary(invoice));
         model.addAttribute("mailConfigured", mail.configured());
-        if (mail.configured()) {
+        if (model.containsAttribute(MAIL_FORM)) {
+            model.addAttribute("mail", model.getAttribute(MAIL_FORM));
+        } else if (mail.configured()) {
             model.addAttribute("mail", mail.form(invoice, documents.restore(invoice.snapshot()).buyer().email()));
         }
     }

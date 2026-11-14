@@ -26,7 +26,7 @@ public class DispatchService {
              WHERE id = :id AND status = 'ISSUED'""";
     static final String NOT_ISSUED = "Erst ausstellen, dann versenden.";
     static final String CANCELLED = "Eine stornierte Rechnung wird nicht mehr versendet.";
-    static final int MAX_RECIPIENT = 200;
+    static final int MAX_RECIPIENT = Fields.MAX_EMAIL;
     static final int MAX_NOTE = 500;
 
     private static final DateTimeFormatter GERMAN = DateTimeFormatter.ofPattern("dd.MM.yyyy");

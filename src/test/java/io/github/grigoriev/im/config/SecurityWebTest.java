@@ -644,8 +644,11 @@ class SecurityWebTest {
         org.assertj.core.api.Assertions.assertThat(form.getValue().isXml()).isFalse();
         doThrow(new InvoiceException(List.of("Die E-Mail ging nicht raus."))).when(mail)
                 .send(org.mockito.ArgumentMatchers.eq(7L), any());
-        mvc.perform(post("/rechnungen/7/senden").param("to", "a@b.example").with(user("elena").roles("USER")).with(csrf()))
-                .andExpect(redirectedUrl("/rechnungen/7")).andExpect(flash().attribute("error", "Die E-Mail ging nicht raus."));
+        mvc.perform(post("/rechnungen/7/senden").param("to", "a@b.example").param("subject", "Mein Betreff")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/7")).andExpect(flash().attribute("error", "Die E-Mail ging nicht raus."))
+                .andExpect(flash().attribute("mailForm", org.hamcrest.Matchers.hasProperty("subject",
+                        org.hamcrest.Matchers.is("Mein Betreff"))));
     }
 
     @Test
@@ -834,12 +837,23 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"mail-pdf\" name=\"pdf\" type=\"checkbox\" class=\"checkbox checkbox-sm\"\n              value=\"true\" checked=\"checked\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("nicht eingerichtet"))));
         verify(mail).form(issued, "buchhaltung@verlag-am-fluss.example");
+        io.github.grigoriev.im.mail.SendForm typed = new io.github.grigoriev.im.mail.SendForm();
+        typed.setTo("neu@kunde.example");
+        typed.setSubject("Mein Betreff");
+        typed.setBody("Mein Text");
+        typed.setXml(true);
+        mvc.perform(get("/rechnungen/6").flashAttr("mailForm", typed).with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"neu@kunde.example\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Mein Text</textarea>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"invoice-mail\" open=\"open\"")));
+        verify(mail).form(any(), any());
         when(mail.configured()).thenReturn(false);
         when(audit.history(6)).thenReturn(List.of());
         when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.CANCELLED)));
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Einträge.")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Als versendet markieren"))));
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Als versendet markieren"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("nicht eingerichtet"))));
         when(invoices.find(6)).thenReturn(Optional.of(issued));
         when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
                 InvoiceFormat.XRECHNUNG));

@@ -272,6 +272,9 @@ class IssueIT {
         assertThat(audit.history(id).get(3).detail()).as("the longest recipient and note stay whole")
                 .contains("r".repeat(200)).endsWith("n".repeat(499) + "!");
 
+        String longest = "r".repeat(240) + "@kunde.example";
+        assertThat(longest).hasSize(254);
+        assertThat(dispatches.recordEmail(id, longest, "PDF").recipient()).as("the longest address fits").isEqualTo(longest);
         assertThatThrownBy(() -> jdbc.update("UPDATE dispatch SET note = 'neu' WHERE id = ?", first))
                 .hasMessageContaining("immutable");
         assertThatThrownBy(() -> jdbc.update("DELETE FROM dispatch WHERE id = ?", first)).hasMessageContaining("immutable");

@@ -99,7 +99,7 @@ class MailIT {
         MimeMessage[] received = SMTP.getReceivedMessages();
         assertThat(received).as("the buyer and the blind copy").hasSize(2);
         MimeMessage message = received[0];
-        assertThat(message.getFrom()[0].toString()).isEqualTo("rechnung@elena.example");
+        assertThat(message.getFrom()[0]).hasToString("rechnung@elena.example");
         assertThat(message.getSubject()).isEqualTo("Rechnung 2039-01");
         Multipart parts = (Multipart) message.getContent();
         assertThat(parts.getCount()).isEqualTo(3);
