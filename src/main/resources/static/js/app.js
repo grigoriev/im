@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // does nothing, and the submit buttons show as busy.
 document.addEventListener('submit', (event) => {
   const form = event.target;
-  if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-once')) return;
+  if (!(form instanceof HTMLFormElement) || form.dataset.once === undefined) return;
   if (form.dataset.sent) {
     event.preventDefault();
     return;
