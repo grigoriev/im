@@ -161,10 +161,13 @@
   font-size: 0.8125rem;
 }
 /* A focused field has a ring outside its frame. The label then turns blue and covers the ring too, so the gap cuts
-   through both. A wrong field has a red label. The doubled class outweighs the :not(:has(...)) of the base rule. */
+   through both. The ring lies on the surface around the field: a white card, unless the field sets --label-surface,
+   as one on the gray page does. A wrong field has a red label. The doubled class outweighs the :not(:has(...)) of the
+   base rule. */
 .floating-label.floating-label:focus-within > span {
   color: var(--color-primary);
-  background: linear-gradient(to bottom, transparent calc(50% - 3px), var(--color-base-100) calc(50% - 3px));
+  background: linear-gradient(to bottom, transparent calc(50% - 3px), var(--label-surface, var(--color-base-100))
+    calc(50% - 3px) 50%, var(--color-base-100) 50%);
 }
 .floating-label.floating-label:has([aria-invalid="true"], .input-error, .select-error) > span { color: var(--color-error); }
 /* A field that a form needs: a red star after its label. The empty alternative keeps it out of the label text. */
