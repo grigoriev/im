@@ -703,6 +703,72 @@ class SecurityWebTest {
     }
 
     @Test
+    void cancelsAnInvoiceThroughAStornorechnung() throws Exception {
+        when(invoices.createCancellation(6)).thenReturn(invoice(9, InvoiceStatus.DRAFT));
+        mvc.perform(post("/rechnungen/6/stornieren").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/9"))
+                .andExpect(flash().attribute("success", "Stornorechnung als Entwurf angelegt. Die Nummer folgt beim Ausstellen."));
+        when(invoices.createCancellation(7)).thenThrow(new InvoiceException(List.of("Zu dieser Rechnung gibt es schon eine Stornorechnung.")));
+        mvc.perform(post("/rechnungen/7/stornieren").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/7"))
+                .andExpect(flash().attribute("error", "Zu dieser Rechnung gibt es schon eine Stornorechnung."));
+
+        Invoice original = invoice(6, InvoiceStatus.SENT);
+        Invoice storno = invoice(9, InvoiceStatus.DRAFT);
+        when(invoices.find(6)).thenReturn(Optional.of(original));
+        when(invoices.find(9)).thenReturn(Optional.of(storno));
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                InvoiceFormat.ZUGFERD_EN16931));
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornieren…")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("action=\"/rechnungen/6/stornieren\"")));
+        when(invoices.cancellation(original)).thenReturn(Optional.of(storno));
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Eine Stornorechnung ist als")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rechnungen/9\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Stornieren…"))));
+        Invoice issuedStorno = invoice(9, InvoiceStatus.ISSUED);
+        when(invoices.cancellation(original)).thenReturn(Optional.of(issuedStorno));
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Storniert durch die")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung 2027-01")));
+
+        when(invoices.cancelled(storno)).thenReturn(Optional.of(original));
+        when(invoices.problems(storno)).thenReturn(List.of());
+        mvc.perform(get("/rechnungen/9").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung · Entwurf")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Storniert vollständig die")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"cancel-lines\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("disabled=\"disabled\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Position hinzufügen"))));
+
+        Invoice xStorno = new Invoice(9L, InvoiceStatus.DRAFT, 3L, null, InvoiceFormat.XRECHNUNG, storno.issueDate(),
+                storno.serviceFrom(), storno.serviceTo(), 0, "04011000-1", null, null, null, storno.lines(),
+                java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L, null, null);
+        when(invoices.find(9)).thenReturn(Optional.of(xStorno));
+        when(invoices.cancelled(xStorno)).thenReturn(Optional.of(original));
+        mvc.perform(post("/rechnungen/9").param("version", "0").param("issueDate", "kaputt")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XRECHNUNG\" selected=\"selected\">")));
+
+        when(invoices.find(9)).thenReturn(Optional.of(issuedStorno));
+        when(invoices.cancelled(issuedStorno)).thenReturn(Optional.of(original));
+        mvc.perform(get("/rechnungen/9").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung zur")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rechnungen/6\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Zahlung erfassen"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"invoice-payments\""))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Stornieren…"))));
+
+        when(invoices.list()).thenReturn(List.of(issuedStorno));
+        when(customers.list()).thenReturn(List.of());
+        mvc.perform(get("/rechnungen").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Stornorechnung · 2027-01 · 18.03.2027")));
+    }
+
+    @Test
     void filtersTheListByYearStatusAndText() throws Exception {
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);

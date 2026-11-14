@@ -33,6 +33,8 @@ public class PaymentService {
              WHERE id = :id AND status <> :status AND status <> 'CANCELLED'""";
     static final String NOT_ISSUED = "Erst ausstellen, dann Zahlungen erfassen.";
     static final String CANCELLED = "Eine stornierte Rechnung bekommt nur noch Rückzahlungen, mit Minus.";
+    static final String ON_ORIGINAL = "Eine Stornorechnung bekommt keine Zahlungen. Erstattungen gehören zur "
+            + "stornierten Rechnung.";
     static final int MAX_NOTE = 500;
     static final int MAX_INTEGER_DIGITS = 10;
     static final int MAX_DECIMALS = 2;
@@ -86,8 +88,8 @@ public class PaymentService {
     }
 
     /**
-     * Records a payment or, with a negative amount, a refund. It locks the invoice, so two records never race for
-     * the status.
+     * Records a payment or, with a negative amount, a refund. It locks the invoice before it reads it, so neither a
+     * second payment nor the issue of a Stornorechnung races with its checks.
      *
      * @param invoiceId the invoice
      * @param form the entered values
@@ -96,11 +98,16 @@ public class PaymentService {
      */
     @Transactional
     public InvoiceStatus add(long invoiceId, PaymentForm form) {
+        // Lock first, then read: a Stornorechnung issued meanwhile has committed CANCELLED before the checks below.
+        jdbc.sql(LOCK).param("id", invoiceId).query(Long.class).optional()
+                .orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));
         Invoice invoice = invoices.find(invoiceId).orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));
         if (invoice.isDraft()) {
             throw new InvoiceException(List.of(NOT_ISSUED));
         }
-        jdbc.sql(LOCK).param("id", invoiceId).query(Long.class).single();
+        if (invoices.cancelled(invoice).isPresent()) {
+            throw new InvoiceException(List.of(ON_ORIGINAL));
+        }
         String note = Fields.text(form.getNote());
         List<String> problems = new ArrayList<>();
         LocalDate paidOn = form.getPaidOn();

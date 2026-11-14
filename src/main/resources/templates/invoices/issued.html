@@ -19,6 +19,16 @@
          th:text="${customer} + ' · ' + ${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' € · fällig am ' + ${#temporals.format(document.dueDate(), 'dd.MM.yyyy')}">
         Kunde · 0,00 € · fällig am 01.04.2027</p>
     </div>
+    <p class="text-sm" th:if="${cancelled != null}" id="cancels">
+      Stornorechnung zur <a class="link" th:href="@{/rechnungen/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
+      Erstattungen gehören zu dieser Rechnung.</p>
+    <p class="alert text-sm" th:if="${cancellation != null}" id="cancelled-by">
+      <i data-lucide="undo-2" class="size-4"></i>
+      <span th:if="${cancellation.draft}">Eine Stornorechnung ist als
+        <a class="link" th:href="@{/rechnungen/{id}(id=${cancellation.id})}">Entwurf</a> angelegt. Mit ihrem Ausstellen ist diese Rechnung storniert.</span>
+      <span th:unless="${cancellation.draft}">Storniert durch die
+        <a class="link" th:href="@{/rechnungen/{id}(id=${cancellation.id})}" th:text="'Stornorechnung ' + ${cancellation.number}">Stornorechnung 2027-02</a>.</span>
+    </p>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
     <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">
@@ -76,7 +86,7 @@
       </form>
     </details>
 
-    <details class="bg-base-100 rounded-box border border-base-300 p-5" id="invoice-payment">
+    <details class="bg-base-100 rounded-box border border-base-300 p-5" id="invoice-payment" th:if="${cancelled == null}">
       <summary class="btn w-fit"><i data-lucide="banknote" class="size-4"></i>Zahlung erfassen…</summary>
       <form class="mt-3 grid gap-3 @container" method="post" th:action="@{/rechnungen/{id}/zahlungen(id=${invoice.id})}">
         <p class="text-sm text-base-content/75">Der Tag des Zahlungseingangs zählt für die EÜR und die Kleinunternehmergrenze.
@@ -137,7 +147,8 @@
       </div>
 
       <aside class="grid gap-4 content-start min-w-0">
-        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-payments">
+        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-payments"
+                 th:if="${cancelled == null}">
           <h2 class="font-semibold">Zahlungen</h2>
           <p class="text-base-content/75" th:if="${payments.entries().isEmpty()}">Noch keine Zahlung.</p>
           <ul class="grid gap-1" th:unless="${payments.entries().isEmpty()}">
@@ -178,6 +189,16 @@
         </section>
       </aside>
     </div>
+
+    <details class="border-t border-base-300 pt-4" id="invoice-cancel"
+             th:if="${invoice.status.name() != 'CANCELLED' and cancelled == null and cancellation == null}">
+      <summary class="text-sm cursor-pointer w-fit">Stornieren…</summary>
+      <form class="mt-3 grid gap-3 justify-items-start" method="post" th:action="@{/rechnungen/{id}/stornieren(id=${invoice.id})}">
+        <p class="text-sm">Legt eine Stornorechnung als Entwurf an, mit denselben Positionen. Sie bekommt beim Ausstellen ihre
+          eigene Nummer, dann ist diese Rechnung storniert. Eine Erstattung erfassen Sie danach hier als Zahlung mit Minus.</p>
+        <button type="submit" class="btn btn-sm btn-error" id="invoice-cancel-confirm"><i data-lucide="undo-2" class="size-4"></i>Stornorechnung anlegen</button>
+      </form>
+    </details>
   </div>
 </div>
 </body>

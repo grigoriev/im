@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -85,6 +86,7 @@ class PaymentServiceTest {
         when(jdbc.sql(PaymentService.LOCK)).thenReturn(lock);
         when(lock.param(anyString(), any())).thenReturn(lock);
         when(lock.query(Long.class)).thenReturn(locked);
+        when(locked.optional()).thenReturn(Optional.of(5L));
         when(jdbc.sql(PaymentService.STATUS)).thenReturn(status);
         when(status.param(anyString(), any())).thenReturn(status);
     }
@@ -92,8 +94,10 @@ class PaymentServiceTest {
     @Test
     void aFullPaymentMakesTheInvoicePaid() {
         assertThat(service.add(5, form(TODAY, "480,00", " Überweisung "))).isEqualTo(InvoiceStatus.PAID);
+        org.mockito.InOrder order = inOrder(locked, invoices);
+        order.verify(locked).optional();
+        order.verify(invoices).find(5);
         verify(lock).param("id", 5L);
-        verify(locked).single();
         verify(repository).save(new Payment(null, 5L, TODAY, new BigDecimal("480.00"), "Überweisung", "system", NOW));
         verify(status).param("status", "PAID");
         verify(status).param("at", Timestamp.from(NOW));
@@ -177,12 +181,21 @@ class PaymentServiceTest {
     }
 
     @Test
+    void aStornorechnungTakesNoPayment() {
+        when(invoices.cancelled(any())).thenReturn(Optional.of(invoice(InvoiceStatus.CANCELLED)));
+        assertThatThrownBy(() -> service.add(5, form(TODAY, "-10", null))).hasMessage(PaymentService.ON_ORIGINAL);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void refusesADraftAndAnUnknownInvoice() {
         PaymentForm form = form(TODAY, "10", null);
         is(InvoiceStatus.DRAFT);
         assertThatThrownBy(() -> service.add(5, form)).hasMessage("Erst ausstellen, dann Zahlungen erfassen.");
         when(invoices.find(6)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.add(6, form)).hasMessage("Diese Rechnung gibt es nicht.");
+        when(locked.optional()).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.add(5, form)).as("the lock finds no row").hasMessage("Diese Rechnung gibt es nicht.");
         verify(repository, never()).save(any());
     }
 

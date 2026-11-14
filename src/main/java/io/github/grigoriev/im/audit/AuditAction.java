@@ -51,6 +51,8 @@ public enum AuditAction {
     TEMPLATE_DELETED("Vorlage gelöscht"),
     /** An invoice was issued with its number and documents. */
     INVOICE_ISSUED("Rechnung ausgestellt"),
+    /** An invoice was cancelled by the issue of its Stornorechnung. */
+    INVOICE_CANCELLED("Rechnung storniert"),
     /** A dispatch of an invoice was recorded. */
     INVOICE_SENT("Versand vermerkt"),
     /** A payment or a refund of an invoice was recorded. */

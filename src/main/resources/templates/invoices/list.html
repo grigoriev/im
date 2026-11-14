@@ -53,7 +53,7 @@
             <span class="min-w-0 grid">
               <span class="truncate" th:text="${row.customer}">Kunde</span>
               <span class="text-xs text-base-content/75"
-                    th:text="${(row.invoice.number != null ? row.invoice.number : 'Entwurf') + ' · ' + #temporals.format(row.invoice.issueDate, 'dd.MM.yyyy')}">Entwurf · 18.03.2027</span>
+                    th:text="${(row.cancellation ? 'Stornorechnung · ' : '') + (row.invoice.number != null ? row.invoice.number : 'Entwurf') + ' · ' + #temporals.format(row.invoice.issueDate, 'dd.MM.yyyy')}">Entwurf · 18.03.2027</span>
             </span>
             <span class="grid justify-items-end">
               <span class="num" th:text="${row.total != null ? #numbers.formatDecimal(row.total, 1, 'POINT', 2, 'COMMA') + ' €' : '–'}">0,00 €</span>
