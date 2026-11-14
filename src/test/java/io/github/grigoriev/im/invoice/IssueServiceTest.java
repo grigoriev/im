@@ -75,7 +75,7 @@ class IssueServiceTest {
         verify(statement).param("id", 5L);
         verify(statement).param("version", 3L);
         verify(store).store(5, "2027-10", files, NOW);
-        verify(audit).add(AuditAction.INVOICE_ISSUED, "2027-10, Verlag am Fluss GmbH");
+        verify(audit).add(5L, AuditAction.INVOICE_ISSUED, "2027-10, Verlag am Fluss GmbH");
     }
 
     @Test

@@ -133,7 +133,7 @@ public class InvoiceService {
                     clock.instant(), clock.instant(), null, null, null);
         }
         Invoice saved = invoices.save(draft);
-        audit.add(AuditAction.DRAFT_CREATED, customer.name());
+        audit.add(saved.id(), AuditAction.DRAFT_CREATED, customer.name());
         return saved;
     }
 
@@ -191,7 +191,7 @@ public class InvoiceService {
     public void deleteDraft(long id) {
         Invoice draft = draft(id);
         invoices.deleteById(draft.id());
-        audit.add(AuditAction.DRAFT_DELETED, customerName(draft));
+        audit.add(draft.id(), AuditAction.DRAFT_DELETED, customerName(draft));
     }
 
     /**

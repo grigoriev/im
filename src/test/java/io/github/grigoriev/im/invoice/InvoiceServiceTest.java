@@ -55,7 +55,15 @@ class InvoiceServiceTest {
         when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile()));
         when(customers.find(2)).thenReturn(Optional.of(CustomerTestData.verlag().withId(2L)));
         when(notes.note(TaxCategory.KLEINUNTERNEHMER)).thenReturn("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
-        when(repository.save(any())).thenAnswer(call -> call.getArgument(0));
+        when(repository.save(any())).thenAnswer(call -> saved(call.getArgument(0)));
+    }
+
+    /** The draft as the repository returns it after the first save, with ID 9. */
+    private static Invoice saved(Invoice draft) {
+        return new Invoice(9L, draft.status(), draft.customerId(), draft.number(), draft.format(), draft.issueDate(),
+                draft.serviceFrom(), draft.serviceTo(), draft.paymentDays(), draft.buyerReference(), draft.intro(),
+                draft.closing(), draft.taxNote(), draft.lines(), draft.createdAt(), draft.updatedAt(), draft.version(),
+                draft.issuedAt(), draft.snapshot());
     }
 
     private static Invoice draft(List<DraftLine> lines) {
@@ -114,7 +122,7 @@ class InvoiceServiceTest {
         assertThat(created.taxNote()).isEqualTo("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
         assertThat(created.lines()).containsExactly(DraftLine.empty(TaxCategory.KLEINUNTERNEHMER));
         assertThat(created.createdAt()).isEqualTo(NOW);
-        verify(audit).add(AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
+        verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
     }
 
     @Test
@@ -133,7 +141,7 @@ class InvoiceServiceTest {
                 TaxCategory.EXEMPT_4_21));
         assertThat(created.issueDate()).isEqualTo(TODAY);
         assertThat(created.version()).isNull();
-        verify(audit).add(AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
+        verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
 
         when(templates.findById(8L)).thenReturn(Optional.of(new InvoiceTemplate(8L, 3L, "Fremd", InvoiceFormat.XRECHNUNG,
                 14, null, null, null, null, null, List.of(), NOW, NOW, 0L)));
@@ -265,7 +273,7 @@ class InvoiceServiceTest {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
         service.deleteDraft(5);
         verify(repository).deleteById(5L);
-        verify(audit).add(AuditAction.DRAFT_DELETED, "Verlag am Fluss GmbH");
+        verify(audit).add(5L, AuditAction.DRAFT_DELETED, "Verlag am Fluss GmbH");
     }
 
     @Test
@@ -470,7 +478,8 @@ class InvoiceServiceTest {
     @Test
     void reportsAConcurrentSaveAsAFormProblem() {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
-        when(repository.save(any())).thenThrow(new org.springframework.dao.OptimisticLockingFailureException("race"));
+        org.mockito.Mockito.doThrow(new org.springframework.dao.OptimisticLockingFailureException("race")).when(repository)
+                .save(any());
         DraftForm form = form();
         InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
         assertThat(e.problems()).containsExactly(InvoiceService.CHANGED_ELSEWHERE);

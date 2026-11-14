@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
+import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditEvent;
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
@@ -74,6 +77,9 @@ class IssueIT {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private AuditService audit;
+
     @MockitoSpyBean
     private EInvoiceService einvoices;
 
@@ -131,6 +137,9 @@ class IssueIT {
         assertThat(new String(files.get(1).content(), StandardCharsets.UTF_8)).contains("2043-01");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_event WHERE action = 'INVOICE_ISSUED' AND detail LIKE ?",
                 Integer.class, "2043-01%")).isEqualTo(1);
+        assertThat(audit.history(draft.id())).as("the history of the invoice, oldest first").extracting(AuditEvent::action)
+                .containsExactly(AuditAction.DRAFT_CREATED, AuditAction.INVOICE_ISSUED);
+        assertThat(audit.history(draft.id() + 1000)).isEmpty();
 
         SellerProfile original = SellerTestData.profile();
         sellers.save(new SellerProfile("Anderer Name", original.street(), original.postcode(), original.city(),

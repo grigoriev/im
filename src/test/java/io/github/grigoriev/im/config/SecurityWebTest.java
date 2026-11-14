@@ -546,8 +546,9 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Einträge.")));
         when(audit.latest()).thenReturn(List.of(
                 new AuditEvent(2L, java.time.Instant.parse("2027-03-18T08:12:00Z"), "elena", AuditAction.CUSTOMER_CREATED,
-                        "Verlag am Fluss GmbH"),
-                new AuditEvent(1L, java.time.Instant.parse("2027-03-18T08:10:00Z"), "elena", AuditAction.TAX_NOTES_SAVED, "")));
+                        "Verlag am Fluss GmbH", null),
+                new AuditEvent(1L, java.time.Instant.parse("2027-03-18T08:10:00Z"), "elena", AuditAction.TAX_NOTES_SAVED, "",
+                        null)));
         mvc.perform(get("/admin/protokoll").with(user("admin").roles("ADMIN")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 09:12")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Kunde angelegt</span><span>: Verlag am Fluss GmbH")))
@@ -585,6 +586,47 @@ class SecurityWebTest {
     }
 
     @Test
+    void filtersTheListByYearStatusAndText() throws Exception {
+        Invoice draft = invoice(5, InvoiceStatus.DRAFT);
+        Invoice issued = invoice(6, InvoiceStatus.ISSUED);
+        when(invoices.list()).thenReturn(List.of(issued, draft));
+        when(invoices.customerName(any())).thenReturn("Volkshochschule Musterstadt");
+        when(invoices.document(draft)).thenReturn(Optional.empty());
+        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                InvoiceFormat.ZUGFERD_EN16931));
+        when(customers.list()).thenReturn(List.of());
+        String issuedRow = "2027-01 · 18.03.2027";
+        String draftRow = "Entwurf · 18.03.2027";
+        mvc.perform(get("/rechnungen").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(draftRow)))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2027\">2027</option>")));
+        mvc.perform(get("/rechnungen").param("status", "DRAFT").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(issuedRow))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(draftRow)))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DRAFT\" selected=\"selected\">")));
+        mvc.perform(get("/rechnungen").param("suche", " FLUSS ").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(draftRow))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"FLUSS\"")));
+        mvc.perform(get("/rechnungen").param("suche", "2027-0").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(draftRow))));
+        mvc.perform(get("/rechnungen").param("suche", "volkshoch").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(issuedRow))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(draftRow)));
+        mvc.perform(get("/rechnungen").param("jahr", "2027").param("status", "ISSUED").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(issuedRow)))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(draftRow))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2027\" selected=\"selected\">")));
+        mvc.perform(get("/rechnungen").param("jahr", "2026").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Rechnungen gefunden.")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Noch keine Rechnungen."))));
+        mvc.perform(get("/rechnungen").param("status", "NIX").with(user("elena").roles("USER")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void showsTheEditorOfADraftAndTheNoticeOfAnIssuedInvoice() throws Exception {
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
         when(invoices.find(5)).thenReturn(Optional.of(draft));
@@ -613,9 +655,21 @@ class SecurityWebTest {
         when(documents.list(6)).thenReturn(List.of(new io.github.grigoriev.im.invoice.StoredDocument(1L, 6L,
                 io.github.grigoriev.im.invoice.DocumentKind.PDF, "Rechnung_2027-10.pdf", new byte[] {1}, "ab12", 12345,
                 java.time.Instant.EPOCH)));
+        when(audit.history(6)).thenReturn(List.of(
+                new AuditEvent(1L, java.time.Instant.parse("2027-03-18T08:00:00Z"), "elena", AuditAction.DRAFT_CREATED,
+                        "Verlag am Fluss GmbH", 6L),
+                new AuditEvent(2L, java.time.Instant.parse("2027-03-18T09:30:00Z"), "admin", AuditAction.INVOICE_ISSUED,
+                        "2027-10, Verlag am Fluss GmbH", 6L)));
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("ändert sich nicht mehr")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-10")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Unveränderbar seit")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung 2027-10")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Verlag am Fluss GmbH · 480,00 € · fällig am")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Entwurf angelegt")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 09:00")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung ausgestellt")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>admin</span>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ZUGFeRD und PDF/A-3 geprüft")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("XRechnung geprüft"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("480,00 €")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 10:30")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung_2027-10.pdf")))
@@ -625,6 +679,16 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Rechnung ausstellen…"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Entwurf löschen"))));
         verify(invoices, never()).problems(issued);
+        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                InvoiceFormat.XRECHNUNG));
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("XRechnung geprüft (KoSIT)")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("04011000-12345-67")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("ZUGFeRD und PDF/A-3"))));
+        when(invoices.saveDraft(org.mockito.ArgumentMatchers.eq(6L), any())).thenThrow(
+                new InvoiceException(List.of("Eine ausgestellte Rechnung ändert sich nicht mehr.")));
+        mvc.perform(post("/rechnungen/6").with(user("elena").roles("USER")).with(csrf())).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Eine ausgestellte Rechnung ändert sich nicht mehr.")));
         when(invoices.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/rechnungen/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(post("/rechnungen/9").with(user("elena").roles("USER")).with(csrf())).andExpect(status().isNotFound());
