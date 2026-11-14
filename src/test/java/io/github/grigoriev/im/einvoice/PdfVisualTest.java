@@ -71,6 +71,7 @@ class PdfVisualTest {
                         SampleInvoices.lump("Lesung aus „Der stille Hafen“", "400.00", TaxCategory.KLEINUNTERNEHMER))),
                 Arguments.of("xrechnung-buyer-reference", invoice(SCHOOL, "04011000-12345-67", InvoiceFormat.XRECHNUNG,
                         line("Integrationskurs Modul 4, je 45 Min.", "24", "41.00", TaxCategory.EXEMPT_4_21))),
+                Arguments.of("seller-without-contact", ItSamples.readingWithoutContact(InvoiceFormat.ZUGFERD_EN16931)),
                 Arguments.of("long-contact", invoice(LONG_CONTACT, SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
                         many.subList(0, 30).toArray(InvoiceLine[]::new))),
                 Arguments.of("long-iban", withIban(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),

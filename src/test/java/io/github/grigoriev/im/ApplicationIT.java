@@ -68,5 +68,8 @@ class ApplicationIT {
             IssuedEInvoice issued = einvoices.issue(ItSamples.reading(format));
             assertThat(issued.validations()).isNotEmpty().allMatch(ValidationResult::valid);
         }
+        IssuedEInvoice noContact = einvoices.issue(ItSamples.readingWithoutContact(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(noContact.validations()).as("EN16931 needs no seller e-mail or phone").isNotEmpty()
+                .allMatch(ValidationResult::valid);
     }
 }

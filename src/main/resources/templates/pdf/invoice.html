@@ -37,7 +37,7 @@
     <tr>
       <td><span th:text="${invoice.seller.name}">Name</span><br/><span th:text="${invoice.seller.street}">Straße</span><br/><span th:text="${invoice.seller.postcode + ' ' + invoice.seller.city}">Ort</span></td>
       <td class="bank">IBAN <span th:text="${fmt.iban(invoice.iban)}">IBAN</span><br/>BIC <span th:text="${invoice.bic}">BIC</span></td>
-      <td><span th:text="${invoice.seller.email}">E-Mail</span><th:block th:if="${invoice.seller.taxNumber != null}"><br/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></th:block><th:block th:if="${invoice.seller.vatId != null}"><br/>USt-IdNr. <span th:text="${invoice.seller.vatId}">USt-IdNr.</span></th:block></td>
+      <td><span th:if="${invoice.seller.email != null}" th:text="${invoice.seller.email}">E-Mail</span><th:block th:if="${invoice.seller.taxNumber != null}"><br th:if="${invoice.seller.email != null}"/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></th:block><th:block th:if="${invoice.seller.vatId != null}"><br th:if="${invoice.seller.email != null or invoice.seller.taxNumber != null}"/>USt-IdNr. <span th:text="${invoice.seller.vatId}">USt-IdNr.</span></th:block></td>
       <td class="page">Seite <span class="page-number"></span> von <span class="page-count"></span></td>
     </tr>
   </table>
