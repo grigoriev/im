@@ -18,6 +18,8 @@
         </label>
         <button type="submit" class="btn btn-sm">Anzeigen</button>
         <a class="btn btn-sm" id="report-csv" th:href="@{/berichte/zahlungen.csv(jahr=${year})}"><i data-lucide="sheet" class="size-4"></i>CSV</a>
+        <a class="btn btn-sm" id="report-archive" th:href="@{/berichte/archiv.zip(jahr=${year})}"
+           th:title="'PDF und XML aller Rechnungen mit Rechnungsdatum ' + ${year}"><i data-lucide="archive" class="size-4"></i>Archiv ZIP</a>
       </form>
     </div>
 

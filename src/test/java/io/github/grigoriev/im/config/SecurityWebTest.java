@@ -14,12 +14,14 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.authenticated;
 import static org.springframework.security.test.web.servlet.response.SecurityMockMvcResultMatchers.unauthenticated;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -172,6 +174,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private io.github.grigoriev.im.threshold.ThresholdService threshold;
+
+    @MockitoBean
+    private io.github.grigoriev.im.invoice.ArchiveService archive;
 
     @org.junit.jupiter.api.BeforeEach
     void noRevenueNoPayments() {
@@ -815,7 +820,8 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(">360,00 €<")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("§ 4 Nr. 21 UStG, steuerfrei")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 · 2027-01")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/berichte/zahlungen.csv?jahr=2027\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/berichte/zahlungen.csv?jahr=2027\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/berichte/archiv.zip?jahr=2027\"")));
         when(threshold.rows(2026)).thenReturn(List.of(new io.github.grigoriev.im.threshold.RevenueRow(
                 java.time.LocalDate.of(2026, 3, 18), "2026-01", "Schule", new java.math.BigDecimal("119.00"),
                 java.math.BigDecimal.ZERO, new java.math.BigDecimal("119.00"), java.util.Map.of(TaxCategory.STANDARD_19,
@@ -829,6 +835,11 @@ class SecurityWebTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"Zahlungen_2027.csv\""))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027;\"2027-01\";\"Verlag am Fluss GmbH\";560,00;200,00;360,00;")));
+        var started = mvc.perform(get("/berichte/archiv.zip").param("jahr", "2027").with(user("elena").roles("USER")))
+                .andExpect(request().asyncStarted()).andReturn();
+        mvc.perform(asyncDispatch(started)).andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnungen_2027.zip\""));
+        verify(archive).write(org.mockito.ArgumentMatchers.eq(2027), any());
         mvc.perform(get("/berichte")).andExpect(status().is3xxRedirection());
     }
 

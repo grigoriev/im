@@ -405,6 +405,7 @@
                         <param>io.github.grigoriev.im.invoice.DispatchService</param>
                         <param>io.github.grigoriev.im.invoice.DispatchChannel</param>
                         <param>io.github.grigoriev.im.invoice.PaymentService</param>
+                        <param>io.github.grigoriev.im.invoice.ArchiveService</param>
                         <param>io.github.grigoriev.im.mail.MailTextService</param>
                         <param>io.github.grigoriev.im.mail.MailService</param>
                         <param>io.github.grigoriev.im.mail.MailProperties</param>

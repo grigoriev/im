@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.invoice.ArchiveService;
 import io.github.grigoriev.im.threshold.RevenueRow;
 import io.github.grigoriev.im.threshold.ThresholdService;
 import java.math.BigDecimal;
@@ -24,10 +25,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
  * The page "Berichte": the income of a year by payment received (Zuflussprinzip), with the fields of the Anlage EÜR,
- * and the CSV of its payments. Both roles use it.
+ * the CSV of its payments and the archive of its documents. Both roles use it.
  */
 @Controller
 @RequestMapping("/berichte")
@@ -58,14 +60,32 @@ public class ReportController {
     }
 
     private final ThresholdService threshold;
+    private final ArchiveService archive;
 
     /**
      * Creates the controller.
      *
      * @param threshold the payments of a year
+     * @param archive the documents of a year
      */
-    public ReportController(ThresholdService threshold) {
+    public ReportController(ThresholdService threshold, ArchiveService archive) {
         this.threshold = threshold;
+        this.archive = archive;
+    }
+
+    /**
+     * Downloads the archive of a year: the PDF and XML of every invoice issued in it, and their table of contents.
+     *
+     * @param jahr the year of the invoice dates
+     * @return the ZIP, written while it goes out
+     */
+    @GetMapping("/archiv.zip")
+    public ResponseEntity<StreamingResponseBody> zip(@RequestParam int jahr) {
+        StreamingResponseBody body = out -> archive.write(jahr, out);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename("Rechnungen_" + jahr + ".zip").build().toString())
+                .body(body);
     }
 
     /**
