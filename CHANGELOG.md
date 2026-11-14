@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-14
+
 ### Changed
 
 - URLs and parameters are English: `/invoices`, `/customers`, `/reports`, `/account`, `/settings`, `/admin/users` and so on, `?year=`, `?q=`, `?part=`. The interface stays German, and so do the names of downloaded files.
