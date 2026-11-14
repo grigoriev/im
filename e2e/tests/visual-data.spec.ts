@@ -29,7 +29,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await page.locator('#line-0-text').fill('Lesung aus „Der stille Hafen“ mit anschließendem Gespräch, 16.03.2027, 90 Min.');
-  await page.locator('#line-0-price').fill('400');
+  await page.locator('#line-0-amount').fill('400');
   await page.getByRole('button', { name: 'Position hinzufügen' }).click();
   await page.locator('#line-1-text').fill('Signierstunde');
   await page.locator('#line-1-kind').selectOption('false');

@@ -2,6 +2,7 @@ package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
@@ -65,6 +66,8 @@ public class DraftForm {
             row.setLumpSum(line.lumpSum());
             row.setQuantity(quantity(line.quantity()));
             row.setPrice(price(line.unitPrice()));
+            // A lump sum shows its amount; a line with quantity shows its total there, for a switch to a lump sum.
+            row.setAmount(price(line.quantity().multiply(line.unitPrice()).setScale(2, RoundingMode.HALF_UP)));
             row.setCategory(line.category());
             form.lines.add(row);
         }

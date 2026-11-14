@@ -84,6 +84,7 @@ class InvoiceServiceTest {
         row.setLumpSum(lumpSum);
         row.setQuantity(quantity);
         row.setPrice(price);
+        row.setAmount(price);
         row.setCategory(category);
         return row;
     }
@@ -175,8 +176,8 @@ class InvoiceServiceTest {
         assertThat(e.problems()).containsExactly(
                 "Position 1: Die Leistung hat höchstens 500 Zeichen.",
                 "Position 1: Bitte die Steuer wählen.",
-                "Position 1: Der Preis hat höchstens 4 Nachkommastellen.",
                 "Position 1: Die Menge ist keine Zahl, zum Beispiel 45,00.",
+                "Position 1: Der Preis hat höchstens 4 Nachkommastellen.",
                 "Die Käuferreferenz hat höchstens 200 Zeichen.",
                 "Die Einleitung hat höchstens 2000 Zeichen.",
                 "Der Schlusstext hat höchstens 2000 Zeichen.",
@@ -342,8 +343,7 @@ class InvoiceServiceTest {
         DraftForm stale = form();
         stale.setVersion(-1L);
         InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, stale));
-        assertThat(e.problems()).containsExactly(
-                "Der Entwurf wurde inzwischen in einem anderen Fenster geändert. Bitte die Seite neu laden.");
+        assertThat(e.problems()).containsExactly(InvoiceService.CHANGED_ELSEWHERE);
         DraftForm missing = form();
         missing.setVersion(null);
         assertThatThrownBy(() -> service.saveDraft(5, missing)).isInstanceOf(InvoiceException.class);
@@ -358,30 +358,31 @@ class InvoiceServiceTest {
                 row("Kurs", false, "1234567890123", "999999999999,9999", TaxCategory.KLEINUNTERNEHMER));
         InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
         assertThat(e.problems()).containsExactly(
-                "Position 1: Der Preis ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00 oder 1,5.",
+                "Position 1: Der Betrag ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00 oder 1,5.",
                 "Position 2: Die Menge hat höchstens 12 Stellen vor dem Komma.");
     }
 
     @Test
-    void aLineThatTurnsIntoALumpSumKeepsItsAmount() {
+    void aLumpSumTakesItsAmountFieldAndALineWithQuantityItsPrice() {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
-        Invoice saved = service.saveDraft(5, form(row("Unterricht", true, "16", "45,00", TaxCategory.EXEMPT_4_21),
-                row("Kurs", true, "1,5", "33,33", TaxCategory.EXEMPT_4_21)));
-        assertThat(saved.lines().get(0).unitPrice()).isEqualByComparingTo("720.00");
+        LineForm switched = row("Unterricht", true, "16", "45,00", TaxCategory.EXEMPT_4_21);
+        switched.setAmount("600");
+        LineForm counted = row("Kurs", false, "2", "12,50", TaxCategory.EXEMPT_4_21);
+        counted.setAmount("999");
+        Invoice saved = service.saveDraft(5, form(switched, counted));
+        assertThat(saved.lines().get(0).unitPrice()).as("the amount typed after the switch").isEqualByComparingTo("600");
         assertThat(saved.lines().get(0).quantity()).isEqualByComparingTo("1");
-        assertThat(saved.lines().get(1).unitPrice()).isEqualByComparingTo("50.00");
+        assertThat(saved.lines().get(1).quantity()).isEqualByComparingTo("2");
+        assertThat(saved.lines().get(1).unitPrice()).isEqualByComparingTo("12.50");
     }
 
     @Test
-    void keepsTheAmountOfALumpSumWithoutAQuantity() {
-        BigDecimal price = new BigDecimal("400");
-        assertThat(InvoiceService.keptAmount(BigDecimal.ONE, price)).isSameAs(price);
-        assertThat(InvoiceService.keptAmount(new BigDecimal("1.0000"), price)).isSameAs(price);
-        assertThat(InvoiceService.keptAmount(BigDecimal.ZERO, price)).isSameAs(price);
-        assertThat(InvoiceService.keptAmount(new BigDecimal("-2"), price)).isSameAs(price);
-        assertThat(InvoiceService.keptAmount(null, price)).isSameAs(price);
-        assertThat(InvoiceService.keptAmount(BigDecimal.TEN, null)).isNull();
-        assertThat(InvoiceService.keptAmount(new BigDecimal("2"), price)).isEqualByComparingTo("800.00");
+    void reportsAConcurrentSaveAsAFormProblem() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        when(repository.save(any())).thenThrow(new org.springframework.dao.OptimisticLockingFailureException("race"));
+        DraftForm form = form();
+        InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
+        assertThat(e.problems()).containsExactly(InvoiceService.CHANGED_ELSEWHERE);
     }
 
     @Test

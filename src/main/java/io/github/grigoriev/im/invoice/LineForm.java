@@ -9,6 +9,7 @@ public class LineForm {
     private boolean lumpSum = true;
     private String quantity = "1";
     private String price = "";
+    private String amount = "";
     private TaxCategory category;
 
     /**
@@ -66,7 +67,7 @@ public class LineForm {
     }
 
     /**
-     * Returns the price as typed: the amount of a lump sum, the unit price otherwise.
+     * Returns the unit price of a line with quantity, as typed.
      *
      * @return the price
      */
@@ -81,6 +82,25 @@ public class LineForm {
      */
     public void setPrice(String price) {
         this.price = price;
+    }
+
+    /**
+     * Returns the amount of a lump sum as typed. A line with quantity shows its total here, so a switch to a
+     * lump sum keeps the amount.
+     *
+     * @return the amount
+     */
+    public String getAmount() {
+        return amount;
+    }
+
+    /**
+     * Sets the amount of a lump sum as typed.
+     *
+     * @param amount the amount
+     */
+    public void setAmount(String amount) {
+        this.amount = amount;
     }
 
     /**

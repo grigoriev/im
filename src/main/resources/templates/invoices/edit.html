@@ -70,7 +70,11 @@
               <input th:id="'line-' + ${row.index} + '-quantity'" th:field="*{lines[__${row.index}__].quantity}" class="input w-full num"
                      inputmode="decimal" maxlength="20">
             </label>
-            <label class="floating-label @xl:w-36"><span><span class="line-amount">Betrag €</span><span class="line-unit-price">Preis €</span></span>
+            <label class="line-amount floating-label @xl:w-36"><span>Betrag €</span>
+              <input th:id="'line-' + ${row.index} + '-amount'" th:field="*{lines[__${row.index}__].amount}" class="input w-full num"
+                     inputmode="decimal" maxlength="20">
+            </label>
+            <label class="line-unit-price floating-label @xl:w-36"><span>Preis €</span>
               <input th:id="'line-' + ${row.index} + '-price'" th:field="*{lines[__${row.index}__].price}" class="input w-full num"
                      inputmode="decimal" maxlength="20">
             </label>

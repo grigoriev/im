@@ -54,6 +54,7 @@ class InvoiceIT {
         row.setLumpSum(lumpSum);
         row.setQuantity(quantity);
         row.setPrice(price);
+        row.setAmount(price);
         row.setCategory(TaxCategory.KLEINUNTERNEHMER);
         return row;
     }

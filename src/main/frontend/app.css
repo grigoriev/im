@@ -114,8 +114,8 @@
   }
 }
 
-/* A lump sum has no quantity: the invoice editor hides the field and names the price "Betrag", without script.
-   Outside the layers, so it wins over the display of daisyUI's floating label. */
+/* The invoice editor shows "Betrag" for a lump sum and "Menge" with "Preis" otherwise, without script. Each kind has
+   its own fields, so the server never guesses. Outside the layers, so it wins over daisyUI's floating label. */
 .invoice-line:has(.line-kind option[value="true"]:checked) .line-quantity,
 .invoice-line:has(.line-kind option[value="true"]:checked) .line-unit-price,
 .invoice-line:has(.line-kind option[value="false"]:checked) .line-amount { display: none; }

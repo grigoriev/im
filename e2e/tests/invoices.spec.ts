@@ -13,10 +13,10 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await expect(page.locator('#invoice-checks')).toContainText('Position 1: Bitte die Leistung beschreiben.');
 
   await page.locator('#line-0-text').fill('Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.');
-  await page.locator('#line-0-price').fill('400');
+  await page.locator('#line-0-amount').fill('400');
   await page.getByRole('button', { name: 'Position hinzufügen' }).click();
   await expect(page.locator('#line-1-text')).toBeVisible();
-  await expect(page.locator('#line-0-price')).toHaveValue('400,00');
+  await expect(page.locator('#line-0-amount')).toHaveValue('400,00');
   await page.locator('#line-1-text').fill('Signierstunde');
   await expect(page.locator('#line-1-quantity'), 'a lump sum hides the quantity').toBeHidden();
   await page.locator('#line-1-kind').selectOption('false');
@@ -32,6 +32,15 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('alert')).toContainText('Position 2: Der Preis ist keine Zahl');
   await expect(page.locator('#line-1-price')).toHaveValue('zwölf');
+
+  // Back to a valid price, then the switch to a lump sum shows the total, and a typed amount wins.
+  await page.locator('#line-1-price').fill('12,50');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.locator('#line-1-kind').selectOption('true');
+  await expect(page.locator('#line-1-amount')).toHaveValue('25,00');
+  await page.locator('#line-1-amount').fill('30');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#invoice-totals')).toContainText('430,00 €');
 
   await page.getByRole('button', { name: 'Position 2 entfernen' }).click();
   await expect(page.locator('#line-1-text')).toHaveCount(0);

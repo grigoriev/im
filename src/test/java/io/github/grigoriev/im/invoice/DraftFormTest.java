@@ -81,8 +81,10 @@ class DraftFormTest {
         assertThat(first.isLumpSum()).isFalse();
         assertThat(first.getQuantity()).isEqualTo("16");
         assertThat(first.getPrice()).isEqualTo("45,00");
+        assertThat(first.getAmount()).as("the total, for a switch to a lump sum").isEqualTo("720,00");
         assertThat(first.getCategory()).isEqualTo(TaxCategory.EXEMPT_4_21);
         assertThat(form.getLines().get(1).isLumpSum()).isTrue();
+        assertThat(form.getLines().get(1).getAmount()).isEqualTo("400,00");
     }
 
     @Test
@@ -92,6 +94,7 @@ class DraftFormTest {
         assertThat(line.getQuantity()).isEqualTo("1");
         assertThat(line.getText()).isEmpty();
         assertThat(line.getPrice()).isEmpty();
+        assertThat(line.getAmount()).isEmpty();
         assertThat(new DraftForm().getLines()).isEmpty();
     }
 }

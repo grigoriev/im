@@ -11,7 +11,6 @@ import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -19,6 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +38,9 @@ public class InvoiceService {
     static final int MAX_DECIMALS = 4;
     /** Digits before the comma, as {@code NUMERIC(16, 4)} in the database allows. */
     static final int MAX_INTEGER_DIGITS = 12;
+    static final String CHANGED_ELSEWHERE = "Der Entwurf wurde inzwischen in einem anderen Fenster geändert. "
+            + "Bitte die Seite neu laden.";
+    private static final String AT_MOST = " hat höchstens ";
     static final String DEFAULT_INTRO = "Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag.";
     static final String DEFAULT_CLOSING = "Mit freundlichen Grüßen";
 
@@ -133,8 +136,7 @@ public class InvoiceService {
     public Invoice saveDraft(long id, DraftForm form) {
         Invoice draft = draft(id);
         if (form.getVersion() == null || !form.getVersion().equals(draft.version())) {
-            throw new InvoiceException(List.of("Der Entwurf wurde inzwischen in einem anderen Fenster geändert. "
-                    + "Bitte die Seite neu laden."));
+            throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
         }
         List<String> problems = new ArrayList<>();
         List<DraftLine> lines = new ArrayList<>();
@@ -155,10 +157,15 @@ public class InvoiceService {
         if (!problems.isEmpty()) {
             throw new InvoiceException(problems);
         }
-        return invoices.save(new Invoice(draft.id(), draft.status(), draft.customerId(), null, form.getFormat(),
-                form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
-                text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()), text(form.getTaxNote()),
-                lines, draft.createdAt(), clock.instant(), draft.version()));
+        try {
+            return invoices.save(new Invoice(draft.id(), draft.status(), draft.customerId(), null, form.getFormat(),
+                    form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
+                    text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()),
+                    text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version()));
+        } catch (OptimisticLockingFailureException _) {
+            // Two saves of one version at the same moment: the database lets the first win.
+            throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
+        }
     }
 
     /**
@@ -289,24 +296,13 @@ public class InvoiceService {
         if (row.getCategory() == null) {
             problems.add(prefix + "Bitte die Steuer wählen.");
         }
-        BigDecimal price = number(problems, row.getPrice(), prefix + "Der Preis");
-        BigDecimal quantity = number(problems, row.getQuantity(), prefix + "Die Menge");
         if (row.isLumpSum()) {
-            price = keptAmount(quantity, price);
-            quantity = BigDecimal.ONE;
+            return new DraftLine(text, true, BigDecimal.ONE, number(problems, row.getAmount(), prefix + "Der Betrag"),
+                    row.getCategory());
         }
-        return new DraftLine(text, row.isLumpSum(), quantity, price, row.getCategory());
-    }
-
-    /**
-     * Returns the amount of a lump sum. A line that turns from "Mit Menge" into a lump sum keeps its amount
-     * (docs/PLAN.md, section 7): its hidden quantity times its price, rounded to the cent.
-     */
-    static BigDecimal keptAmount(BigDecimal quantity, BigDecimal price) {
-        if (price == null || quantity == null || quantity.signum() <= 0 || quantity.compareTo(BigDecimal.ONE) == 0) {
-            return price;
-        }
-        return quantity.multiply(price).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal quantity = number(problems, row.getQuantity(), prefix + "Die Menge");
+        BigDecimal price = number(problems, row.getPrice(), prefix + "Der Preis");
+        return new DraftLine(text, false, quantity, price, row.getCategory());
     }
 
     /**
@@ -325,10 +321,10 @@ public class InvoiceService {
         if (value == null) {
             problems.add(field + " ist keine Zahl, zum Beispiel 45,00.");
         } else if (value.precision() - value.scale() > MAX_INTEGER_DIGITS) {
-            problems.add(field + " hat höchstens " + MAX_INTEGER_DIGITS + " Stellen vor dem Komma.");
+            problems.add(field + AT_MOST + MAX_INTEGER_DIGITS + " Stellen vor dem Komma.");
             value = null;
         } else if (value.stripTrailingZeros().scale() > MAX_DECIMALS) {
-            problems.add(field + " hat höchstens " + MAX_DECIMALS + " Nachkommastellen.");
+            problems.add(field + AT_MOST + MAX_DECIMALS + " Nachkommastellen.");
             value = null;
         }
         return value;
@@ -336,7 +332,7 @@ public class InvoiceService {
 
     private static void length(List<String> problems, String value, String field, int max) {
         if (value != null && value.strip().length() > max) {
-            problems.add(field + " hat höchstens " + max + " Zeichen.");
+            problems.add(field + AT_MOST + max + " Zeichen.");
         }
     }
 
