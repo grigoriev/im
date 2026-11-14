@@ -64,7 +64,7 @@ class ThresholdIT {
         return line;
     }
 
-    /** An issued invoice dated on a day, with a §4 Nr. 21 line of 720 and a §19 line of 400: total 1 120. */
+    /** An issued invoice dated on a day, with a reverse charge line of 720 and a §19 line of 400: total 1 120. */
     private Invoice mixed(Customer customer, LocalDate day) {
         Invoice draft = invoices.createDraft(customer.id(), null);
         DraftForm form = DraftForm.of(draft);
