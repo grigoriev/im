@@ -96,6 +96,6 @@ public class TaxNoteService {
                 }
             }
         });
-        audit.record(AuditAction.TAX_NOTES_SAVED, "");
+        audit.add(AuditAction.TAX_NOTES_SAVED, "");
     }
 }

@@ -83,7 +83,7 @@ public class PasskeyService {
         }
         CredentialRecord stored = owned(username, id);
         credentials.save(ImmutableCredentialRecord.fromCredentialRecord(stored).label(label.strip()).build());
-        audit.record(username, AuditAction.PASSKEY_RENAMED, stored.getLabel() + " → " + label.strip());
+        audit.add(username, AuditAction.PASSKEY_RENAMED, stored.getLabel() + " → " + label.strip());
     }
 
     /**
@@ -97,7 +97,7 @@ public class PasskeyService {
     public void remove(String username, String id) {
         CredentialRecord stored = owned(username, id);
         credentials.delete(stored.getCredentialId());
-        audit.record(username, AuditAction.PASSKEY_REMOVED, stored.getLabel());
+        audit.add(username, AuditAction.PASSKEY_REMOVED, stored.getLabel());
     }
 
     /**
@@ -110,7 +110,7 @@ public class PasskeyService {
     public int removeAll(String username) {
         List<CredentialRecord> records = records(username);
         records.forEach(stored -> credentials.delete(stored.getCredentialId()));
-        audit.record(AuditAction.PASSKEYS_REMOVED, username + ": " + records.size());
+        audit.add(AuditAction.PASSKEYS_REMOVED, username + ": " + records.size());
         return records.size();
     }
 

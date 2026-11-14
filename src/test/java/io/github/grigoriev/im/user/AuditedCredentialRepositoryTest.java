@@ -27,10 +27,10 @@ class AuditedCredentialRepositoryTest {
     void recordsANewPasskeyButNotAnUpdate() {
         PublicKeyCredentialUserEntity elena = PasskeyTestData.entity(new MapPublicKeyCredentialUserEntityRepository(), "elena");
         CredentialRecord mac = PasskeyTestData.passkey(repository, elena, "MacBook Air", JAN, JAN);
-        verify(audit).record(AuditAction.PASSKEY_ADDED, "MacBook Air");
+        verify(audit).add(AuditAction.PASSKEY_ADDED, "MacBook Air");
 
         repository.save(ImmutableCredentialRecord.fromCredentialRecord(mac).lastUsed(JAN.plusSeconds(60)).build());
-        verify(audit, never()).record(AuditAction.PASSKEY_ADDED, "iPhone");
+        verify(audit, never()).add(AuditAction.PASSKEY_ADDED, "iPhone");
         org.mockito.Mockito.verifyNoMoreInteractions(audit);
 
         assertThat(repository.findByCredentialId(mac.getCredentialId()).getLastUsed()).isEqualTo(JAN.plusSeconds(60));

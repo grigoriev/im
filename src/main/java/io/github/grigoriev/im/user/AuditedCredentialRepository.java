@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The passkey store with an audit entry for each new passkey. Spring Security registers passkeys itself,
@@ -27,12 +28,14 @@ public class AuditedCredentialRepository implements UserCredentialRepository {
         this.audit = audit;
     }
 
+    /** Saves the passkey and its audit entry in one transaction: Spring Security calls this without one. */
     @Override
+    @Transactional
     public void save(CredentialRecord credential) {
         boolean added = delegate.findByCredentialId(credential.getCredentialId()) == null;
         delegate.save(credential);
         if (added) {
-            audit.record(AuditAction.PASSKEY_ADDED, credential.getLabel());
+            audit.add(AuditAction.PASSKEY_ADDED, credential.getLabel());
         }
     }
 

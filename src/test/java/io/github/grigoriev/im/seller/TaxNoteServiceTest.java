@@ -79,7 +79,7 @@ class TaxNoteServiceTest {
         verify(repository).deleteById("REVERSE_CHARGE_EU");
         verify(repository).deleteById("NOT_TAXABLE_ABROAD");
         verify(repository, never()).deleteById("STANDARD_19");
-        verify(audit).record(AuditAction.TAX_NOTES_SAVED, "");
+        verify(audit).add(AuditAction.TAX_NOTES_SAVED, "");
     }
 
     @Test

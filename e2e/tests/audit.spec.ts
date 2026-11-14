@@ -16,5 +16,5 @@ test('the audit log shows who created a customer', async ({ page }) => {
   await expect(entry).toHaveCount(1);
   await expect(entry).toContainText('admin');
   await expect(entry).toContainText(`Kunde angelegt: ${name}`);
-  await expect(page.locator('#audit-list li').filter({ hasText: 'Angemeldet' }).first()).toContainText('Passwort');
+  await expect(page.locator('#audit-list li').filter({ hasText: 'Angemeldet: Passwort' }).first()).toBeVisible();
 });

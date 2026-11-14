@@ -31,13 +31,13 @@ class AuditServiceTest {
     @Test
     void recordsTheLoggedInUser() {
         SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("elena", "x", "ROLE_USER"));
-        service.record(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
+        service.add(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
         verify(repository).save(new AuditEvent(null, NOW, "elena", AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH"));
     }
 
     @Test
     void recordsTheAppItselfWithoutALogin() {
-        service.record(AuditAction.USER_CREATED, "admin (ADMIN)");
+        service.add(AuditAction.USER_CREATED, "admin (ADMIN)");
         verify(repository).save(new AuditEvent(null, NOW, "system", AuditAction.USER_CREATED, "admin (ADMIN)"));
         SecurityContextHolder.getContext().setAuthentication(new AnonymousAuthenticationToken("key", "anonymousUser",
                 AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS")));
@@ -46,7 +46,7 @@ class AuditServiceTest {
 
     @Test
     void recordsAGivenUserAndCutsLongTexts() {
-        service.record("u".repeat(70), AuditAction.LOGIN_FAILED, "d".repeat(600));
+        service.add("u".repeat(70), AuditAction.LOGIN_FAILED, "d".repeat(600));
         String user = "u".repeat(63) + "…";
         String detail = "d".repeat(499) + "…";
         verify(repository).save(new AuditEvent(null, NOW, user, AuditAction.LOGIN_FAILED, detail));

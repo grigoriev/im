@@ -78,7 +78,7 @@ public class NumberService {
     public NumberPattern savePattern(String text) {
         NumberPattern pattern = NumberPattern.parse(text);
         jdbc.sql(WRITE_PATTERN).param("key", PATTERN_KEY).param("value", pattern.value()).update();
-        audit.record(AuditAction.NUMBER_PATTERN_SAVED, pattern.value());
+        audit.add(AuditAction.NUMBER_PATTERN_SAVED, pattern.value());
         return pattern;
     }
 
@@ -118,7 +118,7 @@ public class NumberService {
         if (jdbc.sql(START).param("start", start).param("year", year).update() == 0) {
             throw new SettingsException(List.of("Für " + year + " sind schon Nummern vergeben. Der Zähler ist gesperrt."));
         }
-        audit.record(AuditAction.NUMBER_START_SET, year + ": " + start);
+        audit.add(AuditAction.NUMBER_START_SET, year + ": " + start);
     }
 
     /**

@@ -43,8 +43,8 @@ public class AuditService {
      * @param detail what it concerned; never a password or a token
      */
     @Transactional
-    public void record(AuditAction action, String detail) {
-        record(currentUser(), action, detail);
+    public void add(AuditAction action, String detail) {
+        save(currentUser(), action, detail);
     }
 
     /**
@@ -55,8 +55,8 @@ public class AuditService {
      * @param detail what it concerned; never a password or a token
      */
     @Transactional
-    public void record(String username, AuditAction action, String detail) {
-        events.save(new AuditEvent(null, clock.instant(), cut(username, MAX_USERNAME), action, cut(detail, MAX_DETAIL)));
+    public void add(String username, AuditAction action, String detail) {
+        save(username, action, detail);
     }
 
     /**
@@ -66,6 +66,10 @@ public class AuditService {
      */
     public List<AuditEvent> latest() {
         return events.findTop200ByOrderByAtDescIdDesc();
+    }
+
+    private void save(String username, AuditAction action, String detail) {
+        events.save(new AuditEvent(null, clock.instant(), cut(username, MAX_USERNAME), action, cut(detail, MAX_DETAIL)));
     }
 
     static String currentUser() {

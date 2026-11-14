@@ -42,7 +42,7 @@ class UserServiceTest {
         AppUser user = service.create("elena", "  Elena Sommer ", PASSWORD, Role.USER);
         assertThat(user).isEqualTo(new AppUser(null, "elena", "Elena Sommer", "{enc}" + PASSWORD, Role.USER, true,
                 UserTestData.CREATED));
-        verify(audit).record(AuditAction.USER_CREATED, "elena (USER)");
+        verify(audit).add(AuditAction.USER_CREATED, "elena (USER)");
     }
 
     @ParameterizedTest
@@ -94,7 +94,7 @@ class UserServiceTest {
         when(repository.findById(1L)).thenReturn(Optional.of(UserTestData.user(1, "elena", Role.USER)));
         assertThat(service.resetPassword(1, PASSWORD).passwordHash()).isEqualTo("{enc}" + PASSWORD);
         verify(rememberMe).removeUserTokens("elena");
-        verify(audit).record(AuditAction.PASSWORD_RESET, "elena");
+        verify(audit).add(AuditAction.PASSWORD_RESET, "elena");
     }
 
     @Test
@@ -123,7 +123,7 @@ class UserServiceTest {
         service.changePassword("elena", "alt-passwort", PASSWORD);
         verify(repository).save(org.mockito.ArgumentMatchers.argThat(user -> user.passwordHash().equals("{enc}" + PASSWORD)));
         verify(rememberMe).removeUserTokens("elena");
-        verify(audit).record("elena", AuditAction.PASSWORD_CHANGED, "");
+        verify(audit).add("elena", AuditAction.PASSWORD_CHANGED, "");
     }
 
     @Test

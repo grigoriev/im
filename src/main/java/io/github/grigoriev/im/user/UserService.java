@@ -94,7 +94,7 @@ public class UserService {
         }
         AppUser saved = users.save(new AppUser(null, username, displayName.strip(), encoder.encode(password), role, true,
                 clock.instant()));
-        audit.record(AuditAction.USER_CREATED, username + " (" + role + ")");
+        audit.add(AuditAction.USER_CREATED, username + " (" + role + ")");
         return saved;
     }
 
@@ -113,7 +113,7 @@ public class UserService {
         AppUser user = get(id);
         AppUser saved = users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(saved.username());
-        audit.record(AuditAction.PASSWORD_RESET, saved.username());
+        audit.add(AuditAction.PASSWORD_RESET, saved.username());
         return saved;
     }
 
@@ -135,7 +135,7 @@ public class UserService {
         checkPassword(password);
         users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(username);
-        audit.record(username, AuditAction.PASSWORD_CHANGED, "");
+        audit.add(username, AuditAction.PASSWORD_CHANGED, "");
     }
 
     private static void checkPassword(String password) {

@@ -88,22 +88,32 @@ class CountryServiceTest {
 
     @Test
     void addsAKnownCountryOnly() {
+        when(statement.update()).thenReturn(1);
         assertThat(service.add("JP")).isEqualTo(new Country("JP", "Japan"));
         verify(jdbc).sql(CountryService.ADD);
         verify(statement).param("code", "JP");
         verify(statement).update();
         assertThatThrownBy(() -> service.add("ZZ")).isInstanceOf(IllegalArgumentException.class);
         verify(statement, never()).param("code", "ZZ");
-        verify(audit).record(AuditAction.COUNTRY_ADDED, "JP");
-        verify(audit, never()).record(AuditAction.COUNTRY_ADDED, "ZZ");
+        verify(audit).add(AuditAction.COUNTRY_ADDED, "JP");
+        verify(audit, never()).add(AuditAction.COUNTRY_ADDED, "ZZ");
     }
 
     @Test
     void removesACountry() {
+        when(statement.update()).thenReturn(1);
         assertThat(service.remove("CH")).isEqualTo(new Country("CH", "Schweiz"));
         verify(jdbc).sql(CountryService.REMOVE);
         verify(statement).param("code", "CH");
         verify(statement).update();
-        verify(audit).record(AuditAction.COUNTRY_REMOVED, "CH");
+        verify(audit).add(AuditAction.COUNTRY_REMOVED, "CH");
+    }
+
+    @Test
+    void recordsNothingWhenTheListStaysTheSame() {
+        when(statement.update()).thenReturn(0);
+        service.add("DE");
+        service.remove("JP");
+        org.mockito.Mockito.verifyNoInteractions(audit);
     }
 }

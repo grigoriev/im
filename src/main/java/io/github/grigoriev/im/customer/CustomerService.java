@@ -68,7 +68,7 @@ public class CustomerService {
     @Transactional
     public Customer create(Customer input) {
         Customer saved = customers.save(checked(input).withId(null));
-        audit.record(AuditAction.CUSTOMER_CREATED, saved.name());
+        audit.add(AuditAction.CUSTOMER_CREATED, saved.name());
         return saved;
     }
 
@@ -87,7 +87,7 @@ public class CustomerService {
             throw new CustomerException(List.of("Diesen Kunden gibt es nicht."));
         }
         Customer saved = customers.save(customer);
-        audit.record(AuditAction.CUSTOMER_CHANGED, saved.name());
+        audit.add(AuditAction.CUSTOMER_CHANGED, saved.name());
         return saved;
     }
 
@@ -103,7 +103,7 @@ public class CustomerService {
         Customer customer = customers.findById(id)
                 .orElseThrow(() -> new CustomerException(List.of("Diesen Kunden gibt es nicht.")));
         customers.deleteById(id);
-        audit.record(AuditAction.CUSTOMER_DELETED, customer.name());
+        audit.add(AuditAction.CUSTOMER_DELETED, customer.name());
         return customer;
     }
 

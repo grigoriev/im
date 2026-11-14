@@ -39,7 +39,7 @@ public class LoginAudit {
     @EventListener
     public void succeeded(AuthenticationSuccessEvent event) {
         Authentication authentication = event.getAuthentication();
-        audit.record(authentication.getName(), AuditAction.LOGIN, method(authentication));
+        audit.add(authentication.getName(), AuditAction.LOGIN, method(authentication));
     }
 
     /**
@@ -51,7 +51,7 @@ public class LoginAudit {
     public void failed(AbstractAuthenticationFailureEvent event) {
         String name = event.getAuthentication().getName();
         boolean known = users.findByUsername(name).isPresent();
-        audit.record(known ? name : "unbekannt", AuditAction.LOGIN_FAILED,
+        audit.add(known ? name : "unbekannt", AuditAction.LOGIN_FAILED,
                 known ? "falsches Passwort oder Passkey" : "unbekannter Benutzername");
     }
 

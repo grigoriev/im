@@ -28,14 +28,14 @@ class LoginAuditTest {
     void recordsTheLoginMethod() {
         listener.succeeded(new AuthenticationSuccessEvent(
                 UsernamePasswordAuthenticationToken.authenticated("elena", null, AuthorityUtils.NO_AUTHORITIES)));
-        verify(audit).record("elena", AuditAction.LOGIN, "Passwort");
+        verify(audit).add("elena", AuditAction.LOGIN, "Passwort");
         listener.succeeded(new AuthenticationSuccessEvent(
                 new RememberMeAuthenticationToken("key", "elena", AuthorityUtils.createAuthorityList("ROLE_USER"))));
-        verify(audit).record("elena", AuditAction.LOGIN, "Angemeldet bleiben");
+        verify(audit).add("elena", AuditAction.LOGIN, "Angemeldet bleiben");
         var entity = ImmutablePublicKeyCredentialUserEntity.builder().id(Bytes.random()).name("elena").displayName("Elena").build();
         listener.succeeded(new AuthenticationSuccessEvent(
                 new WebAuthnAuthentication(entity, AuthorityUtils.createAuthorityList("ROLE_USER"))));
-        verify(audit).record("elena", AuditAction.LOGIN, "Passkey");
+        verify(audit).add("elena", AuditAction.LOGIN, "Passkey");
     }
 
     @Test
@@ -43,9 +43,9 @@ class LoginAuditTest {
         when(users.findByUsername("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
         listener.failed(new AuthenticationFailureBadCredentialsEvent(
                 UsernamePasswordAuthenticationToken.unauthenticated("elena", "falsch"), new BadCredentialsException("x")));
-        verify(audit).record("elena", AuditAction.LOGIN_FAILED, "falsches Passwort oder Passkey");
+        verify(audit).add("elena", AuditAction.LOGIN_FAILED, "falsches Passwort oder Passkey");
         listener.failed(new AuthenticationFailureBadCredentialsEvent(
                 UsernamePasswordAuthenticationToken.unauthenticated("geheim-passwort-123", "x"), new BadCredentialsException("x")));
-        verify(audit).record("unbekannt", AuditAction.LOGIN_FAILED, "unbekannter Benutzername");
+        verify(audit).add("unbekannt", AuditAction.LOGIN_FAILED, "unbekannter Benutzername");
     }
 }

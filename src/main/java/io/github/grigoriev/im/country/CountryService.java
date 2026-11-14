@@ -110,8 +110,9 @@ public class CountryService {
         if (!isKnown(code)) {
             throw new IllegalArgumentException("Unknown country " + code);
         }
-        jdbc.sql(ADD).param("code", code).update();
-        audit.record(AuditAction.COUNTRY_ADDED, code);
+        if (jdbc.sql(ADD).param("code", code).update() > 0) {
+            audit.add(AuditAction.COUNTRY_ADDED, code);
+        }
         return new Country(code, name(code));
     }
 
@@ -123,8 +124,9 @@ public class CountryService {
      */
     @Transactional
     public Country remove(String code) {
-        jdbc.sql(REMOVE).param("code", code).update();
-        audit.record(AuditAction.COUNTRY_REMOVED, code);
+        if (jdbc.sql(REMOVE).param("code", code).update() > 0) {
+            audit.add(AuditAction.COUNTRY_REMOVED, code);
+        }
         return new Country(code, name(code));
     }
 

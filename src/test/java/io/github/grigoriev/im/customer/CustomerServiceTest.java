@@ -57,7 +57,7 @@ class CustomerServiceTest {
         assertThat(saved.id()).isEqualTo(5L);
         verify(repository).save(new Customer(null, "Verlag am Fluss GmbH", c.street(), c.postcode(), c.city(), "DE",
                 null, "buchhaltung@verlag.example", "NL123456789B01", null, InvoiceFormat.ZUGFERD_EN16931));
-        verify(audit).record(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
+        verify(audit).add(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
     }
 
     @Test
@@ -69,7 +69,7 @@ class CustomerServiceTest {
         assertThatThrownBy(() -> service.update(5, verlag)).isInstanceOf(CustomerException.class)
                 .hasMessage("Diesen Kunden gibt es nicht.");
         verify(repository, never()).save(CustomerTestData.verlag().withId(5L));
-        verify(audit).record(AuditAction.CUSTOMER_CHANGED, "Verlag am Fluss GmbH");
+        verify(audit).add(AuditAction.CUSTOMER_CHANGED, "Verlag am Fluss GmbH");
     }
 
     @Test
@@ -80,7 +80,7 @@ class CustomerServiceTest {
         assertThatThrownBy(() -> service.delete(5)).isInstanceOf(CustomerException.class)
                 .hasMessage("Diesen Kunden gibt es nicht.");
         verify(repository, never()).deleteById(5L);
-        verify(audit).record(AuditAction.CUSTOMER_DELETED, "Verlag am Fluss GmbH");
+        verify(audit).add(AuditAction.CUSTOMER_DELETED, "Verlag am Fluss GmbH");
     }
 
     @ParameterizedTest

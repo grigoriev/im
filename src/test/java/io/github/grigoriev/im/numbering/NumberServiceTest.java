@@ -65,7 +65,7 @@ class NumberServiceTest {
         verify(statement).param("value", "RE-{YYYY}-{NNN}");
         verify(statement).update();
         assertThatThrownBy(() -> service.savePattern("{NN}")).isInstanceOf(SettingsException.class);
-        verify(audit).record(AuditAction.NUMBER_PATTERN_SAVED, "RE-{YYYY}-{NNN}");
+        verify(audit).add(AuditAction.NUMBER_PATTERN_SAVED, "RE-{YYYY}-{NNN}");
     }
 
     @Test
@@ -84,7 +84,7 @@ class NumberServiceTest {
         verify(jdbc).sql(NumberService.START);
         verify(statement).param("start", 10);
         verify(statement, times(2)).param("year", 2028);
-        verify(audit).record(AuditAction.NUMBER_START_SET, "2028: 10");
+        verify(audit).add(AuditAction.NUMBER_START_SET, "2028: 10");
     }
 
     @Test

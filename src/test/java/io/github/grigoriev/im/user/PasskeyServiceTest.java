@@ -62,7 +62,7 @@ class PasskeyServiceTest {
         CredentialRecord mac = passkey(credentials, elena, "MacBook Air", JAN, null);
         service.rename("elena", mac.getCredentialId().toBase64UrlString(), "  Arbeits-Mac ");
         assertThat(credentials.findByCredentialId(mac.getCredentialId()).getLabel()).isEqualTo("Arbeits-Mac");
-        verify(audit).record("elena", AuditAction.PASSKEY_RENAMED, "MacBook Air → Arbeits-Mac");
+        verify(audit).add("elena", AuditAction.PASSKEY_RENAMED, "MacBook Air → Arbeits-Mac");
     }
 
     @ParameterizedTest
@@ -114,7 +114,7 @@ class PasskeyServiceTest {
         assertThat(service.removeAll("elena")).isEqualTo(1);
         assertThat(service.count("elena")).isZero();
         assertThat(credentials.findByCredentialId(adminKey.getCredentialId())).isNotNull();
-        verify(audit).record("elena", AuditAction.PASSKEY_REMOVED, "MacBook Air");
-        verify(audit).record(AuditAction.PASSKEYS_REMOVED, "elena: 1");
+        verify(audit).add("elena", AuditAction.PASSKEY_REMOVED, "MacBook Air");
+        verify(audit).add(AuditAction.PASSKEYS_REMOVED, "elena: 1");
     }
 }

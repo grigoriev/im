@@ -87,7 +87,7 @@ class SellerServiceTest {
         verify(statement).param("accountHolder", null);
         verify(statement).update();
         assertThat(SellerService.UPSERT).contains("ON CONFLICT (id) DO UPDATE");
-        verify(audit).record(AuditAction.PROFILE_SAVED, "Erika Mustermann");
+        verify(audit).add(AuditAction.PROFILE_SAVED, "Erika Mustermann");
     }
 
     @Test

@@ -121,7 +121,7 @@ public class SellerService {
                 .param("tagline", profile.tagline()).param("website", profile.website())
                 .param("bankName", profile.bankName()).param("accountHolder", profile.accountHolder())
                 .update();
-        audit.record(AuditAction.PROFILE_SAVED, profile.name());
+        audit.add(AuditAction.PROFILE_SAVED, profile.name());
         return profile;
     }
 
