@@ -16,7 +16,6 @@ import io.github.grigoriev.im.invoice.TemplateLine;
 import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
