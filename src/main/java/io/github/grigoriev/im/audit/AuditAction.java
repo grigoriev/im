@@ -38,7 +38,11 @@ public enum AuditAction {
     /** A customer changed. */
     CUSTOMER_CHANGED("Kunde geändert"),
     /** A customer was deleted. */
-    CUSTOMER_DELETED("Kunde gelöscht");
+    CUSTOMER_DELETED("Kunde gelöscht"),
+    /** A draft invoice was created. */
+    DRAFT_CREATED("Entwurf angelegt"),
+    /** A draft invoice was deleted. */
+    DRAFT_DELETED("Entwurf gelöscht");
 
     private final String label;
 

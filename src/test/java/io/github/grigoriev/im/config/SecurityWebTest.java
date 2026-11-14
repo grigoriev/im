@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -48,7 +49,15 @@ import io.github.grigoriev.im.country.CountryService;
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditEvent;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.invoice.DraftLine;
+import io.github.grigoriev.im.invoice.Invoice;
+import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.invoice.InvoiceService;
+import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.web.AccountController;
+import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.AuditController;
 import io.github.grigoriev.im.web.CountryController;
 import io.github.grigoriev.im.web.CustomerController;
@@ -76,7 +85,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
-        AuditController.class})
+        AuditController.class, InvoiceController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -121,6 +130,17 @@ class SecurityWebTest {
 
     @MockitoBean
     private AuditService audit;
+
+    @MockitoBean
+    private InvoiceService invoices;
+
+    private static Invoice invoice(long id, InvoiceStatus status) {
+        java.time.LocalDate day = java.time.LocalDate.of(2027, 3, 18);
+        return new Invoice(id, status, 3L, status == InvoiceStatus.DRAFT ? null : "2027-01", InvoiceFormat.ZUGFERD_EN16931,
+                day, day, day, 14, null, "Hallo", "Danke", null,
+                List.of(new DraftLine("Lesung", true, java.math.BigDecimal.ONE, new java.math.BigDecimal("400"),
+                        TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L);
+    }
 
     private void knownUsers() {
         when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
@@ -506,6 +526,126 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Kunde angelegt</span><span>: Verlag am Fluss GmbH")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>Steuerhinweise gespeichert</span>\n")));
         mvc.perform(get("/admin/protokoll").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listsInvoicesAndCreatesADraft() throws Exception {
+        when(invoices.list()).thenReturn(List.of());
+        when(customers.list()).thenReturn(List.of());
+        mvc.perform(get("/rechnungen").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Rechnungen.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Legen Sie zuerst einen")));
+        Invoice draft = invoice(5, InvoiceStatus.DRAFT);
+        Invoice issued = invoice(6, InvoiceStatus.ISSUED);
+        when(invoices.list()).thenReturn(List.of(issued, draft));
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        when(invoices.document(draft)).thenReturn(Optional.empty());
+        when(invoices.document(issued)).thenReturn(Optional.of(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                InvoiceFormat.ZUGFERD_EN16931)));
+        when(customers.list()).thenReturn(List.of(CustomerTestData.verlag().withId(3L)));
+        mvc.perform(get("/rechnungen").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-01 · 18.03.2027")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Entwurf · 18.03.2027")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("480,00 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Neue Rechnung")));
+
+        when(invoices.createDraft(3)).thenReturn(draft);
+        mvc.perform(post("/rechnungen").param("customerId", "3").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5"));
+        when(invoices.createDraft(4)).thenThrow(new InvoiceException(List.of("Bitte zuerst das Profil ausfüllen.")));
+        mvc.perform(post("/rechnungen").param("customerId", "4").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen")).andExpect(flash().attribute("error", "Bitte zuerst das Profil ausfüllen."));
+    }
+
+    @Test
+    void showsTheEditorOfADraftAndTheNoticeOfAnIssuedInvoice() throws Exception {
+        Invoice draft = invoice(5, InvoiceStatus.DRAFT);
+        when(invoices.find(5)).thenReturn(Optional.of(draft));
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        when(invoices.problems(draft)).thenReturn(List.of("Position 1: Bitte die Leistung beschreiben."));
+        mvc.perform(get("/rechnungen/5").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Lesung\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"400,00\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Position 1: Bitte die Leistung beschreiben.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("§ 19 UStG, Kleinunternehmer")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Entwurf löschen")));
+        when(invoices.problems(draft)).thenReturn(List.of());
+        when(invoices.document(draft)).thenReturn(Optional.of(io.github.grigoriev.im.einvoice.SampleInvoices.sale(
+                InvoiceFormat.ZUGFERD_EN16931)));
+        mvc.perform(get("/rechnungen/5").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Vollständig.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Netto 130,50 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("USt 19 % 10,60 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("146,33 €")));
+        Invoice issued = invoice(6, InvoiceStatus.ISSUED);
+        when(invoices.find(6)).thenReturn(Optional.of(issued));
+        when(invoices.problems(issued)).thenReturn(List.of());
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ändert sich nicht mehr")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Entwurf löschen"))));
+        when(invoices.find(9)).thenReturn(Optional.empty());
+        mvc.perform(get("/rechnungen/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+        mvc.perform(post("/rechnungen/9").with(user("elena").roles("USER")).with(csrf())).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void savesADraftAddsAndRemovesLines() throws Exception {
+        Invoice draft = invoice(5, InvoiceStatus.DRAFT);
+        when(invoices.find(5)).thenReturn(Optional.of(draft));
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        when(invoices.defaultCategory()).thenReturn(TaxCategory.KLEINUNTERNEHMER);
+        var saved = org.mockito.ArgumentCaptor.forClass(DraftForm.class);
+
+        mvc.perform(post("/rechnungen/5").param("aktion", "speichern").param("format", "ZUGFERD_EN16931")
+                        .param("lines[0].text", "Lesung").param("lines[0].price", "400")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5")).andExpect(flash().attribute("success", "Entwurf gespeichert."));
+        mvc.perform(post("/rechnungen/5").param("aktion", "position").param("lines[0].text", "Lesung")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5")).andExpect(flash().attributeCount(0));
+        mvc.perform(post("/rechnungen/5").param("entfernen", "0").param("lines[0].text", "Lesung")
+                        .param("lines[1].text", "Reise").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5"));
+        mvc.perform(post("/rechnungen/5").param("entfernen", "7").param("lines[0].text", "Lesung")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5"));
+        mvc.perform(post("/rechnungen/5").param("entfernen", "-1").param("lines[0].text", "Lesung")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5"));
+        verify(invoices, times(5)).saveDraft(eq(5L), saved.capture());
+        assertThat(saved.getAllValues().get(0).getLines()).hasSize(1);
+        assertThat(saved.getAllValues().get(1).getLines()).hasSize(2);
+        assertThat(saved.getAllValues().get(1).getLines().get(1).getCategory()).isEqualTo(TaxCategory.KLEINUNTERNEHMER);
+        assertThat(saved.getAllValues().get(2).getLines()).extracting(io.github.grigoriev.im.invoice.LineForm::getText)
+                .containsExactly("Reise");
+        assertThat(saved.getAllValues().get(3).getLines()).hasSize(1);
+        assertThat(saved.getAllValues().get(4).getLines()).hasSize(1);
+    }
+
+    @Test
+    void showsTheProblemsOfADraftWithTheEnteredValues() throws Exception {
+        Invoice draft = invoice(5, InvoiceStatus.DRAFT);
+        when(invoices.find(5)).thenReturn(Optional.of(draft));
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        when(invoices.saveDraft(eq(5L), any())).thenThrow(new InvoiceException(List.of("Position 1: Der Preis ist keine Zahl.")));
+        mvc.perform(post("/rechnungen/5").param("aktion", "speichern").param("lines[0].text", "Lesung")
+                        .param("lines[0].price", "vierhundert").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Position 1: Der Preis ist keine Zahl.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"vierhundert\"")));
+        mvc.perform(post("/rechnungen/5").param("issueDate", "kein-datum").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bitte gültige Daten eingeben")));
+    }
+
+    @Test
+    void deletesADraftAndReportsAProblem() throws Exception {
+        mvc.perform(post("/rechnungen/5/loeschen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen")).andExpect(flash().attribute("success", "Entwurf gelöscht."));
+        verify(invoices).deleteDraft(5);
+        doThrow(new InvoiceException(List.of("Eine ausgestellte Rechnung ändert sich nicht mehr."))).when(invoices).deleteDraft(6);
+        mvc.perform(post("/rechnungen/6/loeschen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("error", "Eine ausgestellte Rechnung ändert sich nicht mehr."));
     }
 
     @Test

@@ -8,7 +8,7 @@ import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
 /** Fictitious invoices for the tests. No real person or company. */
-final class SampleInvoices {
+public final class SampleInvoices {
 
     static final Party SELLER = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE",
             "kontakt@sommer.example", "+49 89 1234567", "Elena Sommer", "143/123/45678", null);
@@ -51,7 +51,7 @@ final class SampleInvoices {
                 "vielen Dank für Ihren Auftrag.", "Mit freundlichen Grüßen", null, format, List.of(lines));
     }
 
-    static InvoiceDocument reading(InvoiceFormat format) {
+    public static InvoiceDocument reading(InvoiceFormat format) {
         return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,
                 lump("Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.", "400.00", TaxCategory.KLEINUNTERNEHMER),
                 lump("Reisekosten", "80.00", TaxCategory.KLEINUNTERNEHMER));
@@ -61,7 +61,7 @@ final class SampleInvoices {
      * A sale of goods with both VAT rates: 3 × 24,90 € at 7 %, 10 × 4,99 € and 5,90 € shipping at 19 %.
      * Net 130,50 €, VAT 5,23 € and 10,60 €, total 146,33 €.
      */
-    static InvoiceDocument sale(InvoiceFormat format) {
+    public static InvoiceDocument sale(InvoiceFormat format) {
         return invoice(SHOP, PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,
                 line("Fachbuch „E-Rechnung in der Praxis“", "3", "24.90", TaxCategory.STANDARD_7),
                 line("Lesezeichen aus Leder", "10", "4.99", TaxCategory.STANDARD_19),

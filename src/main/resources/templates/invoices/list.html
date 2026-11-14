@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Rechnungen · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Rechnungen', 'invoices', ~{::content})}">
+  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
+    <h1 class="text-2xl font-semibold tracking-tight">Rechnungen</h1>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <form class="bg-base-100 rounded-box border border-base-300 p-4 flex flex-wrap gap-2 items-end" th:action="@{/rechnungen}" method="post"
+          th:unless="${customers.isEmpty()}">
+      <label class="floating-label grow"><span>Kunde der neuen Rechnung</span>
+        <select id="new-invoice-customer" name="customerId" class="select w-full">
+          <option th:each="customer : ${customers}" th:value="${customer.id}" th:text="${customer.name}">Kunde</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary"><i data-lucide="file-plus" class="size-4"></i>Neue Rechnung</button>
+    </form>
+    <p class="text-sm text-base-content/75" th:if="${customers.isEmpty()}">
+      Legen Sie zuerst einen <a class="link" th:href="@{/kunden/neu}">Kunden</a> an.
+    </p>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-2">
+      <p class="text-sm text-base-content/75 p-3" th:if="${rows.isEmpty()}">Noch keine Rechnungen.</p>
+      <ul id="invoice-list" class="menu w-full p-0" th:unless="${rows.isEmpty()}">
+        <li th:each="row : ${rows}">
+          <a th:href="@{/rechnungen/{id}(id=${row.invoice.id})}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3">
+            <span class="min-w-0 grid">
+              <span class="truncate" th:text="${row.customer}">Kunde</span>
+              <span class="text-xs text-base-content/75"
+                    th:text="${(row.invoice.number != null ? row.invoice.number : 'Entwurf') + ' · ' + #temporals.format(row.invoice.issueDate, 'dd.MM.yyyy')}">Entwurf · 18.03.2027</span>
+            </span>
+            <span class="grid justify-items-end">
+              <span class="num" th:text="${row.total != null ? #numbers.formatDecimal(row.total, 1, 'POINT', 2, 'COMMA') + ' €' : '–'}">0,00 €</span>
+              <span class="badge badge-sm badge-ghost" th:text="${row.invoice.status.label}">Entwurf</span>
+            </span>
+          </a>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>

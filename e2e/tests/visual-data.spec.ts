@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { ensureProfile } from './seller';
 
 // Screenshots of pages with saved data. Other tests add data in parallel, so these capture single
 // elements, never a whole list. The viewports are tall: the element fits without scrolling, so the
@@ -22,6 +23,22 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await expect(page.getByRole('status')).toContainText('angelegt');
   const url = page.url();
 
+  // A draft for this customer with a lump sum and a line with quantity, for the editor screenshots.
+  await ensureProfile(page);
+  await page.goto('/rechnungen');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  await page.locator('#line-0-text').fill('Lesung aus „Der stille Hafen“ mit anschließendem Gespräch, 16.03.2027, 90 Min.');
+  await page.locator('#line-0-amount').fill('400');
+  await page.getByRole('button', { name: 'Position hinzufügen' }).click();
+  await page.locator('#line-1-text').fill('Signierstunde');
+  await page.locator('#line-1-kind').selectOption('false');
+  await page.locator('#line-1-quantity').fill('2');
+  await page.locator('#line-1-price').fill('12,50');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
+  const draft = page.url();
+
   for (const viewport of VIEWPORTS) {
     for (const scheme of ['light', 'dark'] as const) {
       const context = await browser.newContext({
@@ -41,6 +58,8 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
         `audit-entry-${viewport.name}-${scheme}.png`,
         { mask: [view.locator('[data-volatile]')] },
       );
+      await view.goto(draft);
+      await expect(view.locator('#positionen')).toHaveScreenshot(`invoice-lines-${viewport.name}-${scheme}.png`);
       await context.close();
     }
   }
