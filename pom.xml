@@ -13,7 +13,7 @@
 
     <groupId>io.github.grigoriev</groupId>
     <artifactId>im</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>0.1.1</version>
     <name>im</name>
     <description>Invoice Manager: German e-invoices (ZUGFeRD, XRechnung) for a freelancer</description>
     <url>https://github.com/grigoriev/im</url>
