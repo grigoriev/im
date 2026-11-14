@@ -668,9 +668,12 @@ class SecurityWebTest {
                 .andExpect(header().string("Content-Disposition", "inline; filename=\"Rechnungsentwurf.pdf\""))
                 .andExpect(content().string("%PDF-1.7"));
         when(invoices.document(draft)).thenReturn(Optional.empty());
-        mvc.perform(get("/rechnungen/5/vorschau").with(user("elena").roles("USER")))
+        var refused = mvc.perform(get("/rechnungen/5/vorschau").with(user("elena").roles("USER")))
                 .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/rechnungen/5"))
-                .andExpect(flash().attribute("error", "Die Vorschau braucht einen vollständigen Entwurf."));
+                .andExpect(flash().attribute("error", "Die Vorschau braucht einen vollständigen Entwurf.")).andReturn();
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        mvc.perform(get("/rechnungen/5").flashAttrs(refused.getFlashMap()).with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Die Vorschau braucht einen vollständigen Entwurf.")));
         when(invoices.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/rechnungen/9/vorschau").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
     }

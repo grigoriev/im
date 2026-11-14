@@ -14,6 +14,7 @@
       <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="${customer}">Kunde</h1>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
     <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">
       <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
     </div>
