@@ -35,7 +35,7 @@ class SellerProfileTest {
     void keepsAnExplicitContact() {
         SellerProfile p = SellerTestData.profile();
         SellerProfile withContact = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
-                "Max Mustermann", p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus(), null, null, null, null);
+                "Max Mustermann", p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null);
         assertThat(withContact.toParty().contactName()).isEqualTo("Max Mustermann");
     }
 
@@ -45,7 +45,7 @@ class SellerProfileTest {
         assertThat(p.holder()).isEqualTo("Erika Mustermann");
         SellerProfile other = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null,
                 p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null,
-                "Mustermann Sprachkurse GbR");
+                "Mustermann Sprachkurse GbR", null);
         assertThat(other.holder()).isEqualTo("Mustermann Sprachkurse GbR");
         assertThat(SellerProfile.empty().tagline()).isNull();
     }
@@ -55,6 +55,25 @@ class SellerProfileTest {
         assertThat(SellerTestData.profile().ibanGrouped()).isEqualTo("DE89 3704 0044 0532 0130 00");
         SellerProfile p = SellerTestData.profile();
         assertThat(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(),
-                p.phone(), p.taxNumber(), p.vatId(), null, p.bic(), p.taxStatus(), null, null, null, null).ibanGrouped()).isEmpty();
+                p.phone(), p.taxNumber(), p.vatId(), null, p.bic(), p.taxStatus(), null, null, null, null, null).ibanGrouped()).isEmpty();
+    }
+
+    @Test
+    void anInvoiceOfTeachingNamesTheTaxNumberForTeaching() {
+        SellerProfile one = SellerTestData.profile();
+        assertThat(one.twoTaxNumbers()).isFalse();
+        assertThat(one.toParty(true).taxNumber()).as("one number for everything").isEqualTo("12/345/67890");
+        SellerProfile two = new SellerProfile(one.name(), one.street(), one.postcode(), one.city(), one.countryCode(),
+                null, one.email(), one.phone(), one.taxNumber(), null, one.iban(), one.bic(), one.taxStatus(), null,
+                null, null, null, "98/765/43210");
+        assertThat(two.twoTaxNumbers()).isTrue();
+        assertThat(two.toParty(true).taxNumber()).isEqualTo("98/765/43210");
+        assertThat(two.toParty(false).taxNumber()).isEqualTo("12/345/67890");
+        assertThat(two.toParty().taxNumber()).isEqualTo("12/345/67890");
+        SellerProfile blank = new SellerProfile(one.name(), one.street(), one.postcode(), one.city(),
+                one.countryCode(), null, one.email(), one.phone(), one.taxNumber(), null, one.iban(), one.bic(),
+                one.taxStatus(), null, null, null, null, " ");
+        assertThat(blank.twoTaxNumbers()).isFalse();
+        assertThat(blank.toParty(true).taxNumber()).as("a blank second number falls back").isEqualTo("12/345/67890");
     }
 }

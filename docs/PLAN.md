@@ -63,7 +63,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | PDF layout | Thymeleaf HTML, rendered by Flying Saucer as PDF/A-3B | Own layout. Mustang then embeds the XML |
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |
 | UI | Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons | Server-side CRUD. CSS classes only, no SPA |
-| Design | Light and dark theme, JetBrains Mono in app and PDF (without code ligatures), German formats. The look of Preline UI with blue accents (decision 2026-11-14): white cards with thin lines, labels on the top line of each field with a red star when required, framed buttons with icons, red destructive actions, a styled list for every select, dialogs for confirmations and renames. Buttons of a form or dialog sit on one line at its right edge; a dialog grows wider instead of wrapping them, only on a phone they wrap | Mac and iPhone |
+| Design | Light and dark theme, JetBrains Mono in app and PDF (without code ligatures), German formats. The look of Preline UI with blue accents (decision 2026-11-14): white cards with thin lines, labels on the top line of each field with a red star when required, framed buttons with icons, red destructive actions, one corner radius of 4px for fields, selects, checkboxes and buttons (12px for cards), a styled list for every select, dialogs for confirmations and renames. Buttons of a form or dialog sit on one line at its right edge; a dialog grows wider instead of wrapping them, only on a phone they wrap | Mac and iPhone |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
 | Tests | JUnit 5, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
 | Packaging | Container image on GHCR, linux/amd64, attested | The NAS is x86_64. Same pattern as sb-stack |
@@ -159,6 +159,10 @@ The category is set per line. One invoice can mix categories, with these rules:
 6. The VAT of a rate is computed once on the sum of its net line amounts and rounded half up (BR-CO-17).
    The PDF shows the net total, the VAT per rate with its base, and the gross total.
 7. With more than one category, the PDF shows a tax column: each line names its rate or exemption (§14 Abs. 4 Nr. 8 UStG).
+8. Two tax numbers (decision 2026-11-14): the Finanzamt may give teaching under §4 Nr. 21 a tax number of its own. The
+   profile then holds it in `taxNumberTeaching`. An invoice of teaching only names it; every other invoice names the main
+   one. Teaching and other lines never share an invoice then. Both share one number sequence and one §19 threshold.
+   "Berichte" shows one Anlage EÜR per tax number.
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
 They also cover the end of the Kleinunternehmer status without a redesign.
 The admin edits the default tax notes. A template and an invoice can override them.

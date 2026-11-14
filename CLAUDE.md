@@ -42,14 +42,14 @@ Package `io.github.grigoriev.im`:
   `XRechnungValidator`: KoSIT) and `EInvoiceService`, which issues and validates per format
 - `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`,
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
-- `seller`: the seller profile (`SellerService`, one row, IBAN checksum; `ProfilePart` saves one tab, `missing` names what invoices still need) and the default tax notes (`TaxNoteService`)
+- `seller`: the seller profile (`SellerService`, one row, IBAN checksum; `ProfilePart` saves one tab, `missing` names what invoices still need; `taxNumberTeaching` is the second tax number for §4 Nr. 21, chosen per invoice by `toParty(teaching)`) and the default tax notes (`TaxNoteService`)
 - `audit`: the audit log (`AuditService.add`, joins the caller's transaction; with an invoice ID the entry joins its `history`); logins come from `user.LoginAudit`,
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
   validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `ArchiveService` zips the documents of a year; `TemplateService` keeps the templates
   per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
-- `threshold`: the §19 limit and the reports (`ThresholdService`: one `RevenueRow` per payment, rounded once, with the §19 part; baselines, forecast; `ReportController` shows Anlage EÜR Zeilen 12 and 13 and the CSV)
+- `threshold`: the §19 limit and the reports (`ThresholdService`: one `RevenueRow` per payment, rounded once, with the §19 part; baselines, forecast; `ReportController` shows Anlage EÜR Zeilen 12 and 13, one per tax number, and the CSV)
 - `backup`: the full export and import (`BackupService`: every table as PostgreSQL text, binaries as files, one transaction into an empty installation; issued invoices go in as drafts, get lines and documents, then their status); `BackupRunService` reads the last nightly backup and restore test that the host scripts write into `backup_run`
 - `mail`: the e-mail text (`MailTextService`: the admin default, the template of an invoice, the placeholders) and the
   sending (`MailService` over SMTP from `MailProperties`, `IM_SMTP_*`; a sent e-mail records a dispatch `EMAIL_APP`)

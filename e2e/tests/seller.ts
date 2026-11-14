@@ -26,7 +26,7 @@ export async function fillProfile(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toContainText('Kontakt gespeichert.');
   await page.getByRole('tab', { name: /^Steuer( unvollständig)?$/ }).click();
-  await page.getByLabel('Steuernummer').fill('12/345/67890');
+  await page.getByLabel('Steuernummer', { exact: true }).fill('12/345/67890');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toContainText('Steuer gespeichert.');
   await page.getByRole('tab', { name: /^Bankverbindung( unvollständig)?$/ }).click();

@@ -1,5 +1,6 @@
 /* Styles of the Invoice Manager: Tailwind CSS with daisyUI, in the look of Preline UI: white cards with thin gray
-   lines, labels on the top line of the fields, buttons with a frame, blue accents. Decision 2026-11-14. */
+   lines, labels on the top line of the fields, buttons with a frame, blue accents, a corner radius of 4px for every
+   control and 12px for cards. Decision 2026-11-14. */
 @import "tailwindcss" source(none);
 @source "../resources/templates";
 
@@ -32,8 +33,8 @@
   --color-error: oklch(55% 0.19 25);
   --color-error-content: oklch(98% 0.01 25);
   --radius-box: 0.75rem;
-  --radius-field: 0.5rem;
-  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-selector: 0.25rem;
   --depth: 0;
   --noise: 0;
 }
@@ -63,8 +64,8 @@
   --color-error: oklch(70% 0.16 25);
   --color-error-content: oklch(20% 0.04 25);
   --radius-box: 0.75rem;
-  --radius-field: 0.5rem;
-  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-selector: 0.25rem;
   --depth: 0;
   --noise: 0;
 }

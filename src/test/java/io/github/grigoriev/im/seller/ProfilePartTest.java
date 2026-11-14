@@ -35,7 +35,7 @@ class ProfilePartTest {
     void takesItsFieldsFromTheInputAndTheRestFromTheStoredProfile(ProfilePart part) throws Exception {
         SellerProfile stored = SellerTestData.profile();
         SellerProfile input = new SellerProfile("n", "s", "p", "c", "AT", "k", "e", "t", "x", "v", "i", "b",
-                TaxStatus.REGULAR, "z", "w", "m", "h");
+                TaxStatus.REGULAR, "z", "w", "m", "h", "u");
         SellerProfile merged = part.merge(stored, input);
         for (RecordComponent component : SellerProfile.class.getRecordComponents()) {
             Object expected = component.getAccessor().invoke(part.fields().contains(component.getName()) ? input : stored);
@@ -49,14 +49,14 @@ class ProfilePartTest {
         assertThat(shown.contactName()).isEqualTo("Erika Mustermann");
         assertThat(shown.accountHolder()).isEqualTo("Erika Mustermann");
         SellerProfile own = new SellerProfile("Erika", null, null, null, null, "Max", null, null, null, null, null,
-                null, null, null, null, null, " ");
+                null, null, null, null, null, " ", null);
         assertThat(own.withNameAsDefault().contactName()).isEqualTo("Max");
         assertThat(own.withNameAsDefault().accountHolder()).isEqualTo("Erika");
         SellerProfile none = new SellerProfile(null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
         assertThat(none.withNameAsDefault()).isEqualTo(none);
         SellerProfile holder = new SellerProfile("Erika", null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, "Konto GmbH");
+                null, null, null, null, null, "Konto GmbH", null);
         assertThat(holder.withNameAsDefault().accountHolder()).isEqualTo("Konto GmbH");
     }
 }

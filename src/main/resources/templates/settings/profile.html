@@ -129,6 +129,12 @@
             <th:block th:replace="~{fragments/field :: hint('vatId', null)}"></th:block>
           </div>
         </div>
+        <div class="grid gap-1">
+          <label class="floating-label"><span>Steuernummer für Unterricht (§ 4 Nr. 21)</span>
+            <input id="seller-tax-number-teaching" th:field="*{taxNumberTeaching}" class="input w-full" maxlength="32" th:classappend="${invalid != null and invalid.containsKey('taxNumberTeaching')} ? 'input-error'" th:attr="aria-invalid=${invalid != null and invalid.containsKey('taxNumberTeaching')} ? 'true' : null,aria-describedby='taxNumberTeaching-hint'">
+          </label>
+          <th:block th:replace="~{fragments/field :: hint('taxNumberTeaching', 'Nur wenn das Finanzamt für den Unterricht eine eigene Steuernummer vergeben hat. Rechnungen mit Unterricht nennen dann diese Nummer, Unterricht und andere Leistungen stehen auf getrennten Rechnungen.')}"></th:block>
+        </div>
         <p class="text-xs text-base-content/75">Die Rechnung nennt die Steuernummer oder die USt-IdNr. (§ 14 Abs. 4 Nr. 2 UStG).</p>
       </fieldset>
 

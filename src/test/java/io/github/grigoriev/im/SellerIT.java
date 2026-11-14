@@ -44,13 +44,14 @@ class SellerIT {
 
         SellerProfile p = SellerTestData.profile();
         SellerTestData.save(sellers, new SellerProfile(p.name(), "Neuer Weg 2", p.postcode(), p.city(), p.countryCode(), "Max Mustermann",
-                p.email(), p.phone(), null, "DE123456789", p.iban(), p.bic(), TaxStatus.REGULAR, null, null, null, null));
+                p.email(), p.phone(), null, "DE123456789", p.iban(), p.bic(), TaxStatus.REGULAR, null, null, null, null, " 98/765/43210 "));
         SellerProfile stored = sellers.find().orElseThrow();
         assertThat(stored.street()).isEqualTo("Neuer Weg 2");
         assertThat(stored.contactName()).isEqualTo("Max Mustermann");
         assertThat(stored.taxNumber()).isNull();
         assertThat(stored.vatId()).isEqualTo("DE123456789");
         assertThat(stored.taxStatus()).isEqualTo(TaxStatus.REGULAR);
+        assertThat(stored.taxNumberTeaching()).as("the second tax number round-trips, trimmed").isEqualTo("98/765/43210");
         assertThat(stored.tagline()).isNull();
         assertThat(SellerTestData.save(sellers, SellerTestData.profile()).bankName()).isEqualTo("Commerzbank");
         SellerProfile withDetails = sellers.find().orElseThrow();

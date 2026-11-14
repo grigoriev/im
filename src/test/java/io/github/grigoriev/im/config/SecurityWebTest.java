@@ -434,7 +434,7 @@ class SecurityWebTest {
                 argThat(profile -> profile.taxStatus() == TaxStatus.REGULAR));
 
         when(sellers.save(any(), any())).thenReturn(new SellerProfile("Erika", null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null));
+                null, null, null, null, null, null, null, null, null, null, null));
         mvc.perform(post("/einstellungen").param("teil", "anschrift").param("name", "Erika")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(flash().attribute("success", "Anschrift gespeichert. Für Rechnungen fehlt noch: Straße, PLZ, "
@@ -605,7 +605,7 @@ class SecurityWebTest {
 
         SellerProfile p = SellerTestData.profile();
         SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
-                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null);
+                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null);
         when(sellers.find()).thenReturn(Optional.of(kosovo));
         when(countries.options("XK", null)).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/einstellungen").with(user("elena").roles("USER")))
@@ -899,6 +899,19 @@ class SecurityWebTest {
                         new java.math.BigDecimal("119.00")), null)));
         mvc.perform(get("/berichte").param("jahr", "2026").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Einnahmen mit Umsatzsteuer von 119,00 €")));
+        SellerProfile p = SellerTestData.profile();
+        when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
+                null, null, null, "98/765/43210")));
+        mvc.perform(get("/berichte").param("jahr", "2027").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Betriebseinnahmen: Unterricht nach § 4 Nr. 21")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Betriebseinnahmen: Übrige Leistungen")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">98/765/43210</span>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"euer-111-unterricht\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"euer-111-uebrige\"")));
+        mvc.perform(get("/einstellungen").param("teil", "steuer").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"98/765/43210\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuernummer für Unterricht (§ 4 Nr. 21)")));
         mvc.perform(get("/berichte").param("jahr", "2020").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Zahlungen in diesem Jahr.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2020\" selected=\"selected\">")));

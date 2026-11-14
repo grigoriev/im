@@ -22,6 +22,8 @@ import io.github.grigoriev.im.einvoice.Party;
  * @param website website, may be {@code null}
  * @param bankName name of the bank, may be {@code null}
  * @param accountHolder holder of the account, {@code null} means the name
+ * @param taxNumberTeaching a second tax number for teaching under §4 Nr. 21 UStG, when the Finanzamt gave one; an
+ *     invoice of teaching names it instead of {@code taxNumber}. {@code null} if there is only one
  */
 public record SellerProfile(
         String name,
@@ -40,7 +42,8 @@ public record SellerProfile(
         String tagline,
         String website,
         String bankName,
-        String accountHolder) {
+        String accountHolder,
+        String taxNumberTeaching) {
 
     /**
      * Returns an empty profile for the first form: Germany, Kleinunternehmer.
@@ -49,7 +52,7 @@ public record SellerProfile(
      */
     public static SellerProfile empty() {
         return new SellerProfile("", "", "", "", "DE", null, "", "", null, null, "", "", TaxStatus.KLEINUNTERNEHMER,
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     /**
@@ -61,7 +64,7 @@ public record SellerProfile(
     public SellerProfile withNameAsDefault() {
         return new SellerProfile(name, street, postcode, city, countryCode, isBlank(contactName) ? name : contactName,
                 email, phone, taxNumber, vatId, iban, bic, taxStatus, tagline, website, bankName,
-                isBlank(accountHolder) ? name : accountHolder);
+                isBlank(accountHolder) ? name : accountHolder, taxNumberTeaching);
     }
 
     private static boolean isBlank(String text) {
@@ -72,11 +75,32 @@ public record SellerProfile(
      * Returns the seller party of an invoice. XRechnung needs a contact name (BR-DE-5): the name serves if no
      * contact person is set.
      *
-     * @return the party
+     * @return the party, with the tax number of everything but teaching
      */
     public Party toParty() {
+        return toParty(false);
+    }
+
+    /**
+     * Returns the seller party of an invoice with the tax number that fits it: the one for teaching if the invoice
+     * is teaching only and the Finanzamt gave a second number, else the main one.
+     *
+     * @param teaching whether the invoice holds teaching under §4 Nr. 21 only
+     * @return the party
+     */
+    public Party toParty(boolean teaching) {
         return new Party(name, street, postcode, city, countryCode, email, phone,
-                contactName == null ? name : contactName, taxNumber, vatId);
+                contactName == null ? name : contactName,
+                teaching && twoTaxNumbers() ? taxNumberTeaching : taxNumber, vatId);
+    }
+
+    /**
+     * Tells whether the Finanzamt gave teaching a tax number of its own.
+     *
+     * @return {@code true} with a second tax number
+     */
+    public boolean twoTaxNumbers() {
+        return taxNumberTeaching != null && !taxNumberTeaching.isBlank();
     }
 
     /**

@@ -21,7 +21,8 @@ class ReportControllerTest {
 
     private final ThresholdService threshold = mock(ThresholdService.class);
     private final io.github.grigoriev.im.invoice.ArchiveService archive = mock(io.github.grigoriev.im.invoice.ArchiveService.class);
-    private final ReportController controller = new ReportController(threshold, archive);
+    private final io.github.grigoriev.im.seller.SellerService sellers = mock(io.github.grigoriev.im.seller.SellerService.class);
+    private final ReportController controller = new ReportController(threshold, archive, sellers);
 
     private static RevenueRow row(String amount, String counted, String note) {
         BigDecimal value = new BigDecimal(amount);
@@ -74,8 +75,45 @@ class ReportControllerTest {
         assertThat(csv.getHeaders().getContentType()).hasToString("text/csv;charset=UTF-8");
         assertThat(csv.getHeaders().getContentDisposition().getFilename()).isEqualTo("Zahlungen_2027.csv");
         assertThat(new String(csv.getBody(), StandardCharsets.UTF_8)).isEqualTo(ReportController.BOM + ReportController.CSV_HEAD
-                + "\r\n18.03.2027;\"2027-01\";\"Verlag \"\"am\"\" Fluss\";1234,50;1234,50;0,00;\"'=SUMME(A1)\"\r\n"
-                + "18.03.2027;\"2027-01\";\"Verlag \"\"am\"\" Fluss\";-80,00;-80,00;0,00;\r\n");
+                + "\r\n18.03.2027;\"2027-01\";\"Verlag \"\"am\"\" Fluss\";1234,50;1234,50;0,00;0,00;\"'=SUMME(A1)\"\r\n"
+                + "18.03.2027;\"2027-01\";\"Verlag \"\"am\"\" Fluss\";-80,00;-80,00;0,00;0,00;\r\n");
+        when(threshold.rows(2027)).thenReturn(List.of(row("300.00", "100.00", null)));
+        assertThat(new String(controller.csv(2027).getBody(), StandardCharsets.UTF_8)).as("the teaching column")
+                .endsWith(";300,00;100,00;200,00;200,00;\r\n");
+    }
+
+    @Test
+    void writesOneAnlageEuerPerTaxNumberWhenTeachingHasItsOwn() {
+        List<RevenueRow> rows = List.of(row("560.00", "200.00", null), row("-100.00", "-35.71", null));
+        io.github.grigoriev.im.seller.SellerProfile single = io.github.grigoriev.im.seller.SellerTestData.profile();
+        List<ReportController.Business> one = ReportController.businesses(rows, single);
+        assertThat(one).singleElement().satisfies(business -> {
+            assertThat(business.key()).isEmpty();
+            assertThat(business.label()).isNull();
+            assertThat(business.taxNumber()).isEqualTo("12/345/67890");
+            assertThat(business.totals().total()).isEqualByComparingTo("460.00");
+        });
+        assertThat(ReportController.businesses(rows, null)).singleElement()
+                .satisfies(business -> assertThat(business.taxNumber()).isNull());
+
+        io.github.grigoriev.im.seller.SellerProfile two = new io.github.grigoriev.im.seller.SellerProfile(single.name(),
+                single.street(), single.postcode(), single.city(), single.countryCode(), null, single.email(),
+                single.phone(), single.taxNumber(), null, single.iban(), single.bic(), single.taxStatus(), null, null,
+                null, null, "98/765/43210");
+        List<ReportController.Business> split = ReportController.businesses(rows, two);
+        assertThat(split).extracting(ReportController.Business::key).containsExactly("-unterricht", "-uebrige");
+        ReportController.Business teaching = split.get(0);
+        assertThat(teaching.taxNumber()).isEqualTo("98/765/43210");
+        assertThat(teaching.totals().total()).isEqualByComparingTo("295.71");
+        assertThat(teaching.totals().excluded()).as("all of teaching is Zeile 13").isEqualByComparingTo("295.71");
+        assertThat(teaching.totals().counted()).isEqualByComparingTo("0");
+        ReportController.Business other = split.get(1);
+        assertThat(other.taxNumber()).isEqualTo("12/345/67890");
+        assertThat(other.totals().total()).isEqualByComparingTo("164.29");
+        assertThat(other.totals().excluded()).isEqualByComparingTo("0");
+        assertThat(other.totals().counted()).isEqualByComparingTo("164.29");
+        assertThat(teaching.totals().total().add(other.totals().total())).as("the two add up to all")
+                .isEqualByComparingTo(ReportController.totals(rows).total());
     }
 
     @Test
