@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- Automatische Sicherung: "Datensicherung" shows the last nightly backup and the last monthly restore test of the host, with what each reported, and warns when the backup is older than 36 hours or the restore test older than 35 days. The scripts on the host write table `backup_run`; the app only reads it.
+
 ## [0.1.0] - 2026-11-14
 
 ### Changed

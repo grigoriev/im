@@ -9,6 +9,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.backup.BackupException;
+import io.github.grigoriev.im.backup.BackupRunService;
+import io.github.grigoriev.im.backup.BackupStatus;
 import io.github.grigoriev.im.backup.BackupService;
 import io.github.grigoriev.im.config.SessionEpoch;
 import java.io.ByteArrayOutputStream;
@@ -23,14 +25,16 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 class BackupControllerTest {
 
     private final BackupService backups = mock(BackupService.class);
+    private final BackupRunService runs = mock(BackupRunService.class);
     private final SessionEpoch sessions = mock(SessionEpoch.class);
-    private final BackupController controller = new BackupController(backups, sessions,
+    private final BackupController controller = new BackupController(backups, runs, sessions,
             Clock.fixed(Instant.parse("2027-03-18T08:00:00Z"), ZoneOffset.UTC));
     private final MultipartFile file = new MockMultipartFile("file", "export.zip", "application/zip", new byte[] {1});
 
@@ -40,7 +44,11 @@ class BackupControllerTest {
 
     @Test
     void showsThePageAndStreamsTheExport() throws IOException {
-        assertThat(controller.show()).isEqualTo("settings/backup");
+        BackupStatus status = new BackupStatus(null, null, true, true);
+        when(runs.status()).thenReturn(status);
+        ExtendedModelMap model = new ExtendedModelMap();
+        assertThat(controller.show(model)).isEqualTo("settings/backup");
+        assertThat(model.getAttribute("status")).isSameAs(status);
         var export = controller.export();
         assertThat(export.getHeaders().getContentDisposition().getFilename()).isEqualTo("im-datensicherung-2027-03-18.zip");
         assertThat(export.getHeaders().getContentType()).hasToString("application/zip");

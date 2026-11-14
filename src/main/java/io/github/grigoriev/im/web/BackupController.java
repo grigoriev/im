@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.backup.BackupException;
+import io.github.grigoriev.im.backup.BackupRunService;
 import io.github.grigoriev.im.backup.BackupService;
 import io.github.grigoriev.im.config.SessionEpoch;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +25,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/** The admin page "Datensicherung" of the settings: the full export and its import into an empty installation. */
+/**
+ * The admin page "Datensicherung" of the settings: the status of the automatic backup, the full export and its import
+ * into an empty installation.
+ */
 @Controller
 @RequestMapping("/admin/datensicherung")
 public class BackupController {
@@ -33,6 +38,7 @@ public class BackupController {
     private static final String ERROR = "error";
 
     private final BackupService backups;
+    private final BackupRunService runs;
     private final SessionEpoch sessions;
     private final Clock clock;
 
@@ -40,11 +46,13 @@ public class BackupController {
      * Creates the controller.
      *
      * @param backups writes and reads the export
+     * @param runs the last automatic backup and restore test
      * @param sessions ends every session after an import
      * @param clock the date in the file name
      */
-    public BackupController(BackupService backups, SessionEpoch sessions, Clock clock) {
+    public BackupController(BackupService backups, BackupRunService runs, SessionEpoch sessions, Clock clock) {
         this.backups = backups;
+        this.runs = runs;
         this.sessions = sessions;
         this.clock = clock;
     }
@@ -52,10 +60,12 @@ public class BackupController {
     /**
      * Shows the page.
      *
+     * @param model receives the status of the automatic backup
      * @return the template name
      */
     @GetMapping
-    public String show() {
+    public String show(Model model) {
+        model.addAttribute("status", runs.status());
         return VIEW;
     }
 
