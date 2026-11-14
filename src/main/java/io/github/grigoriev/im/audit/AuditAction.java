@@ -46,7 +46,9 @@ public enum AuditAction {
     /** A template was created. */
     TEMPLATE_CREATED("Vorlage angelegt"),
     /** A template was deleted. */
-    TEMPLATE_DELETED("Vorlage gelöscht");
+    TEMPLATE_DELETED("Vorlage gelöscht"),
+    /** An invoice was issued with its number and documents. */
+    INVOICE_ISSUED("Rechnung ausgestellt");
 
     private final String label;
 

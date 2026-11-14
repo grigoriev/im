@@ -30,6 +30,8 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param updatedAt time of the last change
  * @param version counts the saves; a save with an older version is refused, so two windows never overwrite
  *     each other
+ * @param issuedAt time of the issue, {@code null} for a draft
+ * @param snapshot the issued invoice document as JSON, frozen at the issue; {@code null} for a draft
  */
 @Table("invoice")
 public record Invoice(
@@ -49,7 +51,9 @@ public record Invoice(
         @MappedCollection(idColumn = "invoice_id", keyColumn = "position") List<DraftLine> lines,
         Instant createdAt,
         Instant updatedAt,
-        @Version Long version) {
+        @Version Long version,
+        Instant issuedAt,
+        String snapshot) {
 
     /** Copies the lines, so a stored invoice never shares a list. */
     public Invoice {

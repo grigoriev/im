@@ -37,6 +37,8 @@ class NumberServiceTest {
     private final MappedQuerySpec<String> text = mock(MappedQuerySpec.class);
     @SuppressWarnings("unchecked")
     private final MappedQuerySpec<Integer> counter = mock(MappedQuerySpec.class);
+    @SuppressWarnings("unchecked")
+    private final MappedQuerySpec<Boolean> taken = mock(MappedQuerySpec.class);
     private final AuditService audit = mock(AuditService.class);
     private final NumberService service = new NumberService(sequences, jdbc, NEW_YEARS_EVE, audit);
 
@@ -47,6 +49,8 @@ class NumberServiceTest {
         when(statement.query(String.class)).thenReturn(text);
         when(statement.query(Integer.class)).thenReturn(counter);
         when(text.optional()).thenReturn(Optional.empty());
+        when(statement.query(Boolean.class)).thenReturn(taken);
+        when(taken.single()).thenReturn(false);
     }
 
     @Test
@@ -66,6 +70,19 @@ class NumberServiceTest {
         verify(statement).update();
         assertThatThrownBy(() -> service.savePattern("{NN}")).isInstanceOf(SettingsException.class);
         verify(audit).add(AuditAction.NUMBER_PATTERN_SAVED, "RE-{YYYY}-{NNN}");
+        verify(statement).param("number", "RE-2028-001");
+        verify(statement).param("number", "RE-2029-001");
+    }
+
+    @Test
+    void refusesAPatternWhoseNextNumberExists() {
+        when(sequences.findById(2028)).thenReturn(Optional.of(new NumberSequence(2028, 3, true)));
+        when(taken.single()).thenReturn(false, true);
+        assertThatThrownBy(() -> service.savePattern("{YY}{NN}")).isInstanceOf(SettingsException.class)
+                .hasMessage("Mit diesem Muster wäre die nächste Nummer 2901, und die gibt es schon. Bitte das Muster ändern.");
+        verify(statement).param("number", "2803");
+        verify(statement, never()).update();
+        verify(audit, never()).add(any(), anyString());
     }
 
     @Test

@@ -27,7 +27,7 @@ class PlaceholdersTest {
     @Test
     void takesTheValuesOfAnInvoice() {
         Invoice invoice = new Invoice(1L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, DAY, DAY, DAY, 30,
-                null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 0L);
+                null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 0L, null, null);
         Placeholders values = Placeholders.of(invoice, "Entwurf");
         assertThat(values).isEqualTo(new Placeholders("Entwurf", DAY, DAY, DAY, LocalDate.of(2027, 4, 17)));
         assertThat(values.fill("{Leistungszeitraum}")).isEqualTo("18.03.2027");

@@ -18,7 +18,35 @@
     <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">
       <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
     </div>
-    <p class="alert text-sm" th:unless="${invoice.draft}">Diese Rechnung ist ausgestellt und ändert sich nicht mehr.</p>
+    <th:block th:unless="${invoice.draft}">
+      <p class="alert text-sm">Diese Rechnung ist ausgestellt und ändert sich nicht mehr.</p>
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3 @container" id="invoice-issued">
+        <h2 class="font-semibold">Rechnungsdaten</h2>
+        <dl class="grid gap-x-6 gap-y-2 text-sm @lg:grid-cols-2">
+          <div><dt class="text-xs text-base-content/75">Rechnungsnummer</dt><dd class="num" id="invoice-number" th:text="${document.number()}">2027-01</dd></div>
+          <div><dt class="text-xs text-base-content/75">E-Rechnungsformat</dt><dd th:text="${formats.get(document.format())}">Format</dd></div>
+          <div><dt class="text-xs text-base-content/75">Rechnungsdatum</dt><dd class="num" th:text="${#temporals.format(document.issueDate(), 'dd.MM.yyyy')}">18.03.2027</dd></div>
+          <div><dt class="text-xs text-base-content/75">Fällig am</dt><dd class="num" th:text="${#temporals.format(document.dueDate(), 'dd.MM.yyyy')}">01.04.2027</dd></div>
+          <div><dt class="text-xs text-base-content/75">Leistungszeitraum</dt><dd class="num" th:text="${#temporals.format(document.serviceFrom(), 'dd.MM.yyyy') + ' – ' + #temporals.format(document.serviceTo(), 'dd.MM.yyyy')}">01.03.2027 – 18.03.2027</dd></div>
+          <div><dt class="text-xs text-base-content/75">Gesamtbetrag</dt><dd class="num font-semibold" id="invoice-total" th:text="${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd></div>
+          <div><dt class="text-xs text-base-content/75">Ausgestellt</dt><dd class="num" data-volatile th:text="${#temporals.format(invoice.issuedAt, 'dd.MM.yyyy HH:mm')}">18.03.2027 10:00</dd></div>
+        </dl>
+      </section>
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="invoice-documents">
+        <h2 class="font-semibold">Dokumente</h2>
+        <ul class="grid gap-3">
+          <li th:each="file : ${documents}" class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+            <span class="min-w-0 grid text-sm">
+              <span class="[overflow-wrap:anywhere]" th:text="${file.filename()}">Rechnung_2027-01.pdf</span>
+              <span class="text-xs text-base-content/75 num" data-volatile th:text="${#numbers.formatInteger(file.size(), 1, 'POINT') + ' Byte'}">1.000 Byte</span>
+              <span class="text-xs text-base-content/75 num [overflow-wrap:anywhere]" data-volatile th:text="${'SHA-256 ' + file.sha256()}">SHA-256</span>
+            </span>
+            <a class="btn btn-sm" th:href="@{/rechnungen/{id}/dokumente/{kind}(id=${invoice.id},kind=${#strings.toLowerCase(file.kind())})}"
+               th:id="${'download-' + #strings.toLowerCase(file.kind())}"><i data-lucide="download" class="size-4"></i>Herunterladen</a>
+          </li>
+        </ul>
+      </section>
+    </th:block>
 
     <form th:if="${invoice.draft}" class="grid gap-4" th:action="@{/rechnungen/{id}(id=${invoice.id})}" th:object="${form}" method="post">
       <input type="hidden" th:field="*{version}">
@@ -76,11 +104,11 @@
         <h2 class="font-semibold">Prüfung</h2>
         <div th:if="${problems.isEmpty()}" class="flex flex-wrap items-center justify-between gap-2">
           <p class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>
-            Vollständig. Das Ausstellen folgt im nächsten Schritt.</p>
+            Vollständig.</p>
           <a th:href="@{/rechnungen/{id}/vorschau(id=${invoice.id})}" target="_blank" rel="noopener" class="btn btn-sm"
              id="invoice-preview"><i data-lucide="file-search" class="size-4"></i>Vorschau (PDF)</a>
         </div>
-        <p th:if="${problems.isEmpty()}" class="text-xs text-base-content/75">Die Vorschau zeigt den gespeicherten Stand.</p>
+        <p th:if="${problems.isEmpty()}" class="text-xs text-base-content/75">Vorschau und Ausstellen nehmen den gespeicherten Stand.</p>
         <ul th:unless="${problems.isEmpty()}" class="grid gap-1">
           <li th:each="problem : ${problems}" class="flex items-start gap-2"><i data-lucide="circle-alert" class="size-4 text-warning shrink-0 mt-0.5"></i>
             <span th:text="${problem}">Problem</span></li>
@@ -89,6 +117,16 @@
 
       <div><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
+
+    <details class="bg-base-100 rounded-box border border-base-300 p-5" th:if="${invoice.draft and problems.isEmpty()}" id="invoice-issue">
+      <summary class="btn btn-primary w-fit"><i data-lucide="stamp" class="size-4"></i>Rechnung ausstellen…</summary>
+      <form class="mt-3 grid gap-3 justify-items-start" method="post" th:action="@{/rechnungen/{id}/ausstellen(id=${invoice.id})}">
+        <input type="hidden" name="version" th:value="${invoice.version}">
+        <p class="text-sm">Die Rechnung bekommt ihre Nummer, PDF und XML werden geprüft und gespeichert.
+          Danach ändert sie sich nicht mehr.</p>
+        <button type="submit" class="btn btn-primary" id="invoice-issue-confirm">Jetzt ausstellen</button>
+      </form>
+    </details>
 
     <details class="border-t border-base-300 pt-4" th:if="${invoice.draft}">
       <summary class="text-sm cursor-pointer w-fit">Entwurf löschen</summary>

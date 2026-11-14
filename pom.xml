@@ -386,6 +386,10 @@
                         <param>io.github.grigoriev.im.invoice.LineForm</param>
                         <param>io.github.grigoriev.im.invoice.TemplateService</param>
                         <param>io.github.grigoriev.im.invoice.Placeholders</param>
+                        <param>io.github.grigoriev.im.invoice.IssueService</param>
+                        <param>io.github.grigoriev.im.invoice.DocumentStore</param>
+                        <param>io.github.grigoriev.im.invoice.DocumentKind</param>
+                        <param>io.github.grigoriev.im.invoice.StoredDocument</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>

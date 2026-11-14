@@ -36,6 +36,7 @@ public class NumberService {
             UPDATE number_sequence SET next_number = next_number + 1, used = TRUE
              WHERE year = :year RETURNING next_number - 1""";
     static final String START = "UPDATE number_sequence SET next_number = :start WHERE year = :year AND NOT used";
+    static final String TAKEN = "SELECT EXISTS (SELECT 1 FROM invoice WHERE number = :number)";
 
     private final NumberSequenceRepository sequences;
     private final JdbcClient jdbc;
@@ -68,15 +69,23 @@ public class NumberService {
     }
 
     /**
-     * Checks and saves the pattern. It applies to the next number.
+     * Checks and saves the pattern. It applies to the next number. A pattern whose next number of this year or the
+     * next one already exists is refused: the issue would fail on the duplicate.
      *
      * @param text the pattern as entered
      * @return the saved pattern
-     * @throws SettingsException if the pattern is invalid
+     * @throws SettingsException if the pattern is invalid or its next number exists
      */
     @Transactional
     public NumberPattern savePattern(String text) {
         NumberPattern pattern = NumberPattern.parse(text);
+        for (NumberSequence sequence : years()) {
+            String next = pattern.format(sequence.year(), sequence.nextNumber());
+            if (Boolean.TRUE.equals(jdbc.sql(TAKEN).param("number", next).query(Boolean.class).single())) {
+                throw new SettingsException(List.of("Mit diesem Muster wäre die nächste Nummer " + next
+                        + ", und die gibt es schon. Bitte das Muster ändern."));
+            }
+        }
         jdbc.sql(WRITE_PATTERN).param("key", PATTERN_KEY).param("value", pattern.value()).update();
         audit.add(AuditAction.NUMBER_PATTERN_SAVED, pattern.value());
         return pattern;

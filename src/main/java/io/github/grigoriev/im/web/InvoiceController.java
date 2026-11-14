@@ -5,15 +5,20 @@ import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.invoice.DocumentKind;
+import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceService;
+import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.StoredDocument;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.net.URI;
+import java.util.Optional;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -31,7 +36,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/** The page "Rechnungen": the list, a new draft for a customer, and the editor of a draft. Both roles use it. */
+/**
+ * The page "Rechnungen": the list, a new draft for a customer, the editor of a draft, the issue and the documents of an
+ * issued invoice. Both roles use it.
+ */
 @Controller
 @RequestMapping("/rechnungen")
 public class InvoiceController {
@@ -56,13 +64,15 @@ public class InvoiceController {
      * A line of the list.
      *
      * @param invoice the invoice
-     * @param customer the customer's name
-     * @param total the gross total, {@code null} while the draft is incomplete
+     * @param customer the customer's name; the frozen buyer of an issued invoice
+     * @param total the gross total, {@code null} while the draft is incomplete; the frozen one of an issued invoice
      */
     public record Row(Invoice invoice, String customer, BigDecimal total) {
     }
 
     private final InvoiceService invoices;
+    private final IssueService issues;
+    private final DocumentStore documents;
     private final CustomerService customers;
     private final InvoicePdfRenderer pdf;
 
@@ -70,11 +80,16 @@ public class InvoiceController {
      * Creates the controller.
      *
      * @param invoices the invoice service
+     * @param issues issues a draft
+     * @param documents the documents and snapshots of issued invoices
      * @param customers the customers for a new draft
      * @param pdf renders the preview
      */
-    public InvoiceController(InvoiceService invoices, CustomerService customers, InvoicePdfRenderer pdf) {
+    public InvoiceController(InvoiceService invoices, IssueService issues, DocumentStore documents,
+            CustomerService customers, InvoicePdfRenderer pdf) {
         this.invoices = invoices;
+        this.issues = issues;
+        this.documents = documents;
         this.customers = customers;
         this.pdf = pdf;
     }
@@ -87,8 +102,11 @@ public class InvoiceController {
      */
     @GetMapping
     public String list(Model model) {
-        List<Row> rows = invoices.list().stream().map(invoice -> new Row(invoice, invoices.customerName(invoice),
-                invoices.document(invoice).map(InvoiceDocument::total).orElse(null))).toList();
+        List<Row> rows = invoices.list().stream().map(invoice -> {
+            Optional<InvoiceDocument> document = document(invoice);
+            return new Row(invoice, customerName(invoice, document),
+                    document.map(InvoiceDocument::total).orElse(null));
+        }).toList();
         model.addAttribute("rows", rows);
         model.addAttribute("customers", customers.list());
         return LIST;
@@ -177,6 +195,10 @@ public class InvoiceController {
     @GetMapping("/{id}/vorschau")
     public ResponseEntity<byte[]> preview(@PathVariable long id, RedirectAttributes flash) {
         Invoice invoice = invoices.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!invoice.isDraft()) {
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/rechnungen/" + id + "/dokumente/pdf"))
+                    .build();
+        }
         return invoices.document(invoice)
                 .map(document -> ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
                         .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
@@ -186,6 +208,46 @@ public class InvoiceController {
                     flash.addFlashAttribute(ERROR, "Die Vorschau braucht einen vollständigen Entwurf.");
                     return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/rechnungen/" + id)).build();
                 });
+    }
+
+    /**
+     * Issues a draft: its number, its frozen snapshot and its validated documents.
+     *
+     * @param id the ID
+     * @param version the version of the draft the user saw
+     * @param flash messages for the next page
+     * @return a redirect to the invoice
+     */
+    @PostMapping("/{id}/ausstellen")
+    public String issue(@PathVariable long id, @RequestParam(required = false) Long version, RedirectAttributes flash) {
+        try {
+            flash.addFlashAttribute(SUCCESS, "Rechnung " + issues.issue(id, version) + " ausgestellt.");
+        } catch (InvoiceException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+        }
+        return "redirect:/rechnungen/" + id;
+    }
+
+    /**
+     * Downloads a document of an issued invoice, byte for byte as it was issued.
+     *
+     * @param id the ID
+     * @param kind "pdf" or "xml"
+     * @return the file
+     */
+    @GetMapping("/{id}/dokumente/{kind}")
+    public ResponseEntity<byte[]> download(@PathVariable long id, @PathVariable String kind) {
+        DocumentKind documentKind = switch (kind) {
+            case "pdf" -> DocumentKind.PDF;
+            case "xml" -> DocumentKind.XML;
+            default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        };
+        StoredDocument document = documents.find(id, documentKind)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(documentKind.mediaType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(document.filename()).build().toString())
+                .body(document.content());
     }
 
     /**
@@ -209,13 +271,25 @@ public class InvoiceController {
     private String page(Model model, Invoice invoice, DraftForm form) {
         model.addAttribute("invoice", invoice);
         model.addAttribute("form", form);
-        model.addAttribute("customer", invoices.customerName(invoice));
-        model.addAttribute("problems", invoices.problems(invoice));
-        model.addAttribute("document", invoices.document(invoice).orElse(null));
+        Optional<InvoiceDocument> document = document(invoice);
+        model.addAttribute("customer", customerName(invoice, document));
+        model.addAttribute("problems", invoice.isDraft() ? invoices.problems(invoice) : List.of());
+        model.addAttribute("document", document.orElse(null));
+        model.addAttribute("documents", documents.list(invoice.id()));
         model.addAttribute("formats", CustomerController.FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("categories", CATEGORIES);
         model.addAttribute("categoryOrder", TaxCategory.values());
         return EDIT;
+    }
+
+    /** The current customer of a draft, or the frozen buyer of an issued invoice. */
+    private String customerName(Invoice invoice, Optional<InvoiceDocument> document) {
+        return invoice.isDraft() ? invoices.customerName(invoice) : document.orElseThrow().buyer().name();
+    }
+
+    /** The document of a draft from the current data, or the frozen snapshot of an issued invoice. */
+    private Optional<InvoiceDocument> document(Invoice invoice) {
+        return invoice.isDraft() ? invoices.document(invoice) : Optional.of(documents.restore(invoice.snapshot()));
     }
 }
