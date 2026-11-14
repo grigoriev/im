@@ -6,6 +6,7 @@ import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
+import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
@@ -51,6 +52,7 @@ public class InvoiceService {
     private final SellerService sellers;
     private final TaxNoteService notes;
     private final AuditService audit;
+    private final DocumentStore documents;
     private final Clock clock;
 
     /**
@@ -62,16 +64,18 @@ public class InvoiceService {
      * @param sellers the seller profile
      * @param notes the default tax notes
      * @param audit the audit log
+     * @param documents the snapshot of a cancelled invoice, for the tax number of its Stornorechnung
      * @param clock source of today
      */
     public InvoiceService(InvoiceRepository invoices, TemplateRepository templates, CustomerService customers,
-            SellerService sellers, TaxNoteService notes, AuditService audit, Clock clock) {
+            SellerService sellers, TaxNoteService notes, AuditService audit, DocumentStore documents, Clock clock) {
         this.invoices = invoices;
         this.templates = templates;
         this.customers = customers;
         this.sellers = sellers;
         this.notes = notes;
         this.audit = audit;
+        this.documents = documents;
         this.clock = clock;
     }
 
@@ -276,6 +280,11 @@ public class InvoiceService {
         }
     }
 
+    private static Party withTaxNumber(Party party, String taxNumber) {
+        return new Party(party.name(), party.street(), party.postcode(), party.city(), party.countryCode(), party.email(),
+                party.phone(), party.contactName(), taxNumber, party.vatId());
+    }
+
     /** An invoice of teaching only names the tax number for teaching, if the seller has one. */
     static boolean teachingOnly(Invoice invoice) {
         return !invoice.lines().isEmpty()
@@ -305,8 +314,9 @@ public class InvoiceService {
             problems.add("„Nicht steuerbar“ steht allein auf einer Rechnung (EN 16931, BR-O-12).");
         }
         TaxStatus status = cancellation ? null : seller.map(SellerProfile::taxStatus).orElse(null);
-        if (seller.map(SellerProfile::twoTaxNumbers).orElse(false) && used.contains(TaxCategory.EXEMPT_4_21)
-                && used.size() > 1) {
+        // A Stornorechnung repeats its invoice, which may mix from before the second tax number.
+        boolean twoNumbers = seller.map(SellerProfile::twoTaxNumbers).orElse(false);
+        if (!cancellation && twoNumbers && used.contains(TaxCategory.EXEMPT_4_21) && used.size() > 1) {
             problems.add("Unterricht nach § 4 Nr. 21 hat eine eigene Steuernummer. Bitte Unterricht und andere "
                     + "Leistungen auf getrennte Rechnungen schreiben.");
         }
@@ -348,10 +358,16 @@ public class InvoiceService {
         SellerProfile seller = sellers.find().orElseThrow();
         Customer customer = customers.find(invoice.customerId()).orElseThrow();
         Placeholders values = Placeholders.of(invoice, number);
-        InvoiceReference cancels = cancelled(invoice)
-                .map(original -> new InvoiceReference(original.number(), original.issueDate())).orElse(null);
+        Optional<Invoice> original = cancelled(invoice);
+        InvoiceReference cancels = original
+                .map(cancelled -> new InvoiceReference(cancelled.number(), cancelled.issueDate())).orElse(null);
+        // A Stornorechnung names the tax number of the invoice it cancels, even if the profile changed since.
+        Party sellerParty = seller.toParty(teachingOnly(invoice));
+        if (original.isPresent()) {
+            sellerParty = withTaxNumber(sellerParty, documents.restore(original.get().snapshot()).seller().taxNumber());
+        }
         return Optional.of(new InvoiceDocument(number, invoice.issueDate(), invoice.serviceFrom(),
-                invoice.serviceTo(), invoice.dueDate(), seller.toParty(teachingOnly(invoice)), customer.toParty(),
+                invoice.serviceTo(), invoice.dueDate(), sellerParty, customer.toParty(),
                 invoice.buyerReference(),
                 seller.iban(), seller.bic(), values.fill(invoice.intro()), values.fill(invoice.closing()),
                 values.fill(invoice.taxNote()), invoice.format(),

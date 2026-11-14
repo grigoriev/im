@@ -91,7 +91,7 @@ public record SellerProfile(
     public Party toParty(boolean teaching) {
         return new Party(name, street, postcode, city, countryCode, email, phone,
                 contactName == null ? name : contactName,
-                teaching && taxNumberTeaching != null ? taxNumberTeaching : taxNumber, vatId);
+                teaching && twoTaxNumbers() ? taxNumberTeaching : taxNumber, vatId);
     }
 
     /**

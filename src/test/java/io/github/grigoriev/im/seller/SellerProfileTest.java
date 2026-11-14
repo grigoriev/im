@@ -74,5 +74,6 @@ class SellerProfileTest {
                 one.countryCode(), null, one.email(), one.phone(), one.taxNumber(), null, one.iban(), one.bic(),
                 one.taxStatus(), null, null, null, null, " ");
         assertThat(blank.twoTaxNumbers()).isFalse();
+        assertThat(blank.toParty(true).taxNumber()).as("a blank second number falls back").isEqualTo("12/345/67890");
     }
 }

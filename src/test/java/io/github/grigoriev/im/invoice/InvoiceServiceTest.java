@@ -50,7 +50,9 @@ class InvoiceServiceTest {
     private final SellerService sellers = mock(SellerService.class);
     private final TaxNoteService notes = mock(TaxNoteService.class);
     private final AuditService audit = mock(AuditService.class);
+    private final DocumentStore documents = mock(DocumentStore.class);
     private final InvoiceService service = new InvoiceService(repository, templates, customers, sellers, notes, audit,
+            documents,
             Clock.fixed(NOW, ZoneId.of("Europe/Berlin")));
 
     @BeforeEach
@@ -638,6 +640,7 @@ class InvoiceServiceTest {
 
     @Test
     void aStornorechnungNamesItsInvoiceAndKeepsItsLinesAndFormat() {
+        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,
                 null, null);
@@ -658,6 +661,23 @@ class InvoiceServiceTest {
         form.setIssueDate(null);
         assertThatThrownBy(() -> service.saveDraft(5, form))
                 .hasMessage("Bitte Format, Rechnungsdatum und Leistungszeitraum angeben.");
+    }
+
+    @Test
+    void aStornorechnungKeepsTheTaxNumberAndTheMixOfItsInvoice() {
+        SellerProfile p = SellerTestData.profile();
+        when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
+                null, null, null, null, "98/765/43210")));
+        Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
+                0, null, null, null, null, List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
+                        lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
+        when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
+        when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
+        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(service.problems(storno)).as("an invoice from before the second tax number may mix").isEmpty();
+        assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice")
+                .isEqualTo("143/123/45678");
     }
 
     @Test
