@@ -15,6 +15,7 @@ import io.github.grigoriev.im.audit.AuditService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -96,13 +97,17 @@ public class CustomerService {
      *
      * @param id the ID of the customer
      * @return the removed customer
-     * @throws CustomerException if the customer does not exist
+     * @throws CustomerException if the customer does not exist or has invoices
      */
     @Transactional
     public Customer delete(long id) {
         Customer customer = customers.findById(id)
                 .orElseThrow(() -> new CustomerException(List.of("Diesen Kunden gibt es nicht.")));
-        customers.deleteById(id);
+        try {
+            customers.deleteById(id);
+        } catch (DataIntegrityViolationException _) {
+            throw new CustomerException(List.of("Der Kunde hat Rechnungen und bleibt erhalten."));
+        }
         audit.add(AuditAction.CUSTOMER_DELETED, customer.name());
         return customer;
     }

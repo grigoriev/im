@@ -83,6 +83,16 @@ class CustomerServiceTest {
         verify(audit).add(AuditAction.CUSTOMER_DELETED, "Verlag am Fluss GmbH");
     }
 
+    @Test
+    void keepsACustomerWithInvoices() {
+        when(repository.findById(4L)).thenReturn(Optional.of(CustomerTestData.verlag().withId(4L)));
+        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("fk"))
+                .when(repository).deleteById(4L);
+        assertThatThrownBy(() -> service.delete(4)).isInstanceOf(CustomerException.class)
+                .hasMessage("Der Kunde hat Rechnungen und bleibt erhalten.");
+        org.mockito.Mockito.verifyNoInteractions(audit);
+    }
+
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
         "name      | ''                 | Bitte Name angeben.",
