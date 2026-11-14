@@ -76,14 +76,13 @@ public class ArchiveService {
 
     /**
      * Returns a file name not used in the ZIP yet. Two numbers can give the same name, for example "2027/11" and
-     * "2027-11": the second gets the invoice ID before its extension.
+     * "2027-11": the second gets the invoice ID before its extension, and a counter if that name is taken too.
      */
     static String unique(Set<String> names, String filename, long invoiceId) {
         String name = filename;
-        if (!names.add(name)) {
-            int dot = filename.lastIndexOf('.');
-            name = filename.substring(0, dot) + "_" + invoiceId + filename.substring(dot);
-            names.add(name);
+        int dot = filename.lastIndexOf('.');
+        for (int n = 1; !names.add(name); n++) {
+            name = filename.substring(0, dot) + "_" + invoiceId + (n == 1 ? "" : "_" + n) + filename.substring(dot);
         }
         return name;
     }

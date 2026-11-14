@@ -101,6 +101,16 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void aRenamedFileNeverHitsAnotherName() {
+        java.util.Set<String> names = new java.util.HashSet<>();
+        assertThat(ArchiveService.unique(names, "Rechnung_2027-11_7.pdf", 3)).isEqualTo("Rechnung_2027-11_7.pdf");
+        assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 6)).isEqualTo("Rechnung_2027-11.pdf");
+        assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 7)).isEqualTo("Rechnung_2027-11_7_2.pdf");
+        assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 8)).isEqualTo("Rechnung_2027-11_8.pdf");
+        assertThat(names).hasSize(4);
+    }
+
+    @Test
     void anEmptyYearHasTheContentsOnly() throws IOException {
         when(invoices.list()).thenReturn(List.of());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
