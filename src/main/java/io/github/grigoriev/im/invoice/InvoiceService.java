@@ -241,6 +241,8 @@ public class InvoiceService {
         Optional<Customer> customer = customers.find(invoice.customerId());
         if (seller.isEmpty()) {
             problems.add("Das Profil in den Einstellungen fehlt.");
+        } else {
+            profileProblems(seller.get(), invoice.format().followsXRechnung(), problems);
         }
         if (customer.isEmpty()) {
             problems.add("Den Kunden gibt es nicht mehr.");
@@ -261,6 +263,17 @@ public class InvoiceService {
             }
         }
         return problems;
+    }
+
+    /** The seller fields the invoice needs, named in one sentence that points to the profile. */
+    private static void profileProblems(SellerProfile seller, boolean xrechnung, List<String> problems) {
+        List<String> missing = new ArrayList<>(SellerService.missing(seller).values());
+        if (xrechnung) {
+            missing.addAll(SellerService.missingForXRechnung(seller).values());
+        }
+        if (!missing.isEmpty()) {
+            problems.add("Im Profil fehlt noch: " + String.join(", ", missing) + ". Bitte in den Einstellungen ergänzen.");
+        }
     }
 
     private static void lineProblems(Invoice invoice, List<String> problems) {

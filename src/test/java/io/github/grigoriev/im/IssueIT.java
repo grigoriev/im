@@ -105,7 +105,7 @@ class IssueIT {
 
     @BeforeEach
     void profileAndCustomer() {
-        sellers.save(SellerTestData.profile());
+        SellerTestData.save(sellers, SellerTestData.profile());
         verlag = customers.create(CustomerTestData.verlag());
         numbers.savePattern("{YYYY}-{NN}");
     }
@@ -176,7 +176,7 @@ class IssueIT {
                         + files.get(0).sha256());
 
         SellerProfile original = SellerTestData.profile();
-        sellers.save(new SellerProfile("Anderer Name", original.street(), original.postcode(), original.city(),
+        SellerTestData.save(sellers, new SellerProfile("Anderer Name", original.street(), original.postcode(), original.city(),
                 original.countryCode(), original.contactName(), original.email(), original.phone(), original.taxNumber(),
                 original.vatId(), original.iban(), original.bic(), original.taxStatus(), null, null, null, null));
         assertThat(documents.restore(invoices.find(draft.id()).orElseThrow().snapshot()).seller().name())

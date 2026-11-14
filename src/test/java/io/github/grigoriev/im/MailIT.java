@@ -68,7 +68,7 @@ class MailIT {
     private NumberService numbers;
 
     private Invoice issued() {
-        sellers.save(SellerTestData.profile());
+        SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
         Customer customer = customers.create(CustomerTestData.verlag());
         Invoice draft = invoices.createDraft(customer.id(), null);

@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- The hint below a field, which aria-describedby names: its problem in red, "needed" in red when an invoice
+     needs it and it is empty, else the note, else hidden. Needs the model maps "invalid" (may be null) and "missing". -->
+<th:block th:fragment="hint(field, note)"
+          th:with="error=${invalid == null ? null : invalid.get(field)}, needed=${missing.containsKey(field)},
+                   text=${error != null ? error : (needed ? 'Für Rechnungen nötig.' : note)}">
+  <span th:id="${field} + '-hint'" th:text="${text}"
+        th:class="'text-xs ' + (${error != null or needed} ? 'text-error' : 'text-base-content/75') + (${text == null} ? ' hidden' : '')">Hinweis</span>
+</th:block>
+</body>
+</html>

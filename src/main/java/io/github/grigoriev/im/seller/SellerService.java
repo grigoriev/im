@@ -5,7 +5,6 @@ import static io.github.grigoriev.im.validation.Fields.checkCountry;
 import static io.github.grigoriev.im.validation.Fields.checkEmail;
 import static io.github.grigoriev.im.validation.Fields.matches;
 import static io.github.grigoriev.im.validation.Fields.optional;
-import static io.github.grigoriev.im.validation.Fields.required;
 import static io.github.grigoriev.im.validation.Fields.text;
 import static io.github.grigoriev.im.validation.Fields.upper;
 import static io.github.grigoriev.im.validation.Fields.checkVatId;
@@ -15,17 +14,20 @@ import io.github.grigoriev.im.audit.AuditService;
 import java.math.BigInteger;
 import java.net.IDN;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Reads and saves the seller profile. It checks what an invoice needs from the seller: the address,
- * the contact for XRechnung (BR-DE-2), a tax number or VAT ID (§14 Abs. 4 Nr. 2 UStG) and a valid IBAN.
+ * Reads and saves the seller profile. It saves an incomplete profile and refuses only wrong values, such as an IBAN
+ * with a wrong checksum. {@link #missing(SellerProfile)} names what an invoice still needs from the seller: the
+ * address, the contact for XRechnung (BR-DE-2), a tax number or VAT ID (§14 Abs. 4 Nr. 2 UStG) and the bank account.
  */
 @Service
 public class SellerService {
@@ -97,16 +99,19 @@ public class SellerService {
     }
 
     /**
-     * Checks, normalizes and saves the profile.
+     * Checks, normalizes and saves one part of the profile; the other parts stay as stored. Empty fields are allowed:
+     * the issue of an invoice asks for them.
      *
-     * @param input the profile as entered
-     * @return the saved profile, for example with the IBAN without spaces
-     * @throws SettingsException with every problem found
+     * @param part the tab that was saved
+     * @param input the form of that tab
+     * @return the whole saved profile, for example with the IBAN without spaces
+     * @throws SettingsException with the wrong values, by field
      */
     @Transactional
-    public SellerProfile save(SellerProfile input) {
-        SellerProfile profile = normalize(input);
-        List<String> problems = check(profile);
+    public SellerProfile save(ProfilePart part, SellerProfile input) {
+        SellerProfile stored = profiles.findById(ID).map(StoredProfile::profile).orElseGet(SellerProfile::empty);
+        SellerProfile profile = normalize(part.merge(stored, input));
+        Map<String, String> problems = check(profile);
         if (!problems.isEmpty()) {
             throw new SettingsException(problems);
         }
@@ -117,12 +122,55 @@ public class SellerService {
                 .param("email", profile.email()).param("phone", profile.phone())
                 .param("taxNumber", profile.taxNumber()).param("vatId", profile.vatId())
                 .param("iban", profile.iban()).param("bic", profile.bic())
-                .param("taxStatus", profile.taxStatus().name())
+                .param("taxStatus", profile.taxStatus() == null ? null : profile.taxStatus().name())
                 .param("tagline", profile.tagline()).param("website", profile.website())
                 .param("bankName", profile.bankName()).param("accountHolder", profile.accountHolder())
                 .update();
-        audit.add(AuditAction.PROFILE_SAVED, profile.name());
+        audit.add(AuditAction.PROFILE_SAVED, profile.name() == null ? "" : profile.name());
         return profile;
+    }
+
+    /**
+     * Names the fields every invoice needs that the profile leaves empty. XRechnung needs more, see
+     * {@link #missingForXRechnung(SellerProfile)}.
+     *
+     * @param input the profile, as entered or stored
+     * @return the German label of each empty field, by field name, in the order of the form
+     */
+    public static Map<String, String> missing(SellerProfile input) {
+        SellerProfile profile = normalize(input);
+        Map<String, String> missing = new LinkedHashMap<>();
+        need(missing, profile.name(), "name", "Name");
+        need(missing, profile.street(), "street", "Straße");
+        need(missing, profile.postcode(), "postcode", "PLZ");
+        need(missing, profile.city(), "city", "Ort");
+        need(missing, profile.countryCode(), "countryCode", "Land");
+        need(missing, profile.taxStatus(), "taxStatus", "Steuerstatus");
+        need(missing, profile.taxNumber() == null ? profile.vatId() : profile.taxNumber(), "taxNumber",
+                "Steuernummer oder USt-IdNr.");
+        need(missing, profile.iban(), "iban", "IBAN");
+        need(missing, profile.bic(), "bic", "BIC");
+        return missing;
+    }
+
+    /**
+     * Names the contact fields XRechnung needs from the seller (BR-DE-6, BR-DE-7) that the profile leaves empty.
+     *
+     * @param input the profile, as entered or stored
+     * @return the German label of each empty field, by field name
+     */
+    public static Map<String, String> missingForXRechnung(SellerProfile input) {
+        SellerProfile profile = normalize(input);
+        Map<String, String> missing = new LinkedHashMap<>();
+        need(missing, profile.email(), "email", "E-Mail");
+        need(missing, profile.phone(), "phone", "Telefon");
+        return missing;
+    }
+
+    private static void need(Map<String, String> missing, Object value, String field, String label) {
+        if (value == null) {
+            missing.put(field, label);
+        }
     }
 
     static SellerProfile normalize(SellerProfile input) {
@@ -133,38 +181,57 @@ public class SellerService {
                 text(input.accountHolder()));
     }
 
-    static List<String> check(SellerProfile profile) {
-        List<String> problems = new ArrayList<>();
-        required(problems, profile.name(), "Name", 200);
-        required(problems, profile.street(), "Straße", 200);
-        required(problems, profile.postcode(), "PLZ", 16);
-        required(problems, profile.city(), "Ort", 100);
-        optional(problems, profile.contactName(), "Ansprechpartner", 200);
-        checkCountry(problems, profile.countryCode());
-        checkEmail(problems, profile.email());
-        matches(problems, profile.phone(), PHONE, "Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567.");
-        optional(problems, profile.taxNumber(), "Steuernummer", 32);
-        checkVatId(problems, profile.vatId());
-        if (profile.taxNumber() == null && profile.vatId() == null) {
-            problems.add("Bitte die Steuernummer oder die USt-IdNr. angeben.");
-        }
-        checkIban(problems, profile.iban());
-        matches(problems, profile.bic(), BIC, "Die BIC hat 8 oder 11 Zeichen.");
-        optional(problems, profile.tagline(), "Zusatz", 200);
-        optional(problems, profile.website(), "Website", 200);
-        if (profile.website() != null && !websiteOk(profile.website())) {
-            problems.add("Bitte eine Website wie www.example.de angeben.");
-        }
-        optional(problems, profile.bankName(), "Kreditinstitut", 100);
-        optional(problems, profile.accountHolder(), "Kontoinhaber", 200);
-        if (profile.taxStatus() == null) {
-            problems.add("Bitte den Steuerstatus wählen.");
-        }
+    /**
+     * Checks the entered values. An empty field is no problem here, see {@link #missing(SellerProfile)}.
+     *
+     * @return the first problem of each wrong field, by field name, in the order of the form
+     */
+    static Map<String, String> check(SellerProfile profile) {
+        Map<String, String> problems = new LinkedHashMap<>();
+        field(problems, "name", found -> optional(found, profile.name(), "Name", 200));
+        field(problems, "tagline", found -> optional(found, profile.tagline(), "Zusatz", 200));
+        field(problems, "street", found -> optional(found, profile.street(), "Straße", 200));
+        field(problems, "postcode", found -> optional(found, profile.postcode(), "PLZ", 16));
+        field(problems, "city", found -> optional(found, profile.city(), "Ort", 100));
+        given(problems, "countryCode", profile.countryCode(), found -> checkCountry(found, profile.countryCode()));
+        field(problems, "contactName", found -> optional(found, profile.contactName(), "Ansprechpartner", 200));
+        given(problems, "email", profile.email(), found -> checkEmail(found, profile.email()));
+        given(problems, "phone", profile.phone(), found -> matches(found, profile.phone(), PHONE,
+                "Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567."));
+        given(problems, "website", profile.website(), found -> {
+            optional(found, profile.website(), "Website", 200);
+            if (!websiteOk(profile.website())) {
+                found.add("Bitte eine Website wie www.example.de angeben.");
+            }
+        });
+        field(problems, "taxNumber", found -> optional(found, profile.taxNumber(), "Steuernummer", 32));
+        field(problems, "vatId", found -> checkVatId(found, profile.vatId()));
+        given(problems, "iban", profile.iban(), found -> checkIban(found, profile.iban()));
+        given(problems, "bic", profile.bic(), found -> matches(found, profile.bic(), BIC,
+                "Die BIC hat 8 oder 11 Zeichen."));
+        field(problems, "bankName", found -> optional(found, profile.bankName(), "Kreditinstitut", 100));
+        field(problems, "accountHolder", found -> optional(found, profile.accountHolder(), "Kontoinhaber", 200));
         return problems;
     }
 
+    /** Runs the check of a field and keeps its first problem. */
+    private static void field(Map<String, String> problems, String field, Consumer<List<String>> check) {
+        List<String> found = new ArrayList<>();
+        check.accept(found);
+        if (!found.isEmpty()) {
+            problems.put(field, found.getFirst());
+        }
+    }
+
+    /** Runs the check of a field only if it has a value. */
+    private static void given(Map<String, String> problems, String field, String value, Consumer<List<String>> check) {
+        if (value != null) {
+            field(problems, field, check);
+        }
+    }
+
     private static void checkIban(List<String> problems, String iban) {
-        if (iban == null || !IBAN.matcher(iban).matches() || !checksumOk(iban)) {
+        if (!IBAN.matcher(iban).matches() || !checksumOk(iban)) {
             problems.add("Die IBAN ist ungültig.");
             return;
         }

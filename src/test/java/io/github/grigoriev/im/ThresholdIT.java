@@ -89,7 +89,7 @@ class ThresholdIT {
 
     @Test
     void countsTheSharePerPaymentYearWithRefundsAndBaseline() {
-        sellers.save(SellerTestData.profile());
+        SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
         Customer customer = customers.create(CustomerTestData.verlag());
         LocalDate today = threshold.today();

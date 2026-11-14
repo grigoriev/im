@@ -11,101 +11,162 @@
     <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
     <div th:replace="~{fragments/settings :: tabs('profile')}"></div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
-    <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${problems}">
-      <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
-    </div>
+    <div role="alert" class="alert alert-error text-sm" id="profile-errors" th:if="${invalid}">
+      Das Profil ist nicht gespeichert. Bitte die rot markierten Angaben prüfen.</div>
 
-    <form class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-5" th:action="@{/einstellungen}" th:object="${profile}" method="post">
+    <div class="grid">
+    <div role="tablist" class="tabs-folder" id="profile-tabs" aria-label="Profil">
+      <a role="tab" th:each="each : ${parts}" th:href="@{/einstellungen(teil=${each.slug()})}" th:id="'profile-tab-' + ${each.slug()}"
+         th:attr="aria-selected=${each == part}"><span th:text="${each.label()}">Anschrift</span><span
+         th:if="${incomplete.contains(each)}" class="status status-error" role="img" aria-label="unvollständig"></span></a>
+    </div>
+    <form class="bg-base-100 rounded-b-box rounded-tr-box border border-t-0 border-base-300 p-5 grid gap-5"
+          th:action="@{/einstellungen(teil=${part.slug()})}" th:object="${profile}" method="post">
       <div>
-        <h2 class="font-semibold">Profil</h2>
-        <p class="text-sm text-base-content/75">So stehen Sie als Rechnungssteller auf jeder Rechnung.</p>
+        <h2 class="font-semibold" th:text="${part.label()}">Anschrift</h2>
+        <p class="text-sm text-base-content/75">So stehen Sie als Rechnungssteller auf jeder Rechnung. Sie können das Profil
+          schrittweise speichern. Felder mit <span class="text-error" aria-hidden="true">*</span><span class="sr-only">Stern</span>
+          braucht jede Rechnung.</p>
       </div>
 
-      <fieldset class="grid gap-3 @container">
-        <legend class="text-sm font-medium mb-2">Anschrift</legend>
-        <label class="floating-label"><span>Name</span>
-          <input id="seller-name" th:field="*{name}" class="input w-full" autocomplete="name" maxlength="200" required>
-        </label>
-        <label class="floating-label"><span>Zusatz, z. B. der Beruf</span>
-          <input id="seller-tagline" th:field="*{tagline}" class="input w-full" autocomplete="organization-title" maxlength="200">
-        </label>
-        <label class="floating-label"><span>Straße und Hausnummer</span>
-          <input id="seller-street" th:field="*{street}" class="input w-full" autocomplete="address-line1" maxlength="200" required>
-        </label>
+      <fieldset class="grid gap-3 @container" th:if="${part.name() == 'ADDRESS'}">
+        <legend class="sr-only">Anschrift</legend>
+        <div class="grid gap-1">
+          <label class="floating-label"><span class="required">Name</span>
+            <input id="seller-name" th:field="*{name}" class="input w-full" autocomplete="name" maxlength="200" th:classappend="(${invalid != null and invalid.containsKey('name')} or ${missing.containsKey('name')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('name')} or ${missing.containsKey('name')}) ? 'true' : null,aria-describedby='name-hint'" aria-required="true">
+          </label>
+          <th:block th:replace="~{fragments/field :: hint('name', null)}"></th:block>
+        </div>
+        <div class="grid gap-1">
+          <label class="floating-label"><span>Zusatz, z. B. der Beruf</span>
+            <input id="seller-tagline" th:field="*{tagline}" class="input w-full" autocomplete="organization-title" maxlength="200" th:classappend="(${invalid != null and invalid.containsKey('tagline')} or ${missing.containsKey('tagline')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('tagline')} or ${missing.containsKey('tagline')}) ? 'true' : null,aria-describedby='tagline-hint'">
+          </label>
+          <th:block th:replace="~{fragments/field :: hint('tagline', null)}"></th:block>
+        </div>
+        <div class="grid gap-1">
+          <label class="floating-label"><span class="required">Straße und Hausnummer</span>
+            <input id="seller-street" th:field="*{street}" class="input w-full" autocomplete="address-line1" maxlength="200" th:classappend="(${invalid != null and invalid.containsKey('street')} or ${missing.containsKey('street')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('street')} or ${missing.containsKey('street')}) ? 'true' : null,aria-describedby='street-hint'" aria-required="true">
+          </label>
+          <th:block th:replace="~{fragments/field :: hint('street', null)}"></th:block>
+        </div>
         <div class="grid gap-3 grid-cols-[minmax(0,6rem)_minmax(0,1fr)] @2xl:grid-cols-[minmax(0,7rem)_minmax(0,1fr)_minmax(0,14rem)]">
-          <label class="floating-label"><span>PLZ</span>
-            <input id="seller-postcode" th:field="*{postcode}" class="input w-full" autocomplete="postal-code" maxlength="16" required>
-          </label>
-          <label class="floating-label"><span>Ort</span>
-            <input id="seller-city" th:field="*{city}" class="input w-full" autocomplete="address-level2" maxlength="100" required>
-          </label>
-          <label class="floating-label col-span-2 @2xl:col-span-1"><span>Land</span>
-            <select id="seller-country" th:field="*{countryCode}" class="select w-full" autocomplete="country" required>
+          <div class="grid gap-1">
+            <label class="floating-label"><span class="required">PLZ</span>
+              <input id="seller-postcode" th:field="*{postcode}" class="input w-full" autocomplete="postal-code" maxlength="16" th:classappend="(${invalid != null and invalid.containsKey('postcode')} or ${missing.containsKey('postcode')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('postcode')} or ${missing.containsKey('postcode')}) ? 'true' : null,aria-describedby='postcode-hint'" aria-required="true">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('postcode', null)}"></th:block>
+          </div>
+          <div class="grid gap-1">
+            <label class="floating-label"><span class="required">Ort</span>
+              <input id="seller-city" th:field="*{city}" class="input w-full" autocomplete="address-level2" maxlength="100" th:classappend="(${invalid != null and invalid.containsKey('city')} or ${missing.containsKey('city')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('city')} or ${missing.containsKey('city')}) ? 'true' : null,aria-describedby='city-hint'" aria-required="true">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('city', null)}"></th:block>
+          </div>
+          <div class="grid gap-1 col-span-2 @2xl:col-span-1">
+            <label class="floating-label"><span class="required">Land</span>
+              <select id="seller-country" th:field="*{countryCode}" class="select w-full" autocomplete="country" th:classappend="(${invalid != null and invalid.containsKey('countryCode')} or ${missing.containsKey('countryCode')}) ? 'select-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('countryCode')} or ${missing.containsKey('countryCode')}) ? 'true' : null,aria-describedby='countryCode-hint'" aria-required="true">
               <option th:each="country : ${countries}" th:value="${country.code}" th:text="${country.name}">Deutschland</option>
             </select>
-          </label>
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('countryCode', null)}"></th:block>
+          </div>
         </div>
       </fieldset>
 
-      <fieldset class="grid gap-3 @container">
-        <legend class="text-sm font-medium mb-2">Kontakt</legend>
-        <p class="text-xs text-base-content/75 -mt-1">Die XRechnung verlangt Ansprechpartner, Telefon und E-Mail.</p>
-        <label class="floating-label"><span>Ansprechpartner (leer: der Name)</span>
-          <input id="seller-contact" th:field="*{contactName}" class="input w-full" maxlength="200">
-        </label>
+      <fieldset class="grid gap-3 @container" th:if="${part.name() == 'CONTACT'}">
+        <legend class="sr-only">Kontakt</legend>
+        <p class="text-xs text-base-content/75">E-Mail und Telefon braucht nur die XRechnung.</p>
+        <div class="grid gap-1">
+          <label class="floating-label"><span>Ansprechpartner</span>
+            <input id="seller-contact" th:field="*{contactName}" class="input w-full" maxlength="200" th:classappend="(${invalid != null and invalid.containsKey('contactName')} or ${missing.containsKey('contactName')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('contactName')} or ${missing.containsKey('contactName')}) ? 'true' : null,aria-describedby='contactName-hint'">
+          </label>
+          <th:block th:replace="~{fragments/field :: hint('contactName', null)}"></th:block>
+        </div>
         <div class="grid gap-3 @lg:grid-cols-2">
-          <label class="floating-label"><span>E-Mail</span>
-            <input id="seller-email" th:field="*{email}" type="email" class="input w-full" autocomplete="email" maxlength="254" required>
-          </label>
-          <label class="floating-label"><span>Telefon</span>
-            <input id="seller-phone" th:field="*{phone}" type="tel" class="input w-full" autocomplete="tel" maxlength="50" required>
-          </label>
+          <div class="grid gap-1">
+            <label class="floating-label"><span>E-Mail</span>
+              <input id="seller-email" th:field="*{email}" type="email" class="input w-full" autocomplete="email" maxlength="254" th:classappend="(${invalid != null and invalid.containsKey('email')} or ${missing.containsKey('email')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('email')} or ${missing.containsKey('email')}) ? 'true' : null,aria-describedby='email-hint'">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('email', 'Für XRechnung nötig.')}"></th:block>
+          </div>
+          <div class="grid gap-1">
+            <label class="floating-label"><span>Telefon</span>
+              <input id="seller-phone" th:field="*{phone}" type="tel" class="input w-full" autocomplete="tel" maxlength="50" th:classappend="(${invalid != null and invalid.containsKey('phone')} or ${missing.containsKey('phone')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('phone')} or ${missing.containsKey('phone')}) ? 'true' : null,aria-describedby='phone-hint'">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('phone', 'Für XRechnung nötig.')}"></th:block>
+          </div>
         </div>
-        <label class="floating-label"><span>Website, z. B. www.example.de</span>
-          <input id="seller-website" th:field="*{website}" class="input w-full" autocomplete="url" maxlength="200">
-        </label>
+        <div class="grid gap-1">
+          <label class="floating-label"><span>Website, z. B. www.example.de</span>
+            <input id="seller-website" th:field="*{website}" class="input w-full" autocomplete="url" maxlength="200" th:classappend="(${invalid != null and invalid.containsKey('website')} or ${missing.containsKey('website')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('website')} or ${missing.containsKey('website')}) ? 'true' : null,aria-describedby='website-hint'">
+          </label>
+          <th:block th:replace="~{fragments/field :: hint('website', null)}"></th:block>
+        </div>
       </fieldset>
 
-      <fieldset class="grid gap-3 @container">
-        <legend class="text-sm font-medium mb-2">Steuer</legend>
-        <label class="floating-label"><span>Steuerstatus</span>
-          <select id="seller-tax-status" th:field="*{taxStatus}" class="select w-full">
+      <fieldset class="grid gap-3 @container" th:if="${part.name() == 'TAX'}">
+        <legend class="sr-only">Steuer</legend>
+        <div class="grid gap-1">
+          <label class="floating-label"><span class="required">Steuerstatus</span>
+            <select id="seller-tax-status" th:field="*{taxStatus}" class="select w-full" th:classappend="(${invalid != null and invalid.containsKey('taxStatus')} or ${missing.containsKey('taxStatus')}) ? 'select-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('taxStatus')} or ${missing.containsKey('taxStatus')}) ? 'true' : null,aria-describedby='taxStatus-hint'" aria-required="true">
+            <option value="" th:if="*{taxStatus == null}">Bitte wählen</option>
             <option th:each="status : ${statuses}" th:value="${status}" th:text="${status.label}">Status</option>
           </select>
-        </label>
+          </label>
+          <th:block th:replace="~{fragments/field :: hint('taxStatus', null)}"></th:block>
+        </div>
         <div class="grid gap-3 @lg:grid-cols-2">
-          <label class="floating-label"><span>Steuernummer</span>
-            <input id="seller-tax-number" th:field="*{taxNumber}" class="input w-full" maxlength="32">
-          </label>
-          <label class="floating-label"><span>USt-IdNr.</span>
-            <input id="seller-vat-id" th:field="*{vatId}" class="input w-full uppercase" maxlength="20">
-          </label>
+          <div class="grid gap-1">
+            <label class="floating-label"><span class="required">Steuernummer</span>
+              <input id="seller-tax-number" th:field="*{taxNumber}" class="input w-full" maxlength="32" th:classappend="(${invalid != null and invalid.containsKey('taxNumber')} or ${missing.containsKey('taxNumber')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('taxNumber')} or ${missing.containsKey('taxNumber')}) ? 'true' : null,aria-describedby='taxNumber-hint'" aria-required="true">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('taxNumber', null)}"></th:block>
+          </div>
+          <div class="grid gap-1">
+            <label class="floating-label"><span>USt-IdNr.</span>
+              <input id="seller-vat-id" th:field="*{vatId}" class="input w-full uppercase" maxlength="20" th:classappend="(${invalid != null and invalid.containsKey('vatId')} or ${missing.containsKey('vatId')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('vatId')} or ${missing.containsKey('vatId')}) ? 'true' : null,aria-describedby='vatId-hint'">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('vatId', null)}"></th:block>
+          </div>
         </div>
         <p class="text-xs text-base-content/75">Die Rechnung nennt die Steuernummer oder die USt-IdNr. (§ 14 Abs. 4 Nr. 2 UStG).</p>
       </fieldset>
 
-      <fieldset class="grid gap-3 @container">
-        <legend class="text-sm font-medium mb-2">Bankverbindung</legend>
+      <fieldset class="grid gap-3 @container" th:if="${part.name() == 'BANK'}">
+        <legend class="sr-only">Bankverbindung</legend>
         <div class="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_12rem]">
-          <label class="floating-label"><span>IBAN</span>
-            <input id="seller-iban" name="iban" th:value="*{ibanGrouped()}" class="input w-full uppercase font-mono" maxlength="42" required>
-          </label>
-          <label class="floating-label"><span>BIC</span>
-            <input id="seller-bic" th:field="*{bic}" class="input w-full uppercase font-mono" maxlength="11" required>
-          </label>
+          <div class="grid gap-1">
+            <label class="floating-label"><span class="required">IBAN</span>
+              <input id="seller-iban" name="iban" th:value="*{ibanGrouped()}" class="input w-full uppercase font-mono" maxlength="42" th:classappend="(${invalid != null and invalid.containsKey('iban')} or ${missing.containsKey('iban')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('iban')} or ${missing.containsKey('iban')}) ? 'true' : null,aria-describedby='iban-hint'" aria-required="true">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('iban', null)}"></th:block>
+          </div>
+          <div class="grid gap-1">
+            <label class="floating-label"><span class="required">BIC</span>
+              <input id="seller-bic" th:field="*{bic}" class="input w-full uppercase font-mono" maxlength="11" th:classappend="(${invalid != null and invalid.containsKey('bic')} or ${missing.containsKey('bic')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('bic')} or ${missing.containsKey('bic')}) ? 'true' : null,aria-describedby='bic-hint'" aria-required="true">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('bic', null)}"></th:block>
+          </div>
         </div>
         <div class="grid gap-3 @lg:grid-cols-2">
-          <label class="floating-label"><span>Kreditinstitut</span>
-            <input id="seller-bank" th:field="*{bankName}" class="input w-full" maxlength="100">
-          </label>
-          <label class="floating-label"><span>Kontoinhaber (leer: der Name)</span>
-            <input id="seller-holder" th:field="*{accountHolder}" class="input w-full" maxlength="200">
-          </label>
+          <div class="grid gap-1">
+            <label class="floating-label"><span>Kreditinstitut</span>
+              <input id="seller-bank" th:field="*{bankName}" class="input w-full" maxlength="100" th:classappend="(${invalid != null and invalid.containsKey('bankName')} or ${missing.containsKey('bankName')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('bankName')} or ${missing.containsKey('bankName')}) ? 'true' : null,aria-describedby='bankName-hint'">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('bankName', null)}"></th:block>
+          </div>
+          <div class="grid gap-1">
+            <label class="floating-label"><span>Kontoinhaber</span>
+              <input id="seller-holder" th:field="*{accountHolder}" class="input w-full" maxlength="200" th:classappend="(${invalid != null and invalid.containsKey('accountHolder')} or ${missing.containsKey('accountHolder')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('accountHolder')} or ${missing.containsKey('accountHolder')}) ? 'true' : null,aria-describedby='accountHolder-hint'">
+            </label>
+            <th:block th:replace="~{fragments/field :: hint('accountHolder', null)}"></th:block>
+          </div>
         </div>
       </fieldset>
 
-      <div><button type="submit" class="btn btn-primary">Speichern</button></div>
+      <div><button type="submit" class="btn btn-primary" id="profile-save"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
+    </div>
   </div>
 </div>
 </body>

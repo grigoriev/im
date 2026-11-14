@@ -55,6 +55,31 @@ class SellerServiceTest {
                 field.equals("holder") ? value : p.accountHolder());
     }
 
+    /** Saves a whole profile: the stored one equals the input, so every part of the merge is the input. */
+    private SellerProfile saveWhole(SellerProfile input) {
+        when(profiles.findById(SellerService.ID)).thenReturn(Optional.of(new StoredProfile(1, input)));
+        return service.save(ProfilePart.ADDRESS, input);
+    }
+
+    @Test
+    void savesOnePartAndKeepsTheOthersAsStored() {
+        when(profiles.findById(SellerService.ID)).thenReturn(Optional.of(new StoredProfile(1, SellerTestData.profile())));
+        SellerProfile bank = new SellerProfile(null, null, null, null, null, null, null, null, null, null,
+                "GB82 WEST 1234 5698 7654 32", "WESTGB2L", null, null, null, "Westbank", "Erika M.");
+        SellerProfile saved = service.save(ProfilePart.BANK, bank);
+        assertThat(saved.name()).isEqualTo("Erika Mustermann");
+        assertThat(saved.taxNumber()).isEqualTo("12/345/67890");
+        assertThat(saved.iban()).isEqualTo("GB82WEST12345698765432");
+        assertThat(saved.accountHolder()).isEqualTo("Erika M.");
+
+        when(profiles.findById(SellerService.ID)).thenReturn(Optional.empty());
+        SellerProfile first = service.save(ProfilePart.CONTACT, SellerTestData.profile());
+        assertThat(first.email()).isEqualTo("erika@example.org");
+        assertThat(first.name()).as("nothing stored before the first save").isNull();
+        assertThat(first.countryCode()).as("the defaults of the first form").isEqualTo("DE");
+        assertThat(first.taxStatus()).isEqualTo(TaxStatus.KLEINUNTERNEHMER);
+    }
+
     @Test
     void returnsTheStoredProfile() {
         when(profiles.findById(SellerService.ID)).thenReturn(Optional.of(new StoredProfile(1, SellerTestData.profile())));
@@ -65,7 +90,7 @@ class SellerServiceTest {
 
     @Test
     void writesTheProfileInOneUpsert() {
-        SellerProfile saved = service.save(SellerTestData.profile());
+        SellerProfile saved = saveWhole(SellerTestData.profile());
         assertThat(saved).isEqualTo(SellerTestData.profile());
         verify(jdbc).sql(SellerService.UPSERT);
         verify(statement).param("name", "Erika Mustermann");
@@ -96,7 +121,7 @@ class SellerServiceTest {
         SellerProfile input = new SellerProfile("  Erika Mustermann ", p.street(), p.postcode(), p.city(), " de ", "  ",
                 p.email(), p.phone(), "", " de 123 456 789 ", "de89 3704 0044 0532 0130 00", " cobadeffxxx ",
                 TaxStatus.REGULAR, null, null, null, null);
-        SellerProfile saved = service.save(input);
+        SellerProfile saved = saveWhole(input);
         assertThat(saved.name()).isEqualTo("Erika Mustermann");
         assertThat(saved.countryCode()).isEqualTo("DE");
         assertThat(saved.contactName()).isNull();
@@ -109,49 +134,66 @@ class SellerServiceTest {
 
     @ParameterizedTest
     @CsvSource(delimiter = '|', value = {
-        "name      | ''                                | Bitte Name angeben.",
-        "street    |                                   | Bitte Straße angeben.",
-        "postcode  | ' '                               | Bitte PLZ angeben.",
-        "city      | ''                                | Bitte Ort angeben.",
-        "country   | DEU                               | Bitte ein Land aus der Liste wählen.",
-        "country   | ''                                | Bitte ein Land aus der Liste wählen.",
-        "email     | erika.example.org                 | Bitte eine gültige E-Mail-Adresse angeben.",
-        "phone     | Telefon                           | Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567.",
-        "vatId     | 123456789                         | Die USt-IdNr. beginnt mit dem Ländercode, zum Beispiel DE123456789.",
-        "iban      | DE89370400440532013001            | Die IBAN ist ungültig.",
-        "iban      | DE8937040044                      | Die IBAN ist ungültig.",
-        "iban      | ''                                | Die IBAN ist ungültig.",
-        "iban      | DE813704004405320130000           | Eine IBAN aus DE hat 22 Zeichen.",
-        "phone     | +12345678901234567890123456789012345678901234567890 | Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567.",
-        "bic       | COBADEF                           | Die BIC hat 8 oder 11 Zeichen."
+        "country   | DEU                               | countryCode | Bitte ein Land aus der Liste wählen.",
+        "email     | erika.example.org                 | email       | Bitte eine gültige E-Mail-Adresse angeben.",
+        "phone     | Telefon                           | phone       | Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567.",
+        "vatId     | 123456789                         | vatId       | Die USt-IdNr. beginnt mit dem Ländercode, zum Beispiel DE123456789.",
+        "iban      | DE89370400440532013001            | iban        | Die IBAN ist ungültig.",
+        "iban      | DE8937040044                      | iban        | Die IBAN ist ungültig.",
+        "iban      | DE813704004405320130000           | iban        | Eine IBAN aus DE hat 22 Zeichen.",
+        "phone     | +12345678901234567890123456789012345678901234567890 | phone | Bitte eine Telefonnummer angeben, zum Beispiel +49 89 1234567.",
+        "bic       | COBADEF                           | bic         | Die BIC hat 8 oder 11 Zeichen."
     })
-    void refusesAWrongField(String field, String value, String problem) {
+    void refusesAWrongField(String field, String value, String key, String problem) {
         SellerProfile wrong = with(field, value);
-        SettingsException e = catchThrowableOfType(SettingsException.class, () -> service.save(wrong));
+        SettingsException e = catchThrowableOfType(SettingsException.class, () -> saveWhole(wrong));
+        assertThat(e.fields()).containsExactly(java.util.Map.entry(key, problem));
         assertThat(e.problems()).containsExactly(problem);
         verify(statement, never()).update();
         org.mockito.Mockito.verifyNoInteractions(audit);
     }
 
-    @ParameterizedTest
-    @CsvSource({"name, 200, Name", "street, 200, Straße", "postcode, 16, PLZ", "city, 100, Ort",
-        "contact, 200, Ansprechpartner", "taxNumber, 32, Steuernummer", "tagline, 200, Zusatz",
-        "bankName, 100, Kreditinstitut", "holder, 200, Kontoinhaber"})
-    void limitsTheLength(String field, int max, String label) {
-        SellerProfile longest = with(field, "x".repeat(max));
-        assertThat(SellerService.check(SellerService.normalize(longest))).isEmpty();
-        assertThat(SellerService.check(SellerService.normalize(with(field, "x".repeat(max + 1)))))
-                .containsExactly(label + " hat höchstens " + max + " Zeichen.");
+    @Test
+    void savesAnEmptyProfileAndNamesWhatInvoicesStillNeed() {
+        SellerProfile empty = new SellerProfile(" ", null, "", null, "", null, "", null, null, null, "", null, null,
+                null, null, null, null);
+        SellerProfile saved = saveWhole(empty);
+        verify(statement).param("taxStatus", null);
+        verify(statement).update();
+        verify(audit).add(io.github.grigoriev.im.audit.AuditAction.PROFILE_SAVED, "");
+        assertThat(SellerService.missing(saved)).containsExactly(java.util.Map.entry("name", "Name"),
+                java.util.Map.entry("street", "Straße"), java.util.Map.entry("postcode", "PLZ"),
+                java.util.Map.entry("city", "Ort"), java.util.Map.entry("countryCode", "Land"),
+                java.util.Map.entry("taxStatus", "Steuerstatus"),
+                java.util.Map.entry("taxNumber", "Steuernummer oder USt-IdNr."),
+                java.util.Map.entry("iban", "IBAN"), java.util.Map.entry("bic", "BIC"));
+        assertThat(SellerService.missingForXRechnung(empty)).containsExactly(java.util.Map.entry("email", "E-Mail"),
+                java.util.Map.entry("phone", "Telefon"));
+        assertThat(SellerService.missing(SellerProfile.empty())).as("the first form, normalized")
+                .containsKeys("name", "iban").doesNotContainKeys("countryCode", "taxStatus");
     }
 
     @Test
-    void needsATaxNumberOrAVatIdAndATaxStatus() {
-        SellerProfile p = SellerTestData.profile();
-        SellerProfile none = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null,
-                p.email(), p.phone(), null, null, p.iban(), p.bic(), null, null, null, null, null);
-        assertThat(SellerService.check(none)).containsExactly("Bitte die Steuernummer oder die USt-IdNr. angeben.",
-                "Bitte den Steuerstatus wählen.");
-        assertThat(SellerService.check(with("vatId", "DE123456789"))).isEmpty();
+    void aCompleteProfileMissesNothingAndATaxNumberOrAVatIdIsEnough() {
+        assertThat(SellerService.missing(SellerTestData.profile())).isEmpty();
+        assertThat(SellerService.missingForXRechnung(SellerTestData.profile())).isEmpty();
+        SellerProfile neither = with("taxNumber", null);
+        assertThat(SellerService.missing(neither)).containsOnlyKeys("taxNumber");
+        assertThat(SellerService.missing(new SellerProfile(neither.name(), neither.street(), neither.postcode(),
+                neither.city(), neither.countryCode(), null, null, null, null, "DE123456789", neither.iban(),
+                neither.bic(), neither.taxStatus(), null, null, null, null))).as("a VAT ID is enough").isEmpty();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"name, 200, Name, name", "street, 200, Straße, street", "postcode, 16, PLZ, postcode",
+        "city, 100, Ort, city", "contact, 200, Ansprechpartner, contactName", "taxNumber, 32, Steuernummer, taxNumber",
+        "tagline, 200, Zusatz, tagline", "bankName, 100, Kreditinstitut, bankName",
+        "holder, 200, Kontoinhaber, accountHolder"})
+    void limitsTheLength(String field, int max, String label, String key) {
+        SellerProfile longest = with(field, "x".repeat(max));
+        assertThat(SellerService.check(SellerService.normalize(longest))).isEmpty();
+        assertThat(SellerService.check(SellerService.normalize(with(field, "x".repeat(max + 1)))))
+                .containsExactly(java.util.Map.entry(key, label + " hat höchstens " + max + " Zeichen."));
     }
 
     @ParameterizedTest
@@ -168,7 +210,7 @@ class SellerServiceTest {
         String domain = "d".repeat(177) + ".example.org"; // 64 + 1 + 189 = 254 characters
         assertThat(SellerService.check(with("email", local + "@" + domain))).isEmpty();
         assertThat(SellerService.check(with("email", local + "@d" + domain)))
-                .containsExactly("E-Mail hat höchstens 254 Zeichen.");
+                .containsExactly(java.util.Map.entry("email", "E-Mail hat höchstens 254 Zeichen."));
     }
 
     @Test
@@ -184,8 +226,8 @@ class SellerServiceTest {
         "www.müller-sprachkurse.de, true", "HTTPS://Example.DE, true", "www.straße.de/kurse, true",
         "www.exa_mple.de, false", "ftp://example.de, false"})
     void checksTheWebsite(String website, boolean valid) {
-        assertThat(SellerService.check(with("website", website))).isEqualTo(valid ? List.of()
-                : List.of("Bitte eine Website wie www.example.de angeben."));
+        assertThat(SellerService.check(with("website", website))).isEqualTo(valid ? java.util.Map.of()
+                : java.util.Map.of("website", "Bitte eine Website wie www.example.de angeben."));
     }
 
     @Test
@@ -194,7 +236,7 @@ class SellerServiceTest {
         String label = "a".repeat(60);
         String host = "www." + label + "." + label + "." + label + ".bbbbb.example";
         assertThat(SellerService.check(with("website", host))).isEmpty();
-        assertThat(SellerService.check(with("website", host + "x"))).containsExactly("Website hat höchstens 200 Zeichen.");
+        assertThat(SellerService.check(with("website", host + "x"))).containsExactly(java.util.Map.entry("website", "Website hat höchstens 200 Zeichen."));
     }
 
     @Test

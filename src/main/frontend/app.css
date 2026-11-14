@@ -114,6 +114,33 @@
   }
 }
 
+/* A field every invoice needs: a red star after its label. The empty alternative keeps the star out of the label
+   text and the accessible name. */
+@layer components {
+  .required::after { content: " *" / ""; color: var(--color-error); }
+}
+
+/* Folder tabs: the closed tabs on a muted ground, the open one in the color of its card, with a primary line on top.
+   The card below has no top border, so tab and card read as one. */
+@layer components {
+  .tabs-folder { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--color-base-300); }
+  .tabs-folder > a {
+    display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; padding: 0.5rem 1rem;
+    margin-bottom: -1px; border: 1px solid var(--color-base-300);
+    background: color-mix(in oklch, var(--color-base-300) 50%, var(--color-base-200));
+    color: var(--color-base-content); font-size: 0.875rem;
+  }
+  .tabs-folder > a + a { margin-left: -1px; }
+  .tabs-folder > a:first-child { border-top-left-radius: var(--radius-box); }
+  .tabs-folder > a:last-child { border-top-right-radius: var(--radius-box); }
+  .tabs-folder > a:hover { background: var(--color-base-200); }
+  .tabs-folder > a[aria-selected="true"] {
+    background: var(--color-base-100); border-bottom-color: var(--color-base-100); font-weight: 600;
+    box-shadow: inset 0 2px 0 var(--color-primary);
+  }
+  .tabs-folder > a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+}
+
 /* The invoice editor shows "Betrag" for a lump sum and "Menge" with "Preis" otherwise, without script. Each kind has
    its own fields, so the server never guesses. Outside the layers, so it wins over daisyUI's floating label. */
 .invoice-line:has(.line-kind option[value="true"]:checked) .line-quantity,
