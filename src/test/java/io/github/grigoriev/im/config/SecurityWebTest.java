@@ -669,7 +669,7 @@ class SecurityWebTest {
                         .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/admin/e-mail")).andExpect(flash().attribute("success", "E-Mail-Text gespeichert."));
         verify(mailTexts).save("Neu", "Text");
-        org.mockito.Mockito.doThrow(new io.github.grigoriev.im.seller.SettingsException(
+        doThrow(new io.github.grigoriev.im.seller.SettingsException(
                 List.of("Der Betreff hat höchstens 200 Zeichen."))).when(mailTexts).save("zu lang", "Text");
         mvc.perform(post("/admin/e-mail").param("subject", "zu lang").param("body", "Text")
                         .with(user("admin").roles("ADMIN")).with(csrf()))

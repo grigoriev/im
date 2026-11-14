@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -90,8 +91,8 @@ class MailTextServiceTest {
         verify(statements.get(MailTextService.RESET)).param("key", "mail-subject");
         verify(statements.get(MailTextService.RESET)).param("key", "mail-body");
         service.save(null, null);
-        verify(statements.get(MailTextService.WRITE), org.mockito.Mockito.times(2)).update();
-        verify(statements.get(MailTextService.RESET), org.mockito.Mockito.times(4)).update();
+        verify(statements.get(MailTextService.WRITE), times(2)).update();
+        verify(statements.get(MailTextService.RESET), times(4)).update();
     }
 
     @Test
