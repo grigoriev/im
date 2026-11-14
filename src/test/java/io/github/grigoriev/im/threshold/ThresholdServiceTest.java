@@ -13,7 +13,6 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
-import io.github.grigoriev.im.einvoice.InvoiceLine;
 import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.einvoice.TaxCategory;
