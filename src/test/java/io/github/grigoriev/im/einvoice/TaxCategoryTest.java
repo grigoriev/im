@@ -55,8 +55,8 @@ class TaxCategoryTest {
 
     @Test
     void defaultNotesNameTheLegalBasis() {
-        assertThat(TaxCategory.KLEINUNTERNEHMER.defaultNote()).isEqualTo("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
-        assertThat(TaxCategory.EXEMPT_4_21.defaultNote()).isEqualTo("Steuerfrei gemäß § 4 Nr. 21 UStG.");
+        assertThat(TaxCategory.KLEINUNTERNEHMER.defaultNote()).isEqualTo("Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).");
+        assertThat(TaxCategory.EXEMPT_4_21.defaultNote()).isEqualTo("Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG.");
         assertThat(TaxCategory.REVERSE_CHARGE_EU.defaultNote()).isEqualTo("Steuerschuldnerschaft des Leistungsempfängers.");
         assertThat(TaxCategory.NOT_TAXABLE_ABROAD.defaultNote()).isEqualTo("Nicht im Inland steuerbare Leistung.");
         assertThat(TaxCategory.STANDARD_19.defaultNote()).isEmpty();

@@ -59,7 +59,7 @@ class InvoiceServiceTest {
     void defaults() {
         when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile()));
         when(customers.find(2)).thenReturn(Optional.of(CustomerTestData.verlag().withId(2L)));
-        when(notes.note(TaxCategory.KLEINUNTERNEHMER)).thenReturn("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
+        when(notes.note(TaxCategory.KLEINUNTERNEHMER)).thenReturn("Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).");
         when(repository.save(any())).thenAnswer(call -> saved(call.getArgument(0)));
     }
 
@@ -73,7 +73,7 @@ class InvoiceServiceTest {
 
     private static Invoice draft(List<DraftLine> lines) {
         return new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY, 14,
-                null, "Hallo", "Danke", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", lines, NOW, NOW, 0L, null, null);
+                null, "Hallo", "Danke", "Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).", lines, NOW, NOW, 0L, null, null);
     }
 
     private static DraftLine lump(String text, String amount, TaxCategory category) {
@@ -124,7 +124,7 @@ class InvoiceServiceTest {
         assertThat(created.paymentDays()).isEqualTo(14);
         assertThat(created.intro()).isEqualTo(InvoiceService.DEFAULT_INTRO);
         assertThat(created.closing()).isEqualTo(InvoiceService.DEFAULT_CLOSING);
-        assertThat(created.taxNote()).isEqualTo("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.");
+        assertThat(created.taxNote()).isEqualTo("Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).");
         assertThat(created.lines()).containsExactly(DraftLine.empty(TaxCategory.KLEINUNTERNEHMER));
         assertThat(created.createdAt()).isEqualTo(NOW);
         verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");

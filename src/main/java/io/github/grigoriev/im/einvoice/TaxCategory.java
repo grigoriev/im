@@ -11,10 +11,10 @@ import java.math.BigDecimal;
 public enum TaxCategory {
 
     /** Kleinunternehmer, §19 UStG. Counts toward the §19 threshold. */
-    KLEINUNTERNEHMER("E", "§ 19", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", true, BigDecimal.ZERO),
+    KLEINUNTERNEHMER("E", "§ 19", "Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).", true, BigDecimal.ZERO),
 
     /** Teaching, VAT-exempt under §4 Nr. 21 UStG. */
-    EXEMPT_4_21("E", "§ 4 Nr. 21", "Steuerfrei gemäß § 4 Nr. 21 UStG.", false, BigDecimal.ZERO),
+    EXEMPT_4_21("E", "§ 4 Nr. 21", "Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG.", false, BigDecimal.ZERO),
 
     /** B2B service to a business in another EU country. */
     REVERSE_CHARGE_EU("AE", "Reverse Charge", "Steuerschuldnerschaft des Leistungsempfängers.", false, BigDecimal.ZERO),

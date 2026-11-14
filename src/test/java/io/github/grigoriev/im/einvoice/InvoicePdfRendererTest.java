@@ -57,7 +57,7 @@ class InvoicePdfRendererTest {
                 .contains("Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.")
                 .contains("400,00\u00a0€")
                 .contains("480,00\u00a0€")
-                .contains("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.")
+                .contains("Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1")
                 .contains("DE02 1203 0000 0000 2020 51")
                 .contains("Bitte überweisen Sie den Betrag bis zum 01.04.2027.")
                 .contains("vielen Dank für Ihren Auftrag.")

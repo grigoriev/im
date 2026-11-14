@@ -30,7 +30,7 @@ test('the admin changes a default tax note and restores it', async ({ page }) =>
   await page.goto('/settings');
   await page.getByRole('tab', { name: /Steuerhinweise/ }).click();
   const note = page.getByLabel('Steuerfreie Bildungsleistung (§ 4 Nr. 21 UStG)');
-  await expect(note).toHaveValue('Steuerfrei gemäß § 4 Nr. 21 UStG.');
+  await expect(note).toHaveValue('Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG.');
   await note.fill('Steuerfrei nach § 4 Nr. 21 a UStG.');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toHaveText('Steuerhinweise gespeichert.');
@@ -38,7 +38,7 @@ test('the admin changes a default tax note and restores it', async ({ page }) =>
 
   await note.fill('');
   await page.getByRole('button', { name: 'Speichern' }).click();
-  await expect(note).toHaveValue('Steuerfrei gemäß § 4 Nr. 21 UStG.');
+  await expect(note).toHaveValue('Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG.');
 });
 
 test('the admin changes the default e-mail text and restores it', async ({ page }) => {
