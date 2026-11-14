@@ -13,7 +13,7 @@
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4">
       <div>
         <h2 class="font-semibold">Rechnungsnummern</h2>
         <p class="text-sm text-base-content/75">Die Nummer wird erst beim Ausstellen vergeben. Lückenlos, ohne Dubletten.
@@ -23,7 +23,7 @@
         <label class="floating-label grow"><span>Muster</span>
           <input id="number-pattern" name="pattern" class="input w-full font-mono" th:value="${pattern}" maxlength="32" required>
         </label>
-        <button type="submit" class="btn btn-primary">Speichern</button>
+        <button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button>
       </form>
       <p class="text-xs text-base-content/75">
         Platzhalter: <code>{YYYY}</code> Jahr, <code>{YY}</code> Jahr zweistellig, <code>{N}</code> bis <code>{NNNNNN}</code>
@@ -32,7 +32,7 @@
       </p>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4 @container">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container">
       <h2 class="font-semibold">Zähler</h2>
       <div class="grid gap-3 @xl:grid-cols-2">
         <div th:each="entry : ${years}" th:with="sequence=${entry.key}" class="border border-base-300 rounded-field p-4 grid gap-3">
@@ -44,13 +44,13 @@
           <p class="text-xs text-base-content/75" th:if="${sequence.used}">
             <i data-lucide="lock" class="size-3.5 inline"></i> Für dieses Jahr sind schon Nummern vergeben. Der Zähler ist gesperrt.
           </p>
-          <form class="flex flex-wrap gap-2 items-end" th:unless="${sequence.used}" th:action="@{/admin/nummernkreis/start}" method="post">
+          <form class="flex flex-wrap justify-end gap-2 items-end" th:unless="${sequence.used}" th:action="@{/admin/nummernkreis/start}" method="post">
             <input type="hidden" name="year" th:value="${sequence.year}">
-            <label class="floating-label grow"><span th:text="'Startnummer ' + ${sequence.year}" data-volatile>Startnummer</span>
+            <label class="floating-label grow basis-full sm:basis-48"><span th:text="'Startnummer ' + ${sequence.year}" data-volatile>Startnummer</span>
               <input th:id="'start-' + ${sequence.year}" name="start" type="number" min="1" max="999999" class="input w-full"
                      th:value="${sequence.nextNumber}" required>
             </label>
-            <button type="submit" class="btn">Setzen</button>
+            <button type="submit" class="btn"><i data-lucide="check" class="size-4"></i>Setzen</button>
           </form>
         </div>
       </div>

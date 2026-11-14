@@ -12,6 +12,7 @@ test('a user gets no access to the admin pages', async ({ page, browser }) => {
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Zugriff Nutzerin');
   await page.locator('#new-password').fill('zugriff-passwort-123');
+  await page.locator('#new-confirm').fill('zugriff-passwort-123');
   await page.getByRole('button', { name: 'Anlegen' }).click();
   await expect(page.getByRole('status')).toContainText(username);
 

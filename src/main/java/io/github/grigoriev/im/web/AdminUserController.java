@@ -22,6 +22,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/admin/benutzer")
 public class AdminUserController {
 
+    private static final String USERNAME = "username";
+    private static final String DISPLAY_NAME = "displayName";
+
+    /** The problem when the two password fields differ. */
+    static final String MISMATCH = "Die beiden Passwörter stimmen nicht überein.";
+
     private static final String SUCCESS = "success";
     private static final String ERROR = "error";
 
@@ -65,20 +71,28 @@ public class AdminUserController {
      * @param username login name
      * @param displayName name shown in the app
      * @param password the password
+     * @param confirm the password once more
      * @param role the role
      * @param flash messages for the next page
      * @return a redirect to the list
      */
     @PostMapping
     public String create(@RequestParam String username, @RequestParam String displayName,
-            @RequestParam String password, @RequestParam Role role, RedirectAttributes flash) {
-        try {
-            users.create(username, displayName, password, role);
-            flash.addFlashAttribute(SUCCESS, "Benutzer „" + username + "“ angelegt.");
-        } catch (UserException e) {
-            flash.addFlashAttribute(ERROR, e.getMessage());
-            flash.addFlashAttribute("username", username);
-            flash.addFlashAttribute("displayName", displayName);
+            @RequestParam String password, @RequestParam String confirm, @RequestParam Role role,
+            RedirectAttributes flash) {
+        if (!password.equals(confirm)) {
+            flash.addFlashAttribute(ERROR, MISMATCH);
+            flash.addFlashAttribute(USERNAME, username);
+            flash.addFlashAttribute(DISPLAY_NAME, displayName);
+        } else {
+            try {
+                users.create(username, displayName, password, role);
+                flash.addFlashAttribute(SUCCESS, "Benutzer „" + username + "“ angelegt.");
+            } catch (UserException e) {
+                flash.addFlashAttribute(ERROR, e.getMessage());
+                flash.addFlashAttribute(USERNAME, username);
+                flash.addFlashAttribute(DISPLAY_NAME, displayName);
+            }
         }
         return BACK;
     }
@@ -107,16 +121,22 @@ public class AdminUserController {
      *
      * @param id the user
      * @param password the new password
+     * @param confirm the new password once more
      * @param flash messages for the next page
      * @return a redirect to the list
      */
     @PostMapping("/{id}/passwort")
-    public String resetPassword(@PathVariable long id, @RequestParam String password, RedirectAttributes flash) {
-        try {
-            String username = users.resetPassword(id, password).username();
-            flash.addFlashAttribute(SUCCESS, "Neues Passwort für „" + username + "“ gesetzt.");
-        } catch (UserException e) {
-            flash.addFlashAttribute(ERROR, e.getMessage());
+    public String resetPassword(@PathVariable long id, @RequestParam String password, @RequestParam String confirm,
+            RedirectAttributes flash) {
+        if (!password.equals(confirm)) {
+            flash.addFlashAttribute(ERROR, MISMATCH);
+        } else {
+            try {
+                String username = users.resetPassword(id, password).username();
+                flash.addFlashAttribute(SUCCESS, "Neues Passwort für „" + username + "“ gesetzt.");
+            } catch (UserException e) {
+                flash.addFlashAttribute(ERROR, e.getMessage());
+            }
         }
         return BACK;
     }

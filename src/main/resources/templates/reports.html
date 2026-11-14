@@ -16,36 +16,46 @@
             <option th:each="option : ${years}" th:value="${option}" th:text="${option}" th:selected="${option == year}">2027</option>
           </select>
         </label>
-        <button type="submit" class="btn btn-sm">Anzeigen</button>
+        <button type="submit" class="btn btn-sm"><i data-lucide="eye" class="size-4"></i>Anzeigen</button>
         <a class="btn btn-sm" id="report-csv" th:href="@{/berichte/zahlungen.csv(jahr=${year})}"><i data-lucide="sheet" class="size-4"></i>CSV</a>
         <a class="btn btn-sm" id="report-archive" th:href="@{/berichte/archiv.zip(jahr=${year})}"
            th:title="'PDF und XML aller Rechnungen mit Rechnungsdatum ' + ${year}"><i data-lucide="archive" class="size-4"></i>Archiv ZIP</a>
       </form>
     </div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="report-euer">
-      <div>
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs" id="report-euer">
+      <div class="p-5 pb-4 grid gap-1">
         <h2 class="font-semibold" th:text="'Anlage EÜR ' + ${year} + ', Betriebseinnahmen'">Anlage EÜR, Betriebseinnahmen</h2>
         <p class="text-xs text-base-content/75">Nach Zahlungseingang, Erstattungen abgezogen. Werte zum Übertragen in WISO Steuer.
           Die Zeilen folgen der Anlage EÜR 2025; bitte mit dem Formular des Jahres abgleichen.</p>
       </div>
-      <dl class="grid gap-2 text-sm">
-        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-baseline">
-          <dt>Zeile 12, Kennzahl 111: Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer</dt>
-          <dd class="num font-semibold text-right" id="euer-111" th:text="${#numbers.formatDecimal(totals.total, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+      <dl class="text-sm">
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-start px-5 py-4 border-t border-base-300">
+          <dt class="grid gap-1.5 min-w-0">
+            <span class="flex flex-wrap items-center gap-2"><span class="badge badge-sm badge-primary badge-soft whitespace-nowrap">Zeile 12 · Kz 111</span>
+              <span class="font-semibold">Einnahmen als Kleinunternehmer</span></span>
+            <span class="text-xs text-base-content/75">Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer</span>
+          </dt>
+          <dd class="num font-semibold text-right whitespace-nowrap text-base" id="euer-111" th:text="${#numbers.formatDecimal(totals.total, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
         </div>
-        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-baseline pl-4">
-          <dt>Zeile 13, Kennzahl 119: davon nicht steuerbare Umsätze sowie Umsätze nach § 19 Abs. 2 Satz 1 Nr. 1 und 2 UStG,
-            zum Beispiel Unterricht nach § 4 Nr. 21 und Leistungen ins Ausland</dt>
-          <dd class="num text-right" id="euer-119" th:text="${#numbers.formatDecimal(totals.excluded, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-start px-5 py-4 border-t border-base-300 bg-base-200/60 rounded-b-box">
+          <dt class="grid gap-1.5 min-w-0 ps-4 border-s-2 border-base-300">
+            <span class="flex flex-wrap items-center gap-2"><span class="badge badge-sm badge-primary badge-soft whitespace-nowrap">Zeile 13 · Kz 119</span>
+              <span class="font-semibold">davon § 19 Abs. 2 Satz 1 Nr. 1 und 2</span></span>
+            <span class="text-xs text-base-content/75">Nicht steuerbare Umsätze und Umsätze nach § 19 Abs. 2 Satz 1 Nr. 1 und 2 UStG,
+              zum Beispiel Unterricht nach § 4 Nr. 21 und Leistungen ins Ausland</span>
+          </dt>
+          <dd class="num text-right whitespace-nowrap" id="euer-119" th:text="${#numbers.formatDecimal(totals.excluded, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
         </div>
       </dl>
-      <p role="alert" class="alert alert-warning text-sm" th:if="${totals.vatSales.signum() != 0}" id="report-vat">
-        <span th:text="'Einnahmen mit Umsatzsteuer von ' + ${#numbers.formatDecimal(totals.vatSales, 1, 'POINT', 2, 'COMMA')} + ' € (brutto) gehören nicht in die Zeilen 12 und 13, sondern netto in Zeile 15 und die Umsatzsteuer in Zeile 17. Die App teilt sie nicht auf.'">Hinweis</span>
-      </p>
+      <div class="px-5 pb-5" th:if="${totals.vatSales.signum() != 0}">
+        <p role="alert" class="alert alert-warning text-sm" id="report-vat">
+          <span th:text="'Einnahmen mit Umsatzsteuer von ' + ${#numbers.formatDecimal(totals.vatSales, 1, 'POINT', 2, 'COMMA')} + ' € (brutto) gehören nicht in die Zeilen 12 und 13, sondern netto in Zeile 15 und die Umsatzsteuer in Zeile 17. Die App teilt sie nicht auf.'">Hinweis</span>
+        </p>
+      </div>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="report-categories">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="report-categories">
       <h2 class="font-semibold">Einnahmen nach Steuerart</h2>
       <p class="text-sm text-base-content/75" th:if="${totals.byCategory.isEmpty()}">Keine Zahlungen in diesem Jahr.</p>
       <ul class="grid gap-1 text-sm" th:unless="${totals.byCategory.isEmpty()}">
@@ -60,7 +70,7 @@
       </div>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="report-payments">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="report-payments">
       <h2 class="font-semibold">Zahlungen</h2>
       <p class="text-sm text-base-content/75" th:if="${rows.isEmpty()}">Keine Zahlungen in diesem Jahr.</p>
       <ul class="grid gap-2 text-sm" th:unless="${rows.isEmpty()}">

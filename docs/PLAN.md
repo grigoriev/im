@@ -63,7 +63,7 @@ Sources are listed in section 13. Verify each item again before the go-live.
 | PDF layout | Thymeleaf HTML, rendered by Flying Saucer as PDF/A-3B | Own layout. Mustang then embeds the XML |
 | Database | PostgreSQL + Flyway | Robust, simple `pg_dump` backups |
 | UI | Thymeleaf, htmx, Alpine.js, Tailwind CSS 4, daisyUI 5, Lucide icons | Server-side CRUD. CSS classes only, no SPA |
-| Design | Light and dark theme, JetBrains Mono in app and PDF (without code ligatures), German formats | Mac and iPhone |
+| Design | Light and dark theme, JetBrains Mono in app and PDF (without code ligatures), German formats. The look of Preline UI with blue accents (decision 2026-11-14): white cards with thin lines, labels on the top line of each field with a red star when required, framed buttons with icons, red destructive actions, a styled list for every select, dialogs for confirmations and renames. Buttons of a form or dialog sit on one line at its right edge; a dialog grows wider instead of wrapping them, only on a phone they wrap | Mac and iPhone |
 | Security | Spring Security: passkeys (WebAuthn) and password | Two users, two roles. Works without internet |
 | Tests | JUnit 5, PIT, Testcontainers, GreenMail, Playwright (TypeScript) | See section 10 |
 | Packaging | Container image on GHCR, linux/amd64, attested | The NAS is x86_64. Same pattern as sb-stack |

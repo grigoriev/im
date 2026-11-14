@@ -33,8 +33,8 @@ test('a template of a customer starts a draft that keeps its copy', async ({ pag
   await expect(page.locator('#line-1-text'), 'the draft keeps its copy').toHaveValue('Reisekosten');
 
   await page.goto(templatePage);
-  await page.getByText('Vorlage löschen', { exact: true }).first().click();
   await page.getByRole('button', { name: 'Vorlage löschen' }).click();
+  await page.locator('#template-delete-confirm').click();
   await expect(page.getByRole('status')).toHaveText('Vorlage „Lesung mit Gespräch“ gelöscht.');
   await expect(page.locator('#customer-templates')).toContainText('Noch keine Vorlage.');
 });

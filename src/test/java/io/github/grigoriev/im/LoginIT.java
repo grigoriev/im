@@ -98,7 +98,7 @@ class LoginIT {
         HttpResponse<String> page = get(admin, "/admin/benutzer");
         assertThat(page.statusCode()).isEqualTo(200);
         HttpResponse<String> created = post(admin, "/admin/benutzer", "username=elena&displayName=Elena+Sommer"
-                + "&password=elena-passwort-123&role=USER&_csrf=" + csrf(page.body()));
+                + "&password=elena-passwort-123&confirm=elena-passwort-123&role=USER&_csrf=" + csrf(page.body()));
         assertThat(created.statusCode()).isEqualTo(302);
         assertThat(get(admin, "/admin/benutzer").body()).contains("Benutzer „elena“ angelegt.").contains("Elena Sommer");
 

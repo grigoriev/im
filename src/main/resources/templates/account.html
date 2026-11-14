@@ -13,7 +13,7 @@
     <output class="alert alert-success text-sm" th:if="${param.passkey}">Passkey hinzugefügt.</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4">
       <div>
         <h2 class="font-semibold">Passkeys</h2>
         <p class="text-sm text-base-content/75">Mit einem Passkey melden Sie sich per Touch ID oder Face ID an.
@@ -28,17 +28,29 @@
                   th:text="'Hinzugefügt am ' + ${#temporals.format(passkey.created, 'dd.MM.yyyy', 'Europe/Berlin')}
                      + (${passkey.lastUsed} != null ? ' · zuletzt ' + ${#temporals.format(passkey.lastUsed, 'dd.MM.yyyy', 'Europe/Berlin')} : '')">Datum</span>
           </div>
-          <div class="flex flex-wrap gap-2 items-end">
-            <form class="flex flex-wrap gap-2 items-end grow" th:action="@{/konto/passkeys/{id}/name(id=${passkey.id})}" method="post">
-              <label class="floating-label grow"><span>Name</span>
-                <input th:id="'label-' + ${passkeyStat.index}" name="label" class="input input-sm w-full" th:value="${passkey.label}" maxlength="64" required>
-              </label>
-              <button type="submit" class="btn btn-sm">Umbenennen</button>
-            </form>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm" th:attr="data-dialog='passkey-rename-' + ${passkeyStat.index}"><i data-lucide="pencil" class="size-4"></i>Umbenennen</button>
             <form th:action="@{/konto/passkeys/{id}/loeschen(id=${passkey.id})}" method="post">
-              <button type="submit" class="btn btn-sm btn-ghost text-error">Entfernen</button>
+              <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>
             </form>
           </div>
+          <dialog class="modal" th:id="'passkey-rename-' + ${passkeyStat.index}" th:attr="aria-labelledby='passkey-rename-' + ${passkeyStat.index} + '-title'">
+            <div class="modal-box">
+              <div th:replace="~{fragments/dialog :: dialogTitle('passkey-rename-' + ${passkeyStat.index}, 'Passkey umbenennen')}"></div>
+              <form th:action="@{/konto/passkeys/{id}/name(id=${passkey.id})}" method="post">
+                <div class="modal-body">
+                  <label class="floating-label"><span>Name</span>
+                    <input th:id="'label-' + ${passkeyStat.index}" name="label" class="input w-full" th:value="${passkey.label}" maxlength="64" required>
+                  </label>
+                </div>
+                <div class="modal-foot">
+                  <button type="button" class="btn" data-close>Abbrechen</button>
+                  <button type="submit" class="btn btn-primary"><i data-lucide="check" class="size-4"></i>Umbenennen</button>
+                </div>
+              </form>
+            </div>
+            <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+          </dialog>
         </div>
       </div>
       <form class="flex flex-wrap gap-2 items-end" data-passkey-register>
@@ -50,7 +62,7 @@
       <p role="alert" class="alert alert-error text-sm" data-passkey-message hidden></p>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3">
       <h2 class="font-semibold">Passwort ändern</h2>
       <form class="grid gap-3 sm:grid-cols-2" th:action="@{/konto/passwort}" method="post">
         <label class="floating-label"><span>Aktuelles Passwort</span>
@@ -59,7 +71,10 @@
         <label class="floating-label"><span>Neues Passwort</span>
           <input id="new-own-password" name="password" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
         </label>
-        <div class="sm:col-span-2"><button type="submit" class="btn">Passwort ändern</button></div>
+        <label class="floating-label sm:col-start-2"><span>Neues Passwort wiederholen</span>
+          <input id="confirm-own-password" name="confirm" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
+        </label>
+        <div class="form-actions sm:col-span-2"><button type="submit" class="btn btn-primary"><i data-lucide="key-round" class="size-4"></i>Passwort ändern</button></div>
       </form>
     </section>
   </div>

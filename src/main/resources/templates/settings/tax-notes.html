@@ -13,17 +13,17 @@
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <form class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4" th:action="@{/admin/steuerhinweise}" method="post">
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" th:action="@{/admin/steuerhinweise}" method="post">
       <div>
         <h2 class="font-semibold">Standard-Steuerhinweise</h2>
         <p class="text-sm text-base-content/75">Vorgabe für neue Vorlagen. Vorlage und Rechnung können den Text überschreiben.
           Ein leeres Feld stellt den ursprünglichen Text wieder her.</p>
       </div>
-      <label class="grid gap-1.5" th:each="entry : ${notes}"><span class="text-sm font-medium" th:text="${titles[entry.key]}">Kategorie</span>
+      <label class="floating-label label-above" th:each="entry : ${notes}"><span th:text="${titles[entry.key]}">Kategorie</span>
         <textarea th:id="'note-' + ${entry.key}" th:name="'note-' + ${entry.key}" class="textarea w-full h-16" maxlength="500"
                   th:text="${entry.value}">Hinweis</textarea>
       </label>
-      <div><button type="submit" class="btn btn-primary">Speichern</button></div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
   </div>
 </div>

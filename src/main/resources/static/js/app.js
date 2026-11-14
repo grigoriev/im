@@ -15,3 +15,172 @@ document.addEventListener('submit', (event) => {
   form.dataset.sent = 'true';
   form.querySelectorAll('button[type="submit"]').forEach((button) => button.setAttribute('aria-disabled', 'true'));
 });
+
+// A dialog opens from a button with data-dialog="<id>" and closes from a button with data-close, with Escape or with a
+// click on the backdrop. A dialog the server renders with the attribute open shows as a modal right away, for
+// example with the problems of its form.
+document.addEventListener('click', (event) => {
+  const opener = event.target.closest('[data-dialog]');
+  if (opener) {
+    document.getElementById(opener.dataset.dialog)?.showModal();
+    return;
+  }
+  const closer = event.target.closest('[data-close]');
+  if (closer) closer.closest('dialog')?.close();
+});
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('dialog.modal[open]').forEach((dialog) => {
+    dialog.close();
+    dialog.showModal();
+  });
+});
+
+// A select opens a styled list instead of the list of the browser. The select itself stays: it keeps its label,
+// its value, the focus and the form. A click or Space, Enter or an arrow key opens the list; the arrows move, Enter or a
+// click picks, Escape cancels, Tab picks and moves on. With more than eight entries, typed letters filter the list.
+function enhanceSelect(select) {
+  if (select.multiple || select.dataset.native !== undefined || select.parentElement.classList.contains('listbox')) return;
+  const box = document.createElement('div');
+  box.className = 'listbox';
+  select.parentNode.insertBefore(box, select);
+  box.appendChild(select);
+
+  const list = document.createElement('div');
+  list.className = 'listbox-list';
+  list.hidden = true;
+  list.setAttribute('aria-hidden', 'true');
+  const search = select.options.length > 8 ? document.createElement('input') : null;
+  if (search) {
+    search.className = 'listbox-search';
+    search.type = 'search';
+    search.placeholder = 'Suchen …';
+    search.tabIndex = -1;
+    search.readOnly = true;
+    list.appendChild(search);
+  }
+  const options = document.createElement('div');
+  list.appendChild(options);
+  box.appendChild(list);
+
+  const items = () => [...options.querySelectorAll('.listbox-option:not([hidden])')];
+  const render = () => {
+    options.replaceChildren(...[...select.options].map((option, index) => {
+      const item = document.createElement('div');
+      item.className = 'listbox-option';
+      item.dataset.index = index;
+      item.textContent = option.textContent;
+      item.setAttribute('aria-selected', String(option.selected));
+      if (option.disabled) item.setAttribute('aria-disabled', 'true');
+      return item;
+    }));
+  };
+  // The value the select had when the list opened, for Escape.
+  let before = select.selectedIndex;
+  // The active entry is also the value of the select, so a screen reader announces it as the arrows move.
+  const activate = (item, follow = true) => {
+    options.querySelectorAll('[data-active]').forEach((other) => delete other.dataset.active);
+    if (!item) return;
+    item.dataset.active = '';
+    item.scrollIntoView({ block: 'nearest' });
+    if (follow && !list.hidden && item.getAttribute('aria-disabled') !== 'true') select.selectedIndex = Number(item.dataset.index);
+  };
+  const filter = () => {
+    const term = search.value.trim().toLocaleLowerCase('de');
+    options.querySelectorAll('.listbox-option').forEach((item) => {
+      item.hidden = term !== '' && !item.textContent.toLocaleLowerCase('de').includes(term);
+    });
+    activate(items()[0]);
+  };
+  const open = (show) => {
+    if (show) {
+      before = select.selectedIndex;
+      render();
+    }
+    list.hidden = !show;
+    select.setAttribute('aria-expanded', String(show));
+    if (!show) return;
+    if (search) {
+      search.value = '';
+      filter();
+    }
+    activate(options.querySelector('[aria-selected="true"]') ?? items()[0]);
+  };
+  const choose = (item) => {
+    if (item && item.getAttribute('aria-disabled') !== 'true') select.selectedIndex = Number(item.dataset.index);
+    else select.selectedIndex = before;
+    if (select.selectedIndex !== before) {
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    open(false);
+    select.focus();
+  };
+  const cancel = () => {
+    select.selectedIndex = before;
+    open(false);
+    select.focus();
+  };
+  const move = (step) => {
+    const all = items();
+    const current = all.indexOf(options.querySelector('[data-active]'));
+    activate(all[Math.min(all.length - 1, Math.max(0, current + step))]);
+  };
+  const keys = (event) => {
+    if (list.hidden) {
+      if ([' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+        event.preventDefault();
+        open(true);
+      }
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      move(event.key === 'ArrowDown' ? 1 : -1);
+    } else if (event.key === 'Enter' || (event.key === ' ' && event.target === select)) {
+      event.preventDefault();
+      choose(options.querySelector('[data-active]'));
+    } else if (search && event.key === 'Backspace') {
+      event.preventDefault();
+      search.value = search.value.slice(0, -1);
+      filter();
+    } else if (search && event.key.length === 1 && event.key !== ' ' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      // The focus stays on the select; typed letters filter the list.
+      event.preventDefault();
+      search.value += event.key;
+      filter();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      cancel();
+    } else if (event.key === 'Tab') {
+      choose(options.querySelector('[data-active]'));
+    }
+  };
+
+  select.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    select.focus();
+    if (list.hidden) open(true);
+    else cancel();
+  });
+  select.addEventListener('keydown', keys);
+  search?.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    select.focus();
+  });
+  options.addEventListener('mousedown', (event) => event.preventDefault());
+  options.addEventListener('click', (event) => choose(event.target.closest('.listbox-option')));
+  options.addEventListener('mousemove', (event) => {
+    const item = event.target.closest('.listbox-option');
+    if (item && item.dataset.active === undefined) activate(item, false);
+  });
+  select.setAttribute('aria-expanded', 'false');
+  document.addEventListener('mousedown', (event) => {
+    if (!list.hidden && !box.contains(event.target)) cancel();
+  });
+}
+
+// Phones and tablets keep the picker of the system: it brings its own search and fits the touch screen.
+document.addEventListener('DOMContentLoaded', () => {
+  if (!globalThis.matchMedia('(pointer: fine)').matches) return;
+  document.querySelectorAll('select.select').forEach(enhanceSelect);
+});

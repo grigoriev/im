@@ -12,7 +12,7 @@
     <div th:replace="~{fragments/settings :: tabs('backup')}"></div>
     <div role="alert" class="alert alert-error text-sm" id="backup-error" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-status">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-status">
       <div>
         <h2 class="font-semibold">Automatische Sicherung</h2>
         <p class="text-sm text-base-content/75">Jede Nacht sichert der Server die Datenbank verschlüsselt auf einen zweiten
@@ -40,18 +40,18 @@
       </dl>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-export">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-export">
       <div>
         <h2 class="font-semibold">Alles exportieren</h2>
         <p class="text-sm text-base-content/75">Eine ZIP-Datei mit allen Daten und Dokumenten: Profil, Kunden, Vorlagen,
           Rechnungen mit PDF und XML, Zahlungen, Versand, Einstellungen, Benutzer mit Passwort-Hashes und Passkeys, Protokoll.
           Damit zieht die App auf einen neuen Rechner um. Bitte sicher aufbewahren.</p>
       </div>
-      <div><a class="btn btn-primary" id="backup-download" th:href="@{/admin/datensicherung/export.zip}">
+      <div class="form-actions"><a class="btn btn-primary" id="backup-download" th:href="@{/admin/datensicherung/export.zip}">
         <i data-lucide="download" class="size-4"></i>Export herunterladen</a></div>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-import">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-import">
       <div>
         <h2 class="font-semibold">Export einspielen</h2>
         <p class="text-sm text-base-content/75">Nur in eine leere Installation derselben Version: ohne Profil, Kunden, Vorlagen
@@ -60,7 +60,7 @@
       </div>
       <form class="flex flex-wrap gap-2 items-end" method="post" enctype="multipart/form-data"
             th:action="@{/admin/datensicherung/import}">
-        <label class="grid gap-1.5 grow"><span class="text-sm font-medium">ZIP-Datei</span>
+        <label class="floating-label grow"><span>ZIP-Datei</span>
           <input id="backup-file" name="file" type="file" accept=".zip,application/zip" class="file-input w-full" required>
         </label>
         <button type="submit" class="btn" id="backup-restore"><i data-lucide="upload" class="size-4"></i>Einspielen</button>

@@ -58,7 +58,7 @@ Package `io.github.grigoriev.im`:
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
-- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI (`src/main/frontend/app.css`).
+- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog` and gives every `select.select` a styled list).
   Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
 
 Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers, PDF baselines in
@@ -69,6 +69,7 @@ Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontai
 
 - Conventional Commits without scope, signed commits, squash merge.
 - No em-dashes in code, comments, docs or commit messages. American spelling.
+- Buttons of a form or dialog sit on one line at its right edge (`form-actions`, `modal-foot`); a dialog grows wider instead of wrapping them, and only a phone, where it cannot, wraps them. Every button has an icon; destructive ones are `btn-danger`, their confirmation `btn-error`.
 - Amounts in `BigDecimal`, never `double`. Dates as `LocalDate`, time from an injected `Clock`.
 
 ## Reviews

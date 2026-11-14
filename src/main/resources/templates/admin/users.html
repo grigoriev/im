@@ -12,7 +12,7 @@
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <section id="user-list" class="bg-base-100 rounded-box border border-base-300 divide-y divide-base-300">
+    <section id="user-list" class="bg-base-100 rounded-box border border-base-300 shadow-xs divide-y divide-base-300">
       <div th:each="user : ${users}" class="p-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div class="min-w-0">
           <div class="font-medium [overflow-wrap:anywhere]" th:text="${user.displayName}">Name</div>
@@ -22,18 +22,36 @@
             <span th:text="${passkeyCounts[user.username]} + ' Passkey(s)'">0 Passkeys</span>
           </div>
         </div>
-        <form class="flex flex-wrap gap-2 items-end" th:action="@{/admin/benutzer/{id}/passwort(id=${user.id})}" method="post">
-          <label class="floating-label grow sm:grow-0"><span>Neues Passwort</span>
-            <input th:id="'password-' + ${user.id}" name="password" type="password" class="input input-sm w-full sm:w-48" autocomplete="new-password" minlength="12" required>
-          </label>
-          <button type="submit" class="btn btn-sm">Passwort setzen</button>
-          <button type="submit" class="btn btn-sm btn-ghost text-error" th:if="${passkeyCounts[user.username] > 0}"
-                  th:formaction="@{/admin/benutzer/{id}/passkeys/loeschen(id=${user.id})}" formnovalidate>Passkeys entfernen</button>
-        </form>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn btn-sm" th:attr="data-dialog='password-dialog-' + ${user.id}"><i data-lucide="key-round" class="size-4"></i>Passwort setzen</button>
+          <form th:if="${passkeyCounts[user.username] > 0}" th:action="@{/admin/benutzer/{id}/passkeys/loeschen(id=${user.id})}" method="post">
+            <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="size-4"></i>Passkeys entfernen</button>
+          </form>
+        </div>
+        <dialog class="modal" th:id="'password-dialog-' + ${user.id}" th:attr="aria-labelledby='password-dialog-' + ${user.id} + '-title'">
+          <div class="modal-box">
+            <div th:replace="~{fragments/dialog :: dialogTitle('password-dialog-' + ${user.id}, 'Neues Passwort für ' + ${user.displayName})}"></div>
+            <form th:action="@{/admin/benutzer/{id}/passwort(id=${user.id})}" method="post">
+              <div class="modal-body">
+                <label class="floating-label"><span>Neues Passwort</span>
+                  <input th:id="'password-' + ${user.id}" name="password" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
+                </label>
+                <label class="floating-label"><span>Neues Passwort wiederholen</span>
+                  <input th:id="'confirm-' + ${user.id}" name="confirm" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
+                </label>
+              </div>
+              <div class="modal-foot">
+                <button type="button" class="btn" data-close>Abbrechen</button>
+                <button type="submit" class="btn btn-primary"><i data-lucide="check" class="size-4"></i>Passwort setzen</button>
+              </div>
+            </form>
+          </div>
+          <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+        </dialog>
       </div>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3">
       <h2 class="font-semibold">Neuer Benutzer</h2>
       <form class="grid gap-3 sm:grid-cols-2" th:action="@{/admin/benutzer}" method="post">
         <label class="floating-label"><span>Benutzername</span>
@@ -45,13 +63,16 @@
         <label class="floating-label"><span>Passwort</span>
           <input id="new-password" name="password" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
         </label>
+        <label class="floating-label"><span>Passwort wiederholen</span>
+          <input id="new-confirm" name="confirm" type="password" class="input w-full" autocomplete="new-password" minlength="12" required>
+        </label>
         <label class="floating-label"><span>Rolle</span>
           <select id="new-role" name="role" class="select w-full">
             <option value="USER" selected>Benutzer</option>
             <option value="ADMIN">Admin</option>
           </select>
         </label>
-        <div class="sm:col-span-2"><button type="submit" class="btn btn-primary">Anlegen</button></div>
+        <div class="form-actions sm:col-span-2"><button type="submit" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Anlegen</button></div>
       </form>
     </section>
   </div>
