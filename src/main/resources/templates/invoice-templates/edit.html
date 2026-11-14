@@ -31,6 +31,12 @@
               <option th:each="format : ${formatOrder}" th:value="${format}" th:text="${formats.get(format)}">Format</option>
             </select>
           </label>
+          <label class="floating-label" th:if="${twoTaxNumbers}"><span>Tätigkeit</span>
+            <select id="template-activity" th:field="*{activity}" class="select w-full">
+              <option value="">Wie beim Kunden</option>
+              <option th:each="activity : ${activities}" th:value="${activity}" th:text="${activity.label()}">Unterricht</option>
+            </select>
+          </label>
           <label class="floating-label"><span>Zahlungsziel in Tagen</span>
             <input id="template-payment-days" th:field="*{paymentDays}" type="number" min="0" max="365" class="input w-full" required>
           </label>

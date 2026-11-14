@@ -16,6 +16,7 @@ import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -50,7 +51,7 @@ class TemplateServiceTest {
     private static InvoiceTemplate template(long customerId) {
         return new InvoiceTemplate(7L, customerId, "Kurs", InvoiceFormat.XRECHNUNG, 30, "Hallo", "Danke", "Steuerfrei.",
                 "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Kurs", false, new BigDecimal("24"),
-                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 0L);
+                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 0L, null);
     }
 
     private static LineForm row(String text, String amount) {
@@ -100,7 +101,10 @@ class TemplateServiceTest {
         form.setEmailBody("Anbei die Rechnung.");
         form.setTaxNote(null);
         form.getLines().add(row("Prüfung", "120"));
+        form.setActivity(Activity.TEACHING);
         InvoiceTemplate saved = service.save(2, 7, form);
+        assertThat(saved.activity()).isEqualTo(Activity.TEACHING);
+        assertThat(TemplateForm.of(saved).getActivity()).isEqualTo(Activity.TEACHING);
         assertThat(saved.name()).isEqualTo("Integrationskurs");
         assertThat(saved.intro()).isNull();
         assertThat(saved.closing()).isEqualTo("Danke");

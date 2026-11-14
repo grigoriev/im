@@ -95,7 +95,7 @@ public class TemplateService {
         InvoiceTemplate saved = templates.save(new InvoiceTemplate(null, customerId, DEFAULT_NAME, customer.format(),
                 InvoiceService.DEFAULT_PAYMENT_DAYS, InvoiceService.DEFAULT_INTRO, InvoiceService.DEFAULT_CLOSING,
                 notes.note(category), DEFAULT_SUBJECT, DEFAULT_BODY, List.of(TemplateLine.of(DraftLine.empty(category))),
-                clock.instant(), clock.instant(), null));
+                clock.instant(), clock.instant(), null, null));
         audit.add(AuditAction.TEMPLATE_CREATED, customer.name());
         return saved;
     }
@@ -143,7 +143,7 @@ public class TemplateService {
             return templates.save(new InvoiceTemplate(template.id(), customerId, form.getName().strip(),
                     form.getFormat(), form.getPaymentDays(), text(form.getIntro()), text(form.getClosing()),
                     text(form.getTaxNote()), text(form.getEmailSubject()), text(form.getEmailBody()), lines,
-                    template.createdAt(), clock.instant(), template.version()));
+                    template.createdAt(), clock.instant(), template.version(), form.getActivity()));
         } catch (OptimisticLockingFailureException _) {
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
         }

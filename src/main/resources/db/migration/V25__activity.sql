@@ -1,7 +1,9 @@
 -- The business of an invoice when teaching has a tax number of its own (docs/PLAN.md, section 6). A customer suggests
--- it, the draft keeps it, and the issue freezes it. NULL follows the lines: teaching only is TEACHING.
+-- it, a template overrides it, the draft keeps it, and the issue freezes it. NULL follows the lines: teaching only is TEACHING.
 ALTER TABLE customer ADD COLUMN activity VARCHAR(8) CHECK (activity IN ('TEACHING', 'OTHER'));
 ALTER TABLE invoice ADD COLUMN activity VARCHAR(8) CHECK (activity IN ('TEACHING', 'OTHER'));
+-- A template names the business of its drafts, ahead of the customer's.
+ALTER TABLE invoice_template ADD COLUMN activity VARCHAR(8) CHECK (activity IN ('TEACHING', 'OTHER'));
 
 CREATE OR REPLACE FUNCTION invoice_frozen() RETURNS trigger AS $$
 BEGIN

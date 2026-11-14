@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.seller.Activity;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +17,7 @@ public class TemplateForm {
     private String taxNote;
     private String emailSubject;
     private String emailBody;
+    private Activity activity;
     private List<LineForm> lines = new ArrayList<>();
 
     /**
@@ -35,8 +37,19 @@ public class TemplateForm {
         form.taxNote = template.taxNote();
         form.emailSubject = template.emailSubject();
         form.emailBody = template.emailBody();
+        form.activity = template.activity();
         form.lines = DraftForm.rows(template.lines().stream().map(TemplateLine::toDraftLine).toList());
         return form;
+    }
+
+    /** @return the business of its drafts, {@code null} for the one of the customer */
+    public Activity getActivity() {
+        return activity;
+    }
+
+    /** @param activity the business of its drafts, {@code null} for the one of the customer */
+    public void setActivity(Activity activity) {
+        this.activity = activity;
     }
 
     /** @return the version of the template that the form shows */

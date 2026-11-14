@@ -1,7 +1,7 @@
 package io.github.grigoriev.im.threshold;
 
-import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.Activity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;

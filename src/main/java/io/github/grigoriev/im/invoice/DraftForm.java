@@ -1,7 +1,7 @@
 package io.github.grigoriev.im.invoice;
 
-import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.seller.Activity;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;

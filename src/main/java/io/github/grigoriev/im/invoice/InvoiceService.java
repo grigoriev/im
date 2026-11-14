@@ -152,7 +152,8 @@ public class InvoiceService {
             draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, template.format(), today, today, today,
                     template.paymentDays(), customer.buyerReference(), template.intro(), template.closing(),
                     template.taxNote(), template.lines().stream().map(TemplateLine::toDraftLine).toList(),
-                    clock.instant(), clock.instant(), null, null, null, customer.activity());
+                    clock.instant(), clock.instant(), null, null, null,
+                    template.activity() != null ? template.activity() : customer.activity());
         }
         Invoice saved = invoices.save(draft);
         if (templateId != null) {

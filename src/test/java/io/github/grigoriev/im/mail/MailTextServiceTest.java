@@ -46,7 +46,7 @@ class MailTextServiceTest {
 
     private static InvoiceTemplate template(String subject, String body) {
         return new InvoiceTemplate(7L, 2L, "Lesung", InvoiceFormat.ZUGFERD_EN16931, 14, null, null, null, subject, body,
-                List.of(), Instant.EPOCH, Instant.EPOCH, 0L);
+                List.of(), Instant.EPOCH, Instant.EPOCH, 0L, null);
     }
 
     /** A statement per SQL that keeps its parameters, and a query that reads the settings map. */

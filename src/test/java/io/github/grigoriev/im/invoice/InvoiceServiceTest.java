@@ -74,7 +74,7 @@ class InvoiceServiceTest {
         return new Invoice(9L, draft.status(), draft.customerId(), draft.number(), draft.format(), draft.issueDate(),
                 draft.serviceFrom(), draft.serviceTo(), draft.paymentDays(), draft.buyerReference(), draft.intro(),
                 draft.closing(), draft.taxNote(), draft.lines(), draft.createdAt(), draft.updatedAt(), draft.version(),
-                draft.issuedAt(), draft.snapshot(), null);
+                draft.issuedAt(), draft.snapshot(), draft.activity());
     }
 
     private static Invoice draft(List<DraftLine> lines) {
@@ -141,7 +141,7 @@ class InvoiceServiceTest {
     void copiesATemplateOfTheCustomerIntoTheDraft() {
         InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_XRECHNUNG, 30, "Hallo {x}",
                 "Danke", "Steuerfrei.", "Betreff", "Text", List.of(new TemplateLine("Kurs", false, new BigDecimal("24"),
-                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L);
+                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L, null);
         when(templates.findById(7L)).thenReturn(Optional.of(template));
         Invoice created = service.createDraft(2, 7L);
         assertThat(created.format()).isEqualTo(InvoiceFormat.ZUGFERD_XRECHNUNG);
@@ -155,9 +155,16 @@ class InvoiceServiceTest {
         assertThat(created.version()).isNull();
         verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
         verify(repository).linkTemplate(9L, 7L);
+        assertThat(created.activity()).as("neither template nor customer names one").isNull();
+
+        InvoiceTemplate abroad = new InvoiceTemplate(7L, 2L, "Kurs in Taschkent", InvoiceFormat.ZUGFERD_EN16931, 30, null,
+                null, null, null, null, List.of(new TemplateLine("Kurs", true, BigDecimal.ONE, new BigDecimal("300"),
+                        TaxCategory.NOT_TAXABLE_ABROAD)), NOW, NOW, 4L, Activity.TEACHING);
+        when(templates.findById(7L)).thenReturn(Optional.of(abroad));
+        assertThat(service.createDraft(2, 7L).activity()).as("the template names the business").isEqualTo(Activity.TEACHING);
 
         when(templates.findById(8L)).thenReturn(Optional.of(new InvoiceTemplate(8L, 3L, "Fremd", InvoiceFormat.XRECHNUNG,
-                14, null, null, null, null, null, List.of(), NOW, NOW, 0L)));
+                14, null, null, null, null, null, List.of(), NOW, NOW, 0L, null)));
         assertThatThrownBy(() -> service.createDraft(2, 8L)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diese Vorlage gibt es nicht.");
         when(templates.findById(9L)).thenReturn(Optional.empty());
@@ -287,7 +294,7 @@ class InvoiceServiceTest {
         when(repository.templateId(5L)).thenReturn(null);
         assertThat(service.template(invoice)).isEmpty();
         InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_EN16931, 14, null, null,
-                null, "Betreff", "Text", List.of(), NOW, NOW, 0L);
+                null, "Betreff", "Text", List.of(), NOW, NOW, 0L, null);
         when(repository.templateId(5L)).thenReturn(7L);
         when(templates.findById(7L)).thenReturn(Optional.of(template));
         assertThat(service.template(invoice)).contains(template);

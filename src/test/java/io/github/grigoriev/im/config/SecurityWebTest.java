@@ -244,7 +244,7 @@ class SecurityWebTest {
         return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
                 null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, BigDecimal.ONE,
                         new BigDecimal("400"), TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH,
-                Instant.EPOCH, 0L);
+                Instant.EPOCH, 0L, null);
     }
 
     private static Invoice invoice(long id, InvoiceStatus status) {
@@ -1244,6 +1244,12 @@ class SecurityWebTest {
                 .andExpect(redirectedUrl("/invoices/5"));
         verify(invoices).saveDraft(eq(5L), saved.capture());
         assertThat(saved.getValue().getActivity()).isEqualTo(Activity.TEACHING);
+
+        when(templates.find(4, 7)).thenReturn(Optional.of(new InvoiceTemplate(7L, 4L, "Kurs", InvoiceFormat.ZUGFERD_EN16931,
+                14, null, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 0L, Activity.TEACHING)));
+        mvc.perform(get("/customers/4/templates/7").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"template-activity\"")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"TEACHING\" selected=\"selected\">Unterricht</option>")));
     }
 
     @Test

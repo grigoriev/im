@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.seller.Activity;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.data.annotation.Id;
@@ -26,6 +27,7 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param createdAt time of creation
  * @param updatedAt time of the last change
  * @param version counts the saves; a save with an older version is refused
+ * @param activity the business of its drafts with two tax numbers, {@code null} for the one of the customer
  */
 @Table("invoice_template")
 public record InvoiceTemplate(
@@ -42,7 +44,8 @@ public record InvoiceTemplate(
         @MappedCollection(idColumn = "template_id", keyColumn = "position") List<TemplateLine> lines,
         Instant createdAt,
         Instant updatedAt,
-        @Version Long version) {
+        @Version Long version,
+        Activity activity) {
 
     /** Copies the lines, so a stored template never shares a list. */
     public InvoiceTemplate {

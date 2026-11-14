@@ -71,6 +71,7 @@ Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontai
 - Technical names are English: URLs, request and form parameters, element IDs, CSS classes, code, database and JSON (decision 2026-11-14). What the user reads is German: texts, labels, messages and the names of downloaded files. German legal terms without an English equivalent stay as terms, for example `KLEINUNTERNEHMER`.
 - No em-dashes in code, comments, docs or commit messages. American spelling.
 - Buttons of a form or dialog sit on one line at its right edge (`form-actions`, `modal-foot`); a dialog grows wider instead of wrapping them, and only a phone, where it cannot, wraps them. Every button has an icon; destructive ones are `btn-danger`, their confirmation `btn-error`.
+- No fully qualified class names in code: import the class (decision 2026-11-14).
 - Amounts in `BigDecimal`, never `double`. Dates as `LocalDate`, time from an injected `Clock`.
 
 ## Reviews
