@@ -38,6 +38,31 @@ Sources are listed in section 13. Verify each item again before the go-live.
 5. Exempt revenue under §4 Nr. 11 to 29 does not count. Teaching under §4 Nr. 21 is in this range.
 6. Revenue not taxable in Germany does not count, for example B2B services to foreign customers.
 
+### Legal review (2026-11-14)
+
+Checked against the statutes, the official Anlage EÜR 2025 with its instructions and the BMF letters. Not legal advice.
+
+1. Invoices of §19 supplies follow §34a UStDV: names and addresses, tax number or VAT ID, date, quantity and kind,
+   total, and the note that the Kleinunternehmer exemption applies. The app shows all of them and more. The default
+   note now quotes the statute: "Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG)."
+2. Since 2025 §19 is a tax exemption. "Es wird keine Umsatzsteuer berechnet" names no exemption, so it was replaced.
+3. Teaching under §4 Nr. 21 is exempt on its own ground; its invoice carries the full §14 Abs. 4 details, which the
+   app shows, and the note "Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG" (§14 Abs. 4 Satz 1 Nr. 8).
+4. The exemption needs a certificate of the state authority (§4 Nr. 21 a bb) or teaching for a certified
+   institution (§4 Nr. 21 b). This is a fact of the business, outside the app.
+5. No duty to issue e-invoices: §34a UStDV for §19 supplies, §14 Abs. 2 for supplies exempt under §4 Nr. 8 to 29.
+6. "Gutschrift" means self-billing (§34a Nr. 6, §14 Abs. 2 Satz 5). The app calls a cancellation "Stornorechnung"
+   and never "Gutschrift"; type 381 is only the EN 16931 code.
+7. Anlage EÜR 2025: Zeile 12, Kz 111 holds all income of a Kleinunternehmer; Zeile 13, Kz 119 the part that is not
+   taxable or exempt under §19 Abs. 2 Satz 1 Nr. 1 und 2 sowie Satz 2. The label missed "sowie Satz 2" and has it now.
+   The form asks for one Anlage EÜR per business, which the two tax numbers produce.
+8. The income with which the threshold is crossed is already taxable (instructions to Zeile 12). The app counts by
+   payment and warns before the crossing.
+9. Retention of invoices: 8 years since 2025 (§14b UStG, §147 Abs. 3 AO). The backups keep yearly snapshots for 10.
+10. GoBD: `docs/verfahrensdokumentation.md` is the template of the process documentation.
+11. Services to businesses in other EU states: reverse charge with both VAT IDs (§14a), and a Zusammenfassende
+    Meldung, which needs a USt-IdNr. The app enforces the invoice side; the report to the BZSt is outside it.
+
 ## 3. Principles
 
 1. **Correct first.** No invoice leaves the system without a passed validation for its format (see section 4).
@@ -140,10 +165,10 @@ DRAFT -> ISSUED -> SENT -> PAID
 
 ### Tax categories
 
-| Category | Default tax note (verify) | EN 16931 code | Counts for §19 |
+| Category | Default tax note (checked 2026-11-14) | EN 16931 code | Counts for §19 |
 |---|---|---|---|
-| `KLEINUNTERNEHMER` | Gemäß § 19 UStG wird keine Umsatzsteuer berechnet. | E | yes |
-| `EXEMPT_4_21` | Steuerfrei gemäß § 4 Nr. 21 UStG. | E | no |
+| `KLEINUNTERNEHMER` | Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG). | E | yes |
+| `EXEMPT_4_21` | Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG. | E | no |
 | `REVERSE_CHARGE_EU` | Steuerschuldnerschaft des Leistungsempfängers. | AE | no |
 | `NOT_TAXABLE_ABROAD` | Nicht im Inland steuerbare Leistung. | O | no |
 | `STANDARD_19`, `STANDARD_7` | none, the PDF shows the VAT per rate | S | n/a |
@@ -354,16 +379,21 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 
 1. Does the public-sector customer need XRechnung and a Leitweg-ID? Ask the contact person.
    XRechnung is in scope either way.
-2. Foreign customers: invoice texts, USt-IdNr, Zusammenfassende Meldung. Verify before M6.
+2. Foreign customers: done, see "Legal review", items 11. The Zusammenfassende Meldung stays outside the app.
 3. Field mapping of the yearly report: done against the Anlage EÜR 2025 (Zeile 12, Kz 111: all Kleinunternehmer income;
-   Zeile 13, Kz 119: davon §19 Abs. 2 Satz 1 Nr. 1 und 2, for example §4 Nr. 21, and not taxable). Check the 2027 form when it appears.
-4. Final wording of the default tax notes.
+   Zeile 13, Kz 119: davon §19 Abs. 2 Satz 1 Nr. 1 und 2 sowie Satz 2, for example §4 Nr. 21, and not taxable). Check the 2027 form when it appears.
+4. Final wording of the default tax notes: done 2026-11-14, see "Legal review".
 
 ## 14. Sources
 
 - [e-Rechnung Bund: buyer reference (Leitweg-ID)](https://e-rechnung-bund.de/en/faq_category/buyer-reference/)
 - [§19 UStG, Haufe](https://www.haufe.de/id/norm/umsatzsteuergesetz-19-besteuerung-der-kleinunternehmer-HI847581_p19.html)
 - [Kleinunternehmerregelung, Handelskammer Hamburg](https://www.handelskammer-hamburg.de/recht-steuern/steuerrecht/umsatzsteuer-mehrwertsteuer/umsatzsteuer-mehrwertsteuer-national/kleinunternehmerregelung-6680502)
+- [§34a UStDV, Rechnungen von Kleinunternehmern](https://www.gesetze-im-internet.de/ustdv_1980/__34a.html)
+- [BMF, Anlage EÜR 2025 with instructions (29.08.2025)](https://www.steuerschroeder.de/blog/wp-content/uploads/2025/09/2025-08-29-anlage-EUER-2025.pdf)
+- [BMF letter on §19 UStG of 18.03.2025, summary DATEV](https://www.datev-magazin.de/nachrichten-steuern-recht/steuern/sonderregelung-fuer-kleinunternehmer-neufassung-des-%C2%A7-19-ustg-und-neueinfuehrung-des-%C2%A7-19a-ustg-durch-das-jstg-2024-zum-1-januar-2025-137875)
+- [§4 Nr. 21 UStG, certificate of the state authority, Bezirksregierung Köln](https://www.bra.nrw.de/system/files/media/document/file/merkblatt_zu_4_nr_21_a_bb_ustg.pdf)
+- [Retention of invoices, 8 years since 2025 (Haufe on §14b UStG)](https://www.haufe.de/id/kommentar/schwarzwidmannradeisen-ustg-14b-aufbewahrung-von-re-32-aufbewahrungsfrist-fuer-unternehmer-14b-abs1-s1-und-s3-ustg-HI16891562.html)
 - [Mustang Project](https://www.mustangproject.org/)
 - [veraPDF](https://verapdf.org/)
 - [KoSIT Validator](https://github.com/itplr-kosit/validator)

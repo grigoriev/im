@@ -43,7 +43,7 @@ class TemplateServiceTest {
     void defaults() {
         when(customers.find(2)).thenReturn(Optional.of(CustomerTestData.vhs().withId(2L)));
         when(invoices.defaultCategory()).thenReturn(TaxCategory.EXEMPT_4_21);
-        when(notes.note(TaxCategory.EXEMPT_4_21)).thenReturn("Steuerfrei gemäß § 4 Nr. 21 UStG.");
+        when(notes.note(TaxCategory.EXEMPT_4_21)).thenReturn("Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG.");
         when(repository.save(any())).thenAnswer(call -> call.getArgument(0));
     }
 
@@ -79,7 +79,7 @@ class TemplateServiceTest {
         assertThat(created.paymentDays()).isEqualTo(14);
         assertThat(created.intro()).isEqualTo(InvoiceService.DEFAULT_INTRO);
         assertThat(created.closing()).isEqualTo(InvoiceService.DEFAULT_CLOSING);
-        assertThat(created.taxNote()).isEqualTo("Steuerfrei gemäß § 4 Nr. 21 UStG.");
+        assertThat(created.taxNote()).isEqualTo("Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG.");
         assertThat(created.emailSubject()).isEqualTo("Rechnung {Rechnungsnummer}");
         assertThat(created.emailBody()).contains("{Leistungszeitraum}");
         assertThat(created.lines()).containsExactly(TemplateLine.of(DraftLine.empty(TaxCategory.EXEMPT_4_21)));

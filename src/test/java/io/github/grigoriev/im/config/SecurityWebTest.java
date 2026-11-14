@@ -457,7 +457,7 @@ class SecurityWebTest {
 
     @Test
     void keepsTheTaxNotesForTheAdmin() throws Exception {
-        when(taxNotes.notes()).thenReturn(Map.of(TaxCategory.EXEMPT_4_21, "Steuerfrei gemäß § 4 Nr. 21 UStG."));
+        when(taxNotes.notes()).thenReturn(Map.of(TaxCategory.EXEMPT_4_21, "Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG."));
         mvc.perform(get("/admin/tax-notes").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuerfreie Bildungsleistung (§ 4 Nr. 21 UStG)")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"note-EXEMPT_4_21\"")));
