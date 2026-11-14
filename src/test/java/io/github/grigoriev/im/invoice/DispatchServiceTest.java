@@ -81,7 +81,8 @@ class DispatchServiceTest {
         Dispatch saved = service.recordManual(5, form(ISSUED_ON, DispatchChannel.OWN_MAIL, null, "per Mail an Frau M."));
         assertThat(saved.note()).isEqualTo("per Mail an Frau M.");
         assertThat(saved.recipient()).isNull();
-        verify(audit).add(5L, AuditAction.INVOICE_SENT, "2027-01, 10.03.2027, Eigenes Mailprogramm");
+        verify(audit).add(5L, AuditAction.INVOICE_SENT,
+                "2027-01, 10.03.2027, Eigenes Mailprogramm, Notiz: per Mail an Frau M.");
     }
 
     @ParameterizedTest

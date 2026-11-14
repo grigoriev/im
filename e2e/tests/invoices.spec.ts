@@ -108,11 +108,12 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await page.getByText('Als versendet markieren…').click();
   await page.getByLabel('Weg').selectOption({ label: 'Post' });
   await page.getByLabel('Empfänger (optional)').fill('Buchhaltung');
+  await page.getByLabel('Notiz (optional)').fill('mit Begleitbrief');
   await page.getByRole('button', { name: 'Vermerken' }).click();
   await expect(page.getByRole('status')).toHaveText('Versand vermerkt.');
   await expect(page.locator('#invoice-status')).toHaveText('Versendet');
   await expect(page.locator('#invoice-history li').last()).toContainText('Versand vermerkt');
-  await expect(page.locator('#invoice-history li').last()).toContainText(', Post, Buchhaltung');
+  await expect(page.locator('#invoice-history li').last()).toContainText(', Post, Buchhaltung, Notiz: mit Begleitbrief');
 
   await page.goto('/rechnungen');
   const row = page.locator('#invoice-list li').filter({ hasText: customer });

@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Records the dispatches of an issued invoice (docs/PLAN.md, section 7). The first one moves the status from
- * {@code ISSUED} to {@code SENT}; a later status stays.
+ * {@code ISSUED} to {@code SENT}; a later status stays. The history of the invoice shows each dispatch with its note.
  */
 @Service
 public class DispatchService {
@@ -96,7 +96,8 @@ public class DispatchService {
                 AuditService.currentUser(), now));
         jdbc.sql(SENT).param("at", Timestamp.from(now)).param("id", invoiceId).update();
         audit.add(invoiceId, AuditAction.INVOICE_SENT, invoice.number() + ", " + GERMAN.format(sentOn) + ", "
-                + form.getChannel().label() + (recipient == null ? "" : ", " + recipient));
+                + form.getChannel().label() + (recipient == null ? "" : ", " + recipient)
+                + (note == null ? "" : ", Notiz: " + note));
         return saved;
     }
 
