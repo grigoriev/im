@@ -111,7 +111,7 @@ Not chosen:
 | `Invoice` | Number, status, format, title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, file name, content (in the database), SHA-256, size. Written once |
-| `Dispatch` | When, to whom, channel (`EMAIL_APP` or `MANUAL`), by which user, note |
+| `Dispatch` | When, to whom, channel (`EMAIL_APP`, or by hand: `OWN_MAIL`, `POST`, `PORTAL`, `IN_PERSON`), by which user, note. Written once |
 | `Payment` | Date, amount, note. A negative amount is a refund |
 | `NumberSequence` | Format pattern, year, last number |
 | `ThresholdBaseline` | Revenue counted for §19 in a year before the system existed |

@@ -97,6 +97,10 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
       );
       await expect(view.locator('#invoice-history')).toHaveScreenshot(`invoice-history-${viewport.name}-${scheme}.png`, masks);
       await expect(view.locator('#invoice-checks')).toHaveScreenshot(`invoice-checks-${viewport.name}-${scheme}.png`, masks);
+      await view.locator('#invoice-dispatch summary').click();
+      await expect(view.locator('#invoice-dispatch')).toHaveScreenshot(`invoice-dispatch-${viewport.name}-${scheme}.png`, {
+        mask: [view.locator('#dispatch-date')],
+      });
       await view.goto('/rechnungen');
       await expect(view.locator('#invoice-filter')).toHaveScreenshot(`invoice-filter-${viewport.name}-${scheme}.png`);
       await context.close();

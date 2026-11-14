@@ -95,7 +95,12 @@ public class AuditService {
                 invoiceId));
     }
 
-    static String currentUser() {
+    /**
+     * Returns the name of the logged-in user.
+     *
+     * @return the login name, {@code system} without a login
+     */
+    public static String currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
             return SYSTEM;

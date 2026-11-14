@@ -15,6 +15,9 @@ import io.github.grigoriev.im.einvoice.EInvoiceException;
 import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.invoice.DispatchChannel;
+import io.github.grigoriev.im.invoice.DispatchForm;
+import io.github.grigoriev.im.invoice.DispatchService;
 import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
@@ -50,7 +53,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /**
  * The issue against PostgreSQL with the real validators: the number, the snapshot, the documents, the rollback without
- * a gap and the immutability rules of the database. Each test uses its own year.
+ * a gap and the immutability rules of the database. Each test uses its own year. The dispatch test uses a past year:
+ * a dispatch is never in the future.
  */
 @SpringBootTest
 @Import(TestDatabase.class)
@@ -79,6 +83,9 @@ class IssueIT {
 
     @Autowired
     private AuditService audit;
+
+    @Autowired
+    private DispatchService dispatches;
 
     @MockitoSpyBean
     private EInvoiceService einvoices;
@@ -233,5 +240,30 @@ class IssueIT {
             }
         }
         assertThat(issued).containsExactlyInAnyOrder("2047-01", "2047-02", "2047-03", "2047-04");
+    }
+
+    @Test
+    void aDispatchMovesTheStatusOnceAndNeverChanges() {
+        Invoice draft = draft(verlag, LocalDate.of(2019, 4, 1));
+        long id = draft.id();
+        issues.issue(id, draft.version());
+        DispatchForm form = new DispatchForm();
+        form.setSentOn(LocalDate.of(2019, 4, 2));
+        form.setChannel(DispatchChannel.POST);
+        form.setRecipient("Buchhaltung");
+        long first = dispatches.recordManual(id, form).id();
+        assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.SENT);
+        form.setChannel(DispatchChannel.OWN_MAIL);
+        dispatches.recordManual(id, form);
+        assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.SENT);
+        assertThat(dispatches.list(id)).extracting(d -> d.channel())
+                .containsExactly(DispatchChannel.POST, DispatchChannel.OWN_MAIL);
+        assertThat(audit.history(id)).extracting(AuditEvent::action).containsExactly(AuditAction.DRAFT_CREATED,
+                AuditAction.INVOICE_ISSUED, AuditAction.INVOICE_SENT, AuditAction.INVOICE_SENT);
+        assertThat(audit.history(id).get(2).detail()).isEqualTo("2019-01, 02.04.2019, Post, Buchhaltung");
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE dispatch SET note = 'neu' WHERE id = ?", first))
+                .hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM dispatch WHERE id = ?", first)).hasMessageContaining("immutable");
     }
 }
