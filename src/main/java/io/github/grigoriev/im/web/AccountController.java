@@ -109,13 +109,13 @@ public class AccountController {
             @RequestParam String confirm, RedirectAttributes flash) {
         if (!password.equals(confirm)) {
             flash.addFlashAttribute(ERROR, AdminUserController.MISMATCH);
-            return BACK;
-        }
-        try {
-            users.changePassword(principal.getName(), current, password);
-            flash.addFlashAttribute(SUCCESS, "Passwort geändert.");
-        } catch (UserException e) {
-            flash.addFlashAttribute(ERROR, e.getMessage());
+        } else {
+            try {
+                users.changePassword(principal.getName(), current, password);
+                flash.addFlashAttribute(SUCCESS, "Passwort geändert.");
+            } catch (UserException e) {
+                flash.addFlashAttribute(ERROR, e.getMessage());
+            }
         }
         return BACK;
     }

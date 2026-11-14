@@ -22,6 +22,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/admin/benutzer")
 public class AdminUserController {
 
+    private static final String USERNAME = "username";
+    private static final String DISPLAY_NAME = "displayName";
+
     /** The problem when the two password fields differ. */
     static final String MISMATCH = "Die beiden Passwörter stimmen nicht überein.";
 
@@ -79,17 +82,17 @@ public class AdminUserController {
             RedirectAttributes flash) {
         if (!password.equals(confirm)) {
             flash.addFlashAttribute(ERROR, MISMATCH);
-            flash.addFlashAttribute("username", username);
-            flash.addFlashAttribute("displayName", displayName);
-            return BACK;
-        }
-        try {
-            users.create(username, displayName, password, role);
-            flash.addFlashAttribute(SUCCESS, "Benutzer „" + username + "“ angelegt.");
-        } catch (UserException e) {
-            flash.addFlashAttribute(ERROR, e.getMessage());
-            flash.addFlashAttribute("username", username);
-            flash.addFlashAttribute("displayName", displayName);
+            flash.addFlashAttribute(USERNAME, username);
+            flash.addFlashAttribute(DISPLAY_NAME, displayName);
+        } else {
+            try {
+                users.create(username, displayName, password, role);
+                flash.addFlashAttribute(SUCCESS, "Benutzer „" + username + "“ angelegt.");
+            } catch (UserException e) {
+                flash.addFlashAttribute(ERROR, e.getMessage());
+                flash.addFlashAttribute(USERNAME, username);
+                flash.addFlashAttribute(DISPLAY_NAME, displayName);
+            }
         }
         return BACK;
     }
@@ -127,13 +130,13 @@ public class AdminUserController {
             RedirectAttributes flash) {
         if (!password.equals(confirm)) {
             flash.addFlashAttribute(ERROR, MISMATCH);
-            return BACK;
-        }
-        try {
-            String username = users.resetPassword(id, password).username();
-            flash.addFlashAttribute(SUCCESS, "Neues Passwort für „" + username + "“ gesetzt.");
-        } catch (UserException e) {
-            flash.addFlashAttribute(ERROR, e.getMessage());
+        } else {
+            try {
+                String username = users.resetPassword(id, password).username();
+                flash.addFlashAttribute(SUCCESS, "Neues Passwort für „" + username + "“ gesetzt.");
+            } catch (UserException e) {
+                flash.addFlashAttribute(ERROR, e.getMessage());
+            }
         }
         return BACK;
     }
