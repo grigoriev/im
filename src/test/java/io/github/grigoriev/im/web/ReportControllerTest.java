@@ -2,6 +2,7 @@ package io.github.grigoriev.im.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
@@ -96,6 +97,6 @@ class ReportControllerTest {
         assertThat(zip.getHeaders().getContentDisposition().getFilename()).isEqualTo("Rechnungen_2027.zip");
         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
         zip.getBody().writeTo(out);
-        org.mockito.Mockito.verify(archive).write(2027, out);
+        verify(archive).write(2027, out);
     }
 }

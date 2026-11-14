@@ -7,7 +7,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.springframework.stereotype.Service;
@@ -51,16 +53,18 @@ public class ArchiveService {
                 .filter(invoice -> !invoice.isDraft() && invoice.issueDate().getYear() == year)
                 .sorted(Comparator.comparing(Invoice::issueDate).thenComparing(Invoice::id)).toList();
         StringBuilder contents = new StringBuilder().append((char) 0xFEFF).append(HEAD).append("\r\n");
+        Set<String> names = new HashSet<>();
         // Each new entry and the final close end the entry before.
         try (ZipOutputStream zip = new ZipOutputStream(out, StandardCharsets.UTF_8)) {
             for (Invoice invoice : issued) {
                 InvoiceDocument document = documents.restore(invoice.snapshot());
                 for (StoredDocument file : documents.list(invoice.id())) {
-                    zip.putNextEntry(new ZipEntry(file.filename()));
+                    String name = unique(names, file.filename(), invoice.id());
+                    zip.putNextEntry(new ZipEntry(name));
                     zip.write(file.content());
-                    contents.append(String.join(";", invoice.number(), GERMAN.format(invoice.issueDate()),
-                            quoted(document.buyer().name()), file.filename(), Integer.toString(file.size()),
-                            file.sha256())).append("\r\n");
+                    contents.append(String.join(";", quoted(invoice.number()), GERMAN.format(invoice.issueDate()),
+                            quoted(document.buyer().name()), name, Integer.toString(file.size()), file.sha256()))
+                            .append("\r\n");
                 }
             }
             zip.putNextEntry(new ZipEntry(CONTENTS));
@@ -68,6 +72,20 @@ public class ArchiveService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * Returns a file name not used in the ZIP yet. Two numbers can give the same name, for example "2027/11" and
+     * "2027-11": the second gets the invoice ID before its extension.
+     */
+    static String unique(Set<String> names, String filename, long invoiceId) {
+        String name = filename;
+        if (!names.add(name)) {
+            int dot = filename.lastIndexOf('.');
+            name = filename.substring(0, dot) + "_" + invoiceId + filename.substring(dot);
+            names.add(name);
+        }
+        return name;
     }
 
     /** A text field: quoted, with doubled quotes, and without a leading formula character. */

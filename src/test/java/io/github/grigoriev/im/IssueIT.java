@@ -95,6 +95,9 @@ class IssueIT {
     @Autowired
     private io.github.grigoriev.im.invoice.ArchiveService archive;
 
+    @Autowired
+    private io.github.grigoriev.im.threshold.ThresholdService threshold;
+
     @MockitoSpyBean
     private EInvoiceService einvoices;
 
@@ -156,6 +159,7 @@ class IssueIT {
                 .containsExactly(AuditAction.DRAFT_CREATED, AuditAction.INVOICE_ISSUED);
         assertThat(audit.history(draft.id() + 1000)).isEmpty();
 
+        assertThat(threshold.years()).as("a year with an issued invoice and no payment").contains(2043);
         java.io.ByteArrayOutputStream zip = new java.io.ByteArrayOutputStream();
         archive.write(2043, zip);
         java.util.Map<String, byte[]> entries = new java.util.LinkedHashMap<>();
@@ -166,9 +170,9 @@ class IssueIT {
             }
         }
         assertThat(entries.keySet()).containsExactly("Rechnung_2043-01.pdf", "Rechnung_2043-01.xml", "Inhalt.csv");
-        assertThat(entries.get("Rechnung_2043-01.pdf")).as("the archive holds the stored PDF").isEqualTo(files.get(0).content());
+        assertThat(entries).as("the archive holds the stored PDF").containsEntry("Rechnung_2043-01.pdf", files.get(0).content());
         assertThat(new String(entries.get("Inhalt.csv"), StandardCharsets.UTF_8))
-                .contains("2043-01;18.03.2043;\"Verlag am Fluss GmbH\";Rechnung_2043-01.pdf;" + files.get(0).size() + ";"
+                .contains("\"2043-01\";18.03.2043;\"Verlag am Fluss GmbH\";Rechnung_2043-01.pdf;" + files.get(0).size() + ";"
                         + files.get(0).sha256());
 
         SellerProfile original = SellerTestData.profile();

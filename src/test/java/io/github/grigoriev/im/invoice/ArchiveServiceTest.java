@@ -71,14 +71,33 @@ class ArchiveServiceTest {
         assertThat(entries.keySet()).as("by invoice date, then ID; drafts and other years stay out").containsExactly(
                 "Rechnung_2027-01.pdf", "Rechnung_2027-01.xml", "Rechnung_2027-02.pdf", "Rechnung_2027-03.xml",
                 "Inhalt.csv");
-        assertThat(entries).containsEntry("Rechnung_2027-01.pdf", "%PDF-1").containsEntry("Rechnung_2027-03.xml", "<x>3</x>");
-        assertThat(entries.get("Inhalt.csv")).isEqualTo("﻿" + ArchiveService.HEAD + "\r\n"
-                + "2027-01;10.01.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-01.pdf;6;sha-2027-01\r\n"
-                + "2027-01;10.01.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-01.xml;8;sha-2027-01\r\n"
-                + "2027-02;01.03.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-02.pdf;6;sha-2027-02\r\n"
-                + "2027-03;01.03.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-03.xml;8;sha-2027-03\r\n");
+        assertThat(entries).containsEntry("Rechnung_2027-01.pdf", "%PDF-1").containsEntry("Rechnung_2027-03.xml", "<x>3</x>")
+                .containsEntry("Inhalt.csv", String.valueOf((char) 0xFEFF) + ArchiveService.HEAD + "\r\n"
+                + "\"2027-01\";10.01.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-01.pdf;6;sha-2027-01\r\n"
+                + "\"2027-01\";10.01.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-01.xml;8;sha-2027-01\r\n"
+                + "\"2027-02\";01.03.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-02.pdf;6;sha-2027-02\r\n"
+                + "\"2027-03\";01.03.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-03.xml;8;sha-2027-03\r\n");
         verify(documents, never()).list(4);
         verify(documents, never()).list(5);
+    }
+
+    @Test
+    void twoNumbersWithTheSameFileNameStayApart() throws IOException {
+        Invoice slash = invoice(6, InvoiceStatus.ISSUED, "2027/11", LocalDate.of(2027, 2, 1));
+        Invoice hyphen = invoice(7, InvoiceStatus.ISSUED, "-2027-11", LocalDate.of(2027, 2, 2));
+        when(invoices.list()).thenReturn(List.of(slash, hyphen));
+        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.list(6)).thenReturn(List.of(new StoredDocument(60L, 6L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
+                new byte[] {1}, "a", 1, Instant.EPOCH)));
+        when(documents.list(7)).thenReturn(List.of(new StoredDocument(70L, 7L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
+                new byte[] {2}, "b", 1, Instant.EPOCH)));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        service.write(2027, out);
+        Map<String, String> entries = unzip(out.toByteArray());
+        assertThat(entries.keySet()).containsExactly("Rechnung_2027-11.pdf", "Rechnung_2027-11_7.pdf", "Inhalt.csv");
+        assertThat(entries.get("Inhalt.csv")).contains("\"2027/11\";01.02.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-11.pdf;")
+                .as("a number with a leading hyphen is no formula")
+                .contains("\"'-2027-11\";02.02.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-11_7.pdf;");
     }
 
     @Test
@@ -86,7 +105,7 @@ class ArchiveServiceTest {
         when(invoices.list()).thenReturn(List.of());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         service.write(2020, out);
-        assertThat(unzip(out.toByteArray())).containsExactly(Map.entry("Inhalt.csv", "﻿" + ArchiveService.HEAD
+        assertThat(unzip(out.toByteArray())).containsExactly(Map.entry("Inhalt.csv", String.valueOf((char) 0xFEFF) + ArchiveService.HEAD
                 + "\r\n"));
     }
 
