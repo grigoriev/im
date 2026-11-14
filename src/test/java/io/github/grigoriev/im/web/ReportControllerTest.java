@@ -2,6 +2,7 @@ package io.github.grigoriev.im.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
@@ -19,7 +20,8 @@ import org.springframework.ui.ExtendedModelMap;
 class ReportControllerTest {
 
     private final ThresholdService threshold = mock(ThresholdService.class);
-    private final ReportController controller = new ReportController(threshold);
+    private final io.github.grigoriev.im.invoice.ArchiveService archive = mock(io.github.grigoriev.im.invoice.ArchiveService.class);
+    private final ReportController controller = new ReportController(threshold, archive);
 
     private static RevenueRow row(String amount, String counted, String note) {
         BigDecimal value = new BigDecimal(amount);
@@ -86,5 +88,15 @@ class ReportControllerTest {
         assertThat(ReportController.field("")).isEqualTo("\"\"");
         assertThat(ReportController.field("Lesung")).isEqualTo("\"Lesung\"");
         assertThat(ReportController.number(new BigDecimal("1234567.5"))).isEqualTo("1234567,50");
+    }
+
+    @Test
+    void streamsTheArchiveOfAYear() throws Exception {
+        ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> zip = controller.zip(2027);
+        assertThat(zip.getHeaders().getContentType()).hasToString("application/zip");
+        assertThat(zip.getHeaders().getContentDisposition().getFilename()).isEqualTo("Rechnungen_2027.zip");
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        zip.getBody().writeTo(out);
+        verify(archive).write(2027, out);
     }
 }

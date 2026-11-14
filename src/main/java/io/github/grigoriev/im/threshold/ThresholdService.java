@@ -35,8 +35,11 @@ public class ThresholdService {
     static final String PAYMENTS = """
             SELECT p.paid_on, p.amount, p.note, i.number, i.snapshot FROM payment p JOIN invoice i ON i.id = p.invoice_id
              WHERE p.paid_on BETWEEN :from AND :to ORDER BY p.paid_on, p.id""";
-    static final String YEARS = "SELECT DISTINCT CAST(EXTRACT(YEAR FROM paid_on) AS INTEGER) FROM payment "
-            + "ORDER BY 1 DESC";
+    static final String YEARS = """
+            SELECT CAST(EXTRACT(YEAR FROM paid_on) AS INTEGER) FROM payment
+            UNION
+            SELECT CAST(EXTRACT(YEAR FROM issue_date) AS INTEGER) FROM invoice WHERE status <> 'DRAFT'
+            ORDER BY 1 DESC""";
     static final String BASELINES = "SELECT year, amount FROM threshold_baseline ORDER BY year DESC";
     static final String BASELINE = "SELECT amount FROM threshold_baseline WHERE year = :year";
     static final String SAVE = """
@@ -155,7 +158,8 @@ public class ThresholdService {
     }
 
     /**
-     * Returns the years of the reports: this year and every year with a payment, the newest first.
+     * Returns the years of the reports: this year, every year with a payment and every year with an issued invoice,
+     * the newest first.
      *
      * @return the years
      */

@@ -185,6 +185,12 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   const lines = (await csv.text()).split('\r\n').filter((line) => line.includes(number));
   expect(lines).toHaveLength(2);
   expect(lines.map((line) => line.split(';')[3]).sort()).toEqual(['150,00', '250,00']);
+  const zip = await page.request.get((await page.locator('#report-archive').getAttribute('href'))!);
+  expect(zip.headers()['content-type']).toBe('application/zip');
+  const bytes = await zip.body();
+  expect(bytes.subarray(0, 2).toString()).toBe('PK');
+  expect(bytes.includes(`Rechnung_${number}.pdf`), 'the ZIP names the PDF of the invoice').toBe(true);
+  expect(bytes.includes('Inhalt.csv')).toBe(true);
   await page.setViewportSize({ width: 375, height: 800 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth), 'the filled report fits a phone')
     .toBeLessThanOrEqual(375);
