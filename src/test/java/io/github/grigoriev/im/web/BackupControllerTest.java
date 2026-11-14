@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,6 +82,6 @@ class BackupControllerTest {
         RedirectAttributesModelMap unread = new RedirectAttributesModelMap();
         assertThat(controller.restore(broken, new MockHttpServletRequest(), unread)).isEqualTo("redirect:/admin/datensicherung");
         assertThat(flashOf(unread)).containsEntry("error", "Die Datei ließ sich nicht lesen.");
-        verify(sessions, org.mockito.Mockito.never()).renew();
+        verify(sessions, never()).renew();
     }
 }

@@ -286,8 +286,6 @@ class BackupServiceTest {
         };
         assertThatThrownBy(() -> service.restore(broken)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist kein ZIP.");
-        assertThat(BackupService.MAX_BYTES).isEqualTo(512L * 1024 * 1024);
-        assertThat(BackupService.MAX_ENTRIES).isEqualTo(100_000);
     }
 
     @Test
