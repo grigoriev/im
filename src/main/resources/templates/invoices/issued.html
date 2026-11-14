@@ -50,6 +50,27 @@
       </form>
     </details>
 
+    <details class="bg-base-100 rounded-box border border-base-300 p-5" id="invoice-payment">
+      <summary class="btn w-fit"><i data-lucide="banknote" class="size-4"></i>Zahlung erfassen…</summary>
+      <form class="mt-3 grid gap-3 @container" method="post" th:action="@{/rechnungen/{id}/zahlungen(id=${invoice.id})}">
+        <p class="text-sm text-base-content/75">Der Tag des Zahlungseingangs zählt für die EÜR und die Kleinunternehmergrenze.
+          Eine Rückzahlung oder Korrektur bekommt ein Minus, zum Beispiel -50,00.</p>
+        <div class="grid gap-3 @lg:grid-cols-3">
+          <label class="floating-label"><span>Zahlungseingang</span>
+            <input id="payment-date" name="paidOn" type="date" class="input w-full" required th:value="${today}" th:max="${today}">
+          </label>
+          <label class="floating-label"><span>Betrag in €</span>
+            <input id="payment-amount" name="amount" th:value="${payments.open().signum() > 0 ? #numbers.formatDecimal(payments.open(), 1, 'POINT', 2, 'COMMA') : ''}"
+                   class="input w-full num" inputmode="decimal" required maxlength="20">
+          </label>
+          <label class="floating-label"><span>Notiz (optional)</span>
+            <input id="payment-note" name="note" class="input w-full" maxlength="500">
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary w-fit" id="payment-save"><i data-lucide="check" class="size-4"></i>Erfassen</button>
+      </form>
+    </details>
+
     <div class="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
       <div class="grid gap-4 content-start min-w-0">
         <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="invoice-history">
@@ -90,6 +111,23 @@
       </div>
 
       <aside class="grid gap-4 content-start min-w-0">
+        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-payments">
+          <h2 class="font-semibold">Zahlungen</h2>
+          <p class="text-base-content/75" th:if="${payments.entries().isEmpty()}">Noch keine Zahlung.</p>
+          <ul class="grid gap-1" th:unless="${payments.entries().isEmpty()}">
+            <li th:each="payment : ${payments.entries()}" class="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 items-baseline">
+              <span class="num" th:text="${#temporals.format(payment.paidOn(), 'dd.MM.yyyy')}">18.03.2027</span>
+              <span class="text-xs text-base-content/75 [overflow-wrap:anywhere]" th:text="${payment.note()}">Notiz</span>
+              <span class="num text-right" th:text="${#numbers.formatDecimal(payment.amount(), 1, 'POINT', 2, 'COMMA')} + ' €'">400,00 €</span>
+            </li>
+          </ul>
+          <dl class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-t border-base-300 pt-2">
+            <dt>Bezahlt</dt><dd class="num text-right" id="payments-paid" th:text="${#numbers.formatDecimal(payments.paid(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+            <dt class="font-semibold" th:text="${payments.open().signum() < 0 ? 'Überzahlt' : 'Offen'}">Offen</dt>
+            <dd class="num text-right font-semibold" id="payments-open" th:text="${#numbers.formatDecimal(payments.open().abs(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+          </dl>
+        </section>
+
         <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-checks">
           <h2 class="font-semibold">Prüfung</h2>
           <p class="flex items-start gap-2" th:if="${document.format().isPdf()}"><i data-lucide="circle-check" class="size-4 text-success shrink-0 mt-0.5"></i>

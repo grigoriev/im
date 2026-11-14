@@ -27,6 +27,8 @@ import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.PaymentForm;
+import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerProfile;
@@ -86,6 +88,9 @@ class IssueIT {
 
     @Autowired
     private DispatchService dispatches;
+
+    @Autowired
+    private PaymentService payments;
 
     @MockitoSpyBean
     private EInvoiceService einvoices;
@@ -270,5 +275,38 @@ class IssueIT {
         assertThatThrownBy(() -> jdbc.update("UPDATE dispatch SET note = 'neu' WHERE id = ?", first))
                 .hasMessageContaining("immutable");
         assertThatThrownBy(() -> jdbc.update("DELETE FROM dispatch WHERE id = ?", first)).hasMessageContaining("immutable");
+    }
+
+    private static PaymentForm payment(LocalDate paidOn, String amount) {
+        PaymentForm form = new PaymentForm();
+        form.setPaidOn(paidOn);
+        form.setAmount(amount);
+        return form;
+    }
+
+    @Test
+    void paymentsMoveTheStatusAndNeverChange() {
+        Invoice draft = draft(verlag, LocalDate.of(2018, 5, 2));
+        long id = draft.id();
+        issues.issue(id, draft.version());
+        LocalDate day = LocalDate.of(2018, 5, 20);
+        assertThat(payments.add(id, payment(day, "150,00"))).isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(payments.add(id, payment(day, "250,00"))).isEqualTo(InvoiceStatus.PAID);
+        assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.PAID);
+        assertThat(payments.add(id, payment(day, "-50,00"))).as("a refund reopens it").isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.ISSUED);
+        PaymentService.Payments summary = payments.summary(invoices.find(id).orElseThrow());
+        assertThat(summary.entries()).hasSize(3);
+        assertThat(summary.paid()).isEqualByComparingTo("350.00");
+        assertThat(summary.open()).isEqualByComparingTo("50.00");
+        assertThat(audit.history(id)).extracting(AuditEvent::action).containsSubsequence(AuditAction.INVOICE_ISSUED,
+                AuditAction.PAYMENT_RECORDED, AuditAction.PAYMENT_RECORDED, AuditAction.PAYMENT_RECORDED);
+
+        long first = summary.entries().getFirst().id();
+        assertThatThrownBy(() -> jdbc.update("UPDATE payment SET amount = 1 WHERE id = ?", first))
+                .hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM payment WHERE id = ?", first)).hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO payment (invoice_id, paid_on, amount, username, created_at) "
+                + "VALUES (?, '2018-05-21', 0, 'x', now())", id)).hasMessageContaining("check");
     }
 }

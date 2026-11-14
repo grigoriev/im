@@ -1,15 +1,11 @@
 package io.github.grigoriev.im.web;
 
-import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentKind;
-import io.github.grigoriev.im.invoice.DispatchChannel;
-import io.github.grigoriev.im.invoice.DispatchForm;
-import io.github.grigoriev.im.invoice.DispatchService;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.Invoice;
@@ -21,7 +17,6 @@ import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -46,7 +41,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * The page "Rechnungen": the list with its filters, a new draft for a customer, the editor of a draft, the issue, and
- * the page of an issued invoice with its history and documents. Both roles use it.
+ * the page of an issued invoice ({@link IssuedInvoicePage}). Both roles use it.
  */
 @Controller
 @RequestMapping("/rechnungen")
@@ -64,10 +59,6 @@ public class InvoiceController {
             TaxCategory.NOT_TAXABLE_ABROAD, "Nicht steuerbar, Ausland",
             TaxCategory.STANDARD_19, "19 % Umsatzsteuer",
             TaxCategory.STANDARD_7, "7 % Umsatzsteuer");
-
-    /** The Lucide icon of an entry in the history of an invoice, by action. */
-    static final Map<String, String> HISTORY_ICONS = Map.of("DRAFT_CREATED", "file-plus", "INVOICE_ISSUED", "stamp",
-            "INVOICE_SENT", "send");
 
     private static final String SUCCESS = "success";
     private static final String ERROR = "error";
@@ -89,8 +80,7 @@ public class InvoiceController {
     private final DocumentStore documents;
     private final CustomerService customers;
     private final InvoicePdfRenderer pdf;
-    private final AuditService audit;
-    private final DispatchService dispatches;
+    private final IssuedInvoicePage issuedPage;
 
     /**
      * Creates the controller.
@@ -100,18 +90,16 @@ public class InvoiceController {
      * @param documents the documents and snapshots of issued invoices
      * @param customers the customers for a new draft
      * @param pdf renders the preview
-     * @param audit the history of an invoice
-     * @param dispatches records a dispatch
+     * @param issuedPage fills the page of an issued invoice
      */
     public InvoiceController(InvoiceService invoices, IssueService issues, DocumentStore documents,
-            CustomerService customers, InvoicePdfRenderer pdf, AuditService audit, DispatchService dispatches) {
+            CustomerService customers, InvoicePdfRenderer pdf, IssuedInvoicePage issuedPage) {
         this.invoices = invoices;
         this.issues = issues;
         this.documents = documents;
         this.customers = customers;
         this.pdf = pdf;
-        this.audit = audit;
-        this.dispatches = dispatches;
+        this.issuedPage = issuedPage;
     }
 
     /**
@@ -270,31 +258,6 @@ public class InvoiceController {
     }
 
     /**
-     * Records a dispatch the user did outside the app.
-     *
-     * @param id the ID
-     * @param form the entered values
-     * @param binding problems of the binding, for example a broken date
-     * @param flash messages for the next page
-     * @return a redirect to the invoice
-     */
-    @PostMapping("/{id}/versand")
-    public String dispatch(@PathVariable long id, @ModelAttribute DispatchForm form, BindingResult binding,
-            RedirectAttributes flash) {
-        if (binding.hasErrors()) {
-            flash.addFlashAttribute(ERROR, "Bitte gültige Daten eingeben, zum Beispiel ein Datum.");
-            return TO_INVOICE + id;
-        }
-        try {
-            dispatches.recordManual(id, form);
-            flash.addFlashAttribute(SUCCESS, "Versand vermerkt.");
-        } catch (InvoiceException e) {
-            flash.addFlashAttribute(ERROR, e.getMessage());
-        }
-        return TO_INVOICE + id;
-    }
-
-    /**
      * Downloads a document of an issued invoice, byte for byte as it was issued.
      *
      * @param id the ID
@@ -341,11 +304,7 @@ public class InvoiceController {
         model.addAttribute("document", document.orElse(null));
         model.addAttribute("formats", CustomerController.FORMATS);
         if (!invoice.isDraft()) {
-            model.addAttribute("documents", documents.list(invoice.id()));
-            model.addAttribute("history", audit.history(invoice.id()));
-            model.addAttribute("icons", HISTORY_ICONS);
-            model.addAttribute("today", dispatches.today());
-            model.addAttribute("channels", Arrays.stream(DispatchChannel.values()).filter(DispatchChannel::isManual).toList());
+            issuedPage.fill(model, invoice);
             return ISSUED;
         }
         model.addAttribute("form", form);
