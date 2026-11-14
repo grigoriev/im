@@ -98,7 +98,7 @@ public class ReportController {
      */
     @GetMapping("/zahlungen.csv")
     public ResponseEntity<byte[]> csv(@RequestParam int jahr) {
-        StringBuilder csv = new StringBuilder("﻿").append(CSV_HEAD).append("\r\n");
+        StringBuilder csv = new StringBuilder().append(BOM).append(CSV_HEAD).append("\r\n");
         for (RevenueRow row : threshold.rows(jahr)) {
             csv.append(String.join(";", GERMAN.format(row.paidOn()), field(row.number()), field(row.customer()),
                     number(row.amount()), number(row.counted()), number(row.excluded()), field(row.note())))

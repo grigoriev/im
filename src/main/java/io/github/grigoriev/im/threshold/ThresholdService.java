@@ -208,31 +208,51 @@ public class ThresholdService {
     }
 
     /**
-     * Splits one payment by the lines of its invoice, to the cent: the §19 part is rounded once, the rest goes to the
-     * other categories in proportion, and the last of them (in the order of the enum) takes the rounding remainder.
-     * For an invoice with VAT that is a standard rate, which so carries the VAT too.
+     * Splits one payment by the lines of its invoice, to the cent. Each category weighs with its gross amount, its net
+     * lines plus the VAT of its rate. The largest-remainder method hands out the cents: the parts add up to the
+     * payment, and none takes the other sign. The §19 part is what {@code KLEINUNTERNEHMER} gets.
      */
     static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document) {
         Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
-        BigDecimal counted = BigDecimal.ZERO.setScale(CENTS);
         if (document.total().signum() != 0) {
-            counted = amount.multiply(countedLines(document)).divide(document.total(), CENTS, RoundingMode.HALF_UP);
-            Map<TaxCategory, BigDecimal> nets = new EnumMap<>(TaxCategory.class);
-            document.lines().forEach(line -> nets.merge(line.category(), line.netAmount(), BigDecimal::add));
-            List<TaxCategory> rest = nets.keySet().stream().filter(category -> !category.countsForThreshold()).toList();
-            if (nets.containsKey(TaxCategory.KLEINUNTERNEHMER)) {
-                byCategory.put(TaxCategory.KLEINUNTERNEHMER, counted);
-            }
-            BigDecimal left = amount.subtract(counted);
-            for (int i = 0; i < rest.size(); i++) {
-                BigDecimal part = i == rest.size() - 1 ? left
-                        : amount.multiply(nets.get(rest.get(i))).divide(document.total(), CENTS, RoundingMode.HALF_UP);
-                byCategory.put(rest.get(i), part);
-                left = left.subtract(part);
-            }
+            byCategory.putAll(split(amount, gross(document), document.total()));
         }
+        BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS));
         return new RevenueRow(paidOn, number, document.buyer().name(), amount, counted, amount.subtract(counted),
                 byCategory, note);
+    }
+
+    /** The gross amount per category: its net lines plus, for a standard rate, the VAT of that rate. */
+    static Map<TaxCategory, BigDecimal> gross(InvoiceDocument document) {
+        Map<TaxCategory, BigDecimal> gross = new EnumMap<>(TaxCategory.class);
+        document.lines().forEach(line -> gross.merge(line.category(), line.netAmount(), BigDecimal::add));
+        document.vatAmounts().forEach(vat -> gross.keySet().stream()
+                .filter(category -> category.chargesVat() && category.rate().compareTo(vat.rate()) == 0)
+                .findFirst().ifPresent(category -> gross.merge(category, vat.vat(), BigDecimal::add)));
+        return gross;
+    }
+
+    /** Splits an amount by weights with the largest-remainder method, in cents. */
+    static Map<TaxCategory, BigDecimal> split(BigDecimal amount, Map<TaxCategory, BigDecimal> weights,
+            BigDecimal total) {
+        BigDecimal cents = amount.abs().movePointRight(CENTS);
+        Map<TaxCategory, BigDecimal> floors = new EnumMap<>(TaxCategory.class);
+        Map<TaxCategory, BigDecimal> remainders = new EnumMap<>(TaxCategory.class);
+        weights.forEach((category, weight) -> {
+            BigDecimal exact = cents.multiply(weight).divide(total, 10, RoundingMode.HALF_UP);
+            BigDecimal floor = exact.setScale(0, RoundingMode.FLOOR);
+            floors.put(category, floor);
+            remainders.put(category, exact.subtract(floor));
+        });
+        int left = cents.subtract(floors.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add)).intValueExact();
+        // The biggest remainders get one cent each; a tie keeps the order of the enum.
+        remainders.entrySet().stream()
+                .sorted(Map.Entry.<TaxCategory, BigDecimal>comparingByValue().reversed())
+                .limit(left).forEach(entry -> floors.merge(entry.getKey(), BigDecimal.ONE, BigDecimal::add));
+        Map<TaxCategory, BigDecimal> parts = new EnumMap<>(TaxCategory.class);
+        floors.forEach((category, floor) -> parts.put(category,
+                floor.multiply(BigDecimal.valueOf(amount.signum())).movePointLeft(CENTS).setScale(CENTS)));
+        return parts;
     }
 
     /** The amount of the lines that count for §19. */

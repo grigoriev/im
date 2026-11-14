@@ -71,7 +71,7 @@ class ReportControllerTest {
         ResponseEntity<byte[]> csv = controller.csv(2027);
         assertThat(csv.getHeaders().getContentType()).hasToString("text/csv;charset=UTF-8");
         assertThat(csv.getHeaders().getContentDisposition().getFilename()).isEqualTo("Zahlungen_2027.csv");
-        assertThat(new String(csv.getBody(), StandardCharsets.UTF_8)).isEqualTo("\uFEFF" + ReportController.CSV_HEAD
+        assertThat(new String(csv.getBody(), StandardCharsets.UTF_8)).isEqualTo(ReportController.BOM + ReportController.CSV_HEAD
                 + "\r\n18.03.2027;\"2027-01\";\"Verlag \"\"am\"\" Fluss\";1234,50;1234,50;0,00;\"'=SUMME(A1)\"\r\n"
                 + "18.03.2027;\"2027-01\";\"Verlag \"\"am\"\" Fluss\";-80,00;-80,00;0,00;\r\n");
     }

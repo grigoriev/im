@@ -91,6 +91,15 @@ public final class SampleInvoices {
                 line("Lehrbuch", "2", "19.90", TaxCategory.STANDARD_19));
     }
 
+    /** Four categories: 34 € §4 Nr. 21, 34 € reverse charge, 31 € at 19 % and 1 € at 7 %, total 105,96 €. */
+    public static InvoiceDocument fourWays(InvoiceFormat format) {
+        return invoice(SELLER_EU, DUTCH, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                lump("Unterricht", "34.00", TaxCategory.EXEMPT_4_21),
+                lump("Workshop", "34.00", TaxCategory.REVERSE_CHARGE_EU),
+                lump("Lehrbuch", "31.00", TaxCategory.STANDARD_19),
+                lump("Zeitschrift", "1.00", TaxCategory.STANDARD_7));
+    }
+
     /** A free §19 line: total 0,00 €. */
     public static InvoiceDocument free(InvoiceFormat format) {
         return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,

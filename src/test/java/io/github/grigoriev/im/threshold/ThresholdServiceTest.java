@@ -212,6 +212,23 @@ class ThresholdServiceTest {
                 .as("the VAT goes with the standard rate").containsEntry(TaxCategory.STANDARD_19, new BigDecimal("6.17"));
         assertThat(parts(books)).isEqualByComparingTo("100.00");
 
+        RevenueRow sale = split("146.33", SampleInvoices.sale(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(sale.byCategory()).as("each rate with its own VAT")
+                .containsEntry(TaxCategory.STANDARD_19, new BigDecimal("66.40"))
+                .containsEntry(TaxCategory.STANDARD_7, new BigDecimal("79.93"));
+        RevenueRow cents = split("0.02", SampleInvoices.fourWays(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(cents.byCategory().values()).as("no negative part of a positive payment")
+                .allSatisfy(part -> assertThat(part.signum()).isNotNegative());
+        assertThat(parts(cents)).isEqualByComparingTo("0.02");
+        RevenueRow back = split("-0.02", SampleInvoices.fourWays(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(back.byCategory().values()).allSatisfy(part -> assertThat(part.signum()).isNotPositive());
+        assertThat(parts(back)).isEqualByComparingTo("-0.02");
+        RevenueRow four = split("105.96", SampleInvoices.fourWays(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(four.byCategory()).containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("34.00"))
+                .containsEntry(TaxCategory.REVERSE_CHARGE_EU, new BigDecimal("34.00"))
+                .containsEntry(TaxCategory.STANDARD_19, new BigDecimal("36.89"))
+                .containsEntry(TaxCategory.STANDARD_7, new BigDecimal("1.07"));
+
         RevenueRow reading = split("480.00", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         assertThat(reading.byCategory()).containsExactly(java.util.Map.entry(TaxCategory.KLEINUNTERNEHMER,
                 new BigDecimal("480.00")));
