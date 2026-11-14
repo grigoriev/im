@@ -280,9 +280,9 @@ public class InvoiceService {
         }
     }
 
-    private static Party withTaxNumber(Party party, String taxNumber) {
+    private static Party withTaxIds(Party party, Party original) {
         return new Party(party.name(), party.street(), party.postcode(), party.city(), party.countryCode(), party.email(),
-                party.phone(), party.contactName(), taxNumber, party.vatId());
+                party.phone(), party.contactName(), original.taxNumber(), original.vatId());
     }
 
     /** An invoice of teaching only names the tax number for teaching, if the seller has one. */
@@ -361,10 +361,10 @@ public class InvoiceService {
         Optional<Invoice> original = cancelled(invoice);
         InvoiceReference cancels = original
                 .map(cancelled -> new InvoiceReference(cancelled.number(), cancelled.issueDate())).orElse(null);
-        // A Stornorechnung names the tax number of the invoice it cancels, even if the profile changed since.
+        // A Stornorechnung names the tax number and VAT ID of the invoice it cancels, even if the profile changed since.
         Party sellerParty = seller.toParty(teachingOnly(invoice));
         if (original.isPresent()) {
-            sellerParty = withTaxNumber(sellerParty, documents.restore(original.get().snapshot()).seller().taxNumber());
+            sellerParty = withTaxIds(sellerParty, documents.restore(original.get().snapshot()).seller());
         }
         return Optional.of(new InvoiceDocument(number, invoice.issueDate(), invoice.serviceFrom(),
                 invoice.serviceTo(), invoice.dueDate(), sellerParty, customer.toParty(),

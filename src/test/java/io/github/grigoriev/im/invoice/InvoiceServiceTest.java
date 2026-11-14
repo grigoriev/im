@@ -678,6 +678,11 @@ class InvoiceServiceTest {
         assertThat(service.problems(storno)).as("an invoice from before the second tax number may mix").isEmpty();
         assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice")
                 .isEqualTo("143/123/45678");
+        InvoiceDocument withVatId = io.github.grigoriev.im.einvoice.ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
+        when(documents.restore("{}")).thenReturn(withVatId);
+        assertThat(service.document(storno).orElseThrow().seller()).as("both tax IDs of the cancelled invoice")
+                .extracting(io.github.grigoriev.im.einvoice.Party::taxNumber, io.github.grigoriev.im.einvoice.Party::vatId)
+                .containsExactly(withVatId.seller().taxNumber(), withVatId.seller().vatId());
     }
 
     @Test

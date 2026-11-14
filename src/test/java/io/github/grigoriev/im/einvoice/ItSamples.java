@@ -44,4 +44,15 @@ public final class ItSamples {
                 document.iban(), document.bic(), document.intro(), document.closing(), document.taxNote(),
                 document.format(), document.lines(), document.cancels());
     }
+
+    /**
+     * Returns an invoice of the seller with a VAT ID.
+     *
+     * @param format the format
+     * @return the invoice
+     */
+    public static InvoiceDocument reverseCharge(InvoiceFormat format) {
+        return SampleInvoices.invoice(SampleInvoices.SELLER_EU, SampleInvoices.DUTCH, null, format,
+                SampleInvoices.lump("Workshop", "500.00", TaxCategory.REVERSE_CHARGE_EU));
+    }
 }
