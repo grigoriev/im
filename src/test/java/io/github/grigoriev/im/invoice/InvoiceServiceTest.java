@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -478,7 +479,7 @@ class InvoiceServiceTest {
     @Test
     void reportsAConcurrentSaveAsAFormProblem() {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
-        org.mockito.Mockito.doThrow(new org.springframework.dao.OptimisticLockingFailureException("race")).when(repository)
+        doThrow(new org.springframework.dao.OptimisticLockingFailureException("race")).when(repository)
                 .save(any());
         DraftForm form = form();
         InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));

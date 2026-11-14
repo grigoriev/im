@@ -663,6 +663,8 @@ class SecurityWebTest {
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Unveränderbar seit")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung 2027-10")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "min-w-0 [overflow-wrap:anywhere]\" id=\"invoice-number\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Verlag am Fluss GmbH · 480,00 € · fällig am")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Entwurf angelegt")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 09:00")))
@@ -679,6 +681,9 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Rechnung ausstellen…"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Entwurf löschen"))));
         verify(invoices, never()).problems(issued);
+        when(audit.history(6)).thenReturn(List.of());
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Einträge.")));
         when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
                 InvoiceFormat.XRECHNUNG));
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))

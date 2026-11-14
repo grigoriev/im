@@ -11,7 +11,7 @@
     <a th:href="@{/rechnungen}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
     <div>
       <div class="flex flex-wrap items-center gap-2">
-        <h1 class="text-2xl font-semibold tracking-tight num" id="invoice-number"
+        <h1 class="text-2xl font-semibold tracking-tight num min-w-0 [overflow-wrap:anywhere]" id="invoice-number"
             th:text="'Rechnung ' + ${document.number()}">Rechnung 2027-01</h1>
         <span class="badge badge-ghost" id="invoice-status" th:text="${invoice.status.label}">Ausgestellt</span>
       </div>
@@ -29,7 +29,8 @@
       <div class="grid gap-4 content-start min-w-0">
         <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="invoice-history">
           <h2 class="font-semibold">Verlauf</h2>
-          <ol class="grid">
+          <p class="text-sm text-base-content/75" th:if="${history.isEmpty()}">Keine Einträge.</p>
+          <ol class="grid" th:unless="${history.isEmpty()}">
             <li th:each="event : ${history}" class="grid grid-cols-[auto_minmax(0,1fr)] gap-3 py-2 border-b border-base-300 last:border-b-0">
               <span class="grid place-items-center size-7 rounded-full bg-base-200">
                 <i th:attr="data-lucide=${event.action.name() == 'INVOICE_ISSUED' ? 'stamp' : 'file-plus'}" data-lucide="stamp" class="size-3.5"></i>
