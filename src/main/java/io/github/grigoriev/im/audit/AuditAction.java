@@ -50,7 +50,9 @@ public enum AuditAction {
     /** An invoice was issued with its number and documents. */
     INVOICE_ISSUED("Rechnung ausgestellt"),
     /** A dispatch of an invoice was recorded. */
-    INVOICE_SENT("Versand vermerkt");
+    INVOICE_SENT("Versand vermerkt"),
+    /** A payment or a refund of an invoice was recorded. */
+    PAYMENT_RECORDED("Zahlung erfasst");
 
     private final String label;
 

@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Payments: "Zahlung erfassen" records the day the money came in, the amount (German style, the open amount by default) and a note. A negative amount is a refund or a correction. The invoice is "Bezahlt" while the payments cover the total, and goes back to "Versendet" or "Ausgestellt" after a refund. A cancelled invoice takes refunds only. Payments are written once and show in the history and in "Zahlungen" with the paid and open amount.
 - Dispatch by hand: "Als versendet markieren" records the day, the way (own mail program, post, portal, in person), the recipient and a note. The first dispatch moves an issued invoice to "Versendet"; every dispatch shows in its history, with its note. The history shows the detail of each entry.
 - Invoice page: an issued invoice shows its number, status, customer, total and due date, its history (draft created, issued, by whom and when), its documents and the checks it passed. The list filters by year, status and a part of the customer's name or the number.
 - Issue: "Rechnung ausstellen" gives a complete draft its number, freezes it with seller and buyer, and stores the validated PDF and XML with their SHA-256 in the database. A failed validation keeps the draft and its number free. An issued invoice shows its data and downloads its documents; the database refuses any change. A number pattern whose next number exists is refused.

@@ -13,4 +13,12 @@ interface DispatchRepository extends ListCrudRepository<Dispatch, Long> {
      * @return its dispatches, oldest first
      */
     List<Dispatch> findByInvoiceIdOrderBySentOnAscIdAsc(long invoiceId);
+
+    /**
+     * Tells whether an invoice went out at least once.
+     *
+     * @param invoiceId the invoice
+     * @return {@code true} if it has a dispatch
+     */
+    boolean existsByInvoiceId(long invoiceId);
 }

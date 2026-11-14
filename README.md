@@ -14,6 +14,7 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
 - Kleinunternehmer rules (§19 UStG) with tax-exempt teaching (§4 Nr. 21 UStG), and threshold tracking.
 - Regular VAT at 19 % and 7 % for every other business, for example the sale of goods, with the VAT per rate.
 - Customer templates, immutable issued invoices, sending by e-mail or a manual dispatch record.
+- Payments and refunds by the day the money came in, which the income report and the threshold use.
 - Issued PDF and XML stay in the database with their SHA-256, so one `pg_dump` backs up everything.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
 - Runs as a container with PostgreSQL in a home network.

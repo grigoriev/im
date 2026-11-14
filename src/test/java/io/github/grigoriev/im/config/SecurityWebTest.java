@@ -64,6 +64,8 @@ import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.web.AccountController;
 import io.github.grigoriev.im.web.TemplateController;
 import io.github.grigoriev.im.web.InvoiceController;
+import io.github.grigoriev.im.web.InvoiceRecordsController;
+import io.github.grigoriev.im.web.IssuedInvoicePage;
 import io.github.grigoriev.im.web.AuditController;
 import io.github.grigoriev.im.web.CountryController;
 import io.github.grigoriev.im.web.CustomerController;
@@ -91,8 +93,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
-        AuditController.class, InvoiceController.class, TemplateController.class})
-@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class})
+        AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class})
+@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 
@@ -154,6 +156,15 @@ class SecurityWebTest {
 
     @MockitoBean
     private io.github.grigoriev.im.invoice.DispatchService dispatches;
+
+    @MockitoBean
+    private io.github.grigoriev.im.invoice.PaymentService payments;
+
+    @org.junit.jupiter.api.BeforeEach
+    void noPayments() {
+        when(payments.summary(any())).thenReturn(new io.github.grigoriev.im.invoice.PaymentService.Payments(List.of(),
+                java.math.BigDecimal.ZERO, new java.math.BigDecimal("480.00")));
+    }
 
     private static InvoiceTemplate template() {
         return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
@@ -612,6 +623,35 @@ class SecurityWebTest {
     }
 
     @Test
+    void recordsAPayment() throws Exception {
+        when(payments.record(org.mockito.ArgumentMatchers.eq(6L), any()))
+                .thenReturn(io.github.grigoriev.im.invoice.InvoiceStatus.PAID);
+        mvc.perform(post("/rechnungen/6/zahlungen").param("paidOn", "2027-03-19").param("amount", "480,00")
+                        .param("note", "Überweisung").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/6"))
+                .andExpect(flash().attribute("success", "Zahlung erfasst. Die Rechnung ist bezahlt."));
+        var form = org.mockito.ArgumentCaptor.forClass(io.github.grigoriev.im.invoice.PaymentForm.class);
+        verify(payments).record(org.mockito.ArgumentMatchers.eq(6L), form.capture());
+        org.assertj.core.api.Assertions.assertThat(form.getValue().getPaidOn()).isEqualTo(java.time.LocalDate.of(2027, 3, 19));
+        org.assertj.core.api.Assertions.assertThat(form.getValue().getAmount()).isEqualTo("480,00");
+        org.assertj.core.api.Assertions.assertThat(form.getValue().getNote()).isEqualTo("Überweisung");
+
+        when(payments.record(org.mockito.ArgumentMatchers.eq(7L), any()))
+                .thenReturn(io.github.grigoriev.im.invoice.InvoiceStatus.SENT);
+        mvc.perform(post("/rechnungen/7/zahlungen").param("paidOn", "2027-03-19").param("amount", "100")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("success", "Zahlung erfasst."));
+        when(payments.record(org.mockito.ArgumentMatchers.eq(8L), any()))
+                .thenThrow(new InvoiceException(List.of("Der Betrag ist 0.")));
+        mvc.perform(post("/rechnungen/8/zahlungen").param("paidOn", "2027-03-19").param("amount", "0")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/8")).andExpect(flash().attribute("error", "Der Betrag ist 0."));
+        mvc.perform(post("/rechnungen/6/zahlungen").param("paidOn", "gestern").param("amount", "1")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("error", "Bitte gültige Daten eingeben, zum Beispiel ein Datum."));
+    }
+
+    @Test
     void filtersTheListByYearStatusAndText() throws Exception {
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
@@ -700,6 +740,8 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-10, Verlag am Fluss GmbH")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-lucide=\"stamp\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Als versendet markieren…")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch keine Zahlung.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"amount\" value=\"480,00\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"POST\">Post</option>")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"EMAIL_APP\""))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("XRechnung geprüft"))))
@@ -718,6 +760,16 @@ class SecurityWebTest {
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-lucide=\"send\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"2027-03-19\" max=\"2027-03-19\"")));
+        when(payments.summary(any())).thenReturn(new io.github.grigoriev.im.invoice.PaymentService.Payments(List.of(
+                new io.github.grigoriev.im.invoice.Payment(1L, 6L, java.time.LocalDate.of(2027, 3, 20),
+                        new java.math.BigDecimal("500.00"), "zu viel", "elena", java.time.Instant.EPOCH)),
+                new java.math.BigDecimal("500.00"), new java.math.BigDecimal("-20.00")));
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("20.03.2027")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("zu viel")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Überzahlt")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">20,00 €<")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"amount\" value=\"\"")));
         when(audit.history(6)).thenReturn(List.of());
         when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.CANCELLED)));
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))

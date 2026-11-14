@@ -47,14 +47,14 @@ Package `io.github.grigoriev.im`:
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
-  validates and freezes in one transaction; `DispatchService` records a dispatch and moves the status to `SENT`; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `TemplateService` keeps the templates
+  validates and freezes in one transaction; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `TemplateService` keeps the templates
   per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
-- `web`: controllers and Thymeleaf pages, styled with Tailwind and daisyUI (`src/main/frontend/app.css`).
+- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI (`src/main/frontend/app.css`).
   Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
 
 Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers, PDF baselines in
