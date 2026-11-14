@@ -57,7 +57,7 @@ class PaymentServiceTest {
     private static Invoice invoice(InvoiceStatus status) {
         return new Invoice(5L, status, 2L, status == InvoiceStatus.DRAFT ? null : "2027-01",
                 InvoiceFormat.ZUGFERD_EN16931, ISSUED_ON, ISSUED_ON, ISSUED_ON, 14, null, null, null, null, List.of(), NOW,
-                NOW, 3L, status == InvoiceStatus.DRAFT ? null : NOW, status == InvoiceStatus.DRAFT ? null : "{}");
+                NOW, 3L, status == InvoiceStatus.DRAFT ? null : NOW, status == InvoiceStatus.DRAFT ? null : "{}", null);
     }
 
     private static PaymentForm form(LocalDate paidOn, String amount, String note) {

@@ -2,6 +2,7 @@ package io.github.grigoriev.im.customer;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.Party;
+import io.github.grigoriev.im.seller.Activity;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -19,6 +20,7 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param vatId VAT identification number, may be {@code null}; reverse charge needs it
  * @param buyerReference buyer reference, for a public buyer the Leitweg-ID; both XRechnung formats need it
  * @param format the e-invoice format of new invoices
+ * @param activity the business of its invoices with two tax numbers, {@code null} follows the lines
  */
 @Table("customer")
 public record Customer(
@@ -32,7 +34,8 @@ public record Customer(
         String email,
         String vatId,
         String buyerReference,
-        InvoiceFormat format) {
+        InvoiceFormat format,
+        Activity activity) {
 
     /**
      * Returns an empty customer for the form: Germany, ZUGFeRD EN16931.
@@ -40,7 +43,7 @@ public record Customer(
      * @return the empty customer
      */
     public static Customer empty() {
-        return new Customer(null, "", "", "", "", "DE", null, null, null, null, InvoiceFormat.ZUGFERD_EN16931);
+        return new Customer(null, "", "", "", "", "DE", null, null, null, null, InvoiceFormat.ZUGFERD_EN16931, null);
     }
 
     /**
@@ -51,7 +54,7 @@ public record Customer(
      */
     public Customer withId(Long newId) {
         return new Customer(newId, name, street, postcode, city, countryCode, contactName, email, vatId, buyerReference,
-                format);
+                format, activity);
     }
 
     /**
@@ -82,7 +85,8 @@ public record Customer(
      * @return the copy, without an ID
      */
     public Customer forAnotherContact() {
-        return new Customer(null, name, street, postcode, city, countryCode, null, null, vatId, buyerReference, format);
+        return new Customer(null, name, street, postcode, city, countryCode, null, null, vatId, buyerReference, format,
+                activity);
     }
 
     /**

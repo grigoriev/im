@@ -32,6 +32,7 @@ import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerProfile;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import java.nio.charset.StandardCharsets;
@@ -48,6 +49,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -147,8 +149,23 @@ class IssueIT {
             assertThat(new String(documents.list(teaching.id()).get(1).content(), StandardCharsets.UTF_8))
                     .as("the XML names it").contains("98/765/43210").doesNotContain("12/345/67890");
 
+            assertThat(issued.activity()).as("frozen at the issue").isEqualTo(Activity.TEACHING);
+            long teachingId = teaching.id();
+            assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET activity = 'OTHER' WHERE id = ?", teachingId))
+                    .as("the business freezes with the invoice").isInstanceOf(DataAccessException.class);
+
+            Invoice abroad = draft(verlag, LocalDate.of(2049, 3, 20));
+            DraftForm abroadForm = DraftForm.of(abroad);
+            abroadForm.getLines().getFirst().setCategory(TaxCategory.NOT_TAXABLE_ABROAD);
+            abroadForm.setActivity(Activity.TEACHING);
+            abroad = invoices.saveDraft(abroad.id(), abroadForm);
+            issues.issue(abroad.id(), abroad.version());
+            assertThat(documents.restore(invoices.find(abroad.id()).orElseThrow().snapshot()).seller().taxNumber())
+                    .as("teaching abroad").isEqualTo("98/765/43210");
+
             Invoice reading = draft(verlag, LocalDate.of(2049, 4, 18));
             issues.issue(reading.id(), reading.version());
+            assertThat(invoices.find(reading.id()).orElseThrow().activity()).isEqualTo(Activity.OTHER);
             assertThat(documents.restore(invoices.find(reading.id()).orElseThrow().snapshot()).seller().taxNumber())
                     .isEqualTo("12/345/67890");
         } finally {

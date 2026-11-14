@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.threshold;
 
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,9 +17,11 @@ import java.util.Map;
  * @param excluded the rest: §4 Nr. 21, abroad and other revenue that does not count
  * @param byCategory the amount per tax category of the invoice's lines
  * @param note the note of the payment, {@code null} if none
+ * @param activity the business of the invoice, for one Anlage EÜR per tax number
  */
 public record RevenueRow(LocalDate paidOn, String number, String customer, BigDecimal amount, BigDecimal counted,
-        BigDecimal excluded, Map<TaxCategory, BigDecimal> byCategory, String note) {
+        BigDecimal excluded, Map<TaxCategory, BigDecimal> byCategory, String note,
+        Activity activity) {
 
     /** Copies the map. */
     public RevenueRow {

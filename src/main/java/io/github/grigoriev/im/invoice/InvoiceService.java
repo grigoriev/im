@@ -8,6 +8,7 @@ import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.TaxNoteService;
@@ -45,6 +46,13 @@ public class InvoiceService {
             + "Bitte die Seite neu laden.";
     static final String DEFAULT_INTRO = "Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag.";
     static final String DEFAULT_CLOSING = "Mit freundlichen Grüßen";
+
+    /** The problem of a teaching invoice with a §19 line or VAT. */
+    static final String TEACHING_LINES = "Eine Rechnung der Tätigkeit „Unterricht“ hat keine Positionen nach § 19 und "
+            + "keine Umsatzsteuer. Bitte die Tätigkeit oder die Steuerart ändern.";
+    /** The problem of an invoice of the other business with teaching under §4 Nr. 21. */
+    static final String OTHER_LINES = "Unterricht nach § 4 Nr. 21 gehört zur Tätigkeit „Unterricht“. Bitte die Tätigkeit "
+            + "oder die Steuerart ändern.";
 
     /** The problem of a draft that puts teaching next to other lines. */
     static final String TEACHING_ALONE = "Unterricht nach § 4 Nr. 21 steht allein auf einer Rechnung. Bitte Unterricht und "
@@ -135,7 +143,8 @@ public class InvoiceService {
             TaxCategory category = defaultCategory();
             draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today, today, today,
                     DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
-                    notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null, null, null);
+                    notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null, null, null,
+                    customer.activity());
         } else {
             InvoiceTemplate template = templates.findById(templateId)
                     .filter(found -> found.customerId() == customerId)
@@ -143,7 +152,7 @@ public class InvoiceService {
             draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, template.format(), today, today, today,
                     template.paymentDays(), customer.buyerReference(), template.intro(), template.closing(),
                     template.taxNote(), template.lines().stream().map(TemplateLine::toDraftLine).toList(),
-                    clock.instant(), clock.instant(), null, null, null);
+                    clock.instant(), clock.instant(), null, null, null, customer.activity());
         }
         Invoice saved = invoices.save(draft);
         if (templateId != null) {
@@ -197,7 +206,8 @@ public class InvoiceService {
                     cancellation ? draft.format() : form.getFormat(),
                     form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
                     text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()),
-                    text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version(), null, null));
+                    text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version(), null, null,
+                    form.getActivity()));
         } catch (OptimisticLockingFailureException _) {
             // Two saves of one version at the same moment: the database lets the first win.
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
@@ -289,7 +299,20 @@ public class InvoiceService {
                 party.phone(), party.contactName(), original.taxNumber(), original.vatId());
     }
 
-    /** An invoice of teaching only names the tax number for teaching, if the seller has one. */
+    /**
+     * Returns the business of an invoice: the one it names, or, if it names none, teaching for teaching only.
+     *
+     * @param invoice the invoice
+     * @return the business, which picks the tax number and the Anlage EÜR when teaching has its own number
+     */
+    public static Activity activity(Invoice invoice) {
+        if (invoice.activity() != null) {
+            return invoice.activity();
+        }
+        return teachingOnly(invoice) ? Activity.TEACHING : Activity.OTHER;
+    }
+
+    /** An invoice of teaching only belongs to teaching when it names no business. */
     static boolean teachingOnly(Invoice invoice) {
         return !invoice.lines().isEmpty()
                 && invoice.lines().stream().allMatch(line -> line.category() == TaxCategory.EXEMPT_4_21);
@@ -321,6 +344,16 @@ public class InvoiceService {
         // Teaching stands alone (decision 2026-11-14). A Stornorechnung repeats its invoice, which may be older.
         if (!cancellation && used.contains(TaxCategory.EXEMPT_4_21) && used.size() > 1) {
             problems.add(TEACHING_ALONE);
+        }
+        if (!cancellation && seller.map(SellerProfile::twoTaxNumbers).orElse(false)) {
+            Activity activity = activity(invoice);
+            if (activity == Activity.TEACHING && used.stream()
+                    .anyMatch(category -> category == TaxCategory.KLEINUNTERNEHMER || category.chargesVat())) {
+                problems.add(TEACHING_LINES);
+            }
+            if (activity == Activity.OTHER && used.contains(TaxCategory.EXEMPT_4_21)) {
+                problems.add(OTHER_LINES);
+            }
         }
         if (status == TaxStatus.KLEINUNTERNEHMER && used.stream().anyMatch(TaxCategory::chargesVat)) {
             problems.add("Als Kleinunternehmer stellen Sie keine Umsatzsteuer in Rechnung (§ 19 UStG).");
@@ -364,7 +397,7 @@ public class InvoiceService {
         InvoiceReference cancels = original
                 .map(cancelled -> new InvoiceReference(cancelled.number(), cancelled.issueDate())).orElse(null);
         // A Stornorechnung names the tax number and VAT ID of the invoice it cancels, even if the profile changed since.
-        Party sellerParty = seller.toParty(teachingOnly(invoice));
+        Party sellerParty = seller.toParty(activity(invoice) == Activity.TEACHING);
         if (original.isPresent()) {
             sellerParty = withTaxIds(sellerParty, documents.restore(original.get().snapshot()).seller());
         }
@@ -398,7 +431,7 @@ public class InvoiceService {
         Invoice saved = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, original.customerId(), null,
                 original.format(), today, original.serviceFrom(), original.serviceTo(), 0, original.buyerReference(),
                 null, original.closing(), original.taxNote(), original.lines(), clock.instant(), clock.instant(),
-                null, null, null));
+                null, null, null, original.activity()));
         try {
             invoices.linkCancels(saved.id(), id);
         } catch (DuplicateKeyException _) {

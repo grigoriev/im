@@ -42,7 +42,7 @@ class MailTextServiceTest {
 
     private final Invoice invoice = new Invoice(5L, InvoiceStatus.ISSUED, 2L, "2027-07", InvoiceFormat.ZUGFERD_EN16931,
             DAY, LocalDate.of(2027, 3, 1), LocalDate.of(2027, 3, 16), 14, null, null, null, null, List.of(),
-            Instant.EPOCH, Instant.EPOCH, 1L, Instant.EPOCH, "{}");
+            Instant.EPOCH, Instant.EPOCH, 1L, Instant.EPOCH, "{}", null);
 
     private static InvoiceTemplate template(String subject, String body) {
         return new InvoiceTemplate(7L, 2L, "Lesung", InvoiceFormat.ZUGFERD_EN16931, 14, null, null, null, subject, body,

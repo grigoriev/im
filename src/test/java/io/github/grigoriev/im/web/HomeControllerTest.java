@@ -37,7 +37,7 @@ class HomeControllerTest {
         return new Invoice(id, status, 2L, status == InvoiceStatus.DRAFT ? null : "2027-0" + id,
                 InvoiceFormat.ZUGFERD_EN16931, date, date, date, 14, null, null, null, null, List.of(), Instant.EPOCH,
                 Instant.EPOCH, 1L, status == InvoiceStatus.DRAFT ? null : Instant.EPOCH,
-                status == InvoiceStatus.DRAFT ? null : "{}");
+                status == InvoiceStatus.DRAFT ? null : "{}", null);
     }
 
     private void open(Invoice invoice, String amount) {

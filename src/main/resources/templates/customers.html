@@ -89,6 +89,15 @@
                 <option th:each="format : ${formatOrder}" th:value="${format}" th:text="${formats.get(format)}">Format</option>
               </select>
             </label>
+            <label class="floating-label" th:if="${twoTaxNumbers}"><span>Tätigkeit</span>
+              <select id="customer-activity" th:field="*{activity}" class="select w-full">
+                <option value="">Aus den Positionen</option>
+                <option th:each="activity : ${activities}" th:value="${activity}" th:text="${activity.label()}">Unterricht</option>
+              </select>
+            </label>
+            <p class="text-xs text-base-content/75 -mt-1" th:if="${twoTaxNumbers}">Die Tätigkeit wählt die Steuernummer der
+              Rechnungen, zum Beispiel „Unterricht“ für Unterricht im Ausland. „Aus den Positionen“: Unterricht nach § 4 Nr. 21
+              ist „Unterricht“, alles andere „Übrige Leistungen“.</p>
             <div class="grid gap-3 @lg:grid-cols-2">
               <label class="floating-label"><span>Käuferreferenz (Leitweg-ID)</span>
                 <input id="customer-reference" th:field="*{buyerReference}" class="input w-full" maxlength="200">

@@ -38,7 +38,7 @@ class CustomerServiceTest {
                 field.equals("email") ? value : c.email(),
                 field.equals("vatId") ? value : c.vatId(),
                 field.equals("reference") ? value : c.buyerReference(),
-                c.format());
+                c.format(), null);
     }
 
     @Test
@@ -53,12 +53,12 @@ class CustomerServiceTest {
     void createsANormalizedCustomerWithoutTheEnteredId() {
         Customer c = CustomerTestData.verlag();
         Customer input = new Customer(99L, "  Verlag am Fluss GmbH ", c.street(), c.postcode(), c.city(), " de ", " ",
-                " buchhaltung@verlag.example ", " nl 123456789 b01 ", "", InvoiceFormat.ZUGFERD_EN16931);
+                " buchhaltung@verlag.example ", " nl 123456789 b01 ", "", InvoiceFormat.ZUGFERD_EN16931, null);
         when(repository.save(any())).thenAnswer(call -> ((Customer) call.getArgument(0)).withId(5L));
         Customer saved = service.create(input);
         assertThat(saved.id()).isEqualTo(5L);
         verify(repository).save(new Customer(null, "Verlag am Fluss GmbH", c.street(), c.postcode(), c.city(), "DE",
-                null, "buchhaltung@verlag.example", "NL123456789B01", null, InvoiceFormat.ZUGFERD_EN16931));
+                null, "buchhaltung@verlag.example", "NL123456789B01", null, InvoiceFormat.ZUGFERD_EN16931, null));
         verify(audit).add(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
     }
 
@@ -132,9 +132,9 @@ class CustomerServiceTest {
     void xrechnungNeedsABuyerReferenceAndAnEmail(InvoiceFormat format) {
         Customer v = CustomerTestData.vhs();
         assertThat(CustomerService.check(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), v.countryCode(),
-                null, v.email(), null, v.buyerReference(), format))).isEmpty();
+                null, v.email(), null, v.buyerReference(), format, null))).isEmpty();
         assertThat(CustomerService.check(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), v.countryCode(),
-                null, null, null, null, format))).containsExactly(
+                null, null, null, null, format, null))).containsExactly(
                 "Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).",
                 "Die XRechnung braucht die E-Mail-Adresse des Kunden.");
     }
@@ -143,6 +143,6 @@ class CustomerServiceTest {
     void needsAFormat() {
         Customer v = CustomerTestData.verlag();
         assertThat(CustomerService.check(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), v.countryCode(),
-                null, null, null, null, null))).containsExactly("Bitte das E-Rechnungsformat wählen.");
+                null, null, null, null, null, null))).containsExactly("Bitte das E-Rechnungsformat wählen.");
     }
 }

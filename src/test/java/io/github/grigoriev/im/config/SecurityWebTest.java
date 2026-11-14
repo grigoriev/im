@@ -211,7 +211,7 @@ class SecurityWebTest {
                 List.of(new DraftLine("Lesung", true, java.math.BigDecimal.ONE, new java.math.BigDecimal("400"),
                         TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L,
                 status == InvoiceStatus.DRAFT ? null : java.time.Instant.parse("2027-03-18T09:30:00Z"),
-                status == InvoiceStatus.DRAFT ? null : "{snapshot}");
+                status == InvoiceStatus.DRAFT ? null : "{snapshot}", null);
     }
 
     private void knownUsers() {
@@ -536,9 +536,9 @@ class SecurityWebTest {
     @Test
     void tellsTwoContactsOfOneOrganizationApartAndCopiesOne() throws Exception {
         Customer weber = new Customer(5L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
-                "Frau Weber", "weber@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
+                "Frau Weber", "weber@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931, null);
         Customer klein = new Customer(6L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
-                "Herr Klein", "klein@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
+                "Herr Klein", "klein@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931, null);
         when(customers.list()).thenReturn(List.of(weber, klein));
         when(customers.find(5)).thenReturn(Optional.of(weber));
         mvc.perform(get("/customers/5").with(user("elena").roles("USER"))).andExpect(status().isOk())
@@ -598,7 +598,7 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
         Customer kosovar = CustomerTestData.verlag();
         when(customers.find(7)).thenReturn(Optional.of(new Customer(7L, kosovar.name(), kosovar.street(),
-                kosovar.postcode(), kosovar.city(), "XK", "Frau Krasniqi", null, null, null, kosovar.format())));
+                kosovar.postcode(), kosovar.city(), "XK", "Frau Krasniqi", null, null, null, kosovar.format(), null)));
         when(countries.options(null, "XK")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/customers/new").param("from", "7").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
@@ -613,7 +613,7 @@ class SecurityWebTest {
 
         Customer swiss = CustomerTestData.verlag();
         swiss = new Customer(5L, swiss.name(), swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
-                null, swiss.format());
+                null, swiss.format(), null);
         when(customers.find(5)).thenReturn(Optional.of(swiss));
         when(countries.options("CH", null)).thenReturn(list);
         mvc.perform(get("/customers/5").with(user("elena").roles("USER")))
@@ -838,7 +838,7 @@ class SecurityWebTest {
 
         Invoice xStorno = new Invoice(9L, InvoiceStatus.DRAFT, 3L, null, InvoiceFormat.XRECHNUNG, storno.issueDate(),
                 storno.serviceFrom(), storno.serviceTo(), 0, "04011000-1", null, null, null, storno.lines(),
-                java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L, null, null);
+                java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L, null, null, null);
         when(invoices.find(9)).thenReturn(Optional.of(xStorno));
         when(invoices.cancelled(xStorno)).thenReturn(Optional.of(original));
         mvc.perform(post("/invoices/9").param("version", "0").param("issueDate", "kaputt")
@@ -883,7 +883,7 @@ class SecurityWebTest {
                 java.time.LocalDate.of(2027, 3, 18), "2027-01", "Verlag am Fluss GmbH", new java.math.BigDecimal("560.00"),
                 new java.math.BigDecimal("200.00"), new java.math.BigDecimal("360.00"), java.util.Map.of(
                         TaxCategory.KLEINUNTERNEHMER, new java.math.BigDecimal("200.00"), TaxCategory.EXEMPT_4_21,
-                        new java.math.BigDecimal("360.00")), null)));
+                        new java.math.BigDecimal("360.00")), null, null)));
         mvc.perform(get("/reports").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Anlage EÜR 2027, Betriebseinnahmen")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Kz 111")))
@@ -896,7 +896,7 @@ class SecurityWebTest {
         when(threshold.rows(2026)).thenReturn(List.of(new io.github.grigoriev.im.threshold.RevenueRow(
                 java.time.LocalDate.of(2026, 3, 18), "2026-01", "Schule", new java.math.BigDecimal("119.00"),
                 java.math.BigDecimal.ZERO, new java.math.BigDecimal("119.00"), java.util.Map.of(TaxCategory.STANDARD_19,
-                        new java.math.BigDecimal("119.00")), null)));
+                        new java.math.BigDecimal("119.00")), null, null)));
         mvc.perform(get("/reports").param("year", "2026").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Einnahmen mit Umsatzsteuer von 119,00 €")));
         SellerProfile p = SellerTestData.profile();
@@ -904,7 +904,7 @@ class SecurityWebTest {
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
                 null, null, null, "98/765/43210")));
         mvc.perform(get("/reports").param("year", "2027").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Betriebseinnahmen: Unterricht nach § 4 Nr. 21")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Betriebseinnahmen: Unterricht")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Betriebseinnahmen: Übrige Leistungen")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(">98/765/43210</span>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"income-111-teaching\"")))
@@ -1169,6 +1169,38 @@ class SecurityWebTest {
         when(invoices.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/invoices/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(post("/invoices/9").with(user("elena").roles("USER")).with(csrf())).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void offersTheBusinessWithTwoTaxNumbersOnly() throws Exception {
+        when(customers.list()).thenReturn(List.of());
+        mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("customer-activity"))));
+        SellerProfile p = SellerTestData.profile();
+        when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
+                null, null, null, "98/765/43210")));
+        mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"customer-activity\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Übrige Leistungen</option>")));
+        when(customers.create(any())).thenReturn(CustomerTestData.verlag().withId(3L));
+        mvc.perform(post("/customers").param("name", "Goethe-Zentrum").param("activity", "TEACHING")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/customers/3"));
+        verify(customers).create(argThat(customer -> customer.activity() == io.github.grigoriev.im.seller.Activity.TEACHING));
+
+        Invoice draft = invoice(5, InvoiceStatus.DRAFT);
+        when(invoices.find(5)).thenReturn(Optional.of(draft));
+        when(invoices.customerName(any())).thenReturn("Goethe-Zentrum");
+        mvc.perform(get("/invoices/5").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"invoice-activity\"")));
+        var saved = org.mockito.ArgumentCaptor.forClass(DraftForm.class);
+        mvc.perform(post("/invoices/5").param("action", "save").param("format", "ZUGFERD_EN16931").param("activity", "TEACHING")
+                        .param("lines[0].text", "Kurs").param("lines[0].price", "300")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/5"));
+        verify(invoices).saveDraft(eq(5L), saved.capture());
+        assertThat(saved.getValue().getActivity()).isEqualTo(io.github.grigoriev.im.seller.Activity.TEACHING);
     }
 
     @Test

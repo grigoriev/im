@@ -98,7 +98,7 @@ class ThresholdIT {
         numbers.savePattern("{YYYY}-{NN}");
         Customer v = CustomerTestData.verlag();
         Customer customer = customers.create(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), "AT", null,
-                v.email(), "ATU12345678", null, v.format()));
+                v.email(), "ATU12345678", null, v.format(), null));
         LocalDate today = threshold.today();
         LocalDate lastYear = LocalDate.of(today.getYear() - 1, 12, 30);
         Threshold before = threshold.current();

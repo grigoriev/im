@@ -2,6 +2,7 @@ package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.threshold.RevenueRow;
@@ -18,7 +19,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.function.Predicate;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -159,32 +159,24 @@ public class ReportController {
             return List.of(new Business("", null, taxNumber, totals(rows)));
         }
         return List.of(
-                new Business("-teaching", "Unterricht nach § 4 Nr. 21", seller.taxNumberTeaching(),
-                        totals(rows, category -> category == TaxCategory.EXEMPT_4_21)),
-                new Business("-other", "Übrige Leistungen", taxNumber,
-                        totals(rows, category -> category != TaxCategory.EXEMPT_4_21)));
-    }
-
-    static Totals totals(List<RevenueRow> rows) {
-        return totals(rows, category -> true);
+                new Business("-teaching", Activity.TEACHING.label(), seller.taxNumberTeaching(),
+                        totals(rows.stream().filter(row -> row.activity() == Activity.TEACHING).toList())),
+                new Business("-other", Activity.OTHER.label(), taxNumber,
+                        totals(rows.stream().filter(row -> row.activity() != Activity.TEACHING).toList())));
     }
 
     /**
-     * The totals of the given tax categories. Zeile 12 is their income without VAT, Zeile 13 the part of it outside
-     * the §19 threshold; only the §19 category counts.
+     * The totals of the rows. Zeile 12 is their income without VAT, Zeile 13 the part of it outside the §19 threshold;
+     * only the §19 category counts.
      */
-    static Totals totals(List<RevenueRow> rows, Predicate<TaxCategory> part) {
+    static Totals totals(List<RevenueRow> rows) {
         Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
-        rows.forEach(row -> row.byCategory().forEach((category, amount) -> {
-            if (part.test(category)) {
-                byCategory.merge(category, amount, BigDecimal::add);
-            }
-        }));
+        rows.forEach(row -> row.byCategory().forEach((category, amount) -> byCategory.merge(category, amount,
+                BigDecimal::add)));
         BigDecimal vatSales = sum(byCategory.entrySet().stream().filter(entry -> entry.getKey().chargesVat())
                 .map(Map.Entry::getValue).toList());
         BigDecimal total = sum(List.copyOf(byCategory.values())).subtract(vatSales);
-        BigDecimal counted = part.test(TaxCategory.KLEINUNTERNEHMER)
-                ? sum(rows.stream().map(RevenueRow::counted).toList()) : BigDecimal.ZERO;
+        BigDecimal counted = sum(rows.stream().map(RevenueRow::counted).toList());
         return new Totals(total, total.subtract(counted), counted, vatSales, byCategory);
     }
 

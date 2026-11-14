@@ -180,6 +180,22 @@ class ThresholdServiceTest {
     }
 
     @Test
+    void aRowCarriesTheFrozenBusinessOrTheOneOfItsLines() {
+        LocalDate day = LocalDate.of(2027, 1, 2);
+        BigDecimal amount = new BigDecimal("5.00");
+        assertThat(ThresholdService.row(day, amount, null, "2027-01", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),
+                "TEACHING").activity()).as("frozen at the issue").isEqualTo(io.github.grigoriev.im.seller.Activity.TEACHING);
+        assertThat(ThresholdService.row(day, amount, null, "2027-01", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931))
+                .activity()).isEqualTo(io.github.grigoriev.im.seller.Activity.OTHER);
+        InvoiceDocument teaching = io.github.grigoriev.im.einvoice.ItSamples.readingWithoutContact(InvoiceFormat.ZUGFERD_EN16931);
+        teaching = new InvoiceDocument(teaching.number(), teaching.issueDate(), teaching.serviceFrom(), teaching.serviceTo(),
+                teaching.dueDate(), teaching.seller(), teaching.buyer(), null, teaching.iban(), teaching.bic(), null, null,
+                null, teaching.format(), List.of(new io.github.grigoriev.im.einvoice.InvoiceLine("Kurs", BigDecimal.ONE, new BigDecimal("300.00"), TaxCategory.EXEMPT_4_21, true)), null);
+        assertThat(ThresholdService.row(day, amount, null, "2027-01", teaching).activity())
+                .as("issued before the business: teaching only").isEqualTo(io.github.grigoriev.im.seller.Activity.TEACHING);
+    }
+
+    @Test
     void anInvoiceWithoutTotalCountsNothing() {
         RevenueRow row = ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal("5.00"), null, "2027-01",
                 SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931));

@@ -32,6 +32,12 @@
             <option th:each="format : ${formatOrder}" th:value="${format}" th:text="${formats.get(format)}">Format</option>
           </select>
         </label>
+        <label class="floating-label" th:if="${twoTaxNumbers}"><span>Tätigkeit</span>
+          <select id="invoice-activity" th:field="*{activity}" class="select w-full" th:disabled="${cancelled != null}">
+            <option value="">Aus den Positionen</option>
+            <option th:each="activity : ${activities}" th:value="${activity}" th:text="${activity.label()}">Unterricht</option>
+          </select>
+        </label>
         <div class="grid gap-3 @lg:grid-cols-2">
           <label class="floating-label"><span>Rechnungsdatum</span>
             <input id="invoice-date" th:field="*{issueDate}" type="date" class="input w-full" required>

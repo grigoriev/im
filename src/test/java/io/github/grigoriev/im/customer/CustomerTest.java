@@ -60,8 +60,8 @@ class CustomerTest {
     @Test
     void copiesTheOrganizationForAnotherContact() {
         Customer original = new Customer(7L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
-                "Frau Weber", "weber@sprachschule.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG);
+                "Frau Weber", "weber@sprachschule.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null);
         assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Sprachschule am See", "Seeweg 5",
-                "86150", "Musterstadt", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG));
+                "86150", "Musterstadt", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null));
     }
 }

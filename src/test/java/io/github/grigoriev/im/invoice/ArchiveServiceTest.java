@@ -33,7 +33,7 @@ class ArchiveServiceTest {
     private static Invoice invoice(long id, InvoiceStatus status, String number, LocalDate date) {
         boolean draft = status == InvoiceStatus.DRAFT;
         return new Invoice(id, status, 2L, number, InvoiceFormat.ZUGFERD_EN16931, date, date, date, 14, null, null, null,
-                null, List.of(), Instant.EPOCH, Instant.EPOCH, 1L, draft ? null : Instant.EPOCH, draft ? null : "{}");
+                null, List.of(), Instant.EPOCH, Instant.EPOCH, 1L, draft ? null : Instant.EPOCH, draft ? null : "{}", null);
     }
 
     private static StoredDocument file(long invoiceId, DocumentKind kind, String number, String content) {
