@@ -6,12 +6,13 @@ import io.github.grigoriev.im.invoice.DispatchService;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.mail.MailService;
 import java.util.Arrays;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
-/** Fills the page of an issued invoice: documents, history, dispatch and payments. */
+/** Fills the page of an issued invoice: documents, history, e-mail, dispatch and payments. */
 @Component
 public class IssuedInvoicePage {
 
@@ -23,6 +24,7 @@ public class IssuedInvoicePage {
     private final AuditService audit;
     private final DispatchService dispatches;
     private final PaymentService payments;
+    private final MailService mail;
 
     /**
      * Creates the page.
@@ -31,13 +33,15 @@ public class IssuedInvoicePage {
      * @param audit the history of an invoice
      * @param dispatches today, the default day of a dispatch
      * @param payments the payments and the open amount
+     * @param mail the e-mail form, if sending is set up
      */
     public IssuedInvoicePage(DocumentStore documents, AuditService audit, DispatchService dispatches,
-            PaymentService payments) {
+            PaymentService payments, MailService mail) {
         this.documents = documents;
         this.audit = audit;
         this.dispatches = dispatches;
         this.payments = payments;
+        this.mail = mail;
     }
 
     /**
@@ -53,5 +57,9 @@ public class IssuedInvoicePage {
         model.addAttribute("today", dispatches.today());
         model.addAttribute("channels", Arrays.stream(DispatchChannel.values()).filter(DispatchChannel::isManual).toList());
         model.addAttribute("payments", payments.summary(invoice));
+        model.addAttribute("mailConfigured", mail.configured());
+        if (mail.configured()) {
+            model.addAttribute("mail", mail.form(invoice, documents.restore(invoice.snapshot()).buyer().email()));
+        }
     }
 }

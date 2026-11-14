@@ -65,13 +65,7 @@ public class DispatchService {
      */
     @Transactional
     public Dispatch recordManual(long invoiceId, DispatchForm form) {
-        Invoice invoice = invoices.find(invoiceId).orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));
-        if (invoice.isDraft()) {
-            throw new InvoiceException(List.of(NOT_ISSUED));
-        }
-        if (invoice.status() == InvoiceStatus.CANCELLED) {
-            throw new InvoiceException(List.of(CANCELLED));
-        }
+        Invoice invoice = sendable(invoiceId);
         String recipient = Fields.text(form.getRecipient());
         String note = Fields.text(form.getNote());
         List<String> problems = new ArrayList<>();
@@ -91,12 +85,48 @@ public class DispatchService {
         if (!problems.isEmpty()) {
             throw new InvoiceException(problems);
         }
+        return save(invoice, sentOn, form.getChannel(), recipient, note);
+    }
+
+    /**
+     * Records an e-mail the app sent, today, with the attachments as note.
+     *
+     * @param invoiceId the invoice
+     * @param recipient the address
+     * @param note the attachments, for example "PDF, XML"
+     * @return the saved dispatch
+     * @throws InvoiceException if the invoice is unknown, a draft or cancelled
+     */
+    @Transactional
+    public Dispatch recordEmail(long invoiceId, String recipient, String note) {
+        return save(sendable(invoiceId), today(), DispatchChannel.EMAIL_APP, recipient, note);
+    }
+
+    /**
+     * Returns an invoice that can go out.
+     *
+     * @param invoiceId the invoice
+     * @return the invoice
+     * @throws InvoiceException if the invoice is unknown, a draft or cancelled
+     */
+    public Invoice sendable(long invoiceId) {
+        Invoice invoice = invoices.find(invoiceId).orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));
+        if (invoice.isDraft()) {
+            throw new InvoiceException(List.of(NOT_ISSUED));
+        }
+        if (invoice.status() == InvoiceStatus.CANCELLED) {
+            throw new InvoiceException(List.of(CANCELLED));
+        }
+        return invoice;
+    }
+
+    private Dispatch save(Invoice invoice, LocalDate sentOn, DispatchChannel channel, String recipient, String note) {
         Instant now = clock.instant();
-        Dispatch saved = dispatches.save(new Dispatch(null, invoiceId, sentOn, form.getChannel(), recipient, note,
+        Dispatch saved = dispatches.save(new Dispatch(null, invoice.id(), sentOn, channel, recipient, note,
                 AuditService.currentUser(), now));
-        jdbc.sql(SENT).param("at", Timestamp.from(now)).param("id", invoiceId).update();
-        audit.add(invoiceId, AuditAction.INVOICE_SENT, invoice.number() + ", " + GERMAN.format(sentOn) + ", "
-                + form.getChannel().label() + (recipient == null ? "" : ", " + recipient)
+        jdbc.sql(SENT).param("at", Timestamp.from(now)).param("id", invoice.id()).update();
+        audit.add(invoice.id(), AuditAction.INVOICE_SENT, invoice.number() + ", " + GERMAN.format(sentOn) + ", "
+                + channel.label() + (recipient == null ? "" : ", " + recipient)
                 + (note == null ? "" : ", Notiz: " + note));
         return saved;
     }

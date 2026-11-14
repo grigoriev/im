@@ -39,6 +39,7 @@
         <xrechnung-config.file>xrechnung-3.0.2-validator-configuration-2026-08-31.zip</xrechnung-config.file>
         <xrechnung-config.sha256>2530cd107c414511c5d0462ec10f886910395abfca820db82e83d70bf01221a8</xrechnung-config.sha256>
         <testcontainers.version>2.0.5</testcontainers.version>
+        <greenmail.version>2.1.15</greenmail.version>
         <bouncycastle.version>1.87</bouncycastle.version>
 
         <jacoco.version>0.8.16</jacoco.version>
@@ -109,6 +110,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
         <!-- Passkeys: Touch ID and Face ID through WebAuthn (docs/PLAN.md, section 5). -->
         <dependency>
@@ -189,6 +194,12 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
+            <version>${greenmail.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -395,6 +406,9 @@
                         <param>io.github.grigoriev.im.invoice.DispatchChannel</param>
                         <param>io.github.grigoriev.im.invoice.PaymentService</param>
                         <param>io.github.grigoriev.im.mail.MailTextService</param>
+                        <param>io.github.grigoriev.im.mail.MailService</param>
+                        <param>io.github.grigoriev.im.mail.MailProperties</param>
+                        <param>io.github.grigoriev.im.mail.MailConfig</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>

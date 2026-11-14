@@ -105,6 +105,21 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await expect(page.locator('#invoice-documents')).toContainText(`Rechnung_${number}.pdf`);
   await expect(page.locator('#invoice-documents')).toContainText(/SHA-256 [0-9a-f]{64}/);
 
+  const address = `rechnung-${randomUUID().slice(0, 8)}@kunde.example`;
+  await page.getByText('Per E-Mail senden…').click();
+  await expect(page.locator('#mail-subject')).toHaveValue(`Rechnung ${number}`);
+  await expect(page.locator('#mail-pdf')).toBeChecked();
+  await page.locator('#mail-to').fill(address);
+  await page.getByRole('button', { name: 'Senden', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText(`E-Mail an ${address} gesendet.`);
+  await expect(page.locator('#invoice-status')).toHaveText('Versendet');
+  await expect(page.locator('#invoice-history li').last()).toContainText(`E-Mail aus der App, ${address}, Notiz: PDF`);
+  // GreenMail got it; its API answers on the compose network.
+  const inbox = await (await page.request.get(`http://mail:8080/api/user/${address}/messages/INBOX`)).json();
+  expect(inbox).toHaveLength(1);
+  expect(inbox[0].subject).toBe(`Rechnung ${number}`);
+  expect(inbox[0].mimeMessage).toContain(`filename=Rechnung_${number}.pdf`);
+
   await page.getByText('Als versendet markieren…').click();
   await page.getByLabel('Weg').selectOption({ label: 'Post' });
   await page.getByLabel('Empfänger (optional)').fill('Buchhaltung');

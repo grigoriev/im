@@ -25,6 +25,32 @@
       <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
     </div>
 
+    <details class="bg-base-100 rounded-box border border-base-300 p-5" id="invoice-mail"
+             th:if="${mailConfigured and invoice.status.name() != 'CANCELLED'}">
+      <summary class="btn btn-primary w-fit"><i data-lucide="send" class="size-4"></i>Per E-Mail senden…</summary>
+      <form class="mt-3 grid gap-3" method="post" th:action="@{/rechnungen/{id}/senden(id=${invoice.id})}">
+        <label class="floating-label"><span>An</span>
+          <input id="mail-to" name="to" type="email" class="input w-full" required maxlength="254" th:value="${mail.to}">
+        </label>
+        <label class="floating-label"><span>Betreff</span>
+          <input id="mail-subject" name="subject" class="input w-full" required maxlength="200" th:value="${mail.subject}">
+        </label>
+        <label class="grid gap-1.5"><span class="text-sm font-medium">Nachricht</span>
+          <textarea id="mail-body" name="body" class="textarea w-full h-40" required maxlength="4000" th:text="${mail.body}">Text</textarea>
+        </label>
+        <div class="flex flex-wrap gap-4 text-sm">
+          <label class="flex items-center gap-2"><input id="mail-pdf" name="pdf" type="checkbox" class="checkbox checkbox-sm"
+              value="true" th:checked="${mail.pdf}">PDF anhängen</label>
+          <label class="flex items-center gap-2"><input id="mail-xml" name="xml" type="checkbox" class="checkbox checkbox-sm"
+              value="true" th:checked="${mail.xml}">XML anhängen</label>
+        </div>
+        <p class="text-xs text-base-content/75">Die Anhänge sind die gespeicherten Dokumente, Byte für Byte. Der Versand erscheint im Verlauf.</p>
+        <button type="submit" class="btn btn-primary w-fit" id="mail-send"><i data-lucide="send" class="size-4"></i>Senden</button>
+      </form>
+    </details>
+    <p class="text-sm text-base-content/75" id="mail-off" th:unless="${mailConfigured}">Das Versenden per E-Mail ist nicht eingerichtet.
+      Vermerken Sie den Versand von Hand.</p>
+
     <details class="bg-base-100 rounded-box border border-base-300 p-5" id="invoice-dispatch"
              th:if="${invoice.status.name() != 'CANCELLED'}">
       <summary class="btn w-fit"><i data-lucide="hand" class="size-4"></i>Als versendet markieren…</summary>

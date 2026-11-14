@@ -123,6 +123,18 @@ class DispatchServiceTest {
     }
 
     @Test
+    void recordsAnEmailOfTheAppToday() {
+        Dispatch saved = service.recordEmail(5, "a@b.example", "PDF");
+        assertThat(saved).isEqualTo(new Dispatch(null, 5L, TODAY, DispatchChannel.EMAIL_APP, "a@b.example", "PDF",
+                "system", NOW));
+        verify(statement).update();
+        verify(audit).add(5L, AuditAction.INVOICE_SENT, "2027-01, 19.03.2027, E-Mail aus der App, a@b.example, Notiz: PDF");
+        when(invoices.find(5)).thenReturn(Optional.of(invoice(InvoiceStatus.CANCELLED)));
+        assertThatThrownBy(() -> service.recordEmail(5, "a@b.example", "PDF"))
+                .hasMessage("Eine stornierte Rechnung wird nicht mehr versendet.");
+    }
+
+    @Test
     void listsTheDispatchesAndKnowsToday() {
         List<Dispatch> dispatches = List.of(new Dispatch(1L, 5L, TODAY, DispatchChannel.POST, null, null, "elena", NOW));
         when(repository.findByInvoiceIdOrderBySentOnAscIdAsc(5)).thenReturn(dispatches);

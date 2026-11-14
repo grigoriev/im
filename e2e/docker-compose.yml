@@ -1,4 +1,4 @@
-# The E2E stack: database, the app image under test, and the pinned Playwright image.
+# The E2E stack: database, mail server, the app image under test, and the pinned Playwright image.
 # Playwright shares the network of "web" and calls http://localhost:8080: WebAuthn (passkeys) runs only
 # in a secure context, and the browser treats localhost as one.
 # Start it through scripts/e2e.sh.
@@ -14,6 +14,13 @@ services:
       interval: 2s
       retries: 30
 
+  # GreenMail takes every e-mail of the app. Its API on port 8080 lets the tests read them.
+  mail:
+    image: greenmail/standalone:2.1.15@sha256:309ba544ea482e5d4265d09921cdab07c8dad2cc4481d715c9b8ff5d3f0a149f
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.smtp -Dgreenmail.setup.test.api -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled
+
   web:
     image: ${IM_IMAGE:-im:test}
     environment:
@@ -23,10 +30,16 @@ services:
       IM_ADMIN_USERNAME: admin
       IM_ADMIN_PASSWORD: e2e-admin-passwort
       IM_REMEMBER_ME_KEY: e2e-only
+      IM_SMTP_HOST: mail
+      IM_SMTP_PORT: "3025"
+      IM_SMTP_STARTTLS: "false"
+      IM_MAIL_FROM: rechnung@e2e.example
       TZ: Europe/Berlin
     depends_on:
       db:
         condition: service_healthy
+      mail:
+        condition: service_started
 
   playwright:
     image: mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579

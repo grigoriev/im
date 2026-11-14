@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Sending by e-mail: "Per E-Mail senden" sends an issued invoice over SMTP with its stored PDF, XML or both, byte for byte, to the buyer's address with the e-mail text of its template or the default. A sent e-mail records a dispatch "E-Mail aus der App"; a failed one records nothing. The server comes from `IM_SMTP_*` and `IM_MAIL_*`; without it the page offers the manual dispatch only.
 - E-mail text: the admin sets the default subject and text of the e-mail with an invoice on "E-Mail", with the placeholders of the invoice texts. An invoice remembers the template it came from, whose e-mail subject and text override the default field by field.
 - Payments: "Zahlung erfassen" records the day the money came in, the amount (German style, the open amount by default) and a note. A negative amount is a refund or a correction. The invoice is "Bezahlt" while the payments cover the total, and goes back to "Versendet" or "Ausgestellt" after a refund. A cancelled invoice takes refunds only. Payments are written once and show in the history and in "Zahlungen" with the paid and open amount.
 - Dispatch by hand: "Als versendet markieren" records the day, the way (own mail program, post, portal, in person), the recipient and a note. The first dispatch moves an issued invoice to "Versendet"; every dispatch shows in its history, with its note. The history shows the detail of each entry.
