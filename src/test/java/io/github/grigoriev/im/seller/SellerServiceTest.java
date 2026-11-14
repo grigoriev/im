@@ -11,10 +11,15 @@ import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
 
@@ -26,7 +31,7 @@ class SellerServiceTest {
     private final AuditService audit = mock(AuditService.class);
     private final SellerService service = new SellerService(profiles, jdbc, audit);
 
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void statement() {
         when(jdbc.sql(anyString())).thenReturn(statement);
         when(statement.param(anyString(), any())).thenReturn(statement);
@@ -68,7 +73,7 @@ class SellerServiceTest {
         SellerProfile bank = new SellerProfile(null, null, null, null, null, null, null, null, null, null,
                 "GB82 WEST 1234 5698 7654 32", "WESTGB2L", null, null, null, "Westbank", "Erika M.", null);
         SellerProfile saved = service.save(ProfilePart.BANK, bank);
-        org.mockito.InOrder order = org.mockito.Mockito.inOrder(jdbc, profiles);
+        InOrder order = Mockito.inOrder(jdbc, profiles);
         order.verify(jdbc).sql(SellerService.LOCK);
         order.verify(profiles).findById(SellerService.ID);
         order.verify(jdbc).sql(SellerService.UPSERT);
@@ -88,12 +93,12 @@ class SellerServiceTest {
     @Test
     void limitsTheTaxNumberForTeaching() {
         SellerProfile p = SellerTestData.profile();
-        java.util.function.Function<String, SellerProfile> teaching = number -> new SellerProfile(p.name(), p.street(),
+        Function<String, SellerProfile> teaching = number -> new SellerProfile(p.name(), p.street(),
                 p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(),
                 p.bic(), p.taxStatus(), null, null, null, null, number);
         assertThat(SellerService.check(teaching.apply("1".repeat(32)))).isEmpty();
         assertThat(SellerService.check(teaching.apply("1".repeat(33)))).containsExactly(
-                java.util.Map.entry("taxNumberTeaching", "Steuernummer für Unterricht hat höchstens 32 Zeichen."));
+                Map.entry("taxNumberTeaching", "Steuernummer für Unterricht hat höchstens 32 Zeichen."));
         assertThat(SellerService.normalize(teaching.apply(" 98/765/43210 ")).taxNumberTeaching()).isEqualTo("98/765/43210");
     }
 
@@ -182,10 +187,10 @@ class SellerServiceTest {
     void refusesAWrongField(String field, String value, String key, String problem) {
         SellerProfile wrong = with(field, value);
         SettingsException e = catchThrowableOfType(SettingsException.class, () -> saveWhole(wrong));
-        assertThat(e.fields()).containsExactly(java.util.Map.entry(key, problem));
+        assertThat(e.fields()).containsExactly(Map.entry(key, problem));
         assertThat(e.problems()).containsExactly(problem);
         verify(statement, never()).update();
-        org.mockito.Mockito.verifyNoInteractions(audit);
+        Mockito.verifyNoInteractions(audit);
     }
 
     @Test
@@ -195,15 +200,15 @@ class SellerServiceTest {
         SellerProfile saved = saveWhole(empty);
         verify(statement).param("taxStatus", null);
         verify(statement).update();
-        verify(audit).add(io.github.grigoriev.im.audit.AuditAction.PROFILE_SAVED, "");
-        assertThat(SellerService.missing(saved)).containsExactly(java.util.Map.entry("name", "Name"),
-                java.util.Map.entry("street", "Straße"), java.util.Map.entry("postcode", "PLZ"),
-                java.util.Map.entry("city", "Ort"), java.util.Map.entry("countryCode", "Land"),
-                java.util.Map.entry("taxStatus", "Steuerstatus"),
-                java.util.Map.entry("taxNumber", "Steuernummer oder USt-IdNr."),
-                java.util.Map.entry("iban", "IBAN"), java.util.Map.entry("bic", "BIC"));
-        assertThat(SellerService.missingForXRechnung(empty)).containsExactly(java.util.Map.entry("email", "E-Mail"),
-                java.util.Map.entry("phone", "Telefon"));
+        verify(audit).add(AuditAction.PROFILE_SAVED, "");
+        assertThat(SellerService.missing(saved)).containsExactly(Map.entry("name", "Name"),
+                Map.entry("street", "Straße"), Map.entry("postcode", "PLZ"),
+                Map.entry("city", "Ort"), Map.entry("countryCode", "Land"),
+                Map.entry("taxStatus", "Steuerstatus"),
+                Map.entry("taxNumber", "Steuernummer oder USt-IdNr."),
+                Map.entry("iban", "IBAN"), Map.entry("bic", "BIC"));
+        assertThat(SellerService.missingForXRechnung(empty)).containsExactly(Map.entry("email", "E-Mail"),
+                Map.entry("phone", "Telefon"));
         assertThat(SellerService.missing(SellerProfile.empty())).as("the first form, normalized")
                 .containsKeys("name", "iban").doesNotContainKeys("countryCode", "taxStatus");
     }
@@ -228,7 +233,7 @@ class SellerServiceTest {
         SellerProfile longest = with(field, "x".repeat(max));
         assertThat(SellerService.check(SellerService.normalize(longest))).isEmpty();
         assertThat(SellerService.check(SellerService.normalize(with(field, "x".repeat(max + 1)))))
-                .containsExactly(java.util.Map.entry(key, label + " hat höchstens " + max + " Zeichen."));
+                .containsExactly(Map.entry(key, label + " hat höchstens " + max + " Zeichen."));
     }
 
     @ParameterizedTest
@@ -245,7 +250,7 @@ class SellerServiceTest {
         String domain = "d".repeat(177) + ".example.org"; // 64 + 1 + 189 = 254 characters
         assertThat(SellerService.check(with("email", local + "@" + domain))).isEmpty();
         assertThat(SellerService.check(with("email", local + "@d" + domain)))
-                .containsExactly(java.util.Map.entry("email", "E-Mail hat höchstens 254 Zeichen."));
+                .containsExactly(Map.entry("email", "E-Mail hat höchstens 254 Zeichen."));
     }
 
     @Test
@@ -261,8 +266,8 @@ class SellerServiceTest {
         "www.müller-sprachkurse.de, true", "HTTPS://Example.DE, true", "www.straße.de/kurse, true",
         "www.exa_mple.de, false", "ftp://example.de, false"})
     void checksTheWebsite(String website, boolean valid) {
-        assertThat(SellerService.check(with("website", website))).isEqualTo(valid ? java.util.Map.of()
-                : java.util.Map.of("website", "Bitte eine Website wie www.example.de angeben."));
+        assertThat(SellerService.check(with("website", website))).isEqualTo(valid ? Map.of()
+                : Map.of("website", "Bitte eine Website wie www.example.de angeben."));
     }
 
     @Test
@@ -271,7 +276,7 @@ class SellerServiceTest {
         String label = "a".repeat(60);
         String host = "www." + label + "." + label + "." + label + ".bbbbb.example";
         assertThat(SellerService.check(with("website", host))).isEmpty();
-        assertThat(SellerService.check(with("website", host + "x"))).containsExactly(java.util.Map.entry("website", "Website hat höchstens 200 Zeichen."));
+        assertThat(SellerService.check(with("website", host + "x"))).containsExactly(Map.entry("website", "Website hat höchstens 200 Zeichen."));
     }
 
     @Test

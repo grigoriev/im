@@ -15,7 +15,7 @@ public final class CustomerTestData {
      */
     public static Customer verlag() {
         return new Customer(null, "Verlag am Fluss GmbH", "Hafenstraße 3", "20457", "Hamburg", "DE", null,
-                "buchhaltung@verlag.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
+                "buchhaltung@verlag.example", null, null, InvoiceFormat.ZUGFERD_EN16931, null);
     }
 
     /**
@@ -25,6 +25,6 @@ public final class CustomerTestData {
      */
     public static Customer vhs() {
         return new Customer(null, "Volkshochschule Musterstadt", "Am Markt 1", "86150", "Musterstadt", "DE",
-                "Frau Beispiel", "erechnung@vhs.example", null, "09162000-VHS01-42", InvoiceFormat.XRECHNUNG);
+                "Frau Beispiel", "erechnung@vhs.example", null, "09162000-VHS01-42", InvoiceFormat.XRECHNUNG, null);
     }
 }

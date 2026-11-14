@@ -32,7 +32,7 @@ class TemplateModelTest {
                 new TemplateLine(" ", true, BigDecimal.ONE, BigDecimal.ZERO, TaxCategory.KLEINUNTERNEHMER),
                 new TemplateLine("Reisekosten", true, BigDecimal.ONE, new BigDecimal("80"), TaxCategory.KLEINUNTERNEHMER)));
         InvoiceTemplate template = new InvoiceTemplate(1L, 2L, "Lesung", InvoiceFormat.ZUGFERD_EN16931, 14, null, null,
-                null, null, null, lines, Instant.EPOCH, Instant.EPOCH, 0L);
+                null, null, null, lines, Instant.EPOCH, Instant.EPOCH, 0L, null);
         lines.clear();
         assertThat(template.summary()).isEqualTo("Lesung · Reisekosten");
         List<TemplateLine> stored = template.lines();
@@ -43,7 +43,7 @@ class TemplateModelTest {
     void fillsTheFormFromATemplate() {
         InvoiceTemplate template = new InvoiceTemplate(1L, 2L, "Lesung", InvoiceFormat.ZUGFERD_XRECHNUNG, 21, "Hallo",
                 "Danke", "Steuer", "Betreff", "Text", List.of(new TemplateLine("Lesung", true, BigDecimal.ONE,
-                        new BigDecimal("400"), TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH, Instant.EPOCH, 3L);
+                        new BigDecimal("400"), TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH, Instant.EPOCH, 3L, null);
         TemplateForm form = TemplateForm.of(template);
         assertThat(form.getVersion()).isEqualTo(3L);
         assertThat(form.getName()).isEqualTo("Lesung");

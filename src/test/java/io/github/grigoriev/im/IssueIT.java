@@ -14,7 +14,9 @@ import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.einvoice.EInvoiceException;
 import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
+import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.invoice.ArchiveService;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
 import io.github.grigoriev.im.invoice.DispatchService;
@@ -31,25 +33,34 @@ import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import io.github.grigoriev.im.threshold.ThresholdService;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.IntStream;
+import java.util.zip.ZipInputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
@@ -93,10 +104,10 @@ class IssueIT {
     private PaymentService payments;
 
     @Autowired
-    private io.github.grigoriev.im.invoice.ArchiveService archive;
+    private ArchiveService archive;
 
     @Autowired
-    private io.github.grigoriev.im.threshold.ThresholdService threshold;
+    private ThresholdService threshold;
 
     @MockitoSpyBean
     private EInvoiceService einvoices;
@@ -147,8 +158,23 @@ class IssueIT {
             assertThat(new String(documents.list(teaching.id()).get(1).content(), StandardCharsets.UTF_8))
                     .as("the XML names it").contains("98/765/43210").doesNotContain("12/345/67890");
 
+            assertThat(issued.activity()).as("frozen at the issue").isEqualTo(Activity.TEACHING);
+            long teachingId = teaching.id();
+            assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET activity = 'OTHER' WHERE id = ?", teachingId))
+                    .as("the business freezes with the invoice").isInstanceOf(DataAccessException.class);
+
+            Invoice abroad = draft(verlag, LocalDate.of(2049, 3, 20));
+            DraftForm abroadForm = DraftForm.of(abroad);
+            abroadForm.getLines().getFirst().setCategory(TaxCategory.NOT_TAXABLE_ABROAD);
+            abroadForm.setActivity(Activity.TEACHING);
+            abroad = invoices.saveDraft(abroad.id(), abroadForm);
+            issues.issue(abroad.id(), abroad.version());
+            assertThat(documents.restore(invoices.find(abroad.id()).orElseThrow().snapshot()).seller().taxNumber())
+                    .as("teaching abroad").isEqualTo("98/765/43210");
+
             Invoice reading = draft(verlag, LocalDate.of(2049, 4, 18));
             issues.issue(reading.id(), reading.version());
+            assertThat(invoices.find(reading.id()).orElseThrow().activity()).isEqualTo(Activity.OTHER);
             assertThat(documents.restore(invoices.find(reading.id()).orElseThrow().snapshot()).seller().taxNumber())
                     .isEqualTo("12/345/67890");
         } finally {
@@ -186,11 +212,11 @@ class IssueIT {
         assertThat(audit.history(draft.id() + 1000)).isEmpty();
 
         assertThat(threshold.years()).as("a year with an issued invoice and no payment").contains(2043);
-        java.io.ByteArrayOutputStream zip = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream zip = new ByteArrayOutputStream();
         archive.write(2043, zip);
-        java.util.Map<String, byte[]> entries = new java.util.LinkedHashMap<>();
-        try (java.util.zip.ZipInputStream in = new java.util.zip.ZipInputStream(
-                new java.io.ByteArrayInputStream(zip.toByteArray()))) {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        try (ZipInputStream in = new ZipInputStream(
+                new ByteArrayInputStream(zip.toByteArray()))) {
             for (var entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
                 entries.put(entry.getName(), in.readAllBytes());
             }
@@ -260,7 +286,7 @@ class IssueIT {
         assertThat(still.number()).isNull();
         assertThat(documents.list(first.id())).isEmpty();
 
-        org.mockito.Mockito.reset(einvoices);
+        Mockito.reset(einvoices);
         assertThat(issues.issue(id, version)).as("the number came back").isEqualTo("2045-01");
     }
 
@@ -385,7 +411,7 @@ class IssueIT {
         assertThat(number).isEqualTo("2017-02");
         assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.CANCELLED);
         InvoiceDocument snapshot = documents.restore(invoices.find(storno.id()).orElseThrow().snapshot());
-        assertThat(snapshot.cancels()).isEqualTo(new io.github.grigoriev.im.einvoice.InvoiceReference("2017-01",
+        assertThat(snapshot.cancels()).isEqualTo(new InvoiceReference("2017-01",
                 LocalDate.of(2017, 3, 1)));
         assertThat(snapshot.total()).isEqualByComparingTo("400.00");
         assertThat(new String(documents.find(storno.id(), DocumentKind.XML).orElseThrow().content(),

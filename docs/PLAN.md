@@ -189,10 +189,14 @@ The category is set per line. One invoice can mix categories, with these rules:
    The PDF shows the net total, the VAT per rate with its base, and the gross total.
 7. With more than one category, the PDF shows a tax column: each line names its rate or exemption (§14 Abs. 4 Nr. 8 UStG).
 8. Two tax numbers (decision 2026-11-14): the Finanzamt may give teaching under §4 Nr. 21 a tax number of its own. The
-   profile then holds it in `taxNumberTeaching`. An invoice of teaching only names it; every other invoice names the main
-   one. Both share one number sequence and one §19 threshold. "Berichte" shows one Anlage EÜR per tax number.
+   profile then holds it in `taxNumberTeaching`. The business of an invoice ("Tätigkeit": `TEACHING` or `OTHER`) picks
+   the tax number and the Anlage EÜR, apart from the tax category: teaching abroad is not taxable in Germany, yet it is
+   teaching. The customer suggests it, a template overrides it, the draft can change it, the issue freezes it; without
+   one, teaching only is `TEACHING`. With two numbers a teaching invoice has no §19 and no VAT lines
+   (`TEACHING_LINES`), and the other business no §4 Nr. 21 lines (`OTHER_LINES`). Both share one number sequence and
+   one §19 threshold. "Berichte" shows one Anlage EÜR per business.
 9. `EXEMPT_4_21` never mixes with another category (decision 2026-11-14), with one tax number or two: teaching stands
-   alone on its invoice. A Stornorechnung repeats its invoice and is exempt.
+   alone on its invoice. A Stornorechnung repeats its invoice, its business included.
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
 They also cover the end of the Kleinunternehmer status without a redesign.
 The admin edits the default tax notes. A template and an invoice can override them.

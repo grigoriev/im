@@ -18,9 +18,12 @@ import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import io.github.grigoriev.im.threshold.RevenueRow;
 import io.github.grigoriev.im.threshold.Threshold;
 import io.github.grigoriev.im.threshold.ThresholdService;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -98,7 +101,7 @@ class ThresholdIT {
         numbers.savePattern("{YYYY}-{NN}");
         Customer v = CustomerTestData.verlag();
         Customer customer = customers.create(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), "AT", null,
-                v.email(), "ATU12345678", null, v.format()));
+                v.email(), "ATU12345678", null, v.format(), null));
         LocalDate today = threshold.today();
         LocalDate lastYear = LocalDate.of(today.getYear() - 1, 12, 30);
         Threshold before = threshold.current();
@@ -117,11 +120,11 @@ class ThresholdIT {
         assertThat(after.excluded().subtract(before.excluded())).isEqualByComparingTo("288.00");
         assertThat(after.received().subtract(before.received())).isEqualByComparingTo("448.00");
 
-        java.util.List<io.github.grigoriev.im.threshold.RevenueRow> rows = threshold.rows(today.getYear()).stream()
+        List<RevenueRow> rows = threshold.rows(today.getYear()).stream()
                 .filter(row -> row.number().equals(fresh.number()) || row.number().equals(old.number())).toList();
-        assertThat(rows).extracting(io.github.grigoriev.im.threshold.RevenueRow::amount)
-                .usingElementComparator(java.math.BigDecimal::compareTo)
-                .containsExactlyInAnyOrder(new java.math.BigDecimal("560.00"), new java.math.BigDecimal("-112.00"));
+        assertThat(rows).extracting(RevenueRow::amount)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactlyInAnyOrder(new BigDecimal("560.00"), new BigDecimal("-112.00"));
         assertThat(rows).allSatisfy(row -> {
             assertThat(row.paidOn()).isEqualTo(today);
             assertThat(row.customer()).isEqualTo("Verlag am Fluss GmbH");
@@ -135,7 +138,7 @@ class ThresholdIT {
         assertThat(threshold.newestBaselineYear()).isLessThan(lastYearNumber);
         int older = threshold.newestBaselineYear();
         threshold.saveBaseline(older, "18.000,00");
-        assertThat(threshold.baselines()).containsEntry(older, new java.math.BigDecimal("18000.00"));
+        assertThat(threshold.baselines()).containsEntry(older, new BigDecimal("18000.00"));
         assertThat(threshold.current().previous()).as("an older year leaves last year as it is")
                 .isEqualByComparingTo(after.previous());
         threshold.saveBaseline(older, "");

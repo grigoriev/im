@@ -52,7 +52,7 @@ class MailServiceTest {
 
     private static Invoice invoice(InvoiceFormat format) {
         return new Invoice(5L, InvoiceStatus.ISSUED, 2L, "2027-07", format, DAY, DAY, DAY, 14, null, null, null, null,
-                List.of(), Instant.EPOCH, Instant.EPOCH, 1L, Instant.EPOCH, "{}");
+                List.of(), Instant.EPOCH, Instant.EPOCH, 1L, Instant.EPOCH, "{}", null);
     }
 
     private static StoredDocument file(DocumentKind kind, byte[] content) {

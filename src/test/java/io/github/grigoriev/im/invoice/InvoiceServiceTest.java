@@ -20,7 +20,11 @@ import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.InvoiceReference;
+import io.github.grigoriev.im.einvoice.ItSamples;
+import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
@@ -38,6 +42,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 class InvoiceServiceTest {
 
@@ -68,12 +74,12 @@ class InvoiceServiceTest {
         return new Invoice(9L, draft.status(), draft.customerId(), draft.number(), draft.format(), draft.issueDate(),
                 draft.serviceFrom(), draft.serviceTo(), draft.paymentDays(), draft.buyerReference(), draft.intro(),
                 draft.closing(), draft.taxNote(), draft.lines(), draft.createdAt(), draft.updatedAt(), draft.version(),
-                draft.issuedAt(), draft.snapshot());
+                draft.issuedAt(), draft.snapshot(), draft.activity());
     }
 
     private static Invoice draft(List<DraftLine> lines) {
         return new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY, 14,
-                null, "Hallo", "Danke", "Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).", lines, NOW, NOW, 0L, null, null);
+                null, "Hallo", "Danke", "Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG).", lines, NOW, NOW, 0L, null, null, null);
     }
 
     private static DraftLine lump(String text, String amount, TaxCategory category) {
@@ -135,7 +141,7 @@ class InvoiceServiceTest {
     void copiesATemplateOfTheCustomerIntoTheDraft() {
         InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_XRECHNUNG, 30, "Hallo {x}",
                 "Danke", "Steuerfrei.", "Betreff", "Text", List.of(new TemplateLine("Kurs", false, new BigDecimal("24"),
-                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L);
+                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L, null);
         when(templates.findById(7L)).thenReturn(Optional.of(template));
         Invoice created = service.createDraft(2, 7L);
         assertThat(created.format()).isEqualTo(InvoiceFormat.ZUGFERD_XRECHNUNG);
@@ -149,9 +155,16 @@ class InvoiceServiceTest {
         assertThat(created.version()).isNull();
         verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
         verify(repository).linkTemplate(9L, 7L);
+        assertThat(created.activity()).as("neither template nor customer names one").isNull();
+
+        InvoiceTemplate abroad = new InvoiceTemplate(7L, 2L, "Kurs in Taschkent", InvoiceFormat.ZUGFERD_EN16931, 30, null,
+                null, null, null, null, List.of(new TemplateLine("Kurs", true, BigDecimal.ONE, new BigDecimal("300"),
+                        TaxCategory.NOT_TAXABLE_ABROAD)), NOW, NOW, 4L, Activity.TEACHING);
+        when(templates.findById(7L)).thenReturn(Optional.of(abroad));
+        assertThat(service.createDraft(2, 7L).activity()).as("the template names the business").isEqualTo(Activity.TEACHING);
 
         when(templates.findById(8L)).thenReturn(Optional.of(new InvoiceTemplate(8L, 3L, "Fremd", InvoiceFormat.XRECHNUNG,
-                14, null, null, null, null, null, List.of(), NOW, NOW, 0L)));
+                14, null, null, null, null, null, List.of(), NOW, NOW, 0L, null)));
         assertThatThrownBy(() -> service.createDraft(2, 8L)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diese Vorlage gibt es nicht.");
         when(templates.findById(9L)).thenReturn(Optional.empty());
@@ -267,7 +280,7 @@ class InvoiceServiceTest {
         assertThatThrownBy(() -> service.saveDraft(6, form)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diese Rechnung gibt es nicht.");
         Invoice issued = new Invoice(7L, InvoiceStatus.ISSUED, 2L, "2027-01", InvoiceFormat.ZUGFERD_EN16931, TODAY,
-                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 0L, null, null);
+                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 0L, null, null, null);
         when(repository.findById(7L)).thenReturn(Optional.of(issued));
         assertThatThrownBy(() -> service.saveDraft(7, form)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Eine ausgestellte Rechnung ändert sich nicht mehr.");
@@ -281,7 +294,7 @@ class InvoiceServiceTest {
         when(repository.templateId(5L)).thenReturn(null);
         assertThat(service.template(invoice)).isEmpty();
         InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_EN16931, 14, null, null,
-                null, "Betreff", "Text", List.of(), NOW, NOW, 0L);
+                null, "Betreff", "Text", List.of(), NOW, NOW, 0L, null);
         when(repository.templateId(5L)).thenReturn(7L);
         when(templates.findById(7L)).thenReturn(Optional.of(template));
         assertThat(service.template(invoice)).contains(template);
@@ -321,7 +334,7 @@ class InvoiceServiceTest {
     void fillsThePlaceholdersOfTheDocument() {
         Invoice draft = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 14, null, "Rechnung {Rechnungsnummer} vom {Rechnungsdatum}", "Bitte bis {Zahlungsziel} zahlen.",
-                "Leistung am {Leistungszeitraum}.", List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
+                "Leistung am {Leistungszeitraum}.", List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null, null);
         InvoiceDocument document = service.document(draft).orElseThrow();
         assertThat(document.intro()).isEqualTo("Rechnung Entwurf vom 18.03.2027");
         assertThat(document.closing()).isEqualTo("Bitte bis 01.04.2027 zahlen.");
@@ -342,7 +355,7 @@ class InvoiceServiceTest {
                 "Position 1: Der Betrag ist größer als 0.");
         Invoice backwards = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
                 TODAY, TODAY.minusDays(1), 14, null, null, null, null, List.of(lump("Lesung", "1", TaxCategory.KLEINUNTERNEHMER)),
-                NOW, NOW, 0L, null, null);
+                NOW, NOW, 0L, null, null, null);
         assertThat(service.problems(backwards)).containsExactly("Der Leistungszeitraum endet vor seinem Beginn.");
         Invoice nullText = draft(List.of(new DraftLine(null, true, BigDecimal.ONE, BigDecimal.TEN, TaxCategory.KLEINUNTERNEHMER)));
         assertThat(service.problems(nullText)).containsExactly("Position 1: Bitte die Leistung beschreiben.");
@@ -359,7 +372,7 @@ class InvoiceServiceTest {
                 .containsExactly("Im Profil fehlt noch: IBAN. Bitte in den Einstellungen ergänzen.");
         Invoice xrechnung = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.XRECHNUNG, TODAY,
                 TODAY, TODAY, 14, "04011000-12345-67", null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)),
-                NOW, NOW, 0L, null, null);
+                NOW, NOW, 0L, null, null, null);
         assertThat(service.problems(xrechnung))
                 .contains("Im Profil fehlt noch: IBAN, E-Mail, Telefon. Bitte in den Einstellungen ergänzen.");
     }
@@ -372,7 +385,7 @@ class InvoiceServiceTest {
                 null, null, null, null, "98/765/43210")));
         Invoice mixed = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
                 lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
-        assertThat(service.problems(mixed)).containsExactly(InvoiceService.TEACHING_ALONE);
+        assertThat(service.problems(mixed)).containsExactly(InvoiceService.TEACHING_ALONE, InvoiceService.OTHER_LINES);
         Invoice teaching = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21)));
         assertThat(service.document(teaching).orElseThrow().seller().taxNumber()).isEqualTo("98/765/43210");
         Invoice reading = draft(List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
@@ -382,6 +395,43 @@ class InvoiceServiceTest {
         when(sellers.find()).thenReturn(Optional.of(p));
         assertThat(service.problems(mixed)).as("with one tax number too").containsExactly(InvoiceService.TEACHING_ALONE);
         assertThat(service.problems(teaching)).isEmpty();
+    }
+
+    @Test
+    void theBusinessPicksTheTaxNumberAndKeepsItsLines() {
+        SellerProfile p = SellerTestData.profile();
+        when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
+                p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
+                null, null, null, null, "98/765/43210")));
+        Invoice abroad = withActivity(draft(List.of(lump("Kurs in Taschkent", "300", TaxCategory.NOT_TAXABLE_ABROAD))),
+                Activity.TEACHING);
+        assertThat(service.problems(abroad)).isEmpty();
+        assertThat(service.document(abroad).orElseThrow().seller().taxNumber()).as("teaching abroad")
+                .isEqualTo("98/765/43210");
+        assertThat(InvoiceService.activity(abroad)).isEqualTo(Activity.TEACHING);
+        assertThat(InvoiceService.activity(draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21)))))
+                .as("without a business, teaching only").isEqualTo(Activity.TEACHING);
+        assertThat(InvoiceService.activity(draft(List.of(lump("Kurs", "300", TaxCategory.NOT_TAXABLE_ABROAD)))))
+                .isEqualTo(Activity.OTHER);
+
+        assertThat(service.problems(withActivity(draft(List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER))),
+                Activity.TEACHING))).containsExactly(InvoiceService.TEACHING_LINES);
+        assertThat(service.problems(withActivity(draft(List.of(lump("Buch", "100", TaxCategory.STANDARD_7))),
+                Activity.TEACHING))).contains(InvoiceService.TEACHING_LINES);
+        assertThat(service.problems(withActivity(draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21))),
+                Activity.OTHER))).containsExactly(InvoiceService.OTHER_LINES);
+
+        when(sellers.find()).thenReturn(Optional.of(p));
+        assertThat(service.problems(withActivity(draft(List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER))),
+                Activity.TEACHING))).as("one tax number: the business means nothing").isEmpty();
+    }
+
+    private static Invoice withActivity(Invoice invoice, Activity activity) {
+        return new Invoice(invoice.id(), invoice.status(), invoice.customerId(), invoice.number(), invoice.format(),
+                invoice.issueDate(), invoice.serviceFrom(), invoice.serviceTo(), invoice.paymentDays(),
+                invoice.buyerReference(), invoice.intro(), invoice.closing(), invoice.taxNote(), invoice.lines(),
+                invoice.createdAt(), invoice.updatedAt(), invoice.version(), invoice.issuedAt(), invoice.snapshot(),
+                activity);
     }
 
     @Test
@@ -408,25 +458,25 @@ class InvoiceServiceTest {
         assertThat(service.problems(reverse)).containsExactly(problem);
         Customer v = CustomerTestData.verlag();
         when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), v.street(), v.postcode(), v.city(), "NL",
-                null, null, "NL123456789B01", null, v.format())));
+                null, null, "NL123456789B01", null, v.format(), null)));
         assertThat(service.problems(reverse)).isEmpty();
     }
 
     @Test
     void xrechnungNeedsABuyerReference() {
         Invoice xrechnung = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.XRECHNUNG, TODAY, TODAY, TODAY,
-                14, null, null, null, null, List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
+                14, null, null, null, null, List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null, null);
         assertThat(service.problems(xrechnung))
                 .containsExactly("Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).");
         when(customers.find(2)).thenReturn(Optional.of(CustomerTestData.vhs().withId(2L)));
         Invoice withReference = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_XRECHNUNG, TODAY,
                 TODAY, TODAY, 14, "04011000-12345-67", null, null, null,
-                List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
+                List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null, null);
         assertThat(service.problems(withReference)).isEmpty();
 
         Customer v = CustomerTestData.verlag();
         when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), v.street(), v.postcode(), v.city(),
-                v.countryCode(), null, null, null, null, v.format())));
+                v.countryCode(), null, null, null, null, v.format(), null)));
         assertThat(service.problems(withReference))
                 .containsExactly("Die XRechnung braucht die E-Mail-Adresse des Kunden. Bitte beim Kunden eintragen.");
         when(customers.find(2)).thenReturn(Optional.empty());
@@ -533,7 +583,7 @@ class InvoiceServiceTest {
     @Test
     void reportsAConcurrentSaveAsAFormProblem() {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
-        doThrow(new org.springframework.dao.OptimisticLockingFailureException("race")).when(repository)
+        doThrow(new OptimisticLockingFailureException("race")).when(repository)
                 .save(any());
         DraftForm form = form();
         InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
@@ -577,7 +627,7 @@ class InvoiceServiceTest {
     private static Invoice original(InvoiceStatus status) {
         return new Invoice(7L, status, 2L, "2027-07", InvoiceFormat.ZUGFERD_XRECHNUNG, TODAY.minusDays(10),
                 TODAY.minusDays(12), TODAY.minusDays(11), 14, "04011000-1", "Hallo", "Danke", "§ 19",
-                List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 2L, NOW, "{}");
+                List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 2L, NOW, "{}", null);
     }
 
     @Test
@@ -618,7 +668,7 @@ class InvoiceServiceTest {
         verify(repository, never()).save(any());
 
         when(repository.cancellationId(7L)).thenReturn(Optional.empty());
-        doThrow(new org.springframework.dao.DuplicateKeyException("race")).when(repository)
+        doThrow(new DuplicateKeyException("race")).when(repository)
                 .linkCancels(9L, 7L);
         assertThatThrownBy(() -> service.createCancellation(7)).hasMessage(InvoiceService.CANCEL_TWICE);
         verify(audit, never()).add(anyLong(), any(), anyString());
@@ -640,14 +690,14 @@ class InvoiceServiceTest {
 
     @Test
     void aStornorechnungNamesItsInvoiceAndKeepsItsLinesAndFormat() {
-        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.restore("{}")).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,
-                null, null);
+                null, null, null);
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
         InvoiceDocument document = service.document(storno, "2027-11").orElseThrow();
-        assertThat(document.cancels()).isEqualTo(new io.github.grigoriev.im.einvoice.InvoiceReference("2027-07",
+        assertThat(document.cancels()).isEqualTo(new InvoiceReference("2027-07",
                 TODAY.minusDays(10)));
 
         when(repository.findById(5L)).thenReturn(Optional.of(storno));
@@ -664,36 +714,49 @@ class InvoiceServiceTest {
     }
 
     @Test
-    void aStornorechnungKeepsTheTaxNumberAndTheMixOfItsInvoice() {
+    void aStornorechnungKeepsTheTaxIdsOfItsInvoice() {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
                 null, null, null, null, "98/765/43210")));
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
-                0, null, null, null, null, List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
-                        lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
+                0, null, null, null, null, List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null,
+                null, null);
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
-        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
-        assertThat(service.problems(storno)).as("an invoice from before the second tax number may mix").isEmpty();
-        assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice")
+        when(documents.restore("{}")).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice, "
+                + "even after the profile changed")
                 .isEqualTo("143/123/45678");
-        InvoiceDocument withVatId = io.github.grigoriev.im.einvoice.ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
+        InvoiceDocument withVatId = ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
         when(documents.restore("{}")).thenReturn(withVatId);
         assertThat(service.document(storno).orElseThrow().seller()).as("both tax IDs of the cancelled invoice")
-                .extracting(io.github.grigoriev.im.einvoice.Party::taxNumber, io.github.grigoriev.im.einvoice.Party::vatId)
+                .extracting(Party::taxNumber, Party::vatId)
                 .containsExactly(withVatId.seller().taxNumber(), withVatId.seller().vatId());
+    }
+
+    @Test
+    void aStornorechnungKeepsTheBusinessOfItsInvoiceOnASave() {
+        Invoice storno = withActivity(new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
+                TODAY, TODAY, 0, null, null, null, null, List.of(lump("Kurs", "300", TaxCategory.NOT_TAXABLE_ABROAD)), NOW,
+                NOW, 0L, null, null, null), Activity.TEACHING);
+        when(repository.findById(5L)).thenReturn(Optional.of(storno));
+        when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
+        DraftForm form = DraftForm.of(storno);
+        form.setActivity(null);
+        assertThat(service.saveDraft(5, form).activity()).as("the editor sends no business for a Stornorechnung")
+                .isEqualTo(Activity.TEACHING);
     }
 
     @Test
     void aStornorechnungKeepsTheTaxStatusOfItsInvoice() {
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,
-                null, null);
+                null, null, null);
         SellerProfile regular = SellerTestData.profile();
         regular = new SellerProfile(regular.name(), regular.street(), regular.postcode(), regular.city(),
                 regular.countryCode(), regular.contactName(), regular.email(), regular.phone(), regular.taxNumber(),
-                "DE123456789", regular.iban(), regular.bic(), io.github.grigoriev.im.seller.TaxStatus.REGULAR, null, null,
+                "DE123456789", regular.iban(), regular.bic(), TaxStatus.REGULAR, null, null,
                 null, null, null);
         when(sellers.find()).thenReturn(Optional.of(regular));
         assertThat(service.problems(storno)).as("a new §19 draft after the change")

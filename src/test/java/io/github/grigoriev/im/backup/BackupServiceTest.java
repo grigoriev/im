@@ -33,6 +33,7 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
@@ -93,7 +94,7 @@ class BackupServiceTest {
             writes.add(params);
             return 1L;
         });
-        org.mockito.Mockito.doAnswer(call -> {
+        Mockito.doAnswer(call -> {
             handle(sql, params, call.getArgument(0));
             return null;
         }).when(spec).query(any(RowCallbackHandler.class));

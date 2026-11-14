@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -17,9 +18,11 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.junit.jupiter.api.Test;
@@ -33,7 +36,7 @@ class ArchiveServiceTest {
     private static Invoice invoice(long id, InvoiceStatus status, String number, LocalDate date) {
         boolean draft = status == InvoiceStatus.DRAFT;
         return new Invoice(id, status, 2L, number, InvoiceFormat.ZUGFERD_EN16931, date, date, date, 14, null, null, null,
-                null, List.of(), Instant.EPOCH, Instant.EPOCH, 1L, draft ? null : Instant.EPOCH, draft ? null : "{}");
+                null, List.of(), Instant.EPOCH, Instant.EPOCH, 1L, draft ? null : Instant.EPOCH, draft ? null : "{}", null);
     }
 
     private static StoredDocument file(long invoiceId, DocumentKind kind, String number, String content) {
@@ -86,7 +89,7 @@ class ArchiveServiceTest {
         Invoice slash = invoice(6, InvoiceStatus.ISSUED, "2027/11", LocalDate.of(2027, 2, 1));
         Invoice hyphen = invoice(7, InvoiceStatus.ISSUED, "-2027-11", LocalDate.of(2027, 2, 2));
         when(invoices.list()).thenReturn(List.of(slash, hyphen));
-        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+        when(documents.restore("{}")).thenReturn(ItSamples.withBuyerContact(
                 SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(documents.list(6)).thenReturn(List.of(new StoredDocument(60L, 6L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
                 new byte[] {1}, "a", 1, Instant.EPOCH)));
@@ -103,7 +106,7 @@ class ArchiveServiceTest {
 
     @Test
     void aRenamedFileNeverHitsAnotherName() {
-        java.util.Set<String> names = new java.util.HashSet<>();
+        Set<String> names = new HashSet<>();
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11_7.pdf", 3)).isEqualTo("Rechnung_2027-11_7.pdf");
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 6)).isEqualTo("Rechnung_2027-11.pdf");
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 7)).isEqualTo("Rechnung_2027-11_7_2.pdf");

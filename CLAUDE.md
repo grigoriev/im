@@ -42,7 +42,7 @@ Package `io.github.grigoriev.im`:
   `XRechnungValidator`: KoSIT) and `EInvoiceService`, which issues and validates per format
 - `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`,
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
-- `seller`: the seller profile (`SellerService`, one row, IBAN checksum; `ProfilePart` saves one tab, `missing` names what invoices still need; `taxNumberTeaching` is the second tax number for §4 Nr. 21, chosen per invoice by `toParty(teaching)`) and the default tax notes (`TaxNoteService`)
+- `seller`: the seller profile (`SellerService`, one row, IBAN checksum; `ProfilePart` saves one tab, `missing` names what invoices still need; `taxNumberTeaching` is the second tax number for §4 Nr. 21, chosen per invoice by `toParty(teaching)`; `Activity` is the business of an invoice, `InvoiceService.activity` picks it) and the default tax notes (`TaxNoteService`)
 - `audit`: the audit log (`AuditService.add`, joins the caller's transaction; with an invoice ID the entry joins its `history`); logins come from `user.LoginAudit`,
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
@@ -71,6 +71,7 @@ Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontai
 - Technical names are English: URLs, request and form parameters, element IDs, CSS classes, code, database and JSON (decision 2026-11-14). What the user reads is German: texts, labels, messages and the names of downloaded files. German legal terms without an English equivalent stay as terms, for example `KLEINUNTERNEHMER`.
 - No em-dashes in code, comments, docs or commit messages. American spelling.
 - Buttons of a form or dialog sit on one line at its right edge (`form-actions`, `modal-foot`); a dialog grows wider instead of wrapping them, and only a phone, where it cannot, wraps them. Every button has an icon; destructive ones are `btn-danger`, their confirmation `btn-error`.
+- No fully qualified class names in code: import the class (decision 2026-11-14).
 - Amounts in `BigDecimal`, never `double`. Dates as `LocalDate`, time from an injected `Clock`.
 
 ## Reviews

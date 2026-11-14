@@ -7,14 +7,17 @@ import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.DraftLine;
 import io.github.grigoriev.im.invoice.Invoice;
+import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +44,7 @@ class InvoiceIT {
     private JdbcTemplate jdbc;
 
     @Autowired
-    private io.github.grigoriev.im.einvoice.InvoicePdfRenderer pdf;
+    private InvoicePdfRenderer pdf;
 
     private Customer customer;
 
@@ -78,7 +81,7 @@ class InvoiceIT {
         assertThat(invoices.problems(stored)).isEmpty();
         assertThat(invoices.document(stored).orElseThrow().total()).isEqualByComparingTo("531.00");
         byte[] preview = pdf.render(invoices.document(stored).orElseThrow());
-        assertThat(new String(preview, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+        assertThat(new String(preview, 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
 
         DraftForm again = DraftForm.of(stored);
         again.getLines().remove(1);
@@ -87,7 +90,7 @@ class InvoiceIT {
                 .containsExactly("Lesung", "Signierstunde");
         long draftId = draft.id();
         assertThatThrownBy(() -> invoices.saveDraft(draftId, form)).as("a second window with the old version")
-                .isInstanceOf(io.github.grigoriev.im.invoice.InvoiceException.class);
+                .isInstanceOf(InvoiceException.class);
         invoices.deleteDraft(draft.id());
         assertThat(invoices.find(draft.id())).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM invoice_line WHERE invoice_id = ?", Integer.class, draft.id()))

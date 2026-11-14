@@ -13,17 +13,21 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentStore;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,9 +35,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
 import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
  * The threshold with a fake database: payments per year with the snapshot of their invoice, and baselines. The sample
@@ -80,7 +84,7 @@ class ThresholdServiceTest {
         });
         MappedQuerySpec<Integer> years = mock(MappedQuerySpec.class);
         when(spec.query(Integer.class)).thenReturn(years);
-        when(years.list()).thenAnswer(call -> payments.keySet().stream().sorted(java.util.Comparator.reverseOrder())
+        when(years.list()).thenAnswer(call -> payments.keySet().stream().sorted(Comparator.reverseOrder())
                 .toList());
         MappedQuerySpec<BigDecimal> amount = mock(MappedQuerySpec.class);
         when(spec.query(BigDecimal.class)).thenReturn(amount);
@@ -109,11 +113,12 @@ class ThresholdServiceTest {
             ResultSet rs = mock(ResultSet.class);
             if (row[0] instanceof BigDecimal value) {
                 int year = ((LocalDate) params.get("from")).getYear();
-                when(rs.getDate(1)).thenReturn(java.sql.Date.valueOf(LocalDate.of(year, 1, 15).plusDays(result.size())));
+                when(rs.getDate(1)).thenReturn(Date.valueOf(LocalDate.of(year, 1, 15).plusDays(result.size())));
                 when(rs.getBigDecimal(2)).thenReturn(value);
                 when(rs.getString(3)).thenReturn(value.signum() < 0 ? "Erstattung" : null);
                 when(rs.getString(4)).thenReturn(year + "-0" + (result.size() + 1));
                 when(rs.getString(5)).thenReturn((String) row[1]);
+                when(rs.getString(6)).thenReturn("OTHER");
             } else {
                 when(rs.getInt(1)).thenReturn((Integer) row[0]);
                 when(rs.getBigDecimal(2)).thenReturn((BigDecimal) row[1]);
@@ -129,7 +134,7 @@ class ThresholdServiceTest {
         when(documents.restore("reading")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.restore("school")).thenReturn(SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.restore("mixed")).thenReturn(SampleInvoices.mixed(InvoiceFormat.ZUGFERD_EN16931));
-        when(documents.restore("contact")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+        when(documents.restore("contact")).thenReturn(ItSamples.withBuyerContact(
                 SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
     }
 
@@ -180,16 +185,25 @@ class ThresholdServiceTest {
     }
 
     @Test
+    void aRowCarriesTheFrozenBusiness() {
+        LocalDate day = LocalDate.of(2027, 1, 2);
+        BigDecimal amount = new BigDecimal("5.00");
+        InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        assertThat(ThresholdService.row(day, amount, null, "2027-01", reading, "TEACHING").activity())
+                .as("frozen at the issue").isEqualTo(Activity.TEACHING);
+    }
+
+    @Test
     void anInvoiceWithoutTotalCountsNothing() {
         RevenueRow row = ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal("5.00"), null, "2027-01",
-                SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931));
+                SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931), "OTHER");
         assertThat(row.counted()).isEqualByComparingTo("0");
         assertThat(row.excluded()).isEqualByComparingTo("5.00");
         assertThat(row.byCategory()).isEmpty();
     }
 
     private static RevenueRow split(String amount, InvoiceDocument document) {
-        return ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal(amount), null, "2027-01", document);
+        return ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal(amount), null, "2027-01", document, "OTHER");
     }
 
     private static BigDecimal parts(RevenueRow row) {
@@ -232,10 +246,10 @@ class ThresholdServiceTest {
                 .containsEntry(TaxCategory.STANDARD_7, new BigDecimal("1.07"));
 
         RevenueRow reading = split("480.00", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
-        assertThat(reading.byCategory()).containsExactly(java.util.Map.entry(TaxCategory.KLEINUNTERNEHMER,
+        assertThat(reading.byCategory()).containsExactly(Map.entry(TaxCategory.KLEINUNTERNEHMER,
                 new BigDecimal("480.00")));
         RevenueRow school = split("984.00", SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931));
-        assertThat(school.byCategory()).containsExactly(java.util.Map.entry(TaxCategory.EXEMPT_4_21,
+        assertThat(school.byCategory()).containsExactly(Map.entry(TaxCategory.EXEMPT_4_21,
                 new BigDecimal("984.00")));
         RevenueRow tiny = split("0.01", SampleInvoices.mixed(InvoiceFormat.ZUGFERD_EN16931));
         assertThat(tiny.counted()).isEqualByComparingTo("0.00");

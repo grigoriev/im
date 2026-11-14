@@ -5,6 +5,7 @@ import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceLine;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.seller.SettingsException;
@@ -34,7 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ThresholdService {
 
     static final String PAYMENTS = """
-            SELECT p.paid_on, p.amount, p.note, i.number, i.snapshot FROM payment p JOIN invoice i ON i.id = p.invoice_id
+            SELECT p.paid_on, p.amount, p.note, i.number, i.snapshot, i.activity
+              FROM payment p JOIN invoice i ON i.id = p.invoice_id
              WHERE p.paid_on BETWEEN :from AND :to ORDER BY p.paid_on, p.id""";
     static final String YEARS = """
             SELECT CAST(EXTRACT(YEAR FROM paid_on) AS INTEGER) FROM payment
@@ -208,16 +210,18 @@ public class ThresholdService {
     public List<RevenueRow> rows(int year) {
         return jdbc.sql(PAYMENTS).param("from", LocalDate.of(year, 1, 1)).param("to", LocalDate.of(year, 12, 31))
                 .query((rs, row) -> row(rs.getDate(1).toLocalDate(), rs.getBigDecimal(2), rs.getString(3),
-                        rs.getString(4), documents.restore(rs.getString(5))))
+                        rs.getString(4), documents.restore(rs.getString(5)), rs.getString(6)))
                 .list();
     }
 
     /**
      * Splits one payment by the lines of its invoice, to the cent. Each category weighs with its gross amount, its net
      * lines plus the VAT of its rate. The largest-remainder method hands out the cents: the parts add up to the
-     * payment, and none takes the other sign. The §19 part is what {@code KLEINUNTERNEHMER} gets.
+     * payment, and none takes the other sign. The §19 part is what {@code KLEINUNTERNEHMER} gets. The row carries the
+     * business the issue froze.
      */
-    static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document) {
+    static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document,
+            String activity) {
         Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
         if (document.total().signum() != 0) {
             byCategory.putAll(split(amount, gross(document), document.total()));
@@ -225,7 +229,7 @@ public class ThresholdService {
         BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS));
         return new RevenueRow(paidOn, number,
                 Customer.label(document.buyer().name(), document.buyer().contactName()), amount, counted, amount.subtract(counted),
-                byCategory, note);
+                byCategory, note, Activity.valueOf(activity));
     }
 
     /** The gross amount per category: its net lines plus, for a standard rate, the VAT of that rate. */

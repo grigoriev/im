@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -69,7 +70,7 @@ class EInvoiceServiceTest {
         assertThat(issued.pdf()).startsWith("%PDF".getBytes());
         assertThat(issued.xml()).isNotEmpty();
         assertThat(issued.validations()).allMatch(ValidationResult::valid);
-        String xml = new String(issued.xml(), java.nio.charset.StandardCharsets.UTF_8);
+        String xml = new String(issued.xml(), StandardCharsets.UTF_8);
         assertThat(xml).as("Mustang computes the same totals")
                 .contains("<ram:GrandTotalAmount>" + document.total().toPlainString() + "</ram:GrandTotalAmount>")
                 .contains("<ram:TaxBasisTotalAmount>" + document.netTotal().toPlainString() + "</ram:TaxBasisTotalAmount>");

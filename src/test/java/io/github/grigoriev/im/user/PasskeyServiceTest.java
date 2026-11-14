@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
 import org.springframework.security.web.webauthn.management.MapPublicKeyCredentialUserEntityRepository;
@@ -94,7 +95,7 @@ class PasskeyServiceTest {
         assertThatThrownBy(() -> service.remove("elena", id)).isInstanceOf(UserException.class);
         assertThatThrownBy(() -> service.remove("niemand", id)).isInstanceOf(UserException.class);
         assertThat(credentials.findByCredentialId(adminKey.getCredentialId()).getLabel()).isEqualTo("Admin-Mac");
-        org.mockito.Mockito.verifyNoInteractions(audit);
+        Mockito.verifyNoInteractions(audit);
     }
 
     @Test

@@ -1,12 +1,13 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.customer.Customer;
+import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.threshold.ThresholdService;
-import io.github.grigoriev.im.customer.Customer;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -81,7 +82,7 @@ public class HomeController {
         return "home";
     }
 
-    private static String label(io.github.grigoriev.im.einvoice.Party buyer) {
+    private static String label(Party buyer) {
         return Customer.label(buyer.name(), buyer.contactName());
     }
 }

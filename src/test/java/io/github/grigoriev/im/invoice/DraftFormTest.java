@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.seller.Activity;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -63,7 +65,7 @@ class DraftFormTest {
                 day.minusDays(1), 30, "04011000-12345-67", "Hallo", "Danke", "Steuerfrei.",
                 List.of(new DraftLine("Unterricht", false, new BigDecimal("16"), new BigDecimal("45"), TaxCategory.EXEMPT_4_21),
                         new DraftLine("Lesung", true, BigDecimal.ONE, new BigDecimal("400"), TaxCategory.EXEMPT_4_21)),
-                Instant.EPOCH, Instant.EPOCH, 0L, null, null);
+                Instant.EPOCH, Instant.EPOCH, 0L, null, null, null);
         DraftForm form = DraftForm.of(invoice);
         assertThat(form.getVersion()).isZero();
         assertThat(form.getFormat()).isEqualTo(InvoiceFormat.XRECHNUNG);
@@ -95,7 +97,7 @@ class DraftFormTest {
         LocalDate day = LocalDate.of(2027, 3, 18);
         Invoice invoice = new Invoice(1L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14,
                 null, null, null, null, List.of(new DraftLine("Gebühr", true, BigDecimal.ONE, new BigDecimal("400.125"),
-                        TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH, Instant.EPOCH, 0L, null, null);
+                        TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH, Instant.EPOCH, 0L, null, null, null);
         assertThat(DraftForm.of(invoice).getLines().getFirst().getAmount()).isEqualTo("400,125");
     }
 
@@ -110,5 +112,17 @@ class DraftFormTest {
         assertThat(line.isShownAsLumpSum()).isTrue();
         assertThat(line.getShownAmount()).isEmpty();
         assertThat(new DraftForm().getLines()).isEmpty();
+    }
+
+    @Test
+    void keepsTheBusinessOfTheInvoice() {
+        Invoice invoice = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931,
+                LocalDate.of(2027, 3, 18), LocalDate.of(2027, 3, 18), LocalDate.of(2027, 3, 18),
+                14, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 0L, null,
+                null, Activity.TEACHING);
+        DraftForm form = DraftForm.of(invoice);
+        Assertions.assertThat(form.getActivity()).isEqualTo(Activity.TEACHING);
+        form.setActivity(Activity.OTHER);
+        Assertions.assertThat(form.getActivity()).isEqualTo(Activity.OTHER);
     }
 }

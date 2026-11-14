@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.seller.Activity;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -32,6 +33,7 @@ import org.springframework.data.relational.core.mapping.Table;
  *     each other
  * @param issuedAt time of the issue, {@code null} for a draft
  * @param snapshot the issued invoice document as JSON, frozen at the issue; {@code null} for a draft
+ * @param activity the business with two tax numbers, frozen at the issue; {@code null} follows the lines
  */
 @Table("invoice")
 public record Invoice(
@@ -53,7 +55,8 @@ public record Invoice(
         Instant updatedAt,
         @Version Long version,
         Instant issuedAt,
-        String snapshot) {
+        String snapshot,
+        Activity activity) {
 
     /** Copies the lines, so a stored invoice never shares a list. */
     public Invoice {

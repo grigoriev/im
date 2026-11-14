@@ -6,8 +6,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.seller.Activity;
+import io.github.grigoriev.im.seller.SellerProfile;
+import io.github.grigoriev.im.seller.SellerService;
+import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.threshold.RevenueRow;
 import io.github.grigoriev.im.threshold.ThresholdService;
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -16,12 +22,13 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.ExtendedModelMap;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 class ReportControllerTest {
 
     private final ThresholdService threshold = mock(ThresholdService.class);
-    private final io.github.grigoriev.im.invoice.ArchiveService archive = mock(io.github.grigoriev.im.invoice.ArchiveService.class);
-    private final io.github.grigoriev.im.seller.SellerService sellers = mock(io.github.grigoriev.im.seller.SellerService.class);
+    private final ArchiveService archive = mock(ArchiveService.class);
+    private final SellerService sellers = mock(SellerService.class);
     private final ReportController controller = new ReportController(threshold, archive, sellers);
 
     private static RevenueRow row(String amount, String counted, String note) {
@@ -29,7 +36,7 @@ class ReportControllerTest {
         BigDecimal part = new BigDecimal(counted);
         return new RevenueRow(LocalDate.of(2027, 3, 18), "2027-01", "Verlag \"am\" Fluss", value, part,
                 value.subtract(part), Map.of(TaxCategory.KLEINUNTERNEHMER, part, TaxCategory.EXEMPT_4_21,
-                        value.subtract(part)), note);
+                        value.subtract(part)), note, null);
     }
 
     @Test
@@ -58,7 +65,7 @@ class ReportControllerTest {
     void keepsSalesWithVatOutOfTheKleinunternehmerFields() {
         RevenueRow books = new RevenueRow(LocalDate.of(2027, 3, 18), "2027-02", "Schule", new BigDecimal("100.00"),
                 BigDecimal.ZERO, new BigDecimal("100.00"), Map.of(TaxCategory.EXEMPT_4_21, new BigDecimal("93.83"),
-                        TaxCategory.STANDARD_19, new BigDecimal("6.17")), null);
+                        TaxCategory.STANDARD_19, new BigDecimal("6.17")), null, null);
         ReportController.Totals totals = ReportController.totals(List.of(row("560.00", "200.00", null), books));
         assertThat(totals.vatSales()).isEqualByComparingTo("6.17");
         assertThat(totals.total()).isEqualByComparingTo("653.83");
@@ -85,7 +92,7 @@ class ReportControllerTest {
     @Test
     void writesOneAnlageEuerPerTaxNumberWhenTeachingHasItsOwn() {
         List<RevenueRow> rows = List.of(row("560.00", "200.00", null), row("-100.00", "-35.71", null));
-        io.github.grigoriev.im.seller.SellerProfile single = io.github.grigoriev.im.seller.SellerTestData.profile();
+        SellerProfile single = SellerTestData.profile();
         List<ReportController.Business> one = ReportController.businesses(rows, single);
         assertThat(one).singleElement().satisfies(business -> {
             assertThat(business.key()).isEmpty();
@@ -96,24 +103,32 @@ class ReportControllerTest {
         assertThat(ReportController.businesses(rows, null)).singleElement()
                 .satisfies(business -> assertThat(business.taxNumber()).isNull());
 
-        io.github.grigoriev.im.seller.SellerProfile two = new io.github.grigoriev.im.seller.SellerProfile(single.name(),
+        SellerProfile two = new SellerProfile(single.name(),
                 single.street(), single.postcode(), single.city(), single.countryCode(), null, single.email(),
                 single.phone(), single.taxNumber(), null, single.iban(), single.bic(), single.taxStatus(), null, null,
                 null, null, "98/765/43210");
-        List<ReportController.Business> split = ReportController.businesses(rows, two);
+        // Teaching abroad is not taxable in Germany, yet it belongs to teaching: the business splits, not the category.
+        TaxCategory abroad = TaxCategory.NOT_TAXABLE_ABROAD;
+        RevenueRow uzbekistan = new RevenueRow(LocalDate.of(2027, 4, 1), "2027-02", "Goethe-Zentrum", new BigDecimal("300.00"),
+                BigDecimal.ZERO, new BigDecimal("300.00"), Map.of(abroad, new BigDecimal("300.00")), null,
+                Activity.TEACHING);
+        RevenueRow reading = new RevenueRow(LocalDate.of(2027, 4, 2), "2027-03", "Verlag", new BigDecimal("100.00"),
+                new BigDecimal("100.00"), BigDecimal.ZERO, Map.of(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("100.00")),
+                null, Activity.OTHER);
+        List<ReportController.Business> split = ReportController.businesses(List.of(uzbekistan, reading), two);
         assertThat(split).extracting(ReportController.Business::key).containsExactly("-teaching", "-other");
+        assertThat(split).extracting(ReportController.Business::label).containsExactly("Unterricht", "Übrige Leistungen");
         ReportController.Business teaching = split.get(0);
         assertThat(teaching.taxNumber()).isEqualTo("98/765/43210");
-        assertThat(teaching.totals().total()).isEqualByComparingTo("295.71");
-        assertThat(teaching.totals().excluded()).as("all of teaching is Zeile 13").isEqualByComparingTo("295.71");
+        assertThat(teaching.totals().total()).isEqualByComparingTo("300.00");
+        assertThat(teaching.totals().excluded()).as("not taxable, Zeile 13").isEqualByComparingTo("300.00");
         assertThat(teaching.totals().counted()).isEqualByComparingTo("0");
         ReportController.Business other = split.get(1);
         assertThat(other.taxNumber()).isEqualTo("12/345/67890");
-        assertThat(other.totals().total()).isEqualByComparingTo("164.29");
+        assertThat(other.totals().total()).isEqualByComparingTo("100.00");
         assertThat(other.totals().excluded()).isEqualByComparingTo("0");
-        assertThat(other.totals().counted()).isEqualByComparingTo("164.29");
-        assertThat(teaching.totals().total().add(other.totals().total())).as("the two add up to all")
-                .isEqualByComparingTo(ReportController.totals(rows).total());
+        assertThat(other.totals().counted()).isEqualByComparingTo("100.00");
+
     }
 
     @Test
@@ -130,10 +145,10 @@ class ReportControllerTest {
 
     @Test
     void streamsTheArchiveOfAYear() throws Exception {
-        ResponseEntity<org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody> zip = controller.zip(2027);
+        ResponseEntity<StreamingResponseBody> zip = controller.zip(2027);
         assertThat(zip.getHeaders().getContentType()).hasToString("application/zip");
         assertThat(zip.getHeaders().getContentDisposition().getFilename()).isEqualTo("Rechnungen_2027.zip");
-        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         zip.getBody().writeTo(out);
         verify(archive).write(2027, out);
     }

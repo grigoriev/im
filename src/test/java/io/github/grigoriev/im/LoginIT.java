@@ -9,6 +9,7 @@ import io.github.grigoriev.im.user.Role;
 import io.github.grigoriev.im.user.UserException;
 import io.github.grigoriev.im.user.UserService;
 import java.net.CookieManager;
+import java.net.CookieStore;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -130,7 +131,7 @@ class LoginIT {
         assertThat(jdbc.queryForObject(count, Integer.class)).isEqualTo(1);
 
         // The session times out: only the remember-me cookie is left, the open page posts an old token.
-        java.net.CookieStore store = jar.getCookieStore();
+        CookieStore store = jar.getCookieStore();
         store.getCookies().stream().filter(cookie -> cookie.getName().equals("JSESSIONID")).toList()
                 .forEach(cookie -> store.remove(null, cookie));
         HttpResponse<String> forged = device.send(HttpRequest.newBuilder(uri("/logout"))

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
 import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
@@ -109,7 +110,7 @@ class NumberServiceTest {
         when(statement.update()).thenReturn(1, 0);
         assertThatThrownBy(() -> service.setStart(2027, 10)).isInstanceOf(SettingsException.class)
                 .hasMessage("Für 2027 sind schon Nummern vergeben. Der Zähler ist gesperrt.");
-        org.mockito.Mockito.verifyNoInteractions(audit);
+        Mockito.verifyNoInteractions(audit);
     }
 
     @ParameterizedTest

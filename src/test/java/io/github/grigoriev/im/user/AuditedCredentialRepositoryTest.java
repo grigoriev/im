@@ -9,6 +9,7 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.ImmutableCredentialRecord;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
@@ -31,7 +32,7 @@ class AuditedCredentialRepositoryTest {
 
         repository.save(ImmutableCredentialRecord.fromCredentialRecord(mac).lastUsed(JAN.plusSeconds(60)).build());
         verify(audit, never()).add(AuditAction.PASSKEY_ADDED, "iPhone");
-        org.mockito.Mockito.verifyNoMoreInteractions(audit);
+        Mockito.verifyNoMoreInteractions(audit);
 
         assertThat(repository.findByCredentialId(mac.getCredentialId()).getLastUsed()).isEqualTo(JAN.plusSeconds(60));
         assertThat(repository.findByUserId(elena.getId())).hasSize(1);

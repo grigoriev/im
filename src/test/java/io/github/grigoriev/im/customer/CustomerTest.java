@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.Party;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +42,7 @@ class CustomerTest {
 
     @Test
     void theExceptionKeepsACopyOfTheProblems() {
-        List<String> problems = new java.util.ArrayList<>(List.of("Eins.", "Zwei."));
+        List<String> problems = new ArrayList<>(List.of("Eins.", "Zwei."));
         CustomerException exception = new CustomerException(problems);
         problems.clear();
         assertThat(exception.problems()).containsExactly("Eins.", "Zwei.");
@@ -60,8 +61,8 @@ class CustomerTest {
     @Test
     void copiesTheOrganizationForAnotherContact() {
         Customer original = new Customer(7L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
-                "Frau Weber", "weber@sprachschule.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG);
+                "Frau Weber", "weber@sprachschule.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null);
         assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Sprachschule am See", "Seeweg 5",
-                "86150", "Musterstadt", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG));
+                "86150", "Musterstadt", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null));
     }
 }

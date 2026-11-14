@@ -17,6 +17,7 @@ import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
+import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.numbering.NumberService;
 import java.sql.Timestamp;
@@ -48,8 +49,8 @@ class IssueServiceTest {
             Clock.fixed(NOW, ZoneId.of("Europe/Berlin")));
 
     private final Invoice draft = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
-            TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 3L, null, null);
-    private final InvoiceDocument document = io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+            TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 3L, null, null, null);
+    private final InvoiceDocument document = ItSamples.withBuyerContact(
             SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg");
     private final IssuedEInvoice files = new IssuedEInvoice(InvoiceFormat.ZUGFERD_EN16931, new byte[] {1},
             new byte[] {2}, List.of());
@@ -70,7 +71,7 @@ class IssueServiceTest {
     @Test
     void aStornorechnungCancelsItsInvoice() {
         Invoice original = new Invoice(7L, InvoiceStatus.PAID, 2L, "2027-07", InvoiceFormat.ZUGFERD_EN16931, TODAY,
-                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 3L, NOW, "{}");
+                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 3L, NOW, "{}", null);
         when(invoices.cancelled(draft)).thenReturn(Optional.of(original));
         StatementSpec cancel = mock(StatementSpec.class);
         when(jdbc.sql(IssueService.CANCEL)).thenReturn(cancel);

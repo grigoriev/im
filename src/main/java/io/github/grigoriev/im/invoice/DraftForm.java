@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.seller.Activity;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
@@ -40,6 +41,7 @@ public class DraftForm {
     private String intro;
     private String closing;
     private String taxNote;
+    private Activity activity;
     private List<LineForm> lines = new ArrayList<>();
 
     /**
@@ -60,6 +62,7 @@ public class DraftForm {
         form.intro = invoice.intro();
         form.closing = invoice.closing();
         form.taxNote = invoice.taxNote();
+        form.activity = invoice.activity();
         form.lines = rows(invoice.lines());
         return form;
     }
@@ -237,6 +240,16 @@ public class DraftForm {
     /** @param taxNote the tax note */
     public void setTaxNote(String taxNote) {
         this.taxNote = taxNote;
+    }
+
+    /** @return the business with two tax numbers, {@code null} to follow the lines */
+    public Activity getActivity() {
+        return activity;
+    }
+
+    /** @param activity the business with two tax numbers, {@code null} to follow the lines */
+    public void setActivity(Activity activity) {
+        this.activity = activity;
     }
 
     /** @return the lines */

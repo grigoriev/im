@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
@@ -37,7 +38,7 @@ class HomeControllerTest {
         return new Invoice(id, status, 2L, status == InvoiceStatus.DRAFT ? null : "2027-0" + id,
                 InvoiceFormat.ZUGFERD_EN16931, date, date, date, 14, null, null, null, null, List.of(), Instant.EPOCH,
                 Instant.EPOCH, 1L, status == InvoiceStatus.DRAFT ? null : Instant.EPOCH,
-                status == InvoiceStatus.DRAFT ? null : "{}");
+                status == InvoiceStatus.DRAFT ? null : "{}", null);
     }
 
     private void open(Invoice invoice, String amount) {
@@ -59,7 +60,7 @@ class HomeControllerTest {
         open(dueToday, "20.00");
         open(settled, "0.00");
         when(invoices.cancelled(storno)).thenReturn(Optional.of(due));
-        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+        when(documents.restore("{}")).thenReturn(ItSamples.withBuyerContact(
                 SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(threshold.today()).thenReturn(TODAY);
         Threshold current = new Threshold(2027, BigDecimal.ONE, true, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN,

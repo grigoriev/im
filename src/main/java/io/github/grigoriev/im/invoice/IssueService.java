@@ -30,7 +30,7 @@ public class IssueService {
 
     static final String ISSUE = """
             UPDATE invoice SET status = 'ISSUED', number = :number, issued_at = :at, snapshot = :snapshot,
-                   updated_at = :at, version = version + 1
+                   activity = :activity, updated_at = :at, version = version + 1
              WHERE id = :id AND version = :version AND status = 'DRAFT'""";
     static final String CANCEL = """
             UPDATE invoice SET status = 'CANCELLED', updated_at = :at, version = version + 1
@@ -104,7 +104,8 @@ public class IssueService {
         int updated;
         try {
             updated = jdbc.sql(ISSUE).param("number", number).param("at", Timestamp.from(at))
-                    .param("snapshot", store.snapshot(document)).param("id", id).param("version", version).update();
+                    .param("snapshot", store.snapshot(document)).param("activity", InvoiceService.activity(draft).name())
+                    .param("id", id).param("version", version).update();
         } catch (DuplicateKeyException _) {
             throw new InvoiceException(List.of(NUMBER_TAKEN.formatted(number)));
         }
