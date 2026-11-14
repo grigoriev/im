@@ -25,6 +25,8 @@ public enum AuditAction {
     PROFILE_SAVED("Profil gespeichert"),
     /** The default tax notes changed. */
     TAX_NOTES_SAVED("Steuerhinweise gespeichert"),
+    /** The default e-mail text changed. */
+    MAIL_TEXT_SAVED("E-Mail-Text gespeichert"),
     /** The pattern of the invoice numbers changed. */
     NUMBER_PATTERN_SAVED("Nummernmuster gespeichert"),
     /** The start value of a year changed. */

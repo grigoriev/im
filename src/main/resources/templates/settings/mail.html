@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>E-Mail · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Einstellungen', 'settings', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+    <div th:replace="~{fragments/settings :: tabs('mail')}"></div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <form class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4" th:action="@{/admin/e-mail}" method="post" id="mail-text">
+      <div>
+        <h2 class="font-semibold">E-Mail mit der Rechnung</h2>
+        <p class="text-sm text-base-content/75">Vorgabe für das Versenden aus der App. Eine Vorlage kann Betreff und Text
+          überschreiben. Ein leeres Feld stellt den ursprünglichen Text wieder her.</p>
+        <p class="text-sm text-base-content/75">Platzhalter: <code>{Rechnungsnummer}</code>, <code>{Rechnungsdatum}</code>,
+          <code>{Leistungszeitraum}</code>, <code>{Zahlungsziel}</code>.</p>
+      </div>
+      <label class="floating-label"><span>Betreff</span>
+        <input id="mail-subject" name="subject" class="input w-full" maxlength="200" th:value="${subject}">
+      </label>
+      <label class="grid gap-1.5"><span class="text-sm font-medium">Text</span>
+        <textarea id="mail-body" name="body" class="textarea w-full h-48" maxlength="4000" th:text="${body}">Text</textarea>
+      </label>
+      <div><button type="submit" class="btn btn-primary">Speichern</button></div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

@@ -65,6 +65,7 @@ import io.github.grigoriev.im.web.AccountController;
 import io.github.grigoriev.im.web.TemplateController;
 import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.InvoiceRecordsController;
+import io.github.grigoriev.im.web.MailTextController;
 import io.github.grigoriev.im.web.IssuedInvoicePage;
 import io.github.grigoriev.im.web.AuditController;
 import io.github.grigoriev.im.web.CountryController;
@@ -93,7 +94,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
-        AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class})
+        AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
+        MailTextController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -159,6 +161,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private io.github.grigoriev.im.invoice.PaymentService payments;
+
+    @MockitoBean
+    private io.github.grigoriev.im.mail.MailTextService mailTexts;
 
     @org.junit.jupiter.api.BeforeEach
     void noPayments() {
@@ -649,6 +654,28 @@ class SecurityWebTest {
         mvc.perform(post("/rechnungen/6/zahlungen").param("paidOn", "gestern").param("amount", "1")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(flash().attribute("error", "Bitte gültige Daten eingeben, zum Beispiel ein Datum."));
+    }
+
+    @Test
+    void theAdminEditsTheDefaultMailText() throws Exception {
+        when(mailTexts.defaults()).thenReturn(new io.github.grigoriev.im.mail.MailText("Rechnung {Rechnungsnummer}",
+                "Hallo & Tschüss"));
+        mvc.perform(get("/admin/e-mail").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Rechnung {Rechnungsnummer}\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Hallo &amp; Tschüss</textarea>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-selected=\"true\">E-Mail")));
+        mvc.perform(get("/admin/e-mail").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/e-mail").param("subject", "Neu").param("body", "Text")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/e-mail")).andExpect(flash().attribute("success", "E-Mail-Text gespeichert."));
+        verify(mailTexts).save("Neu", "Text");
+        doThrow(new io.github.grigoriev.im.seller.SettingsException(
+                List.of("Der Betreff hat höchstens 200 Zeichen."))).when(mailTexts).save("zu lang", "Text");
+        mvc.perform(post("/admin/e-mail").param("subject", "zu lang").param("body", "Text")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Der Betreff hat höchstens 200 Zeichen.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"zu lang\"")));
     }
 
     @Test

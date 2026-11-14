@@ -49,6 +49,7 @@ Package `io.github.grigoriev.im`:
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
   validates and freezes in one transaction; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `TemplateService` keeps the templates
   per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
+- `mail`: the e-mail text (`MailTextService`: the admin default, the template of an invoice, the placeholders)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
