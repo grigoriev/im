@@ -96,7 +96,7 @@
               eine Leistung mit Reverse Charge an einen Kunden in der EU.</p>
           </fieldset>
 
-          <div><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i><span th:text="${customer.id == null ? 'Anlegen' : 'Speichern'}">Speichern</span></button></div>
+          <div class="form-actions"><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i><span th:text="${customer.id == null ? 'Anlegen' : 'Speichern'}">Speichern</span></button></div>
         </form>
 
         <div class="border-t border-base-300 pt-4 grid gap-3" th:if="${customer.id != null}" id="customer-templates">
@@ -121,10 +121,10 @@
           </div>
         </div>
 
-        <div class="border-t border-base-300 pt-4" th:if="${customer.id != null}">
+        <div class="border-t border-base-300 pt-4 form-actions" th:if="${customer.id != null}">
           <button type="button" class="btn btn-sm btn-danger" data-dialog="customer-delete"><i data-lucide="trash-2" class="size-4"></i>Kunden löschen</button>
           <dialog class="modal" id="customer-delete" aria-labelledby="customer-delete-title">
-      <div class="modal-box max-w-lg">
+      <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('customer-delete', 'Kunden löschen?')}"></div>
         <form method="post" th:action="@{/kunden/{id}/loeschen(id=${customer.id})}">
           <div class="modal-body"><p class="text-sm">Der Kunde wird endgültig gelöscht.</p></div>

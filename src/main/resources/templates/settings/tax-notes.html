@@ -19,11 +19,11 @@
         <p class="text-sm text-base-content/75">Vorgabe für neue Vorlagen. Vorlage und Rechnung können den Text überschreiben.
           Ein leeres Feld stellt den ursprünglichen Text wieder her.</p>
       </div>
-      <label class="grid gap-1.5" th:each="entry : ${notes}"><span class="field-label" th:text="${titles[entry.key]}">Kategorie</span>
+      <label class="floating-label label-above" th:each="entry : ${notes}"><span th:text="${titles[entry.key]}">Kategorie</span>
         <textarea th:id="'note-' + ${entry.key}" th:name="'note-' + ${entry.key}" class="textarea w-full h-16" maxlength="500"
                   th:text="${entry.value}">Hinweis</textarea>
       </label>
-      <div><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
+      <div class="form-actions"><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
   </div>
 </div>

@@ -29,7 +29,7 @@
           </form>
         </div>
         <dialog class="modal" th:id="'password-dialog-' + ${user.id}" th:attr="aria-labelledby='password-dialog-' + ${user.id} + '-title'">
-          <div class="modal-box max-w-md">
+          <div class="modal-box">
             <div th:replace="~{fragments/dialog :: dialogTitle('password-dialog-' + ${user.id}, 'Neues Passwort für ' + ${user.displayName})}"></div>
             <form th:action="@{/admin/benutzer/{id}/passwort(id=${user.id})}" method="post">
               <div class="modal-body">
@@ -72,7 +72,7 @@
             <option value="ADMIN">Admin</option>
           </select>
         </label>
-        <div class="sm:col-span-2"><button type="submit" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Anlegen</button></div>
+        <div class="form-actions sm:col-span-2"><button type="submit" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Anlegen</button></div>
       </form>
     </section>
   </div>

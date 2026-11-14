@@ -47,7 +47,7 @@
           Rechnungen mit PDF und XML, Zahlungen, Versand, Einstellungen, Benutzer mit Passwort-Hashes und Passkeys, Protokoll.
           Damit zieht die App auf einen neuen Rechner um. Bitte sicher aufbewahren.</p>
       </div>
-      <div><a class="btn btn-primary" id="backup-download" th:href="@{/admin/datensicherung/export.zip}">
+      <div class="form-actions"><a class="btn btn-primary" id="backup-download" th:href="@{/admin/datensicherung/export.zip}">
         <i data-lucide="download" class="size-4"></i>Export herunterladen</a></div>
     </section>
 
@@ -60,7 +60,7 @@
       </div>
       <form class="flex flex-wrap gap-2 items-end" method="post" enctype="multipart/form-data"
             th:action="@{/admin/datensicherung/import}">
-        <label class="grid gap-1.5 grow"><span class="field-label">ZIP-Datei</span>
+        <label class="floating-label grow"><span>ZIP-Datei</span>
           <input id="backup-file" name="file" type="file" accept=".zip,application/zip" class="file-input w-full" required>
         </label>
         <button type="submit" class="btn" id="backup-restore"><i data-lucide="upload" class="size-4"></i>Einspielen</button>

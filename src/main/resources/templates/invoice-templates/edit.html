@@ -41,14 +41,14 @@
       </section>
 
       <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="positionen">
-        <label class="grid gap-1.5"><span class="field-label">Einleitung</span>
+        <label class="floating-label"><span>Einleitung</span>
           <textarea id="template-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
         <th:block th:replace="~{fragments/lines :: lines(~{})}"></th:block>
-        <label class="grid gap-1.5"><span class="field-label">Steuerhinweis</span>
+        <label class="floating-label"><span>Steuerhinweis</span>
           <textarea id="template-tax-note" th:field="*{taxNote}" class="textarea w-full h-16" maxlength="1000"></textarea>
         </label>
-        <label class="grid gap-1.5"><span class="field-label">Schlusstext</span>
+        <label class="floating-label"><span>Schlusstext</span>
           <textarea id="template-closing" th:field="*{closing}" class="textarea w-full h-16" maxlength="2000"></textarea>
         </label>
       </section>
@@ -58,19 +58,19 @@
         <label class="floating-label"><span>Betreff</span>
           <input id="template-email-subject" th:field="*{emailSubject}" class="input w-full" maxlength="200">
         </label>
-        <label class="grid gap-1.5"><span class="field-label">Text</span>
+        <label class="floating-label"><span>Text</span>
           <textarea id="template-email-body" th:field="*{emailBody}" class="textarea w-full h-28" maxlength="4000"></textarea>
         </label>
       </section>
 
-      <div><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
+      <div class="form-actions"><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
 
-    <div class="border-t border-base-300 pt-4">
+    <div class="border-t border-base-300 pt-4 form-actions">
       <button type="button" class="btn btn-sm btn-danger" data-dialog="template-delete"><i data-lucide="trash-2" class="size-4"></i>Vorlage löschen</button>
     </div>
     <dialog class="modal" id="template-delete" aria-labelledby="template-delete-title">
-      <div class="modal-box max-w-lg">
+      <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('template-delete', 'Vorlage löschen?')}"></div>
         <form method="post" th:action="@{/kunden/{c}/vorlagen/{id}/loeschen(c=${customerId},id=${template.id})}">
           <div class="modal-body"><p class="text-sm">Die Vorlage wird gelöscht. Rechnungen aus dieser Vorlage bleiben, wie sie sind.</p></div>

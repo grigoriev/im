@@ -179,6 +179,8 @@ function enhanceSelect(select) {
   });
 }
 
+// Phones and tablets keep the picker of the system: it brings its own search and fits the touch screen.
 document.addEventListener('DOMContentLoaded', () => {
+  if (!globalThis.matchMedia('(pointer: fine)').matches) return;
   document.querySelectorAll('select.select').forEach(enhanceSelect);
 });

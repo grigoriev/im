@@ -1,5 +1,5 @@
 /* Styles of the Invoice Manager: Tailwind CSS with daisyUI, in the look of Preline UI: white cards with thin gray
-   lines, labels above the fields, buttons with a frame, blue accents. Decision 2026-11-14. */
+   lines, labels on the top line of the fields, buttons with a frame, blue accents. Decision 2026-11-14. */
 @import "tailwindcss" source(none);
 @source "../resources/templates";
 
@@ -139,18 +139,30 @@
 
 /* The controls in the look of Preline UI. Outside the layers, so these rules win over daisyUI's. */
 
-/* A label sits above its field, muted, and wraps when long. The markup keeps daisyUI's floating-label. */
-.floating-label { display: grid; gap: 0.375rem; align-content: start; }
+/* A label sits on the top line of its field: centered on the line, muted, smaller than the text, with room on both
+   sides so the line never touches it. Below the line it takes the color of the field, above it stays transparent, so
+   it never draws a patch on a gray page. */
 .floating-label > span,
 .floating-label:focus-within > span,
 .floating-label:not(:has(input:placeholder-shown, textarea:placeholder-shown)) > span {
-  position: static; opacity: 1; translate: none; scale: 1; inset: auto; z-index: auto; pointer-events: auto;
-  padding: 0; background: none; border-radius: 0;
-  font-size: 0.8125rem; font-weight: 500; line-height: 1.25rem;
-  color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
+  position: absolute; z-index: 2; top: 0; inset-inline-start: 0.625rem; translate: 0 -50%; scale: 1; opacity: 1;
+  pointer-events: none; padding-inline: 0.375rem; border-radius: 0;
+  font-size: 0.75rem; font-weight: 500; line-height: 1rem; white-space: nowrap;
+  max-width: calc(100% - 1.25rem); overflow: hidden; text-overflow: ellipsis;
+  color: color-mix(in oklab, var(--color-base-content) 68%, transparent);
+  background: linear-gradient(to bottom, transparent 50%, var(--color-base-100) 50%);
 }
 .floating-label ::placeholder { opacity: 1; translate: none; scale: 1; }
-.field-label { font-size: 0.8125rem; font-weight: 500; line-height: 1.25rem; color: color-mix(in oklab, var(--color-base-content) 72%, transparent); }
+/* A long title, such as a tax category, sits above its field and wraps. */
+.floating-label.label-above { display: grid; gap: 0.375rem; }
+.floating-label.label-above.label-above > span {
+  position: static; translate: none; padding: 0; background: none; white-space: normal; max-width: none; overflow: visible;
+  font-size: 0.8125rem;
+}
+.floating-label:focus-within > span { color: var(--color-primary); }
+.floating-label:has([aria-invalid="true"], .input-error, .select-error) > span { color: var(--color-error); }
+/* A field that a form needs: a red star after its label. The empty alternative keeps it out of the label text. */
+.floating-label:has(:required) > span::after { content: " *" / ""; color: var(--color-error); }
 
 /* Fields: a thin gray frame, a blue frame and soft ring on focus, red when wrong. */
 .input, .select, .textarea { border-color: var(--color-base-300); box-shadow: none; }
@@ -181,10 +193,19 @@
 .btn[aria-disabled="true"] { opacity: 0.6; pointer-events: none; }
 
 /* Cards and the boxes of the dialogs. */
-.modal-box { border: 1px solid var(--color-base-300); border-radius: var(--radius-box); padding: 0; box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.25); }
+/* A dialog is as wide as its buttons need, at least 26rem, at most the screen; its text wraps at 36rem. */
+.modal-box {
+  border: 1px solid var(--color-base-300); border-radius: var(--radius-box); padding: 0;
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.25);
+  width: max-content; min-width: min(26rem, calc(100vw - 2rem)); max-width: calc(100vw - 2rem);
+}
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-base-300); }
-.modal-body { display: grid; gap: 1rem; padding: 1rem; }
-.modal-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--color-base-300); }
+.modal-body { display: grid; gap: 1rem; padding: 1rem; width: min(36rem, calc(100vw - 2rem - 2px)); }
+/* Buttons of a dialog: one line, at the right edge. */
+.modal-foot { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--color-base-300); }
+.modal-foot > .btn { white-space: nowrap; }
+/* Buttons of a form: one line, at the right edge of the form. */
+.form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.5rem; }
 
 /* The main menu: the open page in a soft tint of the accent. */
 .menu :where(li > a).menu-active, .menu :where(li > a):where(.menu-active) {
@@ -205,7 +226,7 @@
 .badge { font-weight: 500; }
 
 /* The listbox that replaces the open list of a select (app.js). */
-.listbox { position: relative; display: grid; }
+.listbox { position: relative; display: grid; flex: 1 1 auto; min-width: 0; }
 .listbox > select { width: 100%; cursor: pointer; }
 .listbox-list {
   position: absolute; z-index: 40; inset-inline: 0; top: calc(100% + 0.375rem); max-height: 18rem; overflow-y: auto;
