@@ -47,8 +47,8 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
   const draft = page.url();
 
-  // An issued invoice of this customer, alone in its year, so its number and dates stay the same. The time of the
-  // issue, the size and the hash differ per run and are masked.
+  // An issued invoice of this customer, alone in its year, so its number and dates stay the same. The times of the
+  // history and the issue, the size and the hash differ per run and are masked.
   await page.goto('/rechnungen');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
@@ -95,6 +95,10 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
         `invoice-documents-${viewport.name}-${scheme}.png`,
         masks,
       );
+      await expect(view.locator('#invoice-history')).toHaveScreenshot(`invoice-history-${viewport.name}-${scheme}.png`, masks);
+      await expect(view.locator('#invoice-checks')).toHaveScreenshot(`invoice-checks-${viewport.name}-${scheme}.png`, masks);
+      await view.goto('/rechnungen');
+      await expect(view.locator('#invoice-filter')).toHaveScreenshot(`invoice-filter-${viewport.name}-${scheme}.png`);
       await context.close();
     }
   }

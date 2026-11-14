@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Rechnung · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Rechnung', 'invoices', ~{::content})}">
+  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4 @container">
+    <a th:href="@{/rechnungen}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
+    <div>
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-2xl font-semibold tracking-tight num min-w-0 [overflow-wrap:anywhere]" id="invoice-number"
+            th:text="'Rechnung ' + ${document.number()}">Rechnung 2027-01</h1>
+        <span class="badge badge-ghost" id="invoice-status" th:text="${invoice.status.label}">Ausgestellt</span>
+      </div>
+      <p class="text-sm text-base-content/75 mt-1 [overflow-wrap:anywhere]" id="invoice-summary"
+         th:text="${customer} + ' · ' + ${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' € · fällig am ' + ${#temporals.format(document.dueDate(), 'dd.MM.yyyy')}">
+        Kunde · 0,00 € · fällig am 01.04.2027</p>
+    </div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+    <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">
+      <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
+    </div>
+
+    <div class="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div class="grid gap-4 content-start min-w-0">
+        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="invoice-history">
+          <h2 class="font-semibold">Verlauf</h2>
+          <p class="text-sm text-base-content/75" th:if="${history.isEmpty()}">Keine Einträge.</p>
+          <ol class="grid" th:unless="${history.isEmpty()}">
+            <li th:each="event : ${history}" class="grid grid-cols-[auto_minmax(0,1fr)] gap-3 py-2 border-b border-base-300 last:border-b-0">
+              <span class="grid place-items-center size-7 rounded-full bg-base-200">
+                <i th:attr="data-lucide=${event.action.name() == 'INVOICE_ISSUED' ? 'stamp' : 'file-plus'}" data-lucide="stamp" class="size-3.5"></i>
+              </span>
+              <span class="grid min-w-0">
+                <span class="text-sm font-medium" th:text="${event.action.label}">Rechnung ausgestellt</span>
+                <span class="text-xs text-base-content/75 [overflow-wrap:anywhere]">
+                  <time class="num" th:datetime="${event.at}" data-volatile
+                        th:text="${#temporals.format(event.at, 'dd.MM.yyyy HH:mm', 'Europe/Berlin')}">18.03.2027 09:41</time>
+                  · <span th:text="${event.username}">elena</span></span>
+              </span>
+            </li>
+          </ol>
+        </section>
+
+        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="invoice-documents">
+          <h2 class="font-semibold">Dokumente</h2>
+          <ul class="grid gap-3">
+            <li th:each="file : ${documents}" class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
+              <i th:attr="data-lucide=${file.kind().name() == 'PDF' ? 'file-text' : 'file-code'}" data-lucide="file-text" class="size-5 text-primary"></i>
+              <span class="min-w-0 flex-1 basis-52 grid text-sm">
+                <span class="font-medium [overflow-wrap:anywhere]" th:text="${file.filename()}">Rechnung_2027-01.pdf</span>
+                <span class="text-xs text-base-content/75 num" data-volatile th:text="${#numbers.formatInteger(file.size(), 1, 'POINT') + ' Byte'}">1.000 Byte</span>
+                <span class="text-xs text-base-content/75 num [overflow-wrap:anywhere]" data-volatile th:text="${'SHA-256 ' + file.sha256()}">SHA-256</span>
+              </span>
+              <a class="btn btn-sm" th:href="@{/rechnungen/{id}/dokumente/{kind}(id=${invoice.id},kind=${#strings.toLowerCase(file.kind())})}"
+                 th:id="${'download-' + #strings.toLowerCase(file.kind())}"><i data-lucide="download" class="size-4"></i>Herunterladen</a>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <aside class="grid gap-4 content-start min-w-0">
+        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-checks">
+          <h2 class="font-semibold">Prüfung</h2>
+          <p class="flex items-start gap-2" th:if="${document.format().isPdf()}"><i data-lucide="circle-check" class="size-4 text-success shrink-0 mt-0.5"></i>
+            ZUGFeRD und PDF/A-3 geprüft (Mustang, veraPDF)</p>
+          <p class="flex items-start gap-2" th:if="${document.format().followsXRechnung()}"><i data-lucide="circle-check" class="size-4 text-success shrink-0 mt-0.5"></i>
+            XRechnung geprüft (KoSIT)</p>
+          <p class="flex items-start gap-2"><i data-lucide="lock" class="size-4 shrink-0 mt-0.5"></i>
+            <span>Unveränderbar seit <span class="num" data-volatile
+                th:text="${#temporals.format(invoice.issuedAt, 'dd.MM.yyyy HH:mm', 'Europe/Berlin')}">18.03.2027 10:00</span></span></p>
+        </section>
+
+        <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="invoice-issued">
+          <h2 class="font-semibold">Rechnungsdaten</h2>
+          <dl class="grid gap-y-2 text-sm">
+            <div><dt class="text-xs text-base-content/75">E-Rechnungsformat</dt><dd th:text="${formats.get(document.format())}">Format</dd></div>
+            <div><dt class="text-xs text-base-content/75">Rechnungsdatum</dt><dd class="num" th:text="${#temporals.format(document.issueDate(), 'dd.MM.yyyy')}">18.03.2027</dd></div>
+            <div><dt class="text-xs text-base-content/75">Leistungszeitraum</dt><dd class="num" th:text="${#temporals.format(document.serviceFrom(), 'dd.MM.yyyy') + ' – ' + #temporals.format(document.serviceTo(), 'dd.MM.yyyy')}">01.03.2027 – 18.03.2027</dd></div>
+            <div th:if="${document.buyerReference() != null}"><dt class="text-xs text-base-content/75">Käuferreferenz (Leitweg-ID)</dt>
+              <dd class="num [overflow-wrap:anywhere]" th:text="${document.buyerReference()}">04011000-12345-34</dd></div>
+            <div><dt class="text-xs text-base-content/75">Gesamtbetrag</dt><dd class="num font-semibold" id="invoice-total" th:text="${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd></div>
+          </dl>
+        </section>
+      </aside>
+    </div>
+  </div>
+</div>
+</body>
+</html>

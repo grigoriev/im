@@ -85,9 +85,12 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await page.getByText('Rechnung ausstellen…').click();
   await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
   await expect(page.getByRole('status')).toHaveText(/^Rechnung \d{4}-\d{2,} ausgestellt\.$/);
-  const number = (await page.locator('#invoice-number').textContent())!.trim();
+  const number = (await page.locator('#invoice-number').textContent())!.trim().replace(/^Rechnung /, '');
   await expect(page.getByRole('status')).toHaveText(`Rechnung ${number} ausgestellt.`);
-  await expect(page.getByText('Diese Rechnung ist ausgestellt und ändert sich nicht mehr.')).toBeVisible();
+  await expect(page.locator('#invoice-status')).toHaveText('Ausgestellt');
+  await expect(page.locator('#invoice-summary')).toContainText(`${customer} · 400,00 € · fällig am`);
+  await expect(page.locator('#invoice-checks')).toContainText('Unveränderbar seit');
+  await expect(page.locator('#invoice-history li')).toHaveText([/Entwurf angelegt/, /Rechnung ausgestellt/]);
   await expect(page.locator('#invoice-total')).toHaveText('400,00 €');
   await expect(page.getByText('Entwurf löschen')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Speichern' })).toHaveCount(0);
@@ -107,4 +110,12 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await expect(row).toContainText(number);
   await expect(row).toContainText('Ausgestellt');
   await expect(row).toContainText('400,00 €');
+
+  await page.getByLabel('Kunde oder Nummer').fill(number);
+  await page.getByRole('button', { name: 'Filtern' }).click();
+  await expect(page.locator('#invoice-list li')).toHaveCount(1);
+  await expect(page.locator('#invoice-list li')).toContainText(customer);
+  await page.getByLabel('Status').selectOption({ label: 'Entwurf' });
+  await page.getByRole('button', { name: 'Filtern' }).click();
+  await expect(page.locator('#invoice-none')).toHaveText('Keine Rechnungen gefunden.');
 });

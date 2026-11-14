@@ -12,4 +12,12 @@ interface AuditRepository extends ListCrudRepository<AuditEvent, Long> {
      * @return at most 200 entries, newest first
      */
     List<AuditEvent> findTop200ByOrderByAtDescIdDesc();
+
+    /**
+     * Returns the history of an invoice.
+     *
+     * @param invoiceId the invoice
+     * @return its entries, oldest first
+     */
+    List<AuditEvent> findByInvoiceIdOrderByAtAscIdAsc(long invoiceId);
 }

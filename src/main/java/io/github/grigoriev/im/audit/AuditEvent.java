@@ -12,7 +12,9 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param username who did it, {@code system} for the app itself
  * @param action what happened
  * @param detail what it concerned, for example a customer name; never a password or a token
+ * @param invoiceId the invoice it concerned, {@code null} for none; it puts the entry into the history of the invoice
  */
 @Table("audit_event")
-public record AuditEvent(@Id Long id, Instant at, String username, AuditAction action, String detail) {
+public record AuditEvent(@Id Long id, Instant at, String username, AuditAction action, String detail,
+        Long invoiceId) {
 }

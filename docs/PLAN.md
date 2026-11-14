@@ -194,7 +194,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. Send from the app: SMTP (Fastmail) with the PDF, the XML, or both, per customer default.
 2. The admin configures SMTP and the e-mail template in the admin panel.
 3. Mark as sent by hand: date, recipient, optional note. This covers sending from her own mail program.
-4. Each dispatch shows in the invoice history.
+4. Each dispatch shows in the invoice history. The history holds the entries of the audit log for the invoice.
 
 ### Payments
 

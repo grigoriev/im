@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
@@ -11,12 +12,15 @@ import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceService;
+import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.ContentDisposition;
@@ -37,8 +41,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * The page "Rechnungen": the list, a new draft for a customer, the editor of a draft, the issue and the documents of an
- * issued invoice. Both roles use it.
+ * The page "Rechnungen": the list with its filters, a new draft for a customer, the editor of a draft, the issue, and
+ * the page of an issued invoice with its history and documents. Both roles use it.
  */
 @Controller
 @RequestMapping("/rechnungen")
@@ -46,6 +50,7 @@ public class InvoiceController {
 
     static final String LIST = "invoices/list";
     static final String EDIT = "invoices/edit";
+    static final String ISSUED = "invoices/issued";
 
     /** The names of the tax categories in the editor. */
     static final Map<TaxCategory, String> CATEGORIES = Map.of(
@@ -76,6 +81,7 @@ public class InvoiceController {
     private final DocumentStore documents;
     private final CustomerService customers;
     private final InvoicePdfRenderer pdf;
+    private final AuditService audit;
 
     /**
      * Creates the controller.
@@ -85,32 +91,55 @@ public class InvoiceController {
      * @param documents the documents and snapshots of issued invoices
      * @param customers the customers for a new draft
      * @param pdf renders the preview
+     * @param audit the history of an invoice
      */
     public InvoiceController(InvoiceService invoices, IssueService issues, DocumentStore documents,
-            CustomerService customers, InvoicePdfRenderer pdf) {
+            CustomerService customers, InvoicePdfRenderer pdf, AuditService audit) {
         this.invoices = invoices;
         this.issues = issues;
         this.documents = documents;
         this.customers = customers;
         this.pdf = pdf;
+        this.audit = audit;
     }
 
     /**
-     * Shows the list of invoices.
+     * Shows the list of invoices, filtered by the year of the invoice date, the status and a text.
      *
+     * @param jahr the year, {@code null} for all
+     * @param status the status, {@code null} for all
+     * @param suche a part of the customer's name or of the number, case ignored; blank for all
      * @param model the page model
      * @return the template name
      */
     @GetMapping
-    public String list(Model model) {
-        List<Row> rows = invoices.list().stream().map(invoice -> {
+    public String list(@RequestParam(required = false) Integer jahr, @RequestParam(required = false) InvoiceStatus status,
+            @RequestParam(required = false) String suche, Model model) {
+        List<Row> all = invoices.list().stream().map(invoice -> {
             Optional<InvoiceDocument> document = document(invoice);
             return new Row(invoice, customerName(invoice, document),
                     document.map(InvoiceDocument::total).orElse(null));
         }).toList();
-        model.addAttribute("rows", rows);
+        String text = suche == null ? "" : suche.strip().toLowerCase(Locale.ROOT);
+        model.addAttribute("rows", all.stream().filter(row -> matches(row, jahr, status, text)).toList());
+        model.addAttribute("any", !all.isEmpty());
+        model.addAttribute("years", all.stream().map(row -> row.invoice().issueDate().getYear()).distinct()
+                .sorted(Comparator.reverseOrder()).toList());
+        model.addAttribute("statuses", InvoiceStatus.values());
+        model.addAttribute("jahr", jahr);
+        model.addAttribute("status", status);
+        model.addAttribute("suche", suche == null ? "" : suche.strip());
         model.addAttribute("customers", customers.list());
         return LIST;
+    }
+
+    /** Tells whether a row passes the filters of the list; a {@code null} or empty filter passes every row. */
+    static boolean matches(Row row, Integer year, InvoiceStatus status, String text) {
+        Invoice invoice = row.invoice();
+        return (year == null || invoice.issueDate().getYear() == year)
+                && (status == null || invoice.status() == status)
+                && (text.isEmpty() || row.customer().toLowerCase(Locale.ROOT).contains(text)
+                        || invoice.number() != null && invoice.number().toLowerCase(Locale.ROOT).contains(text));
     }
 
     /**
@@ -271,13 +300,17 @@ public class InvoiceController {
 
     private String page(Model model, Invoice invoice, DraftForm form) {
         model.addAttribute("invoice", invoice);
-        model.addAttribute("form", form);
         Optional<InvoiceDocument> document = document(invoice);
         model.addAttribute("customer", customerName(invoice, document));
-        model.addAttribute("problems", invoice.isDraft() ? invoices.problems(invoice) : List.of());
         model.addAttribute("document", document.orElse(null));
-        model.addAttribute("documents", documents.list(invoice.id()));
         model.addAttribute("formats", CustomerController.FORMATS);
+        if (!invoice.isDraft()) {
+            model.addAttribute("documents", documents.list(invoice.id()));
+            model.addAttribute("history", audit.history(invoice.id()));
+            return ISSUED;
+        }
+        model.addAttribute("form", form);
+        model.addAttribute("problems", invoices.problems(invoice));
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("categories", CATEGORIES);
         model.addAttribute("categoryOrder", TaxCategory.values());

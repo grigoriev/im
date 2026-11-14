@@ -25,8 +25,28 @@
       Legen Sie zuerst einen <a class="link" th:href="@{/kunden/neu}">Kunden</a> an.
     </p>
 
+    <form class="bg-base-100 rounded-box border border-base-300 p-4 flex flex-wrap gap-2 items-end" th:action="@{/rechnungen}" method="get" id="invoice-filter" th:if="${any}">
+      <label class="floating-label w-32"><span>Jahr</span>
+        <select id="filter-year" name="jahr" class="select select-sm w-full">
+          <option value="">Alle Jahre</option>
+          <option th:each="year : ${years}" th:value="${year}" th:text="${year}" th:selected="${year == jahr}">2027</option>
+        </select>
+      </label>
+      <label class="floating-label w-36"><span>Status</span>
+        <select id="filter-status" name="status" class="select select-sm w-full">
+          <option value="">Alle</option>
+          <option th:each="option : ${statuses}" th:value="${option}" th:text="${option.label}" th:selected="${option == status}">Entwurf</option>
+        </select>
+      </label>
+      <label class="floating-label grow basis-48"><span>Kunde oder Nummer</span>
+        <input id="filter-text" name="suche" type="search" class="input input-sm w-full" maxlength="100" th:value="${suche}">
+      </label>
+      <button type="submit" class="btn btn-sm" id="filter-apply"><i data-lucide="filter" class="size-4"></i>Filtern</button>
+    </form>
+
     <section class="bg-base-100 rounded-box border border-base-300 p-2">
-      <p class="text-sm text-base-content/75 p-3" th:if="${rows.isEmpty()}">Noch keine Rechnungen.</p>
+      <p class="text-sm text-base-content/75 p-3" th:unless="${any}">Noch keine Rechnungen.</p>
+      <p class="text-sm text-base-content/75 p-3" id="invoice-none" th:if="${any and rows.isEmpty()}">Keine Rechnungen gefunden.</p>
       <ul id="invoice-list" class="menu w-full p-0" th:unless="${rows.isEmpty()}">
         <li th:each="row : ${rows}">
           <a th:href="@{/rechnungen/{id}(id=${row.invoice.id})}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3">

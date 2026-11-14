@@ -44,7 +44,19 @@ public class AuditService {
      */
     @Transactional
     public void add(AuditAction action, String detail) {
-        save(currentUser(), action, detail);
+        save(currentUser(), action, detail, null);
+    }
+
+    /**
+     * Records an event of the logged-in user that concerns an invoice. It shows in the history of the invoice.
+     *
+     * @param invoiceId the invoice
+     * @param action what happened
+     * @param detail what it concerned; never a password or a token
+     */
+    @Transactional
+    public void add(long invoiceId, AuditAction action, String detail) {
+        save(currentUser(), action, detail, invoiceId);
     }
 
     /**
@@ -56,7 +68,7 @@ public class AuditService {
      */
     @Transactional
     public void add(String username, AuditAction action, String detail) {
-        save(username, action, detail);
+        save(username, action, detail, null);
     }
 
     /**
@@ -68,8 +80,19 @@ public class AuditService {
         return events.findTop200ByOrderByAtDescIdDesc();
     }
 
-    private void save(String username, AuditAction action, String detail) {
-        events.save(new AuditEvent(null, clock.instant(), cut(username, MAX_USERNAME), action, cut(detail, MAX_DETAIL)));
+    /**
+     * Returns the history of an invoice.
+     *
+     * @param invoiceId the invoice
+     * @return its entries, oldest first
+     */
+    public List<AuditEvent> history(long invoiceId) {
+        return events.findByInvoiceIdOrderByAtAscIdAsc(invoiceId);
+    }
+
+    private void save(String username, AuditAction action, String detail, Long invoiceId) {
+        events.save(new AuditEvent(null, clock.instant(), cut(username, MAX_USERNAME), action, cut(detail, MAX_DETAIL),
+                invoiceId));
     }
 
     static String currentUser() {

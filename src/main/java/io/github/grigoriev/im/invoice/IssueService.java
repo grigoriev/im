@@ -106,7 +106,7 @@ public class IssueService {
             throw new InvoiceException(List.of(InvoiceService.CHANGED_ELSEWHERE));
         }
         store.store(id, number, files, at);
-        audit.add(AuditAction.INVOICE_ISSUED, number + ", " + document.buyer().name());
+        audit.add(id, AuditAction.INVOICE_ISSUED, number + ", " + document.buyer().name());
         return number;
     }
 }
