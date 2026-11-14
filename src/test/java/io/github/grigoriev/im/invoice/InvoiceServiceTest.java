@@ -60,7 +60,7 @@ class InvoiceServiceTest {
 
     private static Invoice draft(List<DraftLine> lines) {
         return new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY, 14,
-                null, "Hallo", "Danke", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", lines, NOW, NOW, 0L);
+                null, "Hallo", "Danke", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", lines, NOW, NOW, 0L, null, null);
     }
 
     private static DraftLine lump(String text, String amount, TaxCategory category) {
@@ -252,7 +252,7 @@ class InvoiceServiceTest {
         assertThatThrownBy(() -> service.saveDraft(6, form)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diese Rechnung gibt es nicht.");
         Invoice issued = new Invoice(7L, InvoiceStatus.ISSUED, 2L, "2027-01", InvoiceFormat.ZUGFERD_EN16931, TODAY,
-                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 0L);
+                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 0L, null, null);
         when(repository.findById(7L)).thenReturn(Optional.of(issued));
         assertThatThrownBy(() -> service.saveDraft(7, form)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Eine ausgestellte Rechnung ändert sich nicht mehr.");
@@ -294,11 +294,14 @@ class InvoiceServiceTest {
     void fillsThePlaceholdersOfTheDocument() {
         Invoice draft = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 14, null, "Rechnung {Rechnungsnummer} vom {Rechnungsdatum}", "Bitte bis {Zahlungsziel} zahlen.",
-                "Leistung am {Leistungszeitraum}.", List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L);
+                "Leistung am {Leistungszeitraum}.", List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
         InvoiceDocument document = service.document(draft).orElseThrow();
         assertThat(document.intro()).isEqualTo("Rechnung Entwurf vom 18.03.2027");
         assertThat(document.closing()).isEqualTo("Bitte bis 01.04.2027 zahlen.");
         assertThat(document.taxNote()).isEqualTo("Leistung am 18.03.2027.");
+        InvoiceDocument issued = service.document(draft, "2027-10").orElseThrow();
+        assertThat(issued.number()).isEqualTo("2027-10");
+        assertThat(issued.intro()).isEqualTo("Rechnung 2027-10 vom 18.03.2027");
     }
 
     @Test
@@ -312,7 +315,7 @@ class InvoiceServiceTest {
                 "Position 1: Der Betrag ist größer als 0.");
         Invoice backwards = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
                 TODAY, TODAY.minusDays(1), 14, null, null, null, null, List.of(lump("Lesung", "1", TaxCategory.KLEINUNTERNEHMER)),
-                NOW, NOW, 0L);
+                NOW, NOW, 0L, null, null);
         assertThat(service.problems(backwards)).containsExactly("Der Leistungszeitraum endet vor seinem Beginn.");
         Invoice nullText = draft(List.of(new DraftLine(null, true, BigDecimal.ONE, BigDecimal.TEN, TaxCategory.KLEINUNTERNEHMER)));
         assertThat(service.problems(nullText)).containsExactly("Position 1: Bitte die Leistung beschreiben.");
@@ -349,13 +352,13 @@ class InvoiceServiceTest {
     @Test
     void xrechnungNeedsABuyerReference() {
         Invoice xrechnung = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.XRECHNUNG, TODAY, TODAY, TODAY,
-                14, null, null, null, null, List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L);
+                14, null, null, null, null, List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
         assertThat(service.problems(xrechnung))
                 .containsExactly("Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).");
         when(customers.find(2)).thenReturn(Optional.of(CustomerTestData.vhs().withId(2L)));
         Invoice withReference = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_XRECHNUNG, TODAY,
                 TODAY, TODAY, 14, "04011000-12345-67", null, null, null,
-                List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L);
+                List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null, null);
         assertThat(service.problems(withReference)).isEmpty();
 
         Customer v = CustomerTestData.verlag();

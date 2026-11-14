@@ -34,14 +34,14 @@ class InvoiceRepositoryIT {
         LocalDate day = LocalDate.of(2027, 3, 18);
         Invoice first = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, customer.id(), null,
                 InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, List.of(), Instant.EPOCH,
-                Instant.EPOCH, null));
+                Instant.EPOCH, null, null, null));
         assertThat(first.version()).isZero();
         Invoice second = invoices.save(new Invoice(first.id(), first.status(), first.customerId(), null, first.format(),
-                day, day, day, 30, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, first.version()));
+                day, day, day, 30, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, first.version(), null, null));
         assertThat(second.version()).isEqualTo(1L);
 
         Invoice stale = new Invoice(first.id(), first.status(), first.customerId(), null, first.format(), day, day, day, 7,
-                null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, first.version());
+                null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, first.version(), null, null);
         assertThatThrownBy(() -> invoices.save(stale)).isInstanceOf(OptimisticLockingFailureException.class);
         assertThat(invoices.findById(first.id()).orElseThrow().paymentDays()).isEqualTo(30);
         invoices.deleteById(first.id());

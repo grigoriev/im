@@ -68,3 +68,43 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await expect(page.getByRole('status')).toHaveText('Entwurf gelöscht.');
   await expect(page.locator('#invoice-list li').filter({ hasText: customer })).toHaveCount(0);
 });
+
+test('issues an invoice with its number and documents', async ({ page }) => {
+  await ensureProfile(page);
+  const customer = await newCustomer(page, `Ausstellkunde ${randomUUID().slice(0, 8)}`);
+
+  await page.goto('/rechnungen');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  await expect(page.locator('#invoice-issue'), 'an incomplete draft cannot be issued').toHaveCount(0);
+  await page.locator('#line-0-text').fill('Lesung am {Leistungszeitraum}');
+  await page.locator('#line-0-amount').fill('400');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
+
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  await expect(page.getByRole('status')).toHaveText(/^Rechnung \d{4}-\d{2,} ausgestellt\.$/);
+  const number = (await page.locator('#invoice-number').textContent())!.trim();
+  await expect(page.getByRole('status')).toHaveText(`Rechnung ${number} ausgestellt.`);
+  await expect(page.getByText('Diese Rechnung ist ausgestellt und ändert sich nicht mehr.')).toBeVisible();
+  await expect(page.locator('#invoice-total')).toHaveText('400,00 €');
+  await expect(page.getByText('Entwurf löschen')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Speichern' })).toHaveCount(0);
+
+  const pdf = await page.request.get((await page.locator('#download-pdf').getAttribute('href'))!);
+  expect(pdf.headers()['content-type']).toBe('application/pdf');
+  expect(pdf.headers()['content-disposition']).toBe(`attachment; filename="Rechnung_${number}.pdf"`);
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  const xml = await page.request.get((await page.locator('#download-xml').getAttribute('href'))!);
+  expect(xml.headers()['content-type']).toContain('application/xml');
+  expect((await xml.body()).toString()).toContain(number);
+  await expect(page.locator('#invoice-documents')).toContainText(`Rechnung_${number}.pdf`);
+  await expect(page.locator('#invoice-documents')).toContainText(/SHA-256 [0-9a-f]{64}/);
+
+  await page.goto('/rechnungen');
+  const row = page.locator('#invoice-list li').filter({ hasText: customer });
+  await expect(row).toContainText(number);
+  await expect(row).toContainText('Ausgestellt');
+  await expect(row).toContainText('400,00 €');
+});

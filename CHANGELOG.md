@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Issue: "Rechnung ausstellen" gives a complete draft its number, freezes it with seller and buyer, and stores the validated PDF and XML with their SHA-256 in the database. A failed validation keeps the draft and its number free. An issued invoice shows its data and downloads its documents; the database refuses any change. A number pattern whose next number exists is refused.
 - Preview: a complete draft opens as the PDF it will be issued as, with "Entwurf" as number; the placeholders `{Rechnungsnummer}`, `{Rechnungsdatum}`, `{Leistungszeitraum}` and `{Zahlungsziel}` are filled in its texts.
 - Templates per customer: name, format, payment days, texts with placeholders, lines and the e-mail; "Rechnung erstellen" starts a draft that copies the template, and a later change of the template leaves the draft as it is.
 - Draft invoices: "Rechnungen" lists them; a new draft takes format, buyer reference and tax note from customer and profile; the editor changes dates, texts and lines (lump sum or with quantity, German amounts) and shows totals and what the issue still needs. A customer with invoices can no longer be deleted.

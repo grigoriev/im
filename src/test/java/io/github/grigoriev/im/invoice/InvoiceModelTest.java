@@ -18,7 +18,7 @@ class InvoiceModelTest {
     private static Invoice invoice(InvoiceStatus status, List<DraftLine> lines) {
         LocalDate day = LocalDate.of(2027, 3, 18);
         return new Invoice(1L, status, 2L, status == InvoiceStatus.DRAFT ? null : "2027-01",
-                InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, lines, Instant.EPOCH, Instant.EPOCH, 0L);
+                InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, lines, Instant.EPOCH, Instant.EPOCH, 0L, null, null);
     }
 
     @Test

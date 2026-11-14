@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Creates, changes and deletes draft invoices, and tells what a draft still needs before its issue. A draft
- * may be incomplete; the issue (M2d) refuses it until {@link #problems(Invoice)} is empty.
+ * may be incomplete; {@link IssueService} refuses it until {@link #problems(Invoice)} is empty.
  */
 @Service
 public class InvoiceService {
@@ -122,7 +122,7 @@ public class InvoiceService {
             TaxCategory category = defaultCategory();
             draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today, today, today,
                     DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
-                    notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null);
+                    notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null, null, null);
         } else {
             InvoiceTemplate template = templates.findById(templateId)
                     .filter(found -> found.customerId() == customerId)
@@ -130,7 +130,7 @@ public class InvoiceService {
             draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, template.format(), today, today, today,
                     template.paymentDays(), customer.buyerReference(), template.intro(), template.closing(),
                     template.taxNote(), template.lines().stream().map(TemplateLine::toDraftLine).toList(),
-                    clock.instant(), clock.instant(), null);
+                    clock.instant(), clock.instant(), null, null, null);
         }
         Invoice saved = invoices.save(draft);
         audit.add(AuditAction.DRAFT_CREATED, customer.name());
@@ -174,7 +174,7 @@ public class InvoiceService {
             return invoices.save(new Invoice(draft.id(), draft.status(), draft.customerId(), null, form.getFormat(),
                     form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
                     text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()),
-                    text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version()));
+                    text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version(), null, null));
         } catch (OptimisticLockingFailureException _) {
             // Two saves of one version at the same moment: the database lets the first win.
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
@@ -279,20 +279,39 @@ public class InvoiceService {
      * @return the document, empty while {@link #problems(Invoice)} is not empty
      */
     public Optional<InvoiceDocument> document(Invoice invoice) {
+        return document(invoice, DRAFT_NUMBER);
+    }
+
+    /**
+     * Returns the document of a complete draft with its number and the placeholders of its texts filled. It takes
+     * the current seller profile and customer: the issue freezes them in the snapshot.
+     *
+     * @param invoice the draft
+     * @param number the invoice number
+     * @return the document, empty while {@link #problems(Invoice)} is not empty
+     */
+    Optional<InvoiceDocument> document(Invoice invoice, String number) {
         if (!problems(invoice).isEmpty()) {
             return Optional.empty();
         }
         SellerProfile seller = sellers.find().orElseThrow();
         Customer customer = customers.find(invoice.customerId()).orElseThrow();
-        Placeholders values = Placeholders.of(invoice, DRAFT_NUMBER);
-        return Optional.of(new InvoiceDocument(DRAFT_NUMBER, invoice.issueDate(), invoice.serviceFrom(),
+        Placeholders values = Placeholders.of(invoice, number);
+        return Optional.of(new InvoiceDocument(number, invoice.issueDate(), invoice.serviceFrom(),
                 invoice.serviceTo(), invoice.dueDate(), seller.toParty(), customer.toParty(), invoice.buyerReference(),
                 seller.iban(), seller.bic(), values.fill(invoice.intro()), values.fill(invoice.closing()),
                 values.fill(invoice.taxNote()), invoice.format(),
                 invoice.lines().stream().map(DraftLine::toInvoiceLine).toList()));
     }
 
-    private Invoice draft(long id) {
+    /**
+     * Returns a draft.
+     *
+     * @param id the ID
+     * @return the draft
+     * @throws InvoiceException if the invoice does not exist or is issued
+     */
+    Invoice draft(long id) {
         Invoice invoice = invoices.findById(id)
                 .orElseThrow(() -> new InvoiceException(List.of("Diese Rechnung gibt es nicht.")));
         if (!invoice.isDraft()) {

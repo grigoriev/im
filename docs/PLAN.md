@@ -108,9 +108,9 @@ Not chosen:
 | `SellerProfile` | Name, a line below it (for example the profession), address, contact data, website, tax status, tax number or VAT ID, IBAN, BIC, bank name, account holder (empty: the name). No logo |
 | `Customer` | Address, country, e-mail, USt-IdNr, buyer reference (the Leitweg-ID for a public buyer), format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
 | `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), e-mail text |
-| `Invoice` | Number, status, format, title, dates, service period, texts, tax note, payment terms, snapshots of seller and buyer |
+| `Invoice` | Number, status, format, title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
-| `Document` | Generated PDF or XML: type, path, SHA-256, size |
+| `Document` | Generated PDF or XML: type, file name, content (in the database), SHA-256, size. Written once |
 | `Dispatch` | When, to whom, channel (`EMAIL_APP` or `MANUAL`), by which user, note |
 | `Payment` | Date, amount, note. A negative amount is a refund |
 | `NumberSequence` | Format pattern, year, last number |
@@ -127,7 +127,9 @@ DRAFT -> ISSUED -> SENT -> PAID
 ```
 
 1. `DRAFT` can change or be deleted. It has no number.
-2. `ISSUED` gets the next number, the snapshots and the frozen documents.
+2. `ISSUED` gets the next number, the snapshots and the frozen documents. One transaction does all of it, the
+   validation included: a failure rolls back the number too, so no gap remains. Database triggers refuse any later
+   change of the content, the lines and the documents. Only the status moves on.
 3. `SENT` records each dispatch. One invoice can have several dispatches.
 4. `PAID` applies when the sum of all payments covers the total.
 5. `CANCELLED` links to the Stornorechnung. The cancellation invoice has its own number.
@@ -225,13 +227,13 @@ The admin edits the default tax notes. A template and an invoice can override th
    so the app marks its cookies `Secure` (`server.forward-headers-strategy=native`).
    Passkeys are bound to that host: `IM_WEBAUTHN_RP_ID=im.h.g7v.io`, `IM_WEBAUTHN_ALLOWED_ORIGINS=https://im.h.g7v.io`.
 5. The certificate comes from acme.sh, as for the other sites.
-6. Data lives under `/volume1/docker/im`: database files and the document store.
+6. Data lives under `/volume1/docker/im`: the database files. The documents live in the database too.
 7. Renovate and the nightly `update.sh` update the image. Flyway migrates the schema at start.
 8. Secrets (database password, SMTP password, first admin) stay outside git, in files with mode 600.
 
 ## 9. Backups
 
-1. Nightly: `pg_dump` and the document store to `/volume1/backup/im`.
+1. Nightly: `pg_dump` to `/volume1/backup/im`. It holds the documents too.
 2. Nightly: restic copies that directory, encrypted, to meerkat.
 3. Retention: 7 daily, 8 weekly, 24 monthly snapshots. Yearly archives stay for 10 years.
 4. Monthly: an automatic restore test into a throwaway container. A failure sends an e-mail.

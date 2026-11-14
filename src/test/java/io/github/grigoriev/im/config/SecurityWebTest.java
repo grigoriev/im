@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -145,6 +146,12 @@ class SecurityWebTest {
     @MockitoBean
     private io.github.grigoriev.im.einvoice.InvoicePdfRenderer pdf;
 
+    @MockitoBean
+    private io.github.grigoriev.im.invoice.IssueService issues;
+
+    @MockitoBean
+    private io.github.grigoriev.im.invoice.DocumentStore documents;
+
     private static InvoiceTemplate template() {
         return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
                 null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, java.math.BigDecimal.ONE,
@@ -157,7 +164,9 @@ class SecurityWebTest {
         return new Invoice(id, status, 3L, status == InvoiceStatus.DRAFT ? null : "2027-01", InvoiceFormat.ZUGFERD_EN16931,
                 day, day, day, 14, null, "Hallo", "Danke", null,
                 List.of(new DraftLine("Lesung", true, java.math.BigDecimal.ONE, new java.math.BigDecimal("400"),
-                        TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L);
+                        TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L,
+                status == InvoiceStatus.DRAFT ? null : java.time.Instant.parse("2027-03-18T09:30:00Z"),
+                status == InvoiceStatus.DRAFT ? null : "{snapshot}");
     }
 
     private void knownUsers() {
@@ -558,8 +567,8 @@ class SecurityWebTest {
         when(invoices.list()).thenReturn(List.of(issued, draft));
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
         when(invoices.document(draft)).thenReturn(Optional.empty());
-        when(invoices.document(issued)).thenReturn(Optional.of(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
-                InvoiceFormat.ZUGFERD_EN16931)));
+        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                InvoiceFormat.ZUGFERD_EN16931));
         when(customers.list()).thenReturn(List.of(CustomerTestData.verlag().withId(3L)));
         mvc.perform(get("/rechnungen").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-01 · 18.03.2027")))
@@ -594,13 +603,28 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Vollständig.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Netto 130,50 €")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("USt 19 % 10,60 €")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("146,33 €")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("146,33 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung ausstellen…")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"version\" value=\"0\"")));
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
         when(invoices.find(6)).thenReturn(Optional.of(issued));
-        when(invoices.problems(issued)).thenReturn(List.of());
+        when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.list(6)).thenReturn(List.of(new io.github.grigoriev.im.invoice.StoredDocument(1L, 6L,
+                io.github.grigoriev.im.invoice.DocumentKind.PDF, "Rechnung_2027-10.pdf", new byte[] {1}, "ab12", 12345,
+                java.time.Instant.EPOCH)));
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ändert sich nicht mehr")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-10")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("480,00 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 10:30")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung_2027-10.pdf")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("12.345 Byte")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("SHA-256 ab12")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/rechnungen/6/dokumente/pdf\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Rechnung ausstellen…"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Entwurf löschen"))));
+        verify(invoices, never()).problems(issued);
         when(invoices.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/rechnungen/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(post("/rechnungen/9").with(user("elena").roles("USER")).with(csrf())).andExpect(status().isNotFound());
@@ -676,6 +700,44 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Die Vorschau braucht einen vollständigen Entwurf.")));
         when(invoices.find(9)).thenReturn(Optional.empty());
         mvc.perform(get("/rechnungen/9/vorschau").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void issuesADraftAndReportsAProblem() throws Exception {
+        when(issues.issue(5, 3L)).thenReturn("2027-10");
+        mvc.perform(post("/rechnungen/5/ausstellen").param("version", "3").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5")).andExpect(flash().attribute("success", "Rechnung 2027-10 ausgestellt."));
+        when(issues.issue(5, null)).thenThrow(new InvoiceException(List.of("Nicht gültig.")));
+        mvc.perform(post("/rechnungen/5/ausstellen").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/5"))
+                .andExpect(flash().attribute("error", "Nicht gültig."));
+    }
+
+    @Test
+    void downloadsTheDocumentsOfAnIssuedInvoice() throws Exception {
+        when(documents.find(6, io.github.grigoriev.im.invoice.DocumentKind.PDF)).thenReturn(Optional.of(
+                new io.github.grigoriev.im.invoice.StoredDocument(1L, 6L, io.github.grigoriev.im.invoice.DocumentKind.PDF,
+                        "Rechnung_2027-10.pdf", "%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII), "ab", 8,
+                        java.time.Instant.EPOCH)));
+        when(documents.find(6, io.github.grigoriev.im.invoice.DocumentKind.XML)).thenReturn(Optional.of(
+                new io.github.grigoriev.im.invoice.StoredDocument(2L, 6L, io.github.grigoriev.im.invoice.DocumentKind.XML,
+                        "Rechnung_2027-10.xml", "<x/>".getBytes(java.nio.charset.StandardCharsets.US_ASCII), "cd", 4,
+                        java.time.Instant.EPOCH)));
+        mvc.perform(get("/rechnungen/6/dokumente/pdf").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnung_2027-10.pdf\""))
+                .andExpect(content().string("%PDF-1.7"));
+        mvc.perform(get("/rechnungen/6/dokumente/xml").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/xml"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnung_2027-10.xml\""))
+                .andExpect(content().string("<x/>"));
+        when(documents.find(5, io.github.grigoriev.im.invoice.DocumentKind.PDF)).thenReturn(Optional.empty());
+        mvc.perform(get("/rechnungen/5/dokumente/pdf").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+        mvc.perform(get("/rechnungen/6/dokumente/zip").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+
+        when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.ISSUED)));
+        mvc.perform(get("/rechnungen/6/vorschau").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/rechnungen/6/dokumente/pdf"));
     }
 
     @Test

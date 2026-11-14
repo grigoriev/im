@@ -70,6 +70,8 @@ class AccessRulesIT {
             Map.entry("POST /rechnungen/{id}", Access.USER),
             Map.entry("POST /rechnungen/{id}/loeschen", Access.USER),
             Map.entry("GET /rechnungen/{id}/vorschau", Access.USER),
+            Map.entry("POST /rechnungen/{id}/ausstellen", Access.USER),
+            Map.entry("GET /rechnungen/{id}/dokumente/{kind}", Access.USER),
             Map.entry("GET /einstellungen", Access.USER),
             Map.entry("POST /einstellungen", Access.USER),
             Map.entry("GET /admin/benutzer", Access.ADMIN),
@@ -115,7 +117,8 @@ class AccessRulesIT {
 
     /** A URL for a pattern. The values exist nowhere: a request that passes the rules changes nothing. */
     private static String url(String pattern) {
-        return pattern.replace("{id}", "999999").replace("{customerId}", "999998").replace("{code}", "ZZ");
+        return pattern.replace("{id}", "999999").replace("{customerId}", "999998").replace("{code}", "ZZ")
+                .replace("{kind}", "pdf");
     }
 
     private static MockHttpServletRequestBuilder request(String rule) {
