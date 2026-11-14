@@ -14,6 +14,7 @@ import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
+import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.math.BigDecimal;
@@ -77,6 +78,10 @@ class ThresholdServiceTest {
             assertThat(params).containsEntry("to", LocalDate.of(((LocalDate) params.get("from")).getYear(), 12, 31));
             return payments.containsKey(((LocalDate) params.get("from")).getYear());
         });
+        MappedQuerySpec<Integer> years = mock(MappedQuerySpec.class);
+        when(spec.query(Integer.class)).thenReturn(years);
+        when(years.list()).thenAnswer(call -> payments.keySet().stream().sorted(java.util.Comparator.reverseOrder())
+                .toList());
         MappedQuerySpec<BigDecimal> amount = mock(MappedQuerySpec.class);
         when(spec.query(BigDecimal.class)).thenReturn(amount);
         when(amount.optional()).thenAnswer(call -> Optional.ofNullable(baselines.get((Integer) params.get("year"))));
@@ -103,8 +108,12 @@ class ThresholdServiceTest {
         for (Object[] row : data) {
             ResultSet rs = mock(ResultSet.class);
             if (row[0] instanceof BigDecimal value) {
-                when(rs.getBigDecimal(1)).thenReturn(value);
-                when(rs.getString(2)).thenReturn((String) row[1]);
+                int year = ((LocalDate) params.get("from")).getYear();
+                when(rs.getDate(1)).thenReturn(java.sql.Date.valueOf(LocalDate.of(year, 1, 15).plusDays(result.size())));
+                when(rs.getBigDecimal(2)).thenReturn(value);
+                when(rs.getString(3)).thenReturn(value.signum() < 0 ? "Erstattung" : null);
+                when(rs.getString(4)).thenReturn(year + "-0" + (result.size() + 1));
+                when(rs.getString(5)).thenReturn((String) row[1]);
             } else {
                 when(rs.getInt(1)).thenReturn((Integer) row[0]);
                 when(rs.getBigDecimal(2)).thenReturn((BigDecimal) row[1]);
@@ -170,7 +179,94 @@ class ThresholdServiceTest {
 
     @Test
     void anInvoiceWithoutTotalCountsNothing() {
-        assertThat(ThresholdService.share(SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931))).isEqualByComparingTo("0");
+        RevenueRow row = ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal("5.00"), null, "2027-01",
+                SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(row.counted()).isEqualByComparingTo("0");
+        assertThat(row.excluded()).isEqualByComparingTo("5.00");
+        assertThat(row.byCategory()).isEmpty();
+    }
+
+    private static RevenueRow split(String amount, InvoiceDocument document) {
+        return ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal(amount), null, "2027-01", document);
+    }
+
+    private static BigDecimal parts(RevenueRow row) {
+        return row.byCategory().values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Test
+    void theCategoriesOfAPaymentAddUpToTheCent() {
+        RevenueRow refund = split("-5.01", SampleInvoices.halves(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(refund.counted()).isEqualByComparingTo("-2.51");
+        assertThat(refund.excluded()).isEqualByComparingTo("-2.50");
+        assertThat(refund.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("-2.51"))
+                .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("-2.50"));
+        assertThat(parts(refund)).isEqualByComparingTo("-5.01");
+        RevenueRow tie = split("1.01", SampleInvoices.halves(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(parts(tie)).isEqualByComparingTo("1.01");
+        assertThat(tie.byCategory()).containsEntry(TaxCategory.EXEMPT_4_21, tie.excluded());
+
+        RevenueRow books = split("100.00", SampleInvoices.teachingAndBooks(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(books.byCategory()).doesNotContainKey(TaxCategory.KLEINUNTERNEHMER)
+                .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("93.83"))
+                .as("the VAT goes with the standard rate").containsEntry(TaxCategory.STANDARD_19, new BigDecimal("6.17"));
+        assertThat(parts(books)).isEqualByComparingTo("100.00");
+
+        RevenueRow sale = split("146.33", SampleInvoices.sale(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(sale.byCategory()).as("each rate with its own VAT")
+                .containsEntry(TaxCategory.STANDARD_19, new BigDecimal("66.40"))
+                .containsEntry(TaxCategory.STANDARD_7, new BigDecimal("79.93"));
+        RevenueRow cents = split("0.02", SampleInvoices.fourWays(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(cents.byCategory().values()).as("no negative part of a positive payment")
+                .allSatisfy(part -> assertThat(part.signum()).isNotNegative());
+        assertThat(parts(cents)).isEqualByComparingTo("0.02");
+        RevenueRow back = split("-0.02", SampleInvoices.fourWays(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(back.byCategory().values()).allSatisfy(part -> assertThat(part.signum()).isNotPositive());
+        assertThat(parts(back)).isEqualByComparingTo("-0.02");
+        RevenueRow four = split("105.96", SampleInvoices.fourWays(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(four.byCategory()).containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("34.00"))
+                .containsEntry(TaxCategory.REVERSE_CHARGE_EU, new BigDecimal("34.00"))
+                .containsEntry(TaxCategory.STANDARD_19, new BigDecimal("36.89"))
+                .containsEntry(TaxCategory.STANDARD_7, new BigDecimal("1.07"));
+
+        RevenueRow reading = split("480.00", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(reading.byCategory()).containsExactly(java.util.Map.entry(TaxCategory.KLEINUNTERNEHMER,
+                new BigDecimal("480.00")));
+        RevenueRow school = split("984.00", SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(school.byCategory()).containsExactly(java.util.Map.entry(TaxCategory.EXEMPT_4_21,
+                new BigDecimal("984.00")));
+        RevenueRow tiny = split("0.01", SampleInvoices.mixed(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(tiny.counted()).isEqualByComparingTo("0.00");
+        assertThat(tiny.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("0.00"))
+                .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("0.01"));
+        assertThat(parts(tiny)).isEqualByComparingTo("0.01");
+    }
+
+    @Test
+    void listsThePaymentsOfAYearAsRows() {
+        paid(2027, "560.00", "mixed");
+        paid(2027, "-100.00", "mixed");
+        paid(2026, "1.00", "reading");
+        List<RevenueRow> rows = service.rows(2027);
+        assertThat(rows).hasSize(2);
+        RevenueRow first = rows.getFirst();
+        assertThat(first.paidOn()).isEqualTo(LocalDate.of(2027, 1, 15));
+        assertThat(first.number()).isEqualTo("2027-01");
+        assertThat(first.customer()).isEqualTo("Volkshochschule Musterstadt");
+        assertThat(first.amount()).isEqualByComparingTo("560.00");
+        assertThat(first.counted()).isEqualByComparingTo("200.00");
+        assertThat(first.excluded()).isEqualByComparingTo("360.00");
+        assertThat(first.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER,
+                new BigDecimal("200.00")).containsEntry(TaxCategory.EXEMPT_4_21,
+                new BigDecimal("360.00"));
+        assertThat(first.note()).isNull();
+        RevenueRow refund = rows.get(1);
+        assertThat(refund.counted()).as("-100 x 400/1120, rounded half up").isEqualByComparingTo("-35.71");
+        assertThat(refund.excluded()).isEqualByComparingTo("-64.29");
+        assertThat(refund.note()).isEqualTo("Erstattung");
+        assertThat(service.years()).containsExactly(2027, 2026);
+        payments.clear();
+        assertThat(service.years()).as("this year always").containsExactly(2027);
     }
 
     @Test

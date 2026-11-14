@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Berichte · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Berichte', 'reports', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4 @container">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">Berichte</h1>
+      <form class="flex flex-wrap gap-2 items-end" th:action="@{/berichte}" method="get" id="report-year">
+        <label class="floating-label w-28"><span>Jahr</span>
+          <select name="jahr" class="select select-sm w-full" id="report-year-select">
+            <option th:each="option : ${years}" th:value="${option}" th:text="${option}" th:selected="${option == year}">2027</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-sm">Anzeigen</button>
+        <a class="btn btn-sm" id="report-csv" th:href="@{/berichte/zahlungen.csv(jahr=${year})}"><i data-lucide="sheet" class="size-4"></i>CSV</a>
+      </form>
+    </div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="report-euer">
+      <div>
+        <h2 class="font-semibold" th:text="'Anlage EÜR ' + ${year} + ', Betriebseinnahmen'">Anlage EÜR, Betriebseinnahmen</h2>
+        <p class="text-xs text-base-content/75">Nach Zahlungseingang, Erstattungen abgezogen. Werte zum Übertragen in WISO Steuer.
+          Die Zeilen folgen der Anlage EÜR 2025; bitte mit dem Formular des Jahres abgleichen.</p>
+      </div>
+      <dl class="grid gap-2 text-sm">
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-baseline">
+          <dt>Zeile 12, Kennzahl 111: Betriebseinnahmen als umsatzsteuerlicher Kleinunternehmer</dt>
+          <dd class="num font-semibold text-right" id="euer-111" th:text="${#numbers.formatDecimal(totals.total, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+        </div>
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-baseline pl-4">
+          <dt>Zeile 13, Kennzahl 119: davon nicht steuerbare Umsätze sowie Umsätze nach § 19 Abs. 2 Satz 1 Nr. 1 und 2 UStG,
+            zum Beispiel Unterricht nach § 4 Nr. 21 und Leistungen ins Ausland</dt>
+          <dd class="num text-right" id="euer-119" th:text="${#numbers.formatDecimal(totals.excluded, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+        </div>
+      </dl>
+      <p role="alert" class="alert alert-warning text-sm" th:if="${totals.vatSales.signum() != 0}" id="report-vat">
+        <span th:text="'Einnahmen mit Umsatzsteuer von ' + ${#numbers.formatDecimal(totals.vatSales, 1, 'POINT', 2, 'COMMA')} + ' € (brutto) gehören nicht in die Zeilen 12 und 13, sondern netto in Zeile 15 und die Umsatzsteuer in Zeile 17. Die App teilt sie nicht auf.'">Hinweis</span>
+      </p>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="report-categories">
+      <h2 class="font-semibold">Einnahmen nach Steuerart</h2>
+      <p class="text-sm text-base-content/75" th:if="${totals.byCategory.isEmpty()}">Keine Zahlungen in diesem Jahr.</p>
+      <ul class="grid gap-1 text-sm" th:unless="${totals.byCategory.isEmpty()}">
+        <li th:each="entry : ${totals.byCategory}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <span th:text="${categories.get(entry.key)}">§ 19 UStG</span>
+          <span class="num text-right" th:text="${#numbers.formatDecimal(entry.value, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+        </li>
+      </ul>
+      <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm border-t border-base-300 pt-2">
+        <span>Zählt für die Kleinunternehmergrenze</span>
+        <span class="num text-right font-medium" id="report-counted" th:text="${#numbers.formatDecimal(totals.counted, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+      </div>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="report-payments">
+      <h2 class="font-semibold">Zahlungen</h2>
+      <p class="text-sm text-base-content/75" th:if="${rows.isEmpty()}">Keine Zahlungen in diesem Jahr.</p>
+      <ul class="grid gap-2 text-sm" th:unless="${rows.isEmpty()}">
+        <li th:each="row : ${rows}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-base-300 last:border-b-0 pb-2">
+          <span class="min-w-0 grid">
+            <span class="[overflow-wrap:anywhere]" th:text="${row.customer}">Kunde</span>
+            <span class="text-xs text-base-content/75 num [overflow-wrap:anywhere]" th:text="${#temporals.format(row.paidOn, 'dd.MM.yyyy') + ' · ' + row.number}">18.03.2027 · 2027-01</span>
+          </span>
+          <span class="num text-right" th:text="${#numbers.formatDecimal(row.amount, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>

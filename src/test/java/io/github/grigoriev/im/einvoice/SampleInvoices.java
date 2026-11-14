@@ -77,6 +77,29 @@ public final class SampleInvoices {
                 lump("Unterricht", "200.00", TaxCategory.EXEMPT_4_21));
     }
 
+    /** Half §19, half §4 Nr. 21: 10,00 € each, total 20,00 €. */
+    public static InvoiceDocument halves(InvoiceFormat format) {
+        return invoice(SCHOOL, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                lump("Lesung", "10.00", TaxCategory.KLEINUNTERNEHMER),
+                lump("Unterricht", "10.00", TaxCategory.EXEMPT_4_21));
+    }
+
+    /** Teaching and books with VAT: 720,00 € under §4 Nr. 21 and 2 × 19,90 € at 19 %, total 767,36 €. */
+    public static InvoiceDocument teachingAndBooks(InvoiceFormat format) {
+        return invoice(SHOP, SCHOOL, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                line("Unterricht", "16", "45.00", TaxCategory.EXEMPT_4_21),
+                line("Lehrbuch", "2", "19.90", TaxCategory.STANDARD_19));
+    }
+
+    /** Four categories: 34 € §4 Nr. 21, 34 € reverse charge, 31 € at 19 % and 1 € at 7 %, total 105,96 €. */
+    public static InvoiceDocument fourWays(InvoiceFormat format) {
+        return invoice(SELLER_EU, DUTCH, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                lump("Unterricht", "34.00", TaxCategory.EXEMPT_4_21),
+                lump("Workshop", "34.00", TaxCategory.REVERSE_CHARGE_EU),
+                lump("Lehrbuch", "31.00", TaxCategory.STANDARD_19),
+                lump("Zeitschrift", "1.00", TaxCategory.STANDARD_7));
+    }
+
     /** A free §19 line: total 0,00 €. */
     public static InvoiceDocument free(InvoiceFormat format) {
         return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,

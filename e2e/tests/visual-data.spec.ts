@@ -11,6 +11,8 @@ const VIEWPORTS = [
 const LONG_NAME = 'Gemeinnützige Gesellschaft für Sprachförderung und interkulturelle Bildung Musterstadt mbH';
 
 test('a saved customer with a long name', async ({ page, browser, adminState }) => {
+  // Three invoices and many screenshots in four contexts: more than the default time on a CI runner.
+  test.slow();
   await page.goto('/kunden/neu');
   await page.getByLabel('Name', { exact: true }).fill(LONG_NAME);
   await page.getByLabel('Straße und Hausnummer').fill('Lange Straße 123');

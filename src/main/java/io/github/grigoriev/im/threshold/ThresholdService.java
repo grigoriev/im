@@ -4,6 +4,7 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceLine;
+import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.seller.SettingsException;
@@ -12,10 +13,13 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,8 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ThresholdService {
 
     static final String PAYMENTS = """
-            SELECT p.amount, i.snapshot FROM payment p JOIN invoice i ON i.id = p.invoice_id
-             WHERE p.paid_on BETWEEN :from AND :to""";
+            SELECT p.paid_on, p.amount, p.note, i.number, i.snapshot FROM payment p JOIN invoice i ON i.id = p.invoice_id
+             WHERE p.paid_on BETWEEN :from AND :to ORDER BY p.paid_on, p.id""";
+    static final String YEARS = "SELECT DISTINCT CAST(EXTRACT(YEAR FROM paid_on) AS INTEGER) FROM payment "
+            + "ORDER BY 1 DESC";
     static final String BASELINES = "SELECT year, amount FROM threshold_baseline ORDER BY year DESC";
     static final String BASELINE = "SELECT amount FROM threshold_baseline WHERE year = :year";
     static final String SAVE = """
@@ -149,6 +155,18 @@ public class ThresholdService {
     }
 
     /**
+     * Returns the years of the reports: this year and every year with a payment, the newest first.
+     *
+     * @return the years
+     */
+    public List<Integer> years() {
+        SortedSet<Integer> years = new TreeSet<>(Comparator.reverseOrder());
+        years.add(LocalDate.now(clock).getYear());
+        years.addAll(jdbc.sql(YEARS).query(Integer.class).list());
+        return List.copyOf(years);
+    }
+
+    /**
      * Returns the newest past year without payments in the app, the default of a new baseline.
      *
      * @return last year, or the newest year before the first payment
@@ -171,31 +189,75 @@ public class ThresholdService {
     }
 
     private Revenue revenue(int year) {
-        BigDecimal counted = BigDecimal.ZERO;
-        BigDecimal all = BigDecimal.ZERO;
-        List<Map.Entry<BigDecimal, String>> payments = jdbc.sql(PAYMENTS)
-                .param("from", LocalDate.of(year, 1, 1))
-                .param("to", LocalDate.of(year, 12, 31))
-                .query((rs, row) -> Map.entry(rs.getBigDecimal(1), rs.getString(2))).list();
-        for (Map.Entry<BigDecimal, String> payment : payments) {
-            all = all.add(payment.getKey());
-            counted = counted.add(payment.getKey().multiply(share(documents.restore(payment.getValue()))));
+        List<RevenueRow> rows = rows(year);
+        return new Revenue(rows.stream().map(RevenueRow::counted).reduce(BigDecimal.ZERO, BigDecimal::add),
+                rows.stream().map(RevenueRow::excluded).reduce(BigDecimal.ZERO, BigDecimal::add));
+    }
+
+    /**
+     * Returns the payments of a year as the reports count them, in the order they came in.
+     *
+     * @param year the year
+     * @return one row per payment, rounded to cents per payment
+     */
+    public List<RevenueRow> rows(int year) {
+        return jdbc.sql(PAYMENTS).param("from", LocalDate.of(year, 1, 1)).param("to", LocalDate.of(year, 12, 31))
+                .query((rs, row) -> row(rs.getDate(1).toLocalDate(), rs.getBigDecimal(2), rs.getString(3),
+                        rs.getString(4), documents.restore(rs.getString(5))))
+                .list();
+    }
+
+    /**
+     * Splits one payment by the lines of its invoice, to the cent. Each category weighs with its gross amount, its net
+     * lines plus the VAT of its rate. The largest-remainder method hands out the cents: the parts add up to the
+     * payment, and none takes the other sign. The §19 part is what {@code KLEINUNTERNEHMER} gets.
+     */
+    static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document) {
+        Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
+        if (document.total().signum() != 0) {
+            byCategory.putAll(split(amount, gross(document), document.total()));
         }
-        counted = counted.setScale(CENTS, RoundingMode.HALF_UP);
-        return new Revenue(counted, all.subtract(counted));
+        BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS));
+        return new RevenueRow(paidOn, number, document.buyer().name(), amount, counted, amount.subtract(counted),
+                byCategory, note);
+    }
+
+    /** The gross amount per category: its net lines plus, for a standard rate, the VAT of that rate. */
+    static Map<TaxCategory, BigDecimal> gross(InvoiceDocument document) {
+        Map<TaxCategory, BigDecimal> gross = new EnumMap<>(TaxCategory.class);
+        document.lines().forEach(line -> gross.merge(line.category(), line.netAmount(), BigDecimal::add));
+        document.vatAmounts().forEach(vat -> gross.keySet().stream()
+                .filter(category -> category.chargesVat() && category.rate().compareTo(vat.rate()) == 0)
+                .findFirst().ifPresent(category -> gross.merge(category, vat.vat(), BigDecimal::add)));
+        return gross;
+    }
+
+    /** Splits an amount by weights with the largest-remainder method, in cents. */
+    static Map<TaxCategory, BigDecimal> split(BigDecimal amount, Map<TaxCategory, BigDecimal> weights,
+            BigDecimal total) {
+        BigDecimal cents = amount.abs().movePointRight(CENTS);
+        Map<TaxCategory, BigDecimal> floors = new EnumMap<>(TaxCategory.class);
+        Map<TaxCategory, BigDecimal> remainders = new EnumMap<>(TaxCategory.class);
+        weights.forEach((category, weight) -> {
+            BigDecimal exact = cents.multiply(weight).divide(total, 10, RoundingMode.HALF_UP);
+            BigDecimal floor = exact.setScale(0, RoundingMode.FLOOR);
+            floors.put(category, floor);
+            remainders.put(category, exact.subtract(floor));
+        });
+        int left = cents.subtract(floors.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add)).intValueExact();
+        // The biggest remainders get one cent each; a tie keeps the order of the enum.
+        remainders.entrySet().stream()
+                .sorted(Map.Entry.<TaxCategory, BigDecimal>comparingByValue().reversed())
+                .limit(left).forEach(entry -> floors.merge(entry.getKey(), BigDecimal.ONE, BigDecimal::add));
+        Map<TaxCategory, BigDecimal> parts = new EnumMap<>(TaxCategory.class);
+        floors.forEach((category, floor) -> parts.put(category,
+                floor.multiply(BigDecimal.valueOf(amount.signum())).movePointLeft(CENTS).setScale(CENTS)));
+        return parts;
     }
 
     /** The amount of the lines that count for §19. */
     static BigDecimal countedLines(InvoiceDocument document) {
         return document.lines().stream().filter(line -> line.category().countsForThreshold())
                 .map(InvoiceLine::netAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    /** The share of the lines that count for §19 in the total of an invoice, from 0 to 1. */
-    static BigDecimal share(InvoiceDocument document) {
-        if (document.total().signum() == 0) {
-            return BigDecimal.ZERO;
-        }
-        return countedLines(document).divide(document.total(), 10, RoundingMode.HALF_UP);
     }
 }

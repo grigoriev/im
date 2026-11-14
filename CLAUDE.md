@@ -49,7 +49,7 @@ Package `io.github.grigoriev.im`:
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
   validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `TemplateService` keeps the templates
   per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
-- `threshold`: the §19 limit (`ThresholdService`: counted revenue per payment year with the share of the §19 lines, baselines, forecast)
+- `threshold`: the §19 limit and the reports (`ThresholdService`: one `RevenueRow` per payment, rounded once, with the §19 part; baselines, forecast; `ReportController` shows Anlage EÜR Zeilen 12 and 13 and the CSV)
 - `mail`: the e-mail text (`MailTextService`: the admin default, the template of an invoice, the placeholders) and the
   sending (`MailService` over SMTP from `MailProperties`, `IM_SMTP_*`; a sent e-mail records a dispatch `EMAIL_APP`)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer

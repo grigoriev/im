@@ -47,6 +47,7 @@
         <li><a th:href="@{/}" th:classappend="${active == 'home'} ? 'menu-active'"><i data-lucide="layout-dashboard" class="size-4"></i>Übersicht</a></li>
         <li><a th:href="@{/rechnungen}" th:classappend="${active == 'invoices'} ? 'menu-active'"><i data-lucide="file-text" class="size-4"></i>Rechnungen</a></li>
         <li><a th:href="@{/kunden}" th:classappend="${active == 'customers'} ? 'menu-active'"><i data-lucide="contact" class="size-4"></i>Kunden</a></li>
+        <li><a th:href="@{/berichte}" th:classappend="${active == 'reports'} ? 'menu-active'"><i data-lucide="chart-column" class="size-4"></i>Berichte</a></li>
         <li><a th:href="@{/konto}" th:classappend="${active == 'account'} ? 'menu-active'"><i data-lucide="user-round" class="size-4"></i>Mein Konto</a></li>
         <li><a th:href="@{/einstellungen}" th:classappend="${active == 'settings'} ? 'menu-active'"><i data-lucide="sliders-horizontal" class="size-4"></i>Einstellungen</a></li>
         <th:block sec:authorize="hasRole('ADMIN')">
