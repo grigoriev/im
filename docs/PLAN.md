@@ -241,6 +241,8 @@ The admin edits the default tax notes. A template and an invoice can override th
 3. Retention: 7 daily, 8 weekly, 24 monthly snapshots. Yearly archives stay for 10 years.
 4. Monthly: an automatic restore test into a throwaway container. A failure sends an e-mail.
 5. The admin panel shows the time of the last successful backup.
+6. The scripts live in the intranet repository, `lemming/backup`. They write the last success into table `backup_run`.
+7. The admin panel warns when the backup is older than 36 hours or the restore test older than 35 days.
 
 ## 10. Testing
 

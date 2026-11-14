@@ -86,6 +86,8 @@ test('the admin enters the revenue of last year, and the overview counts it', as
 test('the admin downloads the full export and cannot import it over data', async ({ page }) => {
   await page.goto('/einstellungen');
   await page.getByRole('tab', { name: /Datensicherung/ }).click();
+  await expect(page.locator('#backup-overdue')).toHaveText('Es gibt noch keine automatische Sicherung.');
+  await expect(page.locator('#backup-last')).toHaveText('noch keine');
   const download = await page.request.get((await page.locator('#backup-download').getAttribute('href'))!);
   expect(download.headers()['content-type']).toBe('application/zip');
   expect(download.headers()['content-disposition']).toMatch(/^attachment; filename="im-datensicherung-\d{4}-\d{2}-\d{2}\.zip"$/);
@@ -96,7 +98,7 @@ test('the admin downloads the full export and cannot import it over data', async
 
   await page.locator('#backup-file').setInputFiles({ name: 'export.zip', mimeType: 'application/zip', buffer: zip });
   await page.getByRole('button', { name: 'Einspielen' }).click();
-  await expect(page.getByRole('alert')).toContainText('Hier gibt es schon Daten.');
+  await expect(page.locator('#backup-error')).toContainText('Hier gibt es schon Daten.');
 });
 
 test('a user edits the profile but not the tax notes', async ({ page, browser }) => {

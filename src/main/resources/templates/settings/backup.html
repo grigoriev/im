@@ -10,7 +10,35 @@
   <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
     <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
     <div th:replace="~{fragments/settings :: tabs('backup')}"></div>
-    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+    <div role="alert" class="alert alert-error text-sm" id="backup-error" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-status">
+      <div>
+        <h2 class="font-semibold">Automatische Sicherung</h2>
+        <p class="text-sm text-base-content/75">Jede Nacht sichert der Server die Datenbank verschlüsselt auf einen zweiten
+          Rechner. Einmal im Monat spielt er die Sicherung zur Probe ein. Bei einem Fehler kommt eine E-Mail.</p>
+      </div>
+      <div role="alert" class="alert alert-warning alert-soft text-sm text-base-content" id="backup-overdue" th:if="${status.backupOverdue()}">
+        <i data-lucide="triangle-alert" class="size-4 text-warning" aria-hidden="true"></i>
+        <span th:text="${status.backup() == null} ? 'Es gibt noch keine automatische Sicherung.'
+             : 'Die letzte Sicherung ist älter als 36 Stunden. Bitte den Server prüfen.'">Warnung</span></div>
+      <div role="alert" class="alert alert-warning alert-soft text-sm text-base-content" id="restore-test-overdue" th:if="${status.restoreTestOverdue()}">
+        <i data-lucide="triangle-alert" class="size-4 text-warning" aria-hidden="true"></i>
+        <span th:text="${status.restoreTest() == null} ? 'Es gibt noch keinen Wiederherstellungstest.'
+             : 'Der letzte Wiederherstellungstest ist älter als 35 Tage. Bitte den Server prüfen.'">Warnung</span></div>
+      <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+        <dt class="text-base-content/75">Letzte Sicherung</dt>
+        <dd class="num [overflow-wrap:anywhere]"><span id="backup-last" data-volatile
+            th:text="${status.backup() == null} ? 'noch keine'
+              : ${#temporals.format(status.backup().succeededAt(), 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}
+                + (${status.backup().detail().isEmpty()} ? '' : ' · ' + ${status.backup().detail()})">noch keine</span></dd>
+        <dt class="text-base-content/75">Letzter Test</dt>
+        <dd class="num [overflow-wrap:anywhere]"><span id="restore-test-last" data-volatile
+            th:text="${status.restoreTest() == null} ? 'noch keiner'
+              : ${#temporals.format(status.restoreTest().succeededAt(), 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}
+                + (${status.restoreTest().detail().isEmpty()} ? '' : ' · ' + ${status.restoreTest().detail()})">noch keiner</span></dd>
+      </dl>
+    </section>
 
     <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-export">
       <div>

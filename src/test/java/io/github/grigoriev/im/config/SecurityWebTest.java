@@ -183,6 +183,9 @@ class SecurityWebTest {
     @MockitoBean
     private io.github.grigoriev.im.backup.BackupService backups;
 
+    @MockitoBean
+    private io.github.grigoriev.im.backup.BackupRunService backupRuns;
+
     @org.junit.jupiter.api.BeforeEach
     void noRevenueNoPayments() {
         when(threshold.today()).thenReturn(java.time.LocalDate.of(2027, 3, 18));
@@ -849,7 +852,32 @@ class SecurityWebTest {
     }
 
     @Test
+    void showsTheLastBackupAndWarnsWhenOneIsOverdue() throws Exception {
+        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(null, null, true, true));
+        mvc.perform(get("/admin/datensicherung").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Es gibt noch keine automatische Sicherung.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Es gibt noch keinen Wiederherstellungstest.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">noch keine</span></dd>")));
+
+        java.time.OffsetDateTime night = java.time.OffsetDateTime.parse("2027-03-18T01:30:00Z");
+        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(
+                new io.github.grigoriev.im.backup.BackupRun("BACKUP", night, "Snapshot 1a2b3c4d, 1,2 MB"),
+                new io.github.grigoriev.im.backup.BackupRun("RESTORE_TEST", night.minusDays(40), ""), false, true));
+        mvc.perform(get("/admin/datensicherung").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027, 02:30 · Snapshot 1a2b3c4d, 1,2 MB")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">06.02.2027, 02:30</span></dd>")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"backup-overdue\""))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("älter als 35 Tage")));
+
+        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(
+                new io.github.grigoriev.im.backup.BackupRun("BACKUP", night.minusDays(2), ""), null, true, true));
+        mvc.perform(get("/admin/datensicherung").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("älter als 36 Stunden")));
+    }
+
+    @Test
     void theAdminExportsAndImportsEverything() throws Exception {
+        when(backupRuns.status()).thenReturn(new io.github.grigoriev.im.backup.BackupStatus(null, null, true, true));
         mvc.perform(get("/admin/datensicherung").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Export herunterladen")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("enctype=\"multipart/form-data\"")))
