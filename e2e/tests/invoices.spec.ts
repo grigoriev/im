@@ -219,3 +219,23 @@ test('cancels an invoice with a Stornorechnung', async ({ page }) => {
   await page.goto(`/rechnungen?suche=${encodeURIComponent(customer)}`);
   await expect(page.locator('#invoice-list li').filter({ hasText: `Stornorechnung · ${storno}` })).toHaveCount(1);
 });
+
+test('warns when a draft would cross the §19 limit', async ({ page }) => {
+  await ensureProfile(page);
+  const customer = await newCustomer(page, `Grenzkunde ${randomUUID().slice(0, 8)}`);
+  await page.goto('/rechnungen');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  await page.locator('#line-0-text').fill('Großauftrag');
+  await page.locator('#line-0-amount').fill('100.001,00');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#over-limit')).toContainText('über 100.000 €');
+  await expect(page.locator('#over-limit')).toHaveScreenshot('over-limit.png');
+
+  await page.locator('#line-0-amount').fill('400,00');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.locator('#over-limit')).toHaveCount(0);
+  await page.getByText('Entwurf löschen', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Entwurf löschen' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entwurf gelöscht.');
+});

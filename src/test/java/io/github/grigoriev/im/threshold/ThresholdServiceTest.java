@@ -17,7 +17,6 @@ import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.math.BigDecimal;
-import java.sql.Date;
 import java.sql.ResultSet;
 import java.time.Clock;
 import java.time.Instant;
@@ -72,6 +71,12 @@ class ThresholdServiceTest {
             writes.add(params);
             return 1;
         });
+        MappedQuerySpec<Boolean> paid = mock(MappedQuerySpec.class);
+        when(spec.query(Boolean.class)).thenReturn(paid);
+        when(paid.single()).thenAnswer(call -> {
+            assertThat(params).containsEntry("to", LocalDate.of(((LocalDate) params.get("from")).getYear(), 12, 31));
+            return payments.containsKey(((LocalDate) params.get("from")).getYear());
+        });
         MappedQuerySpec<BigDecimal> amount = mock(MappedQuerySpec.class);
         when(spec.query(BigDecimal.class)).thenReturn(amount);
         when(amount.optional()).thenAnswer(call -> Optional.ofNullable(baselines.get((Integer) params.get("year"))));
@@ -87,8 +92,8 @@ class ThresholdServiceTest {
     private List<Object> rows(String sql, Map<String, Object> params, RowMapper<Object> mapper) throws Exception {
         List<Object[]> data = new ArrayList<>();
         if (sql.equals(ThresholdService.PAYMENTS)) {
-            int year = ((Date) params.get("from")).toLocalDate().getYear();
-            assertThat(params.get("to")).isEqualTo(Date.valueOf(LocalDate.of(year, 12, 31)));
+            int year = ((LocalDate) params.get("from")).getYear();
+            assertThat(params).containsEntry("to", LocalDate.of(year, 12, 31));
             data.addAll(payments.getOrDefault(year, List.of()));
         } else {
             baselines.entrySet().stream().sorted(Map.Entry.<Integer, BigDecimal>comparingByKey().reversed())
@@ -156,6 +161,11 @@ class ThresholdServiceTest {
         assertThat(service.wouldExceed(draft)).isTrue();
         assertThat(service.wouldExceed(SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931)))
                 .as("§4 Nr. 21 does not count").isFalse();
+        baselines.put(2027, new BigDecimal("99600.00"));
+        assertThat(service.wouldExceed(SampleInvoices.twoThirds(InvoiceFormat.ZUGFERD_EN16931)))
+                .as("400 of 600 reach exactly 100 000, no rounded share").isFalse();
+        baselines.put(2027, new BigDecimal("99600.01"));
+        assertThat(service.wouldExceed(SampleInvoices.twoThirds(InvoiceFormat.ZUGFERD_EN16931))).isTrue();
     }
 
     @Test
@@ -197,6 +207,22 @@ class ThresholdServiceTest {
         service.saveBaseline(2026, "0,25");
         assertThat(writes.getLast()).containsEntry("amount", new BigDecimal("0.25"));
         verify(audit, never()).add(AuditAction.BASELINE_SAVED, "1999, entfernt");
+    }
+
+    @Test
+    void aYearWithPaymentsInTheAppTakesNoBaseline() {
+        assertThat(service.newestBaselineYear()).isEqualTo(2026);
+        paid(2026, "100.00", "reading");
+        paid(2025, "100.00", "reading");
+        assertThatThrownBy(() -> service.saveBaseline(2026, "1.000,00"))
+                .hasMessage("Für dieses Jahr zählt die App die Zahlungen selbst.");
+        assertThat(service.newestBaselineYear()).isEqualTo(2024);
+        service.saveBaseline(2024, "1.000,00");
+        assertThat(writes.getLast()).containsEntry("year", 2024);
+        for (int year = 2000; year <= 2026; year++) {
+            paid(year, "1.00", "reading");
+        }
+        assertThat(service.newestBaselineYear()).as("stops at 2000, the first year of a baseline").isEqualTo(2000);
     }
 
     @Test

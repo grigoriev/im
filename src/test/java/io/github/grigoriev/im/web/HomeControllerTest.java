@@ -71,12 +71,11 @@ class HomeControllerTest {
         List<HomeController.Open> open = (List<HomeController.Open>) model.get("open");
         assertThat(open).extracting(item -> item.invoice().id()).containsExactly(1L, 2L, 3L);
         assertThat(open).extracting(HomeController.Open::customer).containsOnly("Verlag am Fluss GmbH");
-        assertThat(model.get("openSum")).isEqualTo(new BigDecimal("600.00"));
+        assertThat(model).containsEntry("openSum", new BigDecimal("600.00"));
         @SuppressWarnings("unchecked")
         List<HomeController.Open> overdue = (List<HomeController.Open>) model.get("overdue");
         assertThat(overdue).as("due today is not overdue yet").extracting(item -> item.invoice().id()).containsExactly(1L);
-        assertThat(model.get("overdueSum")).isEqualTo(new BigDecimal("480.00"));
-        assertThat(model.get("threshold")).isEqualTo(current);
-        assertThat(model.get("today")).isEqualTo(TODAY);
+        assertThat(model).containsEntry("overdueSum", new BigDecimal("480.00")).containsEntry("threshold", current)
+                .containsEntry("today", TODAY);
     }
 }

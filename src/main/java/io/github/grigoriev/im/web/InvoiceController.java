@@ -338,7 +338,9 @@ public class InvoiceController {
         }
         model.addAttribute("form", form);
         model.addAttribute("problems", invoices.problems(invoice));
-        model.addAttribute("overLimit", document.isPresent() && threshold.wouldExceed(document.get()));
+        // A Stornorechnung adds no revenue: it takes no payments.
+        model.addAttribute("overLimit", cancelled.isEmpty() && document.isPresent()
+                && threshold.wouldExceed(document.get()));
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("categories", CATEGORIES);
         model.addAttribute("categoryOrder", TaxCategory.values());

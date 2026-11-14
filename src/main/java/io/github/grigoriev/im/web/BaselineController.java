@@ -38,7 +38,7 @@ public class BaselineController {
     @GetMapping
     public String show(Model model) {
         model.addAttribute("baselines", threshold.baselines());
-        model.addAttribute("lastYear", threshold.today().getYear() - 1);
+        model.addAttribute("lastYear", threshold.newestBaselineYear());
         return VIEW;
     }
 

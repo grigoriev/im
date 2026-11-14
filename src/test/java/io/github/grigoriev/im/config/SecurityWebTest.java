@@ -751,6 +751,13 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"cancel-lines\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("disabled=\"disabled\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Position hinzufügen"))));
+        when(invoices.document(storno)).thenReturn(Optional.of(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
+                InvoiceFormat.ZUGFERD_EN16931)));
+        when(threshold.wouldExceed(any())).thenReturn(true);
+        mvc.perform(get("/rechnungen/9").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"cancel-total\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("über 100.000 €"))));
+        when(threshold.wouldExceed(any())).thenReturn(false);
 
         Invoice xStorno = new Invoice(9L, InvoiceStatus.DRAFT, 3L, null, InvoiceFormat.XRECHNUNG, storno.issueDate(),
                 storno.serviceFrom(), storno.serviceTo(), 0, "04011000-1", null, null, null, storno.lines(),
@@ -795,6 +802,7 @@ class SecurityWebTest {
     @Test
     void theAdminKeepsTheBaselines() throws Exception {
         when(threshold.baselines()).thenReturn(java.util.Map.of());
+        when(threshold.newestBaselineYear()).thenReturn(2026);
         mvc.perform(get("/admin/vorjahre").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch kein Vorjahresumsatz erfasst.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("max=\"2026\" value=\"2026\"")));

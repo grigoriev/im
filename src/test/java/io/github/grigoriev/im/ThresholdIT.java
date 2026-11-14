@@ -1,6 +1,7 @@
 package io.github.grigoriev.im;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
@@ -109,12 +110,16 @@ class ThresholdIT {
         assertThat(after.excluded().subtract(before.excluded())).isEqualByComparingTo("288.00");
         assertThat(after.received().subtract(before.received())).isEqualByComparingTo("448.00");
 
-        threshold.saveBaseline(today.getYear() - 1, "18.000,00");
-        Threshold withBaseline = threshold.current();
-        assertThat(withBaseline.previousFromBaseline()).isTrue();
-        assertThat(withBaseline.previous().subtract(after.previous())).isEqualByComparingTo("18000.00");
-        assertThat(threshold.baselines()).containsKey(today.getYear() - 1);
-        threshold.saveBaseline(today.getYear() - 1, "");
-        assertThat(threshold.current().previous()).isEqualByComparingTo(after.previous());
+        int lastYearNumber = today.getYear() - 1;
+        assertThatThrownBy(() -> threshold.saveBaseline(lastYearNumber, "18.000,00"))
+                .as("last year has a payment in the app").hasMessage("Für dieses Jahr zählt die App die Zahlungen selbst.");
+        assertThat(threshold.newestBaselineYear()).isLessThan(lastYearNumber);
+        int older = threshold.newestBaselineYear();
+        threshold.saveBaseline(older, "18.000,00");
+        assertThat(threshold.baselines()).containsEntry(older, new java.math.BigDecimal("18000.00"));
+        assertThat(threshold.current().previous()).as("an older year leaves last year as it is")
+                .isEqualByComparingTo(after.previous());
+        threshold.saveBaseline(older, "");
+        assertThat(threshold.baselines()).doesNotContainKey(older);
     }
 }

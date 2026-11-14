@@ -70,6 +70,13 @@ public final class SampleInvoices {
                 lump("Lesung", "400.00", TaxCategory.KLEINUNTERNEHMER));
     }
 
+    /** Two thirds count: 400,00 € under §19 and 200,00 € under §4 Nr. 21, total 600,00 €. */
+    public static InvoiceDocument twoThirds(InvoiceFormat format) {
+        return invoice(SCHOOL, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                lump("Lesung", "400.00", TaxCategory.KLEINUNTERNEHMER),
+                lump("Unterricht", "200.00", TaxCategory.EXEMPT_4_21));
+    }
+
     /** A free §19 line: total 0,00 €. */
     public static InvoiceDocument free(InvoiceFormat format) {
         return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,

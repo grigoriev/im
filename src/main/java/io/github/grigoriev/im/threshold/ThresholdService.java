@@ -9,7 +9,6 @@ import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Date;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -38,6 +37,8 @@ public class ThresholdService {
             INSERT INTO threshold_baseline (year, amount) VALUES (:year, :amount)
             ON CONFLICT (year) DO UPDATE SET amount = EXCLUDED.amount""";
     static final String DELETE = "DELETE FROM threshold_baseline WHERE year = :year";
+    static final String PAID_IN = "SELECT EXISTS (SELECT 1 FROM payment WHERE paid_on BETWEEN :from AND :to)";
+    static final String COUNTED_BY_APP = "Für dieses Jahr zählt die App die Zahlungen selbst.";
 
     private static final int CENTS = 2;
 
@@ -92,7 +93,7 @@ public class ThresholdService {
     public boolean wouldExceed(InvoiceDocument draft) {
         int year = LocalDate.now(clock).getYear();
         BigDecimal counted = revenue(year).counted().add(baseline(year).orElse(BigDecimal.ZERO));
-        return counted.add(draft.total().multiply(share(draft))).compareTo(Threshold.CURRENT_LIMIT) > 0;
+        return counted.add(countedLines(draft)).compareTo(Threshold.CURRENT_LIMIT) > 0;
     }
 
     /**
@@ -108,16 +109,20 @@ public class ThresholdService {
     }
 
     /**
-     * Saves the baseline of a year before this one. A blank amount removes it.
+     * Saves the baseline of a year before this one and without payments in the app: a year the app counts itself must
+     * not count twice. A blank amount removes it.
      *
      * @param year the year
      * @param amount the counted §19 revenue of that year, German style
-     * @throws SettingsException if the year is not in the past or the amount is no positive number
+     * @throws SettingsException if the year is not in the past, has payments, or the amount is no positive number
      */
     @Transactional
     public void saveBaseline(int year, String amount) {
         if (year < 2000 || year >= LocalDate.now(clock).getYear()) {
             throw new SettingsException(List.of("Ein Vorjahresumsatz gehört zu einem vergangenen Jahr."));
+        }
+        if (paidIn(year)) {
+            throw new SettingsException(List.of(COUNTED_BY_APP));
         }
         if (amount == null || amount.isBlank()) {
             jdbc.sql(DELETE).param("year", year).update();
@@ -142,6 +147,24 @@ public class ThresholdService {
         return LocalDate.now(clock);
     }
 
+    /**
+     * Returns the newest past year without payments in the app, the default of a new baseline.
+     *
+     * @return last year, or the newest year before the first payment
+     */
+    public int newestBaselineYear() {
+        int year = LocalDate.now(clock).getYear() - 1;
+        while (year > 2000 && paidIn(year)) {
+            year--;
+        }
+        return year;
+    }
+
+    private boolean paidIn(int year) {
+        return Boolean.TRUE.equals(jdbc.sql(PAID_IN).param("from", LocalDate.of(year, 1, 1))
+                .param("to", LocalDate.of(year, 12, 31)).query(Boolean.class).single());
+    }
+
     private Optional<BigDecimal> baseline(int year) {
         return jdbc.sql(BASELINE).param("year", year).query(BigDecimal.class).optional();
     }
@@ -150,8 +173,8 @@ public class ThresholdService {
         BigDecimal counted = BigDecimal.ZERO;
         BigDecimal all = BigDecimal.ZERO;
         List<Map.Entry<BigDecimal, String>> payments = jdbc.sql(PAYMENTS)
-                .param("from", Date.valueOf(LocalDate.of(year, 1, 1)))
-                .param("to", Date.valueOf(LocalDate.of(year, 12, 31)))
+                .param("from", LocalDate.of(year, 1, 1))
+                .param("to", LocalDate.of(year, 12, 31))
                 .query((rs, row) -> Map.entry(rs.getBigDecimal(1), rs.getString(2))).list();
         for (Map.Entry<BigDecimal, String> payment : payments) {
             all = all.add(payment.getKey());
@@ -161,13 +184,17 @@ public class ThresholdService {
         return new Revenue(counted, all.subtract(counted));
     }
 
+    /** The amount of the lines that count for §19. */
+    static BigDecimal countedLines(InvoiceDocument document) {
+        return document.lines().stream().filter(line -> line.category().countsForThreshold())
+                .map(InvoiceLine::netAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     /** The share of the lines that count for §19 in the total of an invoice, from 0 to 1. */
     static BigDecimal share(InvoiceDocument document) {
         if (document.total().signum() == 0) {
             return BigDecimal.ZERO;
         }
-        BigDecimal counted = document.lines().stream().filter(line -> line.category().countsForThreshold())
-                .map(InvoiceLine::netAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return counted.divide(document.total(), 10, RoundingMode.HALF_UP);
+        return countedLines(document).divide(document.total(), 10, RoundingMode.HALF_UP);
     }
 }
