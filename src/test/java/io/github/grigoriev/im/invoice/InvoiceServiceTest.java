@@ -414,14 +414,16 @@ class InvoiceServiceTest {
 
     @Test
     void knowsAnUntouchedSwitch() {
-        assertThat(InvoiceService.switchedUntouched(switched("2", "5", "10,00", "10,00"))).isTrue();
-        assertThat(InvoiceService.switchedUntouched(switched("2", "5", "10,00", "12"))).isFalse();
+        assertThat(switched("2", "5", "10,00", "10,00").switchedUntouched()).isTrue();
+        assertThat(switched("2", "5", "10,00", "12").switchedUntouched()).isFalse();
+        assertThat(switched("2", "5", null, null).switchedUntouched()).as("both fields missing").isTrue();
+        assertThat(switched("2", "5", null, "12").switchedUntouched()).isFalse();
         LineForm stayed = switched("2", "5", "10,00", "10,00");
         stayed.setShownAsLumpSum(true);
-        assertThat(InvoiceService.switchedUntouched(stayed)).isFalse();
+        assertThat(stayed.switchedUntouched()).isFalse();
         LineForm counted = switched("2", "5", "10,00", "10,00");
         counted.setLumpSum(false);
-        assertThat(InvoiceService.switchedUntouched(counted)).isFalse();
+        assertThat(counted.switchedUntouched()).isFalse();
     }
 
     @Test
