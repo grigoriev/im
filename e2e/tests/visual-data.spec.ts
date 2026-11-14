@@ -138,6 +138,14 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
         `invoice-documents-${viewport.name}-${scheme}.png`,
         masks,
       );
+      // The e-mail as the customer sees it: light only, mail programs show it so.
+      if (scheme === 'light') {
+        await view.getByText('Per E-Mail senden…').click();
+        const [mail] = await Promise.all([view.waitForEvent('popup'), view.getByRole('button', { name: 'Vorschau' }).click()]);
+        await mail.setViewportSize({ width: viewport.width, height: 1000 });
+        await expect(mail).toHaveScreenshot(`mail-preview-${viewport.name}.png`, { fullPage: true });
+        await mail.close();
+      }
       await expect(view.locator('#invoice-history')).toHaveScreenshot(`invoice-history-${viewport.name}-${scheme}.png`, masks);
       await expect(view.locator('#invoice-checks')).toHaveScreenshot(`invoice-checks-${viewport.name}-${scheme}.png`, masks);
       await expect(view.locator('#invoice-payments')).toHaveScreenshot(`invoice-payments-${viewport.name}-${scheme}.png`);

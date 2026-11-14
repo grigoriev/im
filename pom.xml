@@ -415,6 +415,7 @@
                         <param>io.github.grigoriev.im.invoice.ArchiveService</param>
                         <param>io.github.grigoriev.im.mail.MailTextService</param>
                         <param>io.github.grigoriev.im.mail.MailService</param>
+                        <param>io.github.grigoriev.im.mail.MailHtml</param>
                         <param>io.github.grigoriev.im.mail.MailProperties</param>
                         <param>io.github.grigoriev.im.mail.MailConfig</param>
                         <param>io.github.grigoriev.im.threshold.ThresholdService</param>

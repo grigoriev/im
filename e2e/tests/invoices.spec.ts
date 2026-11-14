@@ -124,10 +124,19 @@ test('issues an invoice with its number and documents', async ({ page }) => {
     window.removeEventListener('submit', stay);
     form.dispatchEvent(second);
     delete form.dataset.sent;
-    button.removeAttribute('aria-disabled');
+    form.querySelectorAll('button[type="submit"]').forEach((each) => each.removeAttribute('aria-disabled'));
     return { busy, refused: second.defaultPrevented };
   });
   expect(guard).toEqual({ busy: 'true', refused: true });
+  // The preview opens the e-mail as the customer sees it, in a tab of its own, and blocks nothing.
+  const [preview] = await Promise.all([
+    page.waitForEvent('popup'),
+    page.getByRole('button', { name: 'Vorschau' }).click(),
+  ]);
+  await expect(preview.locator('body')).toContainText(`Rechnung ${number}`);
+  await expect(preview.locator('body')).toContainText('Verwendungszweck');
+  await preview.close();
+  await expect(page.locator('#mail-send')).not.toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('button', { name: 'Senden', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(`E-Mail an ${address} gesendet.`);
   await expect(page.locator('#invoice-status')).toHaveText('Versendet');
@@ -137,6 +146,8 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   expect(inbox).toHaveLength(1);
   expect(inbox[0].subject).toBe(`Rechnung ${number}`);
   expect(inbox[0].mimeMessage).toContain(`filename=Rechnung_${number}.pdf`);
+  expect(inbox[0].mimeMessage).toContain('multipart/alternative');
+  expect(inbox[0].mimeMessage).toContain('text/html');
 
   await page.getByText('Als versendet markieren…').click();
   await page.getByLabel('Weg').selectOption({ label: 'Post' });

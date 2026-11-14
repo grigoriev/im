@@ -238,6 +238,9 @@ The admin edits the default tax notes. A template and an invoice can override th
    The admin sets the default e-mail text in the admin panel. An invoice remembers its template, whose e-mail text overrides the default.
 3. Mark as sent by hand: date, recipient, optional note. This covers sending from her own mail program.
 4. Each dispatch shows in the invoice history. The history holds the entries of the audit log for the invoice.
+5. The e-mail has two parts with the same text: plain text as typed, and HTML. The HTML adds a box with date, amount,
+   due date, IBAN, BIC and reference, and the address of the seller below; a Stornorechnung names its invoice and asks
+   for no payment. Tables and inline styles only. "Vorschau" shows the HTML in a new tab before the send.
 
 ### Payments
 

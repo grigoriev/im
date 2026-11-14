@@ -12,6 +12,8 @@ All notable changes to this project are documented in this file. The format foll
 - The yearly archive has a folder "Dokumente" with every version of the documents of that year and a table of contents. A document belongs to the year it concerns, without one to the year of its date. The year picker on "Berichte" offers the years of the documents too.
 - The full export and import and the nightly backup take the documents along.
 - Benutzer: the admin deletes a user with its passkeys and "Angemeldet bleiben". Its open sessions end in every browser. Nobody deletes the own account, and the last admin stays. The log keeps the user name in its entries and records the deletion.
+- The e-mail with an invoice is HTML as well as text. The text stays as typed; the HTML shows it in paragraphs, adds a box with the invoice date, amount, due date, IBAN, BIC and reference, and the address of the seller below. A Stornorechnung names its invoice and asks for no payment. Mail programs show the HTML and fall back to the text.
+- "Vorschau" next to "Senden" shows the e-mail as the customer sees it, in a new tab.
 
 ### Fixed
 

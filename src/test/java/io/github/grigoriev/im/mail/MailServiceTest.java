@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.invoice.DispatchService;
 import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
@@ -70,7 +71,7 @@ class MailServiceTest {
     }
 
     private MailService service(MailProperties properties) {
-        return new MailService(properties, sender, dispatches, documents, texts);
+        return new MailService(properties, sender, dispatches, documents, texts, new MailHtml(SampleInvoices.templates()));
     }
 
     @BeforeEach
@@ -78,6 +79,7 @@ class MailServiceTest {
         when(sender.createMimeMessage()).thenAnswer(call -> new MimeMessage(Session.getInstance(new Properties())));
         when(dispatches.sendable(5)).thenReturn(invoice(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.find(5, DocumentKind.PDF)).thenReturn(Optional.of(file(DocumentKind.PDF, new byte[] {'%', 'P'})));
+        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.find(5, DocumentKind.XML)).thenReturn(Optional.of(file(DocumentKind.XML, "<x/>".getBytes())));
     }
 
@@ -96,10 +98,23 @@ class MailServiceTest {
         return parts;
     }
 
-    /** The text of a part; the helper nests it in a related multipart. */
-    private static Object text(Part part) throws Exception {
+    /** The text of a part of a type; the helper nests text and HTML in an alternative multipart. */
+    private static Object text(Part part, String type) throws Exception {
         Object content = part.getContent();
-        return content instanceof Multipart nested ? text(nested.getBodyPart(0)) : content;
+        if (content instanceof Multipart nested) {
+            for (int i = 0; i < nested.getCount(); i++) {
+                Object found = text(nested.getBodyPart(i), type);
+                if (found != null) {
+                    return found;
+                }
+            }
+            return null;
+        }
+        return part.isMimeType(type) ? content : null;
+    }
+
+    private static Object text(Part part) throws Exception {
+        return text(part, "text/plain");
     }
 
     @Test
@@ -114,6 +129,8 @@ class MailServiceTest {
         List<Part> parts = parts(message);
         assertThat(parts).extracting(Part::getFileName).containsExactly(null, "Rechnung_2027-07.pdf", "Rechnung_2027-07.xml");
         assertThat(text(parts.get(0))).as("the text, stripped").isEqualTo("Hallo,\n\nanbei.");
+        assertThat((String) text(parts.get(0), "text/html")).as("the same text as HTML, with the facts")
+                .contains("<span>anbei.</span>").contains(">480,00\u00a0€</td>").contains("<title>Rechnung 2027-07</title>");
         ByteArrayOutputStream pdf = new ByteArrayOutputStream();
         parts.get(1).getDataHandler().writeTo(pdf);
         assertThat(pdf.toByteArray()).containsExactly('%', 'P');
@@ -146,6 +163,7 @@ class MailServiceTest {
         assertThat(catchThrowableOfType(InvoiceException.class, () -> service(ON).send(5,
                 form(null, "Betreff", null, true, false))).problems())
                 .containsExactly("Bitte eine gültige E-Mail-Adresse angeben.", "Bitte den Text angeben.");
+        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.find(5, DocumentKind.XML)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service(ON).send(5, form("a@b.example", "Betreff", "Text", false, true)))
                 .hasMessage("Bitte PDF, XML oder beides anhängen.");
@@ -213,5 +231,12 @@ class MailServiceTest {
                 "rechnung@elena.example", "");
         assertThat(properties).hasToString("MailProperties[host=smtp.example.org, port=587, username=elena, "
                 + "from=rechnung@elena.example]");
+    }
+
+    @Test
+    void previewsTheHtmlOfTheTextAsTyped() {
+        String page = service(ON).preview(5, form(null, " Rechnung 2027-07 ", "Hallo <Welt>", true, false));
+        assertThat(page).contains("<title>Rechnung 2027-07</title>").contains("<span>Hallo &lt;Welt&gt;</span>");
+        verify(sender, never()).send(any(MimeMessage.class));
     }
 }
