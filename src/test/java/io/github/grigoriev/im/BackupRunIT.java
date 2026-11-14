@@ -48,8 +48,8 @@ class BackupRunIT {
         assertThat(status.restoreTest()).isNull();
         assertThat(status.restoreTestOverdue()).isTrue();
 
-        assertThatThrownBy(() -> jdbc.sql(UPSERT).param("kind", "OTHER").param("detail", "").update())
-                .isInstanceOf(DataIntegrityViolationException.class);
+        JdbcClient.StatementSpec other = jdbc.sql(UPSERT).param("kind", "OTHER").param("detail", "");
+        assertThatThrownBy(other::update).isInstanceOf(DataIntegrityViolationException.class);
         jdbc.sql("DELETE FROM backup_run").update();
     }
 }
