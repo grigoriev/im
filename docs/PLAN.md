@@ -60,8 +60,12 @@ Checked against the statutes, the official Anlage EÜR 2025 with its instruction
    payment and warns before the crossing.
 9. Retention of invoices: 8 years since 2025 (§14b UStG, §147 Abs. 3 AO). The backups keep yearly snapshots for 10.
 10. GoBD: `docs/verfahrensdokumentation.md` is the template of the process documentation.
-11. Services to businesses in other EU states: reverse charge with both VAT IDs (§14a), and a Zusammenfassende
-    Meldung, which needs a USt-IdNr. The app enforces the invoice side; the report to the BZSt is outside it.
+11. Services to businesses abroad: the place of supply is where the recipient, or its branch that receives the service,
+    is established (§3a Abs. 2), so they are not taxable in Germany and count neither for §19 nor with German VAT.
+    Outside the EU (for example Uzbekistan) the category "nicht steuerbar" fits. In another EU state the invoice needs
+    "Steuerschuldnerschaft des Leistungsempfängers" and both VAT IDs (§14a) only when the recipient owes the tax there,
+    which depends on that state's law; ask the customer. A Kleinunternehmer files no Zusammenfassende Meldung
+    (§18a Abs. 4). Teaching contracted with the German head office has its place in Germany (§4 Nr. 21, item 3).
 
 ## 3. Principles
 
@@ -177,7 +181,7 @@ The category is set per line. One invoice can mix categories, with these rules:
 
 1. `NOT_TAXABLE_ABROAD` (code O) never mixes with another category (EN 16931 rule BR-O-12). The editor rejects such a draft.
 2. `KLEINUNTERNEHMER` and `EXEMPT_4_21` share code E at 0 %. EN 16931 allows one VAT breakdown per code (BR-E-08).
-   A mixed invoice gets one E breakdown. Its exemption reason (BT-120) joins both tax notes. The PDF shows both notes.
+   Rule 9 keeps them apart; an older mixed invoice gets one E breakdown whose exemption reason (BT-120) joins both notes.
 3. The system keeps the category per line, so the §19 revenue counts only the `KLEINUNTERNEHMER` lines.
 4. `REVERSE_CHARGE_EU` needs the VAT ID of seller and buyer on the invoice (§14a Abs. 1 UStG). The editor rejects a draft without them.
 5. `KLEINUNTERNEHMER` never mixes with a standard rate: a Kleinunternehmer charges no VAT.
@@ -186,8 +190,9 @@ The category is set per line. One invoice can mix categories, with these rules:
 7. With more than one category, the PDF shows a tax column: each line names its rate or exemption (§14 Abs. 4 Nr. 8 UStG).
 8. Two tax numbers (decision 2026-11-14): the Finanzamt may give teaching under §4 Nr. 21 a tax number of its own. The
    profile then holds it in `taxNumberTeaching`. An invoice of teaching only names it; every other invoice names the main
-   one. Teaching and other lines never share an invoice then. Both share one number sequence and one §19 threshold.
-   "Berichte" shows one Anlage EÜR per tax number.
+   one. Both share one number sequence and one §19 threshold. "Berichte" shows one Anlage EÜR per tax number.
+9. `EXEMPT_4_21` never mixes with another category (decision 2026-11-14), with one tax number or two: teaching stands
+   alone on its invoice. A Stornorechnung repeats its invoice and is exempt.
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
 They also cover the end of the Kleinunternehmer status without a redesign.
 The admin edits the default tax notes. A template and an invoice can override them.
@@ -379,7 +384,7 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 
 1. Does the public-sector customer need XRechnung and a Leitweg-ID? Ask the contact person.
    XRechnung is in scope either way.
-2. Foreign customers: done, see "Legal review", items 11. The Zusammenfassende Meldung stays outside the app.
+2. Foreign customers: done, see "Legal review", item 11. The EU case depends on the customer's state: ask the customer.
 3. Field mapping of the yearly report: done against the Anlage EÜR 2025 (Zeile 12, Kz 111: all Kleinunternehmer income;
    Zeile 13, Kz 119: davon §19 Abs. 2 Satz 1 Nr. 1 und 2 sowie Satz 2, for example §4 Nr. 21, and not taxable). Check the 2027 form when it appears.
 4. Final wording of the default tax notes: done 2026-11-14, see "Legal review".

@@ -46,6 +46,10 @@ public class InvoiceService {
     static final String DEFAULT_INTRO = "Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag.";
     static final String DEFAULT_CLOSING = "Mit freundlichen Grüßen";
 
+    /** The problem of a draft that puts teaching next to other lines. */
+    static final String TEACHING_ALONE = "Unterricht nach § 4 Nr. 21 steht allein auf einer Rechnung. Bitte Unterricht und "
+            + "andere Leistungen auf getrennte Rechnungen schreiben.";
+
     private final InvoiceRepository invoices;
     private final TemplateRepository templates;
     private final CustomerService customers;
@@ -314,11 +318,9 @@ public class InvoiceService {
             problems.add("„Nicht steuerbar“ steht allein auf einer Rechnung (EN 16931, BR-O-12).");
         }
         TaxStatus status = cancellation ? null : seller.map(SellerProfile::taxStatus).orElse(null);
-        // A Stornorechnung repeats its invoice, which may mix from before the second tax number.
-        boolean twoNumbers = seller.map(SellerProfile::twoTaxNumbers).orElse(false);
-        if (!cancellation && twoNumbers && used.contains(TaxCategory.EXEMPT_4_21) && used.size() > 1) {
-            problems.add("Unterricht nach § 4 Nr. 21 hat eine eigene Steuernummer. Bitte Unterricht und andere "
-                    + "Leistungen auf getrennte Rechnungen schreiben.");
+        // Teaching stands alone (decision 2026-11-14). A Stornorechnung repeats its invoice, which may be older.
+        if (!cancellation && used.contains(TaxCategory.EXEMPT_4_21) && used.size() > 1) {
+            problems.add(TEACHING_ALONE);
         }
         if (status == TaxStatus.KLEINUNTERNEHMER && used.stream().anyMatch(TaxCategory::chargesVat)) {
             problems.add("Als Kleinunternehmer stellen Sie keine Umsatzsteuer in Rechnung (§ 19 UStG).");
