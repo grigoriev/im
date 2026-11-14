@@ -5,6 +5,8 @@ import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.invoice.TemplateService;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -34,16 +36,19 @@ public class CustomerController {
 
     private final CustomerService customers;
     private final CountryService countries;
+    private final TemplateService templates;
 
     /**
      * Creates the controller.
      *
      * @param customers the customer service
      * @param countries the countries of the form
+     * @param templates the templates of the customer
      */
-    public CustomerController(CustomerService customers, CountryService countries) {
+    public CustomerController(CustomerService customers, CountryService countries, TemplateService templates) {
         this.customers = customers;
         this.countries = countries;
+        this.templates = templates;
     }
 
     /**
@@ -160,6 +165,8 @@ public class CustomerController {
         model.addAttribute("formats", FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("countries", countries.options(stored(customer), submitted));
+        model.addAttribute("templates", customer == null || customer.id() == null ? List.of()
+                : templates.list(customer.id()));
         return VIEW;
     }
 }

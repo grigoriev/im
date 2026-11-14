@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Vorlage · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Vorlage', 'customers', ~{::content})}">
+  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
+    <a th:href="@{/kunden/{id}(id=${customerId})}" class="link link-hover text-sm text-base-content/75 w-fit [overflow-wrap:anywhere]"
+       th:text="'← ' + ${customer}">← Kunde</a>
+    <div>
+      <div class="text-xs uppercase tracking-wider text-base-content/75">Vorlage</div>
+      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="${template.name}">Vorlage</h1>
+    </div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">
+      <span th:each="problem : ${formProblems}" th:text="${problem}">Fehler</span>
+    </div>
+
+    <form class="grid gap-4" th:action="@{/kunden/{c}/vorlagen/{id}(c=${customerId},id=${template.id})}" th:object="${form}" method="post">
+      <input type="hidden" th:field="*{version}">
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3 @container">
+        <label class="floating-label"><span>Name der Vorlage</span>
+          <input id="template-name" th:field="*{name}" class="input w-full" maxlength="100" required>
+        </label>
+        <div class="grid gap-3 @lg:grid-cols-[minmax(0,1fr)_minmax(0,12rem)]">
+          <label class="floating-label"><span>E-Rechnungsformat</span>
+            <select id="template-format" th:field="*{format}" class="select w-full">
+              <option th:each="format : ${formatOrder}" th:value="${format}" th:text="${formats.get(format)}">Format</option>
+            </select>
+          </label>
+          <label class="floating-label"><span>Zahlungsziel in Tagen</span>
+            <input id="template-payment-days" th:field="*{paymentDays}" type="number" min="0" max="365" class="input w-full" required>
+          </label>
+        </div>
+        <p class="text-xs text-base-content/75">Platzhalter in den Texten:
+          <th:block th:each="placeholder, it : ${placeholders}"><code th:text="${placeholder}">{x}</code><span th:unless="${it.last}">, </span></th:block>.
+          Sie werden beim Ausstellen ersetzt.</p>
+      </section>
+
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4 @container" id="positionen">
+        <label class="grid gap-1.5"><span class="text-sm font-medium">Einleitung</span>
+          <textarea id="template-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
+        </label>
+        <th:block th:replace="~{fragments/lines :: lines(~{})}"></th:block>
+        <label class="grid gap-1.5"><span class="text-sm font-medium">Steuerhinweis</span>
+          <textarea id="template-tax-note" th:field="*{taxNote}" class="textarea w-full h-16" maxlength="1000"></textarea>
+        </label>
+        <label class="grid gap-1.5"><span class="text-sm font-medium">Schlusstext</span>
+          <textarea id="template-closing" th:field="*{closing}" class="textarea w-full h-16" maxlength="2000"></textarea>
+        </label>
+      </section>
+
+      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+        <h2 class="font-semibold">E-Mail</h2>
+        <label class="floating-label"><span>Betreff</span>
+          <input id="template-email-subject" th:field="*{emailSubject}" class="input w-full" maxlength="200">
+        </label>
+        <label class="grid gap-1.5"><span class="text-sm font-medium">Text</span>
+          <textarea id="template-email-body" th:field="*{emailBody}" class="textarea w-full h-28" maxlength="4000"></textarea>
+        </label>
+      </section>
+
+      <div><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
+    </form>
+
+    <details class="border-t border-base-300 pt-4">
+      <summary class="text-sm cursor-pointer w-fit">Vorlage löschen</summary>
+      <form class="mt-3 flex flex-wrap items-center gap-3" method="post"
+            th:action="@{/kunden/{c}/vorlagen/{id}/loeschen(c=${customerId},id=${template.id})}">
+        <span class="text-sm">Die Vorlage wird gelöscht. Rechnungen aus dieser Vorlage bleiben, wie sie sind.</span>
+        <button type="submit" class="btn btn-sm btn-error">Vorlage löschen</button>
+      </form>
+    </details>
+  </div>
+</div>
+</body>
+</html>

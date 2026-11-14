@@ -42,7 +42,11 @@ public enum AuditAction {
     /** A draft invoice was created. */
     DRAFT_CREATED("Entwurf angelegt"),
     /** A draft invoice was deleted. */
-    DRAFT_DELETED("Entwurf gelöscht");
+    DRAFT_DELETED("Entwurf gelöscht"),
+    /** A template was created. */
+    TEMPLATE_CREATED("Vorlage angelegt"),
+    /** A template was deleted. */
+    TEMPLATE_DELETED("Vorlage gelöscht");
 
     private final String label;
 

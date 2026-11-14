@@ -40,6 +40,7 @@ public class InvoiceService {
     static final String DEFAULT_CLOSING = "Mit freundlichen Grüßen";
 
     private final InvoiceRepository invoices;
+    private final TemplateRepository templates;
     private final CustomerService customers;
     private final SellerService sellers;
     private final TaxNoteService notes;
@@ -50,15 +51,17 @@ public class InvoiceService {
      * Creates the service.
      *
      * @param invoices the invoice store
+     * @param templates the templates of the customers
      * @param customers the customers
      * @param sellers the seller profile
      * @param notes the default tax notes
      * @param audit the audit log
      * @param clock source of today
      */
-    public InvoiceService(InvoiceRepository invoices, CustomerService customers, SellerService sellers,
-            TaxNoteService notes, AuditService audit, Clock clock) {
+    public InvoiceService(InvoiceRepository invoices, TemplateRepository templates, CustomerService customers,
+            SellerService sellers, TaxNoteService notes, AuditService audit, Clock clock) {
         this.invoices = invoices;
+        this.templates = templates;
         this.customers = customers;
         this.sellers = sellers;
         this.notes = notes;
@@ -105,16 +108,43 @@ public class InvoiceService {
      */
     @Transactional
     public Invoice createDraft(long customerId) {
+        return createDraft(customerId, null);
+    }
+
+    /**
+     * Creates a draft for a customer from one of the customer's templates: the template's format, texts, payment days
+     * and lines, today's dates and the customer's buyer reference. A later change of the template leaves the draft as
+     * it is.
+     *
+     * @param customerId the customer
+     * @param templateId the template, {@code null} for the defaults of {@link #createDraft(long)}
+     * @return the saved draft
+     * @throws InvoiceException without a seller profile, customer or template of this customer
+     */
+    @Transactional
+    public Invoice createDraft(long customerId, Long templateId) {
         if (sellers.find().isEmpty()) {
             throw new InvoiceException(List.of("Bitte zuerst das Profil in den Einstellungen ausfüllen."));
         }
         Customer customer = customers.find(customerId)
                 .orElseThrow(() -> new InvoiceException(List.of("Diesen Kunden gibt es nicht.")));
-        TaxCategory category = defaultCategory();
         LocalDate today = LocalDate.now(clock);
-        Invoice saved = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today,
-                today, today, DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
-                notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null));
+        Invoice draft;
+        if (templateId == null) {
+            TaxCategory category = defaultCategory();
+            draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today, today, today,
+                    DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
+                    notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null);
+        } else {
+            InvoiceTemplate template = templates.findById(templateId)
+                    .filter(found -> found.customerId() == customerId)
+                    .orElseThrow(() -> new InvoiceException(List.of("Diese Vorlage gibt es nicht.")));
+            draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, template.format(), today, today, today,
+                    template.paymentDays(), customer.buyerReference(), template.intro(), template.closing(),
+                    template.taxNote(), template.lines().stream().map(TemplateLine::toDraftLine).toList(),
+                    clock.instant(), clock.instant(), null);
+        }
+        Invoice saved = invoices.save(draft);
         audit.add(AuditAction.DRAFT_CREATED, customer.name());
         return saved;
     }

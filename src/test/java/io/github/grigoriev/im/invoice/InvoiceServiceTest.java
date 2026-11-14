@@ -42,11 +42,12 @@ class InvoiceServiceTest {
     private static final LocalDate TODAY = LocalDate.of(2027, 3, 18);
 
     private final InvoiceRepository repository = mock(InvoiceRepository.class);
+    private final TemplateRepository templates = mock(TemplateRepository.class);
     private final CustomerService customers = mock(CustomerService.class);
     private final SellerService sellers = mock(SellerService.class);
     private final TaxNoteService notes = mock(TaxNoteService.class);
     private final AuditService audit = mock(AuditService.class);
-    private final InvoiceService service = new InvoiceService(repository, customers, sellers, notes, audit,
+    private final InvoiceService service = new InvoiceService(repository, templates, customers, sellers, notes, audit,
             Clock.fixed(NOW, ZoneId.of("Europe/Berlin")));
 
     @BeforeEach
@@ -114,6 +115,32 @@ class InvoiceServiceTest {
         assertThat(created.lines()).containsExactly(DraftLine.empty(TaxCategory.KLEINUNTERNEHMER));
         assertThat(created.createdAt()).isEqualTo(NOW);
         verify(audit).add(AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
+    }
+
+    @Test
+    void copiesATemplateOfTheCustomerIntoTheDraft() {
+        InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_XRECHNUNG, 30, "Hallo {x}",
+                "Danke", "Steuerfrei.", "Betreff", "Text", List.of(new TemplateLine("Kurs", false, new BigDecimal("24"),
+                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L);
+        when(templates.findById(7L)).thenReturn(Optional.of(template));
+        Invoice created = service.createDraft(2, 7L);
+        assertThat(created.format()).isEqualTo(InvoiceFormat.ZUGFERD_XRECHNUNG);
+        assertThat(created.paymentDays()).isEqualTo(30);
+        assertThat(created.intro()).isEqualTo("Hallo {x}");
+        assertThat(created.closing()).isEqualTo("Danke");
+        assertThat(created.taxNote()).isEqualTo("Steuerfrei.");
+        assertThat(created.lines()).containsExactly(new DraftLine("Kurs", false, new BigDecimal("24"), new BigDecimal("41"),
+                TaxCategory.EXEMPT_4_21));
+        assertThat(created.issueDate()).isEqualTo(TODAY);
+        assertThat(created.version()).isNull();
+        verify(audit).add(AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
+
+        when(templates.findById(8L)).thenReturn(Optional.of(new InvoiceTemplate(8L, 3L, "Fremd", InvoiceFormat.XRECHNUNG,
+                14, null, null, null, null, null, List.of(), NOW, NOW, 0L)));
+        assertThatThrownBy(() -> service.createDraft(2, 8L)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Diese Vorlage gibt es nicht.");
+        when(templates.findById(9L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.createDraft(2, 9L)).isInstanceOf(InvoiceException.class);
     }
 
     @Test

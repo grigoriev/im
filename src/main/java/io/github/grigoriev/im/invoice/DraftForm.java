@@ -60,7 +60,19 @@ public class DraftForm {
         form.intro = invoice.intro();
         form.closing = invoice.closing();
         form.taxNote = invoice.taxNote();
-        for (DraftLine line : invoice.lines()) {
+        form.lines = rows(invoice.lines());
+        return form;
+    }
+
+    /**
+     * Returns the form rows of stored lines.
+     *
+     * @param lines the lines
+     * @return the rows, a new list
+     */
+    static List<LineForm> rows(List<DraftLine> lines) {
+        List<LineForm> rows = new ArrayList<>();
+        for (DraftLine line : lines) {
             LineForm row = new LineForm();
             row.setText(line.text());
             row.setLumpSum(line.lumpSum());
@@ -72,9 +84,9 @@ public class DraftForm {
             row.setShownAsLumpSum(line.lumpSum());
             row.setShownAmount(row.getAmount());
             row.setCategory(line.category());
-            form.lines.add(row);
+            rows.add(row);
         }
-        return form;
+        return rows;
     }
 
     /**

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Positionen</title>
+</head>
+<body>
+<!-- The lines of a draft or a template, inside a form with th:object. "totals" fills the space beside the button. -->
+<th:block th:fragment="lines(totals)">
+        <h2 class="font-semibold">Positionen</h2>
+        <p class="text-sm text-base-content/75" th:if="*{lines.isEmpty()}">Noch keine Position.</p>
+        <div th:each="line, row : *{lines}" class="invoice-line border border-base-300 rounded-field p-3 grid gap-3" th:id="'line-' + ${row.index}">
+          <label class="grid gap-1.5"><span class="text-sm font-medium" th:text="'Position ' + ${row.count}">Position 1</span>
+            <input type="hidden" th:field="*{lines[__${row.index}__].shownAsLumpSum}">
+            <input type="hidden" th:field="*{lines[__${row.index}__].shownAmount}">
+            <input th:id="'line-' + ${row.index} + '-text'" th:field="*{lines[__${row.index}__].text}" class="input w-full"
+                   maxlength="500" placeholder="z. B. Lesung am 16.03.2027, 90 Min." aria-label="Leistung">
+          </label>
+          <div class="grid gap-3 grid-cols-2 @xl:flex @xl:flex-wrap">
+            <label class="floating-label @xl:w-40"><span>Art</span>
+              <select th:id="'line-' + ${row.index} + '-kind'" th:field="*{lines[__${row.index}__].lumpSum}" class="line-kind select w-full">
+                <option value="true">Pauschal</option>
+                <option value="false">Mit Menge</option>
+              </select>
+            </label>
+            <label class="line-quantity floating-label @xl:w-28"><span>Menge</span>
+              <input th:id="'line-' + ${row.index} + '-quantity'" th:field="*{lines[__${row.index}__].quantity}" class="input w-full num"
+                     inputmode="decimal" maxlength="20">
+            </label>
+            <label class="line-amount floating-label @xl:w-36"><span>Betrag €</span>
+              <input th:id="'line-' + ${row.index} + '-amount'" th:field="*{lines[__${row.index}__].amount}" class="input w-full num"
+                     inputmode="decimal" maxlength="20">
+            </label>
+            <label class="line-unit-price floating-label @xl:w-36"><span>Preis €</span>
+              <input th:id="'line-' + ${row.index} + '-price'" th:field="*{lines[__${row.index}__].price}" class="input w-full num"
+                     inputmode="decimal" maxlength="20">
+            </label>
+            <label class="floating-label col-span-2 @xl:flex-1 @xl:min-w-64"><span>Steuer</span>
+              <select th:id="'line-' + ${row.index} + '-category'" th:field="*{lines[__${row.index}__].category}" class="select w-full">
+                <option th:each="category : ${categoryOrder}" th:value="${category}" th:text="${categories.get(category)}">Steuer</option>
+              </select>
+            </label>
+          </div>
+          <div class="flex justify-end">
+            <button type="submit" name="entfernen" th:value="${row.index}" class="btn btn-sm btn-ghost text-error" formnovalidate
+                    th:attr="aria-label='Position ' + ${row.count} + ' entfernen'">Entfernen</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button type="submit" name="aktion" value="position" class="btn btn-sm btn-ghost" formnovalidate>
+            <i data-lucide="plus" class="size-4"></i>Position hinzufügen
+          </button>
+          <th:block th:replace="${totals}"></th:block>
+        </div>
+</th:block>
+</body>
+</html>
