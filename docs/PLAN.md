@@ -349,7 +349,8 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 1. Does the public-sector customer need XRechnung and a Leitweg-ID? Ask the contact person.
    XRechnung is in scope either way.
 2. Foreign customers: invoice texts, USt-IdNr, Zusammenfassende Meldung. Verify before M6.
-3. Field mapping of the yearly report: check against the Anlage EÜR 2027 form before M4.
+3. Field mapping of the yearly report: done against the Anlage EÜR 2025 (Zeile 12, Kz 111: all Kleinunternehmer income;
+   Zeile 13, Kz 119: davon §19 Abs. 2 Satz 1 Nr. 1 und 2, for example §4 Nr. 21, and not taxable). Check the 2027 form when it appears.
 4. Final wording of the default tax notes.
 
 ## 14. Sources

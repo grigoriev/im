@@ -110,6 +110,18 @@ class ThresholdIT {
         assertThat(after.excluded().subtract(before.excluded())).isEqualByComparingTo("288.00");
         assertThat(after.received().subtract(before.received())).isEqualByComparingTo("448.00");
 
+        java.util.List<io.github.grigoriev.im.threshold.RevenueRow> rows = threshold.rows(today.getYear()).stream()
+                .filter(row -> row.number().equals(fresh.number()) || row.number().equals(old.number())).toList();
+        assertThat(rows).extracting(io.github.grigoriev.im.threshold.RevenueRow::amount)
+                .usingElementComparator(java.math.BigDecimal::compareTo)
+                .containsExactlyInAnyOrder(new java.math.BigDecimal("560.00"), new java.math.BigDecimal("-112.00"));
+        assertThat(rows).allSatisfy(row -> {
+            assertThat(row.paidOn()).isEqualTo(today);
+            assertThat(row.customer()).isEqualTo("Verlag am Fluss GmbH");
+            assertThat(row.counted().add(row.excluded())).isEqualByComparingTo(row.amount());
+        });
+        assertThat(threshold.years()).contains(today.getYear(), today.getYear() - 1);
+
         int lastYearNumber = today.getYear() - 1;
         assertThatThrownBy(() -> threshold.saveBaseline(lastYearNumber, "18.000,00"))
                 .as("last year has a payment in the app").hasMessage("Für dieses Jahr zählt die App die Zahlungen selbst.");

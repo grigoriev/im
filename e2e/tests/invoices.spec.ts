@@ -177,6 +177,14 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await page.getByLabel('Status').selectOption({ label: 'Entwurf' });
   await page.getByRole('button', { name: 'Filtern' }).click();
   await expect(page.locator('#invoice-none')).toHaveText('Keine Rechnungen gefunden.');
+
+  await page.goto('/berichte');
+  await expect(page.locator('#report-payments li').filter({ hasText: customer })).toHaveCount(2);
+  const csv = await page.request.get((await page.locator('#report-csv').getAttribute('href'))!);
+  expect(csv.headers()['content-type']).toBe('text/csv;charset=UTF-8');
+  const lines = (await csv.text()).split('\r\n').filter((line) => line.includes(number));
+  expect(lines).toHaveLength(2);
+  expect(lines.map((line) => line.split(';')[3]).sort()).toEqual(['150,00', '250,00']);
 });
 
 test('cancels an invoice with a Stornorechnung', async ({ page }) => {

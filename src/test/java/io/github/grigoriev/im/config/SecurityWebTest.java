@@ -66,6 +66,7 @@ import io.github.grigoriev.im.web.TemplateController;
 import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.InvoiceRecordsController;
 import io.github.grigoriev.im.web.BaselineController;
+import io.github.grigoriev.im.web.ReportController;
 import io.github.grigoriev.im.web.MailTextController;
 import io.github.grigoriev.im.web.IssuedInvoicePage;
 import io.github.grigoriev.im.web.AuditController;
@@ -96,7 +97,7 @@ import org.springframework.test.web.servlet.MockMvc;
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
-        MailTextController.class, BaselineController.class})
+        MailTextController.class, BaselineController.class, ReportController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -797,6 +798,32 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("im nächsten Jahr nicht mehr")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Nichts überfällig.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"100\"")));
+    }
+
+    @Test
+    void showsTheReportAndItsCsv() throws Exception {
+        when(threshold.years()).thenReturn(List.of(2027));
+        when(threshold.rows(2027)).thenReturn(List.of(new io.github.grigoriev.im.threshold.RevenueRow(
+                java.time.LocalDate.of(2027, 3, 18), "2027-01", "Verlag am Fluss GmbH", new java.math.BigDecimal("560.00"),
+                new java.math.BigDecimal("200.00"), new java.math.BigDecimal("360.00"), java.util.Map.of(
+                        TaxCategory.KLEINUNTERNEHMER, new java.math.BigDecimal("200.00"), TaxCategory.EXEMPT_4_21,
+                        new java.math.BigDecimal("360.00")), null)));
+        mvc.perform(get("/berichte").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Anlage EÜR 2027, Betriebseinnahmen")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kennzahl 111")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">560,00 €<")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">360,00 €<")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("§ 4 Nr. 21 UStG, steuerfrei")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 · 2027-01")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/berichte/zahlungen.csv?jahr=2027\"")));
+        mvc.perform(get("/berichte").param("jahr", "2020").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Zahlungen in diesem Jahr.")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2020\" selected=\"selected\">")));
+        mvc.perform(get("/berichte/zahlungen.csv").param("jahr", "2027").with(user("elena").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"Zahlungen_2027.csv\""))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027;\"2027-01\";\"Verlag am Fluss GmbH\";560,00;200,00;360,00;")));
+        mvc.perform(get("/berichte")).andExpect(status().is3xxRedirection());
     }
 
     @Test

@@ -77,6 +77,10 @@ class ThresholdServiceTest {
             assertThat(params).containsEntry("to", LocalDate.of(((LocalDate) params.get("from")).getYear(), 12, 31));
             return payments.containsKey(((LocalDate) params.get("from")).getYear());
         });
+        MappedQuerySpec<Integer> years = mock(MappedQuerySpec.class);
+        when(spec.query(Integer.class)).thenReturn(years);
+        when(years.list()).thenAnswer(call -> payments.keySet().stream().sorted(java.util.Comparator.reverseOrder())
+                .toList());
         MappedQuerySpec<BigDecimal> amount = mock(MappedQuerySpec.class);
         when(spec.query(BigDecimal.class)).thenReturn(amount);
         when(amount.optional()).thenAnswer(call -> Optional.ofNullable(baselines.get((Integer) params.get("year"))));
@@ -103,8 +107,12 @@ class ThresholdServiceTest {
         for (Object[] row : data) {
             ResultSet rs = mock(ResultSet.class);
             if (row[0] instanceof BigDecimal value) {
-                when(rs.getBigDecimal(1)).thenReturn(value);
-                when(rs.getString(2)).thenReturn((String) row[1]);
+                int year = ((LocalDate) params.get("from")).getYear();
+                when(rs.getDate(1)).thenReturn(java.sql.Date.valueOf(LocalDate.of(year, 1, 15).plusDays(result.size())));
+                when(rs.getBigDecimal(2)).thenReturn(value);
+                when(rs.getString(3)).thenReturn(value.signum() < 0 ? "Erstattung" : null);
+                when(rs.getString(4)).thenReturn(year + "-0" + (result.size() + 1));
+                when(rs.getString(5)).thenReturn((String) row[1]);
             } else {
                 when(rs.getInt(1)).thenReturn((Integer) row[0]);
                 when(rs.getBigDecimal(2)).thenReturn((BigDecimal) row[1]);
@@ -170,7 +178,38 @@ class ThresholdServiceTest {
 
     @Test
     void anInvoiceWithoutTotalCountsNothing() {
-        assertThat(ThresholdService.share(SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931))).isEqualByComparingTo("0");
+        RevenueRow row = ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal("5.00"), null, "2027-01",
+                SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(row.counted()).isEqualByComparingTo("0");
+        assertThat(row.excluded()).isEqualByComparingTo("5.00");
+        assertThat(row.byCategory()).isEmpty();
+    }
+
+    @Test
+    void listsThePaymentsOfAYearAsRows() {
+        paid(2027, "560.00", "mixed");
+        paid(2027, "-100.00", "mixed");
+        paid(2026, "1.00", "reading");
+        List<RevenueRow> rows = service.rows(2027);
+        assertThat(rows).hasSize(2);
+        RevenueRow first = rows.getFirst();
+        assertThat(first.paidOn()).isEqualTo(LocalDate.of(2027, 1, 15));
+        assertThat(first.number()).isEqualTo("2027-01");
+        assertThat(first.customer()).isEqualTo("Volkshochschule Musterstadt");
+        assertThat(first.amount()).isEqualByComparingTo("560.00");
+        assertThat(first.counted()).isEqualByComparingTo("200.00");
+        assertThat(first.excluded()).isEqualByComparingTo("360.00");
+        assertThat(first.byCategory()).containsEntry(io.github.grigoriev.im.einvoice.TaxCategory.KLEINUNTERNEHMER,
+                new BigDecimal("200.00")).containsEntry(io.github.grigoriev.im.einvoice.TaxCategory.EXEMPT_4_21,
+                new BigDecimal("360.00"));
+        assertThat(first.note()).isNull();
+        RevenueRow refund = rows.get(1);
+        assertThat(refund.counted()).as("-100 x 400/1120, rounded half up").isEqualByComparingTo("-35.71");
+        assertThat(refund.excluded()).isEqualByComparingTo("-64.29");
+        assertThat(refund.note()).isEqualTo("Erstattung");
+        assertThat(service.years()).containsExactly(2027, 2026);
+        payments.clear();
+        assertThat(service.years()).as("this year always").containsExactly(2027);
     }
 
     @Test
