@@ -20,6 +20,8 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
@@ -31,8 +33,9 @@ class UserServiceTest {
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final PersistentTokenRepository rememberMe = mock(PersistentTokenRepository.class);
     private final AuditService audit = mock(AuditService.class);
+    private final PasskeyService passkeys = mock(PasskeyService.class);
     private final UserService service = new UserService(repository, encoder, rememberMe,
-            Clock.fixed(UserTestData.CREATED, ZoneOffset.UTC), audit);
+            Clock.fixed(UserTestData.CREATED, ZoneOffset.UTC), audit, passkeys);
 
     UserServiceTest() {
         when(encoder.encode(any())).thenAnswer(call -> "{enc}" + call.getArgument(0));
@@ -158,5 +161,50 @@ class UserServiceTest {
         List<AppUser> all = List.of(UserTestData.user(1, "admin", Role.ADMIN));
         when(repository.findAllByOrderByUsername()).thenReturn(all);
         assertThat(service.list()).isEqualTo(all);
+    }
+
+    @Test
+    void deletesAUserWithThePasskeysAndTheLogins() {
+        AppUser old = UserTestData.user(3, "admin", Role.ADMIN);
+        when(repository.findById(3L)).thenReturn(Optional.of(old));
+        when(repository.countByRole(Role.ADMIN)).thenReturn(2L);
+        assertThat(service.delete(3)).isEqualTo(old);
+        var order = Mockito.inOrder(passkeys, rememberMe, repository, audit);
+        order.verify(passkeys).forget("admin");
+        order.verify(rememberMe).removeUserTokens("admin");
+        order.verify(repository).delete(old);
+        order.verify(audit).add(AuditAction.USER_DELETED, "admin (ADMIN)");
+    }
+
+    @Test
+    void deletesAUserNextToTheOnlyAdmin() {
+        AppUser elena = UserTestData.user(4, "elena", Role.USER);
+        when(repository.findById(4L)).thenReturn(Optional.of(elena));
+        when(repository.countByRole(Role.ADMIN)).thenReturn(1L);
+        assertThat(service.delete(4)).isEqualTo(elena);
+        verify(repository).delete(elena);
+    }
+
+    @Test
+    void keepsTheLastAdminTheOwnAccountAndAnUnknownUser() {
+        AppUser admin = UserTestData.user(3, "admin", Role.ADMIN);
+        when(repository.findById(3L)).thenReturn(Optional.of(admin));
+        when(repository.countByRole(Role.ADMIN)).thenReturn(1L);
+        assertThatThrownBy(() -> service.delete(3)).isInstanceOf(UserException.class)
+                .hasMessage("Der letzte Administrator bleibt. Bitte zuerst einen weiteren anlegen.");
+        when(repository.countByRole(Role.ADMIN)).thenReturn(0L);
+        assertThatThrownBy(() -> service.delete(3)).isInstanceOf(UserException.class);
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("admin", null, "ROLE_ADMIN"));
+        try {
+            when(repository.countByRole(Role.ADMIN)).thenReturn(2L);
+            assertThatThrownBy(() -> service.delete(3)).isInstanceOf(UserException.class)
+                    .hasMessage("Das eigene Konto lässt sich nicht löschen.");
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+        when(repository.findById(9L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.delete(9)).isInstanceOf(UserException.class);
+        verify(repository, never()).delete(any());
+        verify(passkeys, never()).forget(any());
     }
 }

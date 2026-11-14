@@ -120,6 +120,8 @@ Currency: EUR only.
 6. One account can have several passkeys, for example Mac and iPhone.
 7. The login page offers the passkey first. The password stays as a fallback. Passwords use Argon2 hashes.
 8. The admin can remove the passkeys of a user and reset the password. A reset ends every "Angemeldet bleiben" of the user.
+   The admin can delete a user with its passkeys and "Angemeldet bleiben"; its open sessions end. Nobody deletes the
+   own account, and the last admin stays.
 9. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
 10. nginx additionally allows only the home LAN (10.10.10.0/24).
 

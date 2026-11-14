@@ -114,6 +114,20 @@ public class PasskeyService {
         return records.size();
     }
 
+    /**
+     * Forgets the passkeys of a deleted user, with the WebAuthn user entity that holds them.
+     *
+     * @param username the login name
+     */
+    @Transactional
+    public void forget(String username) {
+        PublicKeyCredentialUserEntity entity = entities.findByUsername(username);
+        if (entity != null) {
+            credentials.findByUserId(entity.getId()).forEach(stored -> credentials.delete(stored.getCredentialId()));
+            entities.delete(entity.getId());
+        }
+    }
+
     private List<CredentialRecord> records(String username) {
         PublicKeyCredentialUserEntity entity = entities.findByUsername(username);
         return entity == null ? List.of() : credentials.findByUserId(entity.getId());

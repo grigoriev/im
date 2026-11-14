@@ -24,6 +24,14 @@ public interface AppUserRepository extends ListCrudRepository<AppUser, Long> {
     boolean existsByRole(Role role);
 
     /**
+     * Counts the users with a role.
+     *
+     * @param role the role
+     * @return the number of users
+     */
+    long countByRole(Role role);
+
+    /**
      * Lists all users by login name.
      *
      * @return the users

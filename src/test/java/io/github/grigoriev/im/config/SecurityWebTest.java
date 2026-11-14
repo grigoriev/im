@@ -160,6 +160,9 @@ class SecurityWebTest {
     private static final String PASSWORD = "lang-genug-123";
 
     @Autowired
+    private SessionEpoch sessionEpoch;
+
+    @Autowired
     private MockMvc mvc;
 
     @Autowired
@@ -452,6 +455,28 @@ class SecurityWebTest {
         mvc.perform(post("/admin/users/9/passkeys/delete").with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(flash().attribute("error", "Diesen Benutzer gibt es nicht."));
         mvc.perform(post("/admin/users/2/passkeys/delete").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void theAdminDeletesAnotherUserAndEndsItsSessions() throws Exception {
+        when(users.list()).thenReturn(List.of(UserTestData.user(1, "admin", Role.ADMIN),
+                UserTestData.user(2, "elena", Role.USER)));
+        mvc.perform(get("/admin/users").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("id=\"delete-dialog-2\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"delete-dialog-1\""))))
+                .andExpect(content().string(Matchers.containsString("Benutzer elena löschen?")));
+        when(users.delete(2)).thenReturn(UserTestData.user(2, "elena", Role.USER));
+        mvc.perform(post("/admin/users/2/delete").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/users"))
+                .andExpect(flash().attribute("success", "Benutzer „elena“ gelöscht."));
+        Assertions.assertThat(sessionEpoch.ended("elena", 0)).as("the sessions of elena end").isTrue();
+        Assertions.assertThat(sessionEpoch.ended("admin", 0)).isFalse();
+        when(users.delete(1)).thenThrow(new UserException("Das eigene Konto lässt sich nicht löschen."));
+        mvc.perform(post("/admin/users/1/delete").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Das eigene Konto lässt sich nicht löschen."));
+        Assertions.assertThat(sessionEpoch.ended("admin", 0)).isFalse();
+        mvc.perform(post("/admin/users/2/delete").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
     }
 

@@ -27,7 +27,24 @@
           <form th:if="${passkeyCounts[user.username] > 0}" th:action="@{/admin/users/{id}/passkeys/delete(id=${user.id})}" method="post">
             <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="size-4"></i>Passkeys entfernen</button>
           </form>
+          <button type="button" class="btn btn-sm btn-danger" th:unless="${user.username == #authentication.name}"
+                  th:attr="data-dialog='delete-dialog-' + ${user.id}"><i data-lucide="user-x" class="size-4"></i>Löschen</button>
         </div>
+        <dialog class="modal" th:id="'delete-dialog-' + ${user.id}" th:attr="aria-labelledby='delete-dialog-' + ${user.id} + '-title'"
+                th:unless="${user.username == #authentication.name}">
+          <div class="modal-box">
+            <div th:replace="~{fragments/dialog :: dialogTitle('delete-dialog-' + ${user.id}, 'Benutzer ' + ${user.username} + ' löschen?')}"></div>
+            <form th:action="@{/admin/users/{id}/delete(id=${user.id})}" method="post">
+              <div class="modal-body"><p class="text-sm">Das Konto, seine Passkeys und „Angemeldet bleiben“ werden gelöscht.
+                Laufende Anmeldungen enden. Das Protokoll behält den Benutzernamen.</p></div>
+              <div class="modal-foot">
+                <button type="button" class="btn" data-close>Abbrechen</button>
+                <button type="submit" class="btn btn-error"><i data-lucide="user-x" class="size-4"></i>Endgültig löschen</button>
+              </div>
+            </form>
+          </div>
+          <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+        </dialog>
         <dialog class="modal" th:id="'password-dialog-' + ${user.id}" th:attr="aria-labelledby='password-dialog-' + ${user.id} + '-title'">
           <div class="modal-box">
             <div th:replace="~{fragments/dialog :: dialogTitle('password-dialog-' + ${user.id}, 'Neues Passwort für ' + ${user.displayName})}"></div>

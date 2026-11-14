@@ -92,6 +92,7 @@ class AccessRulesIT {
             Map.entry("POST /admin/users", Access.ADMIN),
             Map.entry("POST /admin/users/{id}/password", Access.ADMIN),
             Map.entry("POST /admin/users/{id}/passkeys/delete", Access.ADMIN),
+            Map.entry("POST /admin/users/{id}/delete", Access.ADMIN),
             Map.entry("GET /admin/tax-notes", Access.ADMIN),
             Map.entry("POST /admin/tax-notes", Access.ADMIN),
             Map.entry("GET /admin/mail", Access.ADMIN),

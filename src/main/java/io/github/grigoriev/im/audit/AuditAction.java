@@ -9,6 +9,8 @@ public enum AuditAction {
     LOGIN_FAILED("Anmeldung fehlgeschlagen"),
     /** The admin created a user. */
     USER_CREATED("Benutzer angelegt"),
+    /** The admin deleted a user. */
+    USER_DELETED("Benutzer gelöscht"),
     /** The admin set a new password for a user. */
     PASSWORD_RESET("Passwort zurückgesetzt"),
     /** A user changed the own password. */

@@ -103,3 +103,38 @@ test('a long name without spaces stays inside the menu and the page', async ({ p
   expect(overflow).toEqual({ inside: true, page: true });
   await context.close();
 });
+
+test('the admin deletes a user, whose session ends', async ({ page, browser }) => {
+  const username = uniqueUsername('weg');
+  await page.goto('/admin/users');
+  await page.getByLabel('Benutzername').fill(username);
+  await page.getByLabel('Name', { exact: true }).fill('Ehemalig');
+  await page.locator('#new-password').fill('weg-passwort-1234');
+  await page.locator('#new-confirm').fill('weg-passwort-1234');
+  await page.getByRole('button', { name: 'Anlegen' }).click();
+  await expect(page.getByRole('status')).toHaveText(`Benutzer „${username}“ angelegt.`);
+
+  const context = await browser.newContext({ storageState: ANONYMOUS });
+  const user = await context.newPage();
+  await user.goto('/login');
+  await user.getByLabel('Benutzername').fill(username);
+  await user.getByLabel('Passwort').fill('weg-passwort-1234');
+  await user.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(user.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Ehemalig');
+
+  const row = page.locator('#user-list > div', { hasText: username });
+  await row.getByRole('button', { name: 'Löschen' }).click();
+  const dialog = page.locator('dialog[open]');
+  await expect(dialog).toContainText(`Benutzer ${username} löschen?`);
+  await dialog.getByRole('button', { name: 'Endgültig löschen' }).click();
+  await expect(page.getByRole('status')).toHaveText(`Benutzer „${username}“ gelöscht.`);
+  await expect(page.locator('#user-list > div', { hasText: username })).toHaveCount(0);
+
+  await user.goto('/');
+  await expect(user, 'the open session ends').toHaveURL(/\/login$/);
+  await user.getByLabel('Benutzername').fill(username);
+  await user.getByLabel('Passwort').fill('weg-passwort-1234');
+  await user.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(user.getByRole('alert')).toContainText('Benutzername oder Passwort ist falsch.');
+  await context.close();
+});

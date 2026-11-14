@@ -45,6 +45,19 @@ class PasskeyServiceTest {
     }
 
     @Test
+    void forgetsThePasskeysAndTheEntityOfADeletedUser() {
+        passkey(credentials, elena, "MacBook Air", JAN, MAR);
+        passkey(credentials, elena, "iPhone", MAR, null);
+        passkey(credentials, admin, "Admin-Mac", JAN, null);
+        service.forget("elena");
+        assertThat(service.count("elena")).isZero();
+        assertThat(entities.findByUsername("elena")).isNull();
+        assertThat(service.count("admin")).as("the others keep theirs").isEqualTo(1);
+        service.forget("niemand");
+        assertThat(service.count("admin")).isEqualTo(1);
+    }
+
+    @Test
     void knowsNoPasskeysOfAUserWithoutEntity() {
         assertThat(service.list("niemand")).isEmpty();
         assertThat(service.count("niemand")).isZero();
