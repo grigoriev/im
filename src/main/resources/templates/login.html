@@ -14,6 +14,7 @@
         <p class="text-sm text-base-content/75">Anmelden</p>
       </div>
       <div role="alert" class="alert alert-error text-sm" th:if="${param.error}">Benutzername oder Passwort ist falsch.</div>
+      <output class="alert alert-success text-sm" th:if="${param.eingespielt}">Datensicherung eingespielt. Bitte mit den Zugangsdaten aus dem Export anmelden.</output>
       <output class="alert alert-success text-sm" th:if="${param.abgemeldet}">Sie sind abgemeldet.</output>
       <output class="alert alert-warning text-sm" th:if="${param.abgelaufen}">Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.</output>
       <button type="button" class="btn btn-primary btn-lg w-full" data-passkey-login><i data-lucide="fingerprint" class="size-5"></i>Mit Passkey anmelden</button>

@@ -62,7 +62,7 @@
         <sonar.coverage.exclusions>src/main/resources/static/**,src/main/frontend/**,scripts/**</sonar.coverage.exclusions>
         <!-- The migrations are PostgreSQL. The PL/SQL analyzer reads them as Oracle and asks for VARCHAR2. -->
         <sonar.plsql.file.suffixes>.plsql-not-used</sonar.plsql.file.suffixes>
-        <sonar.issue.ignore.multicriteria>dockerdigest,mustangdate,securitythrows</sonar.issue.ignore.multicriteria>
+        <sonar.issue.ignore.multicriteria>dockerdigest,mustangdate,securitythrows,backupsql,backupupload</sonar.issue.ignore.multicriteria>
         <!-- Base images carry tag and digest: the digest pins, the tag lets Renovate and humans read the version. -->
         <sonar.issue.ignore.multicriteria.dockerdigest.ruleKey>docker:S8431</sonar.issue.ignore.multicriteria.dockerdigest.ruleKey>
         <sonar.issue.ignore.multicriteria.dockerdigest.resourceKey>Dockerfile</sonar.issue.ignore.multicriteria.dockerdigest.resourceKey>
@@ -72,6 +72,13 @@
         <!-- HttpSecurity.build() declares "throws Exception"; the bean method must pass it on. -->
         <sonar.issue.ignore.multicriteria.securitythrows.ruleKey>java:S112</sonar.issue.ignore.multicriteria.securitythrows.ruleKey>
         <sonar.issue.ignore.multicriteria.securitythrows.resourceKey>**/config/SecurityConfig.java</sonar.issue.ignore.multicriteria.securitythrows.resourceKey>
+        <!-- The full export works on every table: the table names are constants, and a column name of an import reaches
+             SQL only after a check against the table in pg_attribute and a name pattern. The values are parameters. -->
+        <sonar.issue.ignore.multicriteria.backupsql.ruleKey>java:S2077</sonar.issue.ignore.multicriteria.backupsql.ruleKey>
+        <sonar.issue.ignore.multicriteria.backupsql.resourceKey>**/backup/BackupService.java</sonar.issue.ignore.multicriteria.backupsql.resourceKey>
+        <!-- The full export holds every document. Only the admin uploads it, and 128 MB fit years of invoices. -->
+        <sonar.issue.ignore.multicriteria.backupupload.ruleKey>java:S5693</sonar.issue.ignore.multicriteria.backupupload.ruleKey>
+        <sonar.issue.ignore.multicriteria.backupupload.resourceKey>**/application.properties</sonar.issue.ignore.multicriteria.backupupload.resourceKey>
     </properties>
 
     <dependencyManagement>
@@ -413,6 +420,7 @@
                         <param>io.github.grigoriev.im.threshold.ThresholdService</param>
                         <param>io.github.grigoriev.im.threshold.Threshold</param>
                         <param>io.github.grigoriev.im.threshold.RevenueRow</param>
+                        <param>io.github.grigoriev.im.backup.BackupService</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>
@@ -425,6 +433,7 @@
                         <param>io.github.grigoriev.im.invoice.*Test</param>
                         <param>io.github.grigoriev.im.mail.*Test</param>
                         <param>io.github.grigoriev.im.threshold.*Test</param>
+                        <param>io.github.grigoriev.im.backup.*Test</param>
                     </targetTests>
                     <!-- These tests run the full validators (KoSIT, veraPDF) and take a minute each. The mutated
                          classes have fast tests of their own, so PIT leaves the slow ones out. -->
