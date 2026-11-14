@@ -15,6 +15,7 @@ import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.threshold.Threshold;
@@ -73,7 +74,7 @@ class ThresholdIT {
         form.setBuyerReference(customer.buyerReference());
         form.setTaxNote(null);
         form.getLines().clear();
-        form.getLines().add(line("Unterricht", "720", TaxCategory.EXEMPT_4_21));
+        form.getLines().add(line("Workshop für ein Unternehmen in der EU", "720", TaxCategory.REVERSE_CHARGE_EU));
         form.getLines().add(line("Lesung", "400", TaxCategory.KLEINUNTERNEHMER));
         Invoice saved = invoices.saveDraft(draft.id(), form);
         issues.issue(saved.id(), saved.version());
@@ -89,9 +90,15 @@ class ThresholdIT {
 
     @Test
     void countsTheSharePerPaymentYearWithRefundsAndBaseline() {
-        SellerTestData.save(sellers, SellerTestData.profile());
+        // A §19 line next to a reverse charge line: teaching never shares an invoice, reverse charge may.
+        SellerProfile p = SellerTestData.profile();
+        SellerTestData.save(sellers, new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
+                null, p.email(), p.phone(), p.taxNumber(), "DE123456789", p.iban(), p.bic(), p.taxStatus(), null, null,
+                null, null, null));
         numbers.savePattern("{YYYY}-{NN}");
-        Customer customer = customers.create(CustomerTestData.verlag());
+        Customer v = CustomerTestData.verlag();
+        Customer customer = customers.create(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), "AT", null,
+                v.email(), "ATU12345678", null, v.format()));
         LocalDate today = threshold.today();
         LocalDate lastYear = LocalDate.of(today.getYear() - 1, 12, 30);
         Threshold before = threshold.current();

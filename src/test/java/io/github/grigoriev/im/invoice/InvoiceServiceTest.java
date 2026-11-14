@@ -365,15 +365,14 @@ class InvoiceServiceTest {
     }
 
     @Test
-    void keepsTeachingOnItsOwnInvoiceWhenItHasItsOwnTaxNumber() {
+    void keepsTeachingOnItsOwnInvoiceAndNamesItsTaxNumber() {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
                 null, null, null, null, "98/765/43210")));
         Invoice mixed = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
                 lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
-        assertThat(service.problems(mixed)).containsExactly("Unterricht nach § 4 Nr. 21 hat eine eigene "
-                + "Steuernummer. Bitte Unterricht und andere Leistungen auf getrennte Rechnungen schreiben.");
+        assertThat(service.problems(mixed)).containsExactly(InvoiceService.TEACHING_ALONE);
         Invoice teaching = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21)));
         assertThat(service.document(teaching).orElseThrow().seller().taxNumber()).isEqualTo("98/765/43210");
         Invoice reading = draft(List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
@@ -381,7 +380,8 @@ class InvoiceServiceTest {
         assertThat(InvoiceService.teachingOnly(draft(List.of()))).isFalse();
 
         when(sellers.find()).thenReturn(Optional.of(p));
-        assertThat(service.problems(mixed)).as("one tax number: teaching may mix").isEmpty();
+        assertThat(service.problems(mixed)).as("with one tax number too").containsExactly(InvoiceService.TEACHING_ALONE);
+        assertThat(service.problems(teaching)).isEmpty();
     }
 
     @Test

@@ -10,6 +10,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - Legal review: the default note of §19 invoices quotes §34a UStDV, "Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1 UStG)", since §19 is a tax exemption from 2025. The note of teaching names the service, "Steuerfreie Unterrichtsleistung gemäß § 4 Nr. 21 UStG". Zeile 13 of the report quotes the Anlage EÜR 2025 in full ("sowie Satz 2"). Templates and drafts that hold the old default wording get the new one (V24); issued invoices keep their text.
 
+- Teaching under § 4 Nr. 21 stands alone on its invoice, with one tax number or two; the issue names the problem of a mixed draft.
+
 ### Added
 
 - `docs/verfahrensdokumentation.md`: the template of the GoBD process documentation for invoicing with the app.

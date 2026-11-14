@@ -177,7 +177,7 @@ The category is set per line. One invoice can mix categories, with these rules:
 
 1. `NOT_TAXABLE_ABROAD` (code O) never mixes with another category (EN 16931 rule BR-O-12). The editor rejects such a draft.
 2. `KLEINUNTERNEHMER` and `EXEMPT_4_21` share code E at 0 %. EN 16931 allows one VAT breakdown per code (BR-E-08).
-   A mixed invoice gets one E breakdown. Its exemption reason (BT-120) joins both tax notes. The PDF shows both notes.
+   Rule 9 keeps them apart; an older mixed invoice gets one E breakdown whose exemption reason (BT-120) joins both notes.
 3. The system keeps the category per line, so the §19 revenue counts only the `KLEINUNTERNEHMER` lines.
 4. `REVERSE_CHARGE_EU` needs the VAT ID of seller and buyer on the invoice (§14a Abs. 1 UStG). The editor rejects a draft without them.
 5. `KLEINUNTERNEHMER` never mixes with a standard rate: a Kleinunternehmer charges no VAT.
@@ -186,7 +186,9 @@ The category is set per line. One invoice can mix categories, with these rules:
 7. With more than one category, the PDF shows a tax column: each line names its rate or exemption (§14 Abs. 4 Nr. 8 UStG).
 8. Two tax numbers (decision 2026-11-14): the Finanzamt may give teaching under §4 Nr. 21 a tax number of its own. The
    profile then holds it in `taxNumberTeaching`. An invoice of teaching only names it; every other invoice names the main
-   one. Teaching and other lines never share an invoice then. Both share one number sequence and one §19 threshold.
+   one. Both share one number sequence and one §19 threshold.
+9. `EXEMPT_4_21` never mixes with another category (decision 2026-11-14), with one tax number or two: teaching stands
+   alone on its invoice. A Stornorechnung repeats its invoice and is exempt.
    "Berichte" shows one Anlage EÜR per tax number.
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.
 They also cover the end of the Kleinunternehmer status without a redesign.

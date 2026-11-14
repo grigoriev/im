@@ -25,7 +25,7 @@ test('teaching with its own tax number gets its own invoices and its own Anlage 
     await page.locator('#line-1-kind').selectOption('true');
     await page.locator('#line-1-amount').fill('100');
     await page.getByRole('button', { name: 'Speichern' }).click();
-    await expect(page.getByText('Unterricht nach § 4 Nr. 21 hat eine eigene Steuernummer.', { exact: false })).toBeVisible();
+    await expect(page.getByText('Unterricht nach § 4 Nr. 21 steht allein auf einer Rechnung.', { exact: false })).toBeVisible();
 
     await page.getByRole('button', { name: 'Position 2 entfernen' }).click();
     await expect(page.getByRole('button', { name: 'Rechnung ausstellen…' })).toBeVisible();
