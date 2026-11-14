@@ -100,12 +100,17 @@ public class AccountController {
      * @param principal the logged-in user
      * @param current the current password
      * @param password the new password
+     * @param confirm the new password once more
      * @param flash messages for the next page
      * @return a redirect to the account page
      */
     @PostMapping("/passwort")
     public String changePassword(Principal principal, @RequestParam String current, @RequestParam String password,
-            RedirectAttributes flash) {
+            @RequestParam String confirm, RedirectAttributes flash) {
+        if (!password.equals(confirm)) {
+            flash.addFlashAttribute(ERROR, AdminUserController.MISMATCH);
+            return BACK;
+        }
         try {
             users.changePassword(principal.getName(), current, password);
             flash.addFlashAttribute(SUCCESS, "Passwort geändert.");

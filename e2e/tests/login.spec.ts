@@ -35,6 +35,7 @@ test('the admin creates a user, who sees no admin area', async ({ page, browser 
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Elena Sommer');
   await page.locator('#new-password').fill('elena-passwort-123');
+  await page.locator('#new-confirm').fill('elena-passwort-123');
   await page.getByRole('button', { name: 'Anlegen' }).click();
   await expect(page.getByRole('status')).toHaveText(`Benutzer „${username}“ angelegt.`);
 
@@ -57,10 +58,14 @@ test('the admin sets a new password', async ({ page, browser }) => {
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Gast');
   await page.locator('#new-password').fill('erstes-passwort-123');
+  await page.locator('#new-confirm').fill('erstes-passwort-123');
   await page.getByRole('button', { name: 'Anlegen' }).click();
   const row = page.locator('#user-list > div', { hasText: username });
-  await row.getByLabel('Neues Passwort').fill('zweites-passwort-123');
   await row.getByRole('button', { name: 'Passwort setzen' }).click();
+  const dialog = page.locator('dialog[open]');
+  await dialog.getByLabel('Neues Passwort', { exact: true }).fill('zweites-passwort-123');
+  await dialog.getByLabel('Neues Passwort wiederholen').fill('zweites-passwort-123');
+  await dialog.getByRole('button', { name: 'Passwort setzen' }).click();
   await expect(page.getByRole('status')).toHaveText(`Neues Passwort für „${username}“ gesetzt.`);
 
   const context = await browser.newContext({ storageState: ANONYMOUS });
@@ -80,6 +85,7 @@ test('a long name without spaces stays inside the menu and the page', async ({ p
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.locator('#new-password').fill('lang-passwort-123');
+  await page.locator('#new-confirm').fill('lang-passwort-123');
   await page.getByRole('button', { name: 'Anlegen' }).click();
 
   const context = await browser.newContext({ storageState: ANONYMOUS, viewport: { width: 1024, height: 800 } });

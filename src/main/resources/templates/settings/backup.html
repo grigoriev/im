@@ -12,7 +12,7 @@
     <div th:replace="~{fragments/settings :: tabs('backup')}"></div>
     <div role="alert" class="alert alert-error text-sm" id="backup-error" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-status">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-status">
       <div>
         <h2 class="font-semibold">Automatische Sicherung</h2>
         <p class="text-sm text-base-content/75">Jede Nacht sichert der Server die Datenbank verschlüsselt auf einen zweiten
@@ -40,7 +40,7 @@
       </dl>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-export">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-export">
       <div>
         <h2 class="font-semibold">Alles exportieren</h2>
         <p class="text-sm text-base-content/75">Eine ZIP-Datei mit allen Daten und Dokumenten: Profil, Kunden, Vorlagen,
@@ -51,7 +51,7 @@
         <i data-lucide="download" class="size-4"></i>Export herunterladen</a></div>
     </section>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="backup-import">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-import">
       <div>
         <h2 class="font-semibold">Export einspielen</h2>
         <p class="text-sm text-base-content/75">Nur in eine leere Installation derselben Version: ohne Profil, Kunden, Vorlagen

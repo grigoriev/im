@@ -21,7 +21,7 @@
 
     <form class="grid gap-4" th:action="@{/kunden/{c}/vorlagen/{id}(c=${customerId},id=${template.id})}" th:object="${form}" method="post">
       <input type="hidden" th:field="*{version}">
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3 @container">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3 @container">
         <label class="floating-label"><span>Name der Vorlage</span>
           <input id="template-name" th:field="*{name}" class="input w-full" maxlength="100" required>
         </label>
@@ -40,7 +40,7 @@
           Sie werden beim Ausstellen ersetzt.</p>
       </section>
 
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4 @container" id="positionen">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="positionen">
         <label class="grid gap-1.5"><span class="text-sm font-medium">Einleitung</span>
           <textarea id="template-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
@@ -53,7 +53,7 @@
         </label>
       </section>
 
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3">
         <h2 class="font-semibold">E-Mail</h2>
         <label class="floating-label"><span>Betreff</span>
           <input id="template-email-subject" th:field="*{emailSubject}" class="input w-full" maxlength="200">
@@ -66,14 +66,22 @@
       <div><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
 
-    <details class="border-t border-base-300 pt-4">
-      <summary class="text-sm cursor-pointer w-fit">Vorlage löschen</summary>
-      <form class="mt-3 flex flex-wrap items-center gap-3" method="post"
-            th:action="@{/kunden/{c}/vorlagen/{id}/loeschen(c=${customerId},id=${template.id})}">
-        <span class="text-sm">Die Vorlage wird gelöscht. Rechnungen aus dieser Vorlage bleiben, wie sie sind.</span>
-        <button type="submit" class="btn btn-sm btn-error">Vorlage löschen</button>
-      </form>
-    </details>
+    <div class="border-t border-base-300 pt-4">
+      <button type="button" class="btn btn-sm btn-danger" data-dialog="template-delete"><i data-lucide="trash-2" class="size-4"></i>Vorlage löschen</button>
+    </div>
+    <dialog class="modal" id="template-delete" aria-labelledby="template-delete-title">
+      <div class="modal-box max-w-lg">
+        <div th:replace="~{fragments/dialog :: dialogTitle('template-delete', 'Vorlage löschen?')}"></div>
+        <form method="post" th:action="@{/kunden/{c}/vorlagen/{id}/loeschen(c=${customerId},id=${template.id})}">
+          <div class="modal-body"><p class="text-sm">Die Vorlage wird gelöscht. Rechnungen aus dieser Vorlage bleiben, wie sie sind.</p></div>
+          <div class="modal-foot">
+            <button type="button" class="btn" data-close>Abbrechen</button>
+            <button type="submit" class="btn btn-error" id="template-delete-confirm"><i data-lucide="trash-2" class="size-4"></i>Vorlage löschen</button>
+          </div>
+        </form>
+      </div>
+      <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+    </dialog>
   </div>
 </div>
 </body>

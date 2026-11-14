@@ -306,16 +306,24 @@ class SecurityWebTest {
         knownUsers();
         mvc.perform(post("/admin/benutzer").with(user("admin").roles("ADMIN")).with(csrf())
                         .param("username", "neu").param("displayName", "Neu").param("password", PASSWORD)
-                        .param("role", "USER"))
+                        .param("confirm", PASSWORD).param("role", "USER"))
                 .andExpect(redirectedUrl("/admin/benutzer"))
                 .andExpect(flash().attribute("success", "Benutzer „neu“ angelegt."));
         verify(users).create("neu", "Neu", PASSWORD, Role.USER);
         when(users.create(eq("x"), any(), any(), any())).thenThrow(new UserException("Kaputt."));
         mvc.perform(post("/admin/benutzer").with(user("admin").roles("ADMIN")).with(csrf())
-                        .param("username", "x").param("displayName", "X").param("password", "p").param("role", "ADMIN"))
+                        .param("username", "x").param("displayName", "X").param("password", "p").param("confirm", "p")
+                        .param("role", "ADMIN"))
                 .andExpect(flash().attribute("error", "Kaputt."))
                 .andExpect(flash().attribute("username", "x"))
                 .andExpect(flash().attribute("displayName", "X"));
+        mvc.perform(post("/admin/benutzer").with(user("admin").roles("ADMIN")).with(csrf())
+                        .param("username", "y").param("displayName", "Y").param("password", PASSWORD)
+                        .param("confirm", "anders").param("role", "USER"))
+                .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."))
+                .andExpect(flash().attribute("username", "y"))
+                .andExpect(flash().attribute("displayName", "Y"));
+        verify(users, never()).create(eq("y"), any(), any(), any());
     }
 
     @Test
@@ -366,12 +374,18 @@ class SecurityWebTest {
 
     @Test
     void changesTheOwnPasswordAndReportsAProblem() throws Exception {
-        mvc.perform(post("/konto/passwort").param("current", "alt").param("password", PASSWORD).with(user("elena")).with(csrf()))
+        mvc.perform(post("/konto/passwort").param("current", "alt").param("password", PASSWORD).param("confirm", PASSWORD)
+                        .with(user("elena")).with(csrf()))
                 .andExpect(flash().attribute("success", "Passwort geändert."));
         verify(users).changePassword("elena", "alt", PASSWORD);
         doThrow(new UserException("Falsch.")).when(users).changePassword("elena", "x", PASSWORD);
-        mvc.perform(post("/konto/passwort").param("current", "x").param("password", PASSWORD).with(user("elena")).with(csrf()))
+        mvc.perform(post("/konto/passwort").param("current", "x").param("password", PASSWORD).param("confirm", PASSWORD)
+                        .with(user("elena")).with(csrf()))
                 .andExpect(flash().attribute("error", "Falsch."));
+        mvc.perform(post("/konto/passwort").param("current", "alt").param("password", PASSWORD).param("confirm", "anders")
+                        .with(user("elena")).with(csrf()))
+                .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."));
+        verify(users, times(1)).changePassword("elena", "alt", PASSWORD);
     }
 
     @Test
@@ -616,9 +630,9 @@ class SecurityWebTest {
                 new AuditEvent(1L, java.time.Instant.parse("2027-03-18T08:10:00Z"), "elena", AuditAction.TAX_NOTES_SAVED, "",
                         null)));
         mvc.perform(get("/admin/protokoll").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 09:12")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kunde angelegt</span><span>: Verlag am Fluss GmbH")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>Steuerhinweise gespeichert</span>\n")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027, 09:12")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kunde angelegt</span><span\n                class=\"text-base-content/75\">: Verlag am Fluss GmbH")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Steuerhinweise gespeichert</span></span>")));
         mvc.perform(get("/admin/protokoll").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
     }
 
@@ -844,7 +858,7 @@ class SecurityWebTest {
                         new java.math.BigDecimal("360.00")), null)));
         mvc.perform(get("/berichte").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Anlage EÜR 2027, Betriebseinnahmen")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kennzahl 111")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Kz 111")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(">560,00 €<")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(">360,00 €<")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("§ 4 Nr. 21 UStG, steuerfrei")))
@@ -1327,11 +1341,14 @@ class SecurityWebTest {
     void resetsAPasswordAndReportsAProblem() throws Exception {
         when(users.resetPassword(2, PASSWORD)).thenReturn(UserTestData.user(2, "elena", Role.USER));
         mvc.perform(post("/admin/benutzer/2/passwort").with(user("admin").roles("ADMIN")).with(csrf())
-                        .param("password", PASSWORD))
+                        .param("password", PASSWORD).param("confirm", PASSWORD))
                 .andExpect(flash().attribute("success", "Neues Passwort für „elena“ gesetzt."));
         when(users.resetPassword(anyLong(), eq("kurz"))).thenThrow(new UserException("Zu kurz."));
         mvc.perform(post("/admin/benutzer/2/passwort").with(user("admin").roles("ADMIN")).with(csrf())
-                        .param("password", "kurz"))
+                        .param("password", "kurz").param("confirm", "kurz"))
                 .andExpect(flash().attribute("error", "Zu kurz."));
+        mvc.perform(post("/admin/benutzer/2/passwort").with(user("admin").roles("ADMIN")).with(csrf())
+                        .param("password", PASSWORD).param("confirm", "anders"))
+                .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."));
     }
 }

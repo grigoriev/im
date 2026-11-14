@@ -10,32 +10,32 @@
   <div th:fragment="content" class="max-w-6xl mx-auto grid gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold tracking-tight">Kunden</h1>
-      <a th:href="@{/kunden/neu}" class="btn btn-ghost"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
+      <a th:href="@{/kunden/neu}" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
     <div class="grid gap-4 grid-cols-[minmax(0,1fr)] md:grid-cols-[18rem_minmax(0,1fr)] items-start">
-      <nav aria-label="Kundenliste" class="bg-base-100 rounded-box border border-base-300 p-2">
+      <nav aria-label="Kundenliste" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-2">
         <p class="text-sm text-base-content/75 p-3" th:if="${customerList.isEmpty()}">Noch keine Kunden.</p>
         <ul class="menu w-full p-0" th:unless="${customerList.isEmpty()}" id="customer-list">
           <li th:each="item : ${customerList}">
             <a th:href="@{/kunden/{id}(id=${item.id})}" th:classappend="${customer != null && customer.id == item.id} ? 'menu-active'"
                th:attr="aria-current=${customer != null && customer.id == item.id} ? 'page'">
               <span class="min-w-0 grid">
-                <span class="truncate" th:text="${item.name}">Name</span>
-                <span class="text-xs opacity-75 truncate" th:text="${item.postcode + ' ' + item.city + ' · ' + item.countryCode}">Ort</span>
+                <span class="[overflow-wrap:anywhere]" th:text="${item.name}">Name</span>
+                <span class="text-xs opacity-75 [overflow-wrap:anywhere]" th:text="${item.postcode + ' ' + item.city + ' · ' + item.countryCode}">Ort</span>
               </span>
             </a>
           </li>
         </ul>
       </nav>
 
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 text-sm text-base-content/75" th:if="${customer == null}">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 text-sm text-base-content/75" th:if="${customer == null}">
         Wählen Sie einen Kunden aus der Liste oder legen Sie einen neuen an.
       </section>
 
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-5 min-w-0 @container" th:if="${customer != null}">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-5 min-w-0 @container" th:if="${customer != null}">
         <h2 class="text-lg font-semibold [overflow-wrap:anywhere]" th:text="${customer.id == null ? 'Neuer Kunde' : customer.name}">Kunde</h2>
         <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${problems}">
           <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
@@ -96,14 +96,14 @@
               eine Leistung mit Reverse Charge an einen Kunden in der EU.</p>
           </fieldset>
 
-          <div><button type="submit" class="btn btn-primary" th:text="${customer.id == null ? 'Anlegen' : 'Speichern'}">Speichern</button></div>
+          <div><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i><span th:text="${customer.id == null ? 'Anlegen' : 'Speichern'}">Speichern</span></button></div>
         </form>
 
         <div class="border-t border-base-300 pt-4 grid gap-3" th:if="${customer.id != null}" id="customer-templates">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="font-semibold">Vorlagen</h3>
             <form method="post" th:action="@{/kunden/{id}/vorlagen(id=${customer.id})}">
-              <button type="submit" class="btn btn-sm btn-ghost"><i data-lucide="plus" class="size-4"></i>Neue Vorlage</button>
+              <button type="submit" class="btn btn-sm"><i data-lucide="plus" class="size-4"></i>Neue Vorlage</button>
             </form>
           </div>
           <p class="text-sm text-base-content/75" th:if="${templates.isEmpty()}">Noch keine Vorlage.</p>
@@ -116,18 +116,27 @@
             <form method="post" th:action="@{/rechnungen}">
               <input type="hidden" name="customerId" th:value="${customer.id}">
               <input type="hidden" name="templateId" th:value="${template.id}">
-              <button type="submit" class="btn btn-sm btn-primary btn-outline">Rechnung erstellen</button>
+              <button type="submit" class="btn btn-sm"><i data-lucide="file-plus" class="size-4"></i>Rechnung erstellen</button>
             </form>
           </div>
         </div>
 
-        <details class="border-t border-base-300 pt-4" th:if="${customer.id != null}">
-          <summary class="text-sm cursor-pointer w-fit">Kunden löschen</summary>
-          <form class="mt-3 flex flex-wrap items-center gap-3" method="post" th:action="@{/kunden/{id}/loeschen(id=${customer.id})}">
-            <span class="text-sm">Der Kunde wird endgültig gelöscht.</span>
-            <button type="submit" class="btn btn-sm btn-error">Endgültig löschen</button>
-          </form>
-        </details>
+        <div class="border-t border-base-300 pt-4" th:if="${customer.id != null}">
+          <button type="button" class="btn btn-sm btn-danger" data-dialog="customer-delete"><i data-lucide="trash-2" class="size-4"></i>Kunden löschen</button>
+          <dialog class="modal" id="customer-delete" aria-labelledby="customer-delete-title">
+      <div class="modal-box max-w-lg">
+        <div th:replace="~{fragments/dialog :: dialogTitle('customer-delete', 'Kunden löschen?')}"></div>
+        <form method="post" th:action="@{/kunden/{id}/loeschen(id=${customer.id})}">
+          <div class="modal-body"><p class="text-sm">Der Kunde wird endgültig gelöscht.</p></div>
+          <div class="modal-foot">
+            <button type="button" class="btn" data-close>Abbrechen</button>
+            <button type="submit" class="btn btn-error"><i data-lucide="trash-2" class="size-4"></i>Endgültig löschen</button>
+          </div>
+        </form>
+      </div>
+      <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+    </dialog>
+        </div>
       </section>
     </div>
   </div>

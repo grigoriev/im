@@ -15,12 +15,12 @@
     </div>
 
     <div class="grid gap-4 @2xl:grid-cols-3" id="tiles">
-      <a th:href="@{/rechnungen}" class="bg-base-100 rounded-box border border-base-300 p-4 hover:border-primary" id="tile-open">
+      <a th:href="@{/rechnungen}" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 hover:border-primary" id="tile-open">
         <div class="text-xs uppercase tracking-wider text-base-content/75">Offen</div>
         <div class="text-2xl font-semibold num mt-1" th:text="${#numbers.formatDecimal(openSum, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
         <div class="text-xs text-base-content/75 mt-1" th:text="${open.size()} + (${open.size() == 1} ? ' Rechnung' : ' Rechnungen')">0 Rechnungen</div>
       </a>
-      <div class="bg-base-100 rounded-box border border-base-300 p-4" id="tile-overdue">
+      <div class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4" id="tile-overdue">
         <div class="text-xs uppercase tracking-wider text-base-content/75">Überfällig</div>
         <div class="text-2xl font-semibold num mt-1" th:classappend="${overdue.isEmpty()} ? '' : 'text-error'"
              th:text="${#numbers.formatDecimal(overdueSum, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
@@ -31,14 +31,14 @@
           <li th:if="${overdue.isEmpty()}" class="text-base-content/75">Nichts überfällig.</li>
         </ul>
       </div>
-      <div class="bg-base-100 rounded-box border border-base-300 p-4" id="tile-received">
+      <div class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4" id="tile-received">
         <div class="text-xs uppercase tracking-wider text-base-content/75" data-volatile th:text="'Eingegangen ' + ${threshold.year}">Eingegangen 2027</div>
         <div class="text-2xl font-semibold num mt-1" th:text="${#numbers.formatDecimal(threshold.received, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
         <div class="text-xs text-base-content/75 mt-1">nach Zahlungseingang, Erstattungen abgezogen</div>
       </div>
     </div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4" id="threshold">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" id="threshold">
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 class="font-semibold">Kleinunternehmergrenze</h2>

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Dialog</title>
+</head>
+<body>
+<!-- The head of a dialog: its title and a button that closes it. app.js opens a dialog from data-dialog. -->
+<div th:fragment="dialogTitle(id, title)" class="modal-head">
+  <h3 class="font-semibold" th:id="${id} + '-title'" th:text="${title}">Titel</h3>
+  <button type="button" class="btn btn-sm btn-square" data-close><i data-lucide="x" class="size-4"></i><span class="sr-only">Schließen</span></button>
+</div>
+
+<!-- A click beside the box closes the dialog. -->
+<form th:fragment="dialogBackdrop" method="dialog" class="modal-backdrop"><button type="submit" tabindex="-1" aria-hidden="true">Schließen</button></form>
+</body>
+</html>

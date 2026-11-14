@@ -25,7 +25,7 @@
 
     <form class="grid gap-4" th:action="@{/rechnungen/{id}(id=${invoice.id})}" th:object="${form}" method="post">
       <input type="hidden" th:field="*{version}">
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3 @container">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3 @container">
         <h2 class="font-semibold">Rechnungsdaten</h2>
         <label class="floating-label"><span>E-Rechnungsformat</span>
           <select id="invoice-format" th:field="*{format}" class="select w-full" th:disabled="${cancelled != null}">
@@ -51,7 +51,7 @@
         </label>
       </section>
 
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4 @container" id="positionen">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="positionen">
         <label class="grid gap-1.5"><span class="text-sm font-medium">Einleitung</span>
           <textarea id="invoice-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
@@ -90,7 +90,7 @@
         </label>
       </section>
 
-      <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2 text-sm" id="invoice-checks">
+      <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-2 text-sm" id="invoice-checks">
         <h2 class="font-semibold">Prüfung</h2>
         <p th:if="${overLimit}" class="flex items-start gap-2 text-warning" id="over-limit"><i data-lucide="triangle-alert" class="size-4 shrink-0 mt-0.5"></i>
           <span>Mit dieser Rechnung läge der Umsatz nach § 19 in diesem Jahr über 100.000 €. Ab dann gilt die Regelbesteuerung.</span></p>
@@ -110,23 +110,37 @@
       <div><button type="submit" name="aktion" value="speichern" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
 
-    <details class="bg-base-100 rounded-box border border-base-300 p-5" th:if="${problems.isEmpty()}" id="invoice-issue">
-      <summary class="btn btn-primary w-fit"><i data-lucide="stamp" class="size-4"></i>Rechnung ausstellen…</summary>
-      <form class="mt-3 grid gap-3 justify-items-start" method="post" th:action="@{/rechnungen/{id}/ausstellen(id=${invoice.id})}">
-        <input type="hidden" name="version" th:value="${invoice.version}">
-        <p class="text-sm">Die Rechnung bekommt ihre Nummer, PDF und XML werden geprüft und gespeichert.
-          Danach ändert sie sich nicht mehr.</p>
-        <button type="submit" class="btn btn-primary" id="invoice-issue-confirm">Jetzt ausstellen</button>
-      </form>
-    </details>
-
-    <details class="border-t border-base-300 pt-4">
-      <summary class="text-sm cursor-pointer w-fit">Entwurf löschen</summary>
-      <form class="mt-3 flex flex-wrap items-center gap-3" method="post" th:action="@{/rechnungen/{id}/loeschen(id=${invoice.id})}">
-        <span class="text-sm">Der Entwurf wird endgültig gelöscht.</span>
-        <button type="submit" class="btn btn-sm btn-error">Entwurf löschen</button>
-      </form>
-    </details>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" class="btn btn-primary" data-dialog="invoice-issue" th:if="${problems.isEmpty()}"><i data-lucide="stamp" class="size-4"></i>Rechnung ausstellen…</button>
+      <button type="button" class="btn btn-danger ms-auto" data-dialog="invoice-delete"><i data-lucide="trash-2" class="size-4"></i>Entwurf löschen</button>
+    </div>
+    <dialog class="modal" id="invoice-issue" aria-labelledby="invoice-issue-title" th:if="${problems.isEmpty()}">
+      <div class="modal-box max-w-lg">
+        <div th:replace="~{fragments/dialog :: dialogTitle('invoice-issue', 'Rechnung ausstellen?')}"></div>
+        <form method="post" th:action="@{/rechnungen/{id}/ausstellen(id=${invoice.id})}">
+          <input type="hidden" name="version" th:value="${invoice.version}">
+          <div class="modal-body"><p class="text-sm">Die Rechnung bekommt ihre Nummer, PDF und XML werden geprüft und gespeichert. Danach ändert sie sich nicht mehr.</p></div>
+          <div class="modal-foot">
+            <button type="button" class="btn" data-close>Abbrechen</button>
+            <button type="submit" class="btn btn-primary" id="invoice-issue-confirm"><i data-lucide="stamp" class="size-4"></i>Jetzt ausstellen</button>
+          </div>
+        </form>
+      </div>
+      <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+    </dialog>
+    <dialog class="modal" id="invoice-delete" aria-labelledby="invoice-delete-title">
+      <div class="modal-box max-w-lg">
+        <div th:replace="~{fragments/dialog :: dialogTitle('invoice-delete', 'Entwurf löschen?')}"></div>
+        <form method="post" th:action="@{/rechnungen/{id}/loeschen(id=${invoice.id})}">
+          <div class="modal-body"><p class="text-sm">Der Entwurf wird endgültig gelöscht.</p></div>
+          <div class="modal-foot">
+            <button type="button" class="btn" data-close>Abbrechen</button>
+            <button type="submit" class="btn btn-error" id="invoice-delete-confirm"><i data-lucide="trash-2" class="size-4"></i>Entwurf löschen</button>
+          </div>
+        </form>
+      </div>
+      <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+    </dialog>
   </div>
 </div>
 </body>

@@ -100,6 +100,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await page.getByLabel('Benutzername').fill(username);
   await page.getByLabel('Name', { exact: true }).fill('Einstellungen Nutzerin');
   await page.locator('#new-password').fill('settings-passwort-123');
+  await page.locator('#new-confirm').fill('settings-passwort-123');
   await page.getByRole('button', { name: 'Anlegen' }).click();
   await expect(page.getByRole('status')).toContainText(username);
 

@@ -27,7 +27,7 @@ test('creates a public customer with XRechnung, changes and deletes it', async (
   await expect(page.getByRole('status')).toHaveText('Änderungen gespeichert.');
   await expect(page.getByLabel('Straße und Hausnummer')).toHaveValue('Rathausplatz 2');
 
-  await page.getByText('Kunden löschen').click();
+  await page.getByRole('button', { name: 'Kunden löschen' }).click();
   await page.getByRole('button', { name: 'Endgültig löschen' }).click();
   await expect(page.getByRole('status')).toHaveText(`Kunde „${name}“ gelöscht.`);
   await expect(page.getByRole('link', { name })).toHaveCount(0);

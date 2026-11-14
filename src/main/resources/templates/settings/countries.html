@@ -13,7 +13,7 @@
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4 @container">
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container">
       <div>
         <h2 class="font-semibold">Länder</h2>
         <p class="text-sm text-base-content/75">Diese Länder stehen in den Formularen zur Auswahl. Ein Kunde behält sein Land,
@@ -25,14 +25,14 @@
             <option th:each="country : ${others}" th:value="${country.code}" th:text="${country.name}">Japan</option>
           </select>
         </label>
-        <button type="submit" class="btn btn-primary">Hinzufügen</button>
+        <button type="submit" class="btn btn-primary"><i data-lucide="plus" class="size-4"></i>Hinzufügen</button>
       </form>
       <ul id="country-list" class="grid gap-2 @lg:grid-cols-2 @3xl:grid-cols-3">
         <li th:each="country : ${enabled}" class="border border-base-300 rounded-field px-3 py-2 flex items-center gap-2">
           <span class="flex-1 min-w-0 truncate" th:text="${country.name}">Deutschland</span>
           <span class="text-xs text-base-content/75 font-mono" th:text="${country.code}">DE</span>
           <form th:action="@{/admin/laender/{code}/entfernen(code=${country.code})}" method="post">
-            <button type="submit" class="btn btn-xs btn-ghost" th:attr="aria-label=${country.name} + ' entfernen'">
+            <button type="submit" class="btn btn-xs btn-danger btn-square" th:attr="aria-label=${country.name} + ' entfernen'">
               <i data-lucide="x" class="size-3.5"></i>
             </button>
           </form>

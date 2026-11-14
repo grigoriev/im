@@ -152,8 +152,8 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
         mask: [view.locator('#dispatch-date')],
       });
       await view.goto(issued);
-      await view.locator('#invoice-cancel summary').click();
-      await expect(view.locator('#invoice-cancel')).toHaveScreenshot(`invoice-cancel-${viewport.name}-${scheme}.png`);
+      await view.getByRole('button', { name: 'Stornieren…' }).click();
+      await expect(view.locator('#invoice-cancel .modal-box')).toHaveScreenshot(`invoice-cancel-${viewport.name}-${scheme}.png`);
       await view.goto(cancelledInvoice);
       await expect(view.locator('#cancelled-by')).toHaveScreenshot(`invoice-cancelled-by-${viewport.name}-${scheme}.png`);
       await view.goto(storno);

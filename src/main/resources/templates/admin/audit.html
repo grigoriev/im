@@ -12,18 +12,29 @@
       <h1 class="text-2xl font-semibold tracking-tight">Protokoll</h1>
       <p class="text-sm text-base-content/75">Wer hat wann was getan. Die neuesten 200 Einträge, Zeiten in deutscher Zeit.</p>
     </div>
-    <section class="bg-base-100 rounded-box border border-base-300 p-5">
-      <p class="text-sm text-base-content/75" th:if="${events.isEmpty()}">Noch keine Einträge.</p>
-      <ol id="audit-list" class="grid" th:unless="${events.isEmpty()}">
-        <li th:each="event : ${events}" class="py-2 border-b border-base-300 last:border-b-0 grid gap-0.5 @container">
-          <div class="flex flex-wrap items-baseline gap-x-3">
-            <time class="text-xs text-base-content/75 num" th:datetime="${event.at}" data-volatile
-                  th:text="${#temporals.format(event.at, 'dd.MM.yyyy HH:mm', 'Europe/Berlin')}">18.03.2027 09:12</time>
-            <span class="text-xs font-medium [overflow-wrap:anywhere]" th:text="${event.username}">elena</span>
-          </div>
-          <div class="text-sm [overflow-wrap:anywhere]">
-            <span th:text="${event.action.label}">Kunde angelegt</span><span th:unless="${#strings.isEmpty(event.detail)}"
-                th:text="': ' + ${event.detail}">: Verlag am Fluss GmbH</span>
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs">
+      <p class="text-sm text-base-content/75 p-5" th:if="${events.isEmpty()}">Noch keine Einträge.</p>
+      <ol id="audit-list" class="divide-y divide-base-300" th:unless="${events.isEmpty()}">
+        <li th:each="event : ${events}" class="flex gap-3 px-5 py-3"
+            th:with="name=${event.action.name()},
+                     tone=${name == 'LOGIN_FAILED' or name.endsWith('DELETED') or name.endsWith('REMOVED') or name == 'INVOICE_CANCELLED' ? 'error'
+                       : (name == 'LOGIN' ? 'info'
+                       : (name.endsWith('CREATED') or name.endsWith('ADDED') or name == 'INVOICE_ISSUED' or name == 'INVOICE_SENT' or name == 'PAYMENT_RECORDED' ? 'success'
+                       : (name.startsWith('PASSWORD') or name == 'DATA_IMPORTED' or name == 'DATA_EXPORTED' ? 'warning' : 'neutral')))}">
+          <span class="mt-0.5 size-8 shrink-0 inline-flex items-center justify-center rounded-full"
+                th:classappend="${tone == 'error'} ? 'bg-error/10 text-error' : (${tone == 'info'} ? 'bg-info/10 text-info' : (${tone == 'success'} ? 'bg-success/10 text-success' : (${tone == 'warning'} ? 'bg-warning/15 text-warning-content' : 'bg-base-200 text-base-content/75')))"
+                aria-hidden="true">
+            <i class="size-4" th:attr="data-lucide=${name == 'LOGIN_FAILED'} ? 'shield-alert' : (${tone == 'error'} ? 'trash-2' : (${tone == 'info'} ? 'log-in' : (${name.startsWith('PASSWORD')} ? 'key-round' : (${tone == 'warning'} ? 'database' : (${tone == 'success'} ? 'plus' : 'pencil')))))"></i>
+          </span>
+          <div class="grid gap-0.5 min-w-0 text-sm">
+            <span class="[overflow-wrap:anywhere]"><span class="font-medium" th:text="${event.action.label}">Kunde angelegt</span><span
+                class="text-base-content/75" th:unless="${#strings.isEmpty(event.detail)}" th:text="': ' + ${event.detail}">: Verlag am Fluss GmbH</span></span>
+            <span class="text-xs text-base-content/75 flex flex-wrap gap-x-2">
+              <time class="num" th:datetime="${event.at}" data-volatile
+                    th:text="${#temporals.format(event.at, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">18.03.2027, 09:12</time>
+              <span aria-hidden="true">·</span>
+              <span class="[overflow-wrap:anywhere]" th:text="${event.username}">elena</span>
+            </span>
           </div>
         </li>
       </ol>

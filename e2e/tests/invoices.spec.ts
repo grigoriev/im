@@ -63,8 +63,8 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await expect(row).toContainText('Entwurf');
   await expect(row).toContainText('400,00 €');
   await row.getByRole('link').click();
-  await page.getByText('Entwurf löschen', { exact: true }).first().click();
   await page.getByRole('button', { name: 'Entwurf löschen' }).click();
+  await page.locator('#invoice-delete-confirm').click();
   await expect(page.getByRole('status')).toHaveText('Entwurf gelöscht.');
   await expect(page.locator('#invoice-list li').filter({ hasText: customer })).toHaveCount(0);
 });
@@ -252,7 +252,7 @@ test('warns when a draft would cross the §19 limit', async ({ page }) => {
   await page.locator('#line-0-amount').fill('400,00');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.locator('#over-limit')).toHaveCount(0);
-  await page.getByText('Entwurf löschen', { exact: true }).first().click();
   await page.getByRole('button', { name: 'Entwurf löschen' }).click();
+  await page.locator('#invoice-delete-confirm').click();
   await expect(page.getByRole('status')).toHaveText('Entwurf gelöscht.');
 });
