@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // A select opens a styled list instead of the list of the browser. The select itself stays: it keeps its label,
 // its value, the focus and the form. A click or Space, Enter or an arrow key opens the list; the arrows move, Enter or a
-// click picks, Escape or Tab closes. A list with more than eight entries gets a search field.
+// click picks, Escape cancels, Tab picks and moves on. With more than eight entries, typed letters filter the list.
 function enhanceSelect(select) {
   if (select.multiple || select.dataset.native !== undefined || select.parentElement.classList.contains('listbox')) return;
   const box = document.createElement('div');
@@ -55,6 +55,7 @@ function enhanceSelect(select) {
     search.type = 'search';
     search.placeholder = 'Suchen …';
     search.tabIndex = -1;
+    search.readOnly = true;
     list.appendChild(search);
   }
   const options = document.createElement('div');
@@ -101,7 +102,6 @@ function enhanceSelect(select) {
     if (search) {
       search.value = '';
       filter();
-      search.focus();
     }
     activate(options.querySelector('[aria-selected="true"]') ?? items()[0]);
   };
@@ -139,6 +139,15 @@ function enhanceSelect(select) {
     } else if (event.key === 'Enter' || (event.key === ' ' && event.target === select)) {
       event.preventDefault();
       choose(options.querySelector('[data-active]'));
+    } else if (search && event.key === 'Backspace') {
+      event.preventDefault();
+      search.value = search.value.slice(0, -1);
+      filter();
+    } else if (search && event.key.length === 1 && event.key !== ' ' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      // The focus stays on the select; typed letters filter the list.
+      event.preventDefault();
+      search.value += event.key;
+      filter();
     } else if (event.key === 'Escape') {
       event.preventDefault();
       cancel();
@@ -150,11 +159,14 @@ function enhanceSelect(select) {
   select.addEventListener('mousedown', (event) => {
     event.preventDefault();
     select.focus();
-    open(list.hidden);
+    if (list.hidden) open(true);
+    else cancel();
   });
   select.addEventListener('keydown', keys);
-  search?.addEventListener('keydown', keys);
-  search?.addEventListener('input', filter);
+  search?.addEventListener('mousedown', (event) => {
+    event.preventDefault();
+    select.focus();
+  });
   options.addEventListener('mousedown', (event) => event.preventDefault());
   options.addEventListener('click', (event) => choose(event.target.closest('.listbox-option')));
   options.addEventListener('mousemove', (event) => {
