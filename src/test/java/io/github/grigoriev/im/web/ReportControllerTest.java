@@ -52,6 +52,19 @@ class ReportControllerTest {
     }
 
     @Test
+    void keepsSalesWithVatOutOfTheKleinunternehmerFields() {
+        RevenueRow books = new RevenueRow(LocalDate.of(2027, 3, 18), "2027-02", "Schule", new BigDecimal("100.00"),
+                BigDecimal.ZERO, new BigDecimal("100.00"), Map.of(TaxCategory.EXEMPT_4_21, new BigDecimal("93.83"),
+                        TaxCategory.STANDARD_19, new BigDecimal("6.17")), null);
+        ReportController.Totals totals = ReportController.totals(List.of(row("560.00", "200.00", null), books));
+        assertThat(totals.vatSales()).isEqualByComparingTo("6.17");
+        assertThat(totals.total()).isEqualByComparingTo("653.83");
+        assertThat(totals.excluded()).isEqualByComparingTo("453.83");
+        assertThat(totals.counted()).isEqualByComparingTo("200.00");
+        assertThat(ReportController.totals(List.of()).vatSales()).isEqualByComparingTo("0");
+    }
+
+    @Test
     void writesTheCsvForASpreadsheet() {
         when(threshold.rows(2027)).thenReturn(List.of(row("1234.50", "1234.50", "=SUMME(A1)"), row("-80.00", "-80.00",
                 null)));

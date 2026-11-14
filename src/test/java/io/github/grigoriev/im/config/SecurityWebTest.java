@@ -816,6 +816,12 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("§ 4 Nr. 21 UStG, steuerfrei")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 · 2027-01")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/berichte/zahlungen.csv?jahr=2027\"")));
+        when(threshold.rows(2026)).thenReturn(List.of(new io.github.grigoriev.im.threshold.RevenueRow(
+                java.time.LocalDate.of(2026, 3, 18), "2026-01", "Schule", new java.math.BigDecimal("119.00"),
+                java.math.BigDecimal.ZERO, new java.math.BigDecimal("119.00"), java.util.Map.of(TaxCategory.STANDARD_19,
+                        new java.math.BigDecimal("119.00")), null)));
+        mvc.perform(get("/berichte").param("jahr", "2026").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Einnahmen mit Umsatzsteuer von 119,00 €")));
         mvc.perform(get("/berichte").param("jahr", "2020").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Zahlungen in diesem Jahr.")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"2020\" selected=\"selected\">")));

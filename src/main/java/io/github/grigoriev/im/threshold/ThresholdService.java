@@ -35,8 +35,8 @@ public class ThresholdService {
     static final String PAYMENTS = """
             SELECT p.paid_on, p.amount, p.note, i.number, i.snapshot FROM payment p JOIN invoice i ON i.id = p.invoice_id
              WHERE p.paid_on BETWEEN :from AND :to ORDER BY p.paid_on, p.id""";
-    static final String YEARS = """
-            SELECT DISTINCT CAST(EXTRACT(YEAR FROM paid_on) AS INTEGER) FROM payment ORDER BY 1 DESC""";
+    static final String YEARS = "SELECT DISTINCT CAST(EXTRACT(YEAR FROM paid_on) AS INTEGER) FROM payment "
+            + "ORDER BY 1 DESC";
     static final String BASELINES = "SELECT year, amount FROM threshold_baseline ORDER BY year DESC";
     static final String BASELINE = "SELECT amount FROM threshold_baseline WHERE year = :year";
     static final String SAVE = """
@@ -207,15 +207,29 @@ public class ThresholdService {
                 .list();
     }
 
-    /** Splits one payment by the lines of its invoice. */
+    /**
+     * Splits one payment by the lines of its invoice, to the cent: the §19 part is rounded once, the rest goes to the
+     * other categories in proportion, and the last of them (in the order of the enum) takes the rounding remainder.
+     * For an invoice with VAT that is a standard rate, which so carries the VAT too.
+     */
     static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document) {
         Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
         BigDecimal counted = BigDecimal.ZERO.setScale(CENTS);
         if (document.total().signum() != 0) {
-            document.lines().forEach(line -> byCategory.merge(line.category(), line.netAmount(), BigDecimal::add));
-            byCategory.replaceAll((category, net) -> amount.multiply(net)
-                    .divide(document.total(), CENTS, RoundingMode.HALF_UP));
             counted = amount.multiply(countedLines(document)).divide(document.total(), CENTS, RoundingMode.HALF_UP);
+            Map<TaxCategory, BigDecimal> nets = new EnumMap<>(TaxCategory.class);
+            document.lines().forEach(line -> nets.merge(line.category(), line.netAmount(), BigDecimal::add));
+            List<TaxCategory> rest = nets.keySet().stream().filter(category -> !category.countsForThreshold()).toList();
+            if (nets.containsKey(TaxCategory.KLEINUNTERNEHMER)) {
+                byCategory.put(TaxCategory.KLEINUNTERNEHMER, counted);
+            }
+            BigDecimal left = amount.subtract(counted);
+            for (int i = 0; i < rest.size(); i++) {
+                BigDecimal part = i == rest.size() - 1 ? left
+                        : amount.multiply(nets.get(rest.get(i))).divide(document.total(), CENTS, RoundingMode.HALF_UP);
+                byCategory.put(rest.get(i), part);
+                left = left.subtract(part);
+            }
         }
         return new RevenueRow(paidOn, number, document.buyer().name(), amount, counted, amount.subtract(counted),
                 byCategory, note);

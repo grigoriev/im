@@ -14,6 +14,7 @@ import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
+import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.seller.SettingsException;
 import java.math.BigDecimal;
@@ -185,6 +186,45 @@ class ThresholdServiceTest {
         assertThat(row.byCategory()).isEmpty();
     }
 
+    private static RevenueRow split(String amount, InvoiceDocument document) {
+        return ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal(amount), null, "2027-01", document);
+    }
+
+    private static BigDecimal parts(RevenueRow row) {
+        return row.byCategory().values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Test
+    void theCategoriesOfAPaymentAddUpToTheCent() {
+        RevenueRow refund = split("-5.01", SampleInvoices.halves(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(refund.counted()).isEqualByComparingTo("-2.51");
+        assertThat(refund.excluded()).isEqualByComparingTo("-2.50");
+        assertThat(refund.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("-2.51"))
+                .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("-2.50"));
+        assertThat(parts(refund)).isEqualByComparingTo("-5.01");
+        RevenueRow tie = split("1.01", SampleInvoices.halves(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(parts(tie)).isEqualByComparingTo("1.01");
+        assertThat(tie.byCategory()).containsEntry(TaxCategory.EXEMPT_4_21, tie.excluded());
+
+        RevenueRow books = split("100.00", SampleInvoices.teachingAndBooks(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(books.byCategory()).doesNotContainKey(TaxCategory.KLEINUNTERNEHMER)
+                .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("93.83"))
+                .as("the VAT goes with the standard rate").containsEntry(TaxCategory.STANDARD_19, new BigDecimal("6.17"));
+        assertThat(parts(books)).isEqualByComparingTo("100.00");
+
+        RevenueRow reading = split("480.00", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(reading.byCategory()).containsExactly(java.util.Map.entry(TaxCategory.KLEINUNTERNEHMER,
+                new BigDecimal("480.00")));
+        RevenueRow school = split("984.00", SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(school.byCategory()).containsExactly(java.util.Map.entry(TaxCategory.EXEMPT_4_21,
+                new BigDecimal("984.00")));
+        RevenueRow tiny = split("0.01", SampleInvoices.mixed(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(tiny.counted()).isEqualByComparingTo("0.00");
+        assertThat(tiny.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("0.00"))
+                .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("0.01"));
+        assertThat(parts(tiny)).isEqualByComparingTo("0.01");
+    }
+
     @Test
     void listsThePaymentsOfAYearAsRows() {
         paid(2027, "560.00", "mixed");
@@ -199,8 +239,8 @@ class ThresholdServiceTest {
         assertThat(first.amount()).isEqualByComparingTo("560.00");
         assertThat(first.counted()).isEqualByComparingTo("200.00");
         assertThat(first.excluded()).isEqualByComparingTo("360.00");
-        assertThat(first.byCategory()).containsEntry(io.github.grigoriev.im.einvoice.TaxCategory.KLEINUNTERNEHMER,
-                new BigDecimal("200.00")).containsEntry(io.github.grigoriev.im.einvoice.TaxCategory.EXEMPT_4_21,
+        assertThat(first.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER,
+                new BigDecimal("200.00")).containsEntry(TaxCategory.EXEMPT_4_21,
                 new BigDecimal("360.00"));
         assertThat(first.note()).isNull();
         RevenueRow refund = rows.get(1);

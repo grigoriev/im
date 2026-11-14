@@ -38,6 +38,9 @@
           <dd class="num text-right" id="euer-119" th:text="${#numbers.formatDecimal(totals.excluded, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
         </div>
       </dl>
+      <p role="alert" class="alert alert-warning text-sm" th:if="${totals.vatSales.signum() != 0}" id="report-vat">
+        <span th:text="'Einnahmen mit Umsatzsteuer von ' + ${#numbers.formatDecimal(totals.vatSales, 1, 'POINT', 2, 'COMMA')} + ' € (brutto) gehören nicht in die Zeilen 12 und 13, sondern netto in Zeile 15 und die Umsatzsteuer in Zeile 17. Die App teilt sie nicht auf.'">Hinweis</span>
+      </p>
     </section>
 
     <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3" id="report-categories">
@@ -62,7 +65,7 @@
         <li th:each="row : ${rows}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b border-base-300 last:border-b-0 pb-2">
           <span class="min-w-0 grid">
             <span class="[overflow-wrap:anywhere]" th:text="${row.customer}">Kunde</span>
-            <span class="text-xs text-base-content/75 num" th:text="${#temporals.format(row.paidOn, 'dd.MM.yyyy') + ' · ' + row.number}">18.03.2027 · 2027-01</span>
+            <span class="text-xs text-base-content/75 num [overflow-wrap:anywhere]" th:text="${#temporals.format(row.paidOn, 'dd.MM.yyyy') + ' · ' + row.number}">18.03.2027 · 2027-01</span>
           </span>
           <span class="num text-right" th:text="${#numbers.formatDecimal(row.amount, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
         </li>

@@ -185,6 +185,9 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   const lines = (await csv.text()).split('\r\n').filter((line) => line.includes(number));
   expect(lines).toHaveLength(2);
   expect(lines.map((line) => line.split(';')[3]).sort()).toEqual(['150,00', '250,00']);
+  await page.setViewportSize({ width: 375, height: 800 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth), 'the filled report fits a phone')
+    .toBeLessThanOrEqual(375);
 });
 
 test('cancels an invoice with a Stornorechnung', async ({ page }) => {

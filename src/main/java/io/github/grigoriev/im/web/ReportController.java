@@ -39,17 +39,21 @@ public class ReportController {
     static final String CSV_HEAD = "Zahlungseingang;Rechnungsnummer;Kunde;Betrag;davon § 19 UStG;"
             + "davon nicht für die Grenze;Notiz";
 
+    /** The byte order mark that tells a spreadsheet the CSV is UTF-8. */
+    static final char BOM = (char) 0xFEFF;
+
     private static final DateTimeFormatter GERMAN = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     /**
      * The totals of a year.
      *
-     * @param total all income received, refunds subtracted: Anlage EÜR, Zeile 12
+     * @param total the income received as Kleinunternehmer, refunds subtracted: Anlage EÜR, Zeile 12
      * @param excluded the part outside the §19 threshold: Zeile 13
      * @param counted the part that counts for §19
+     * @param vatSales the income with VAT, gross: it belongs in Zeilen 15 and 17, not in 12 and 13
      * @param byCategory the income per tax category
      */
-    public record Totals(BigDecimal total, BigDecimal excluded, BigDecimal counted,
+    public record Totals(BigDecimal total, BigDecimal excluded, BigDecimal counted, BigDecimal vatSales,
             Map<TaxCategory, BigDecimal> byCategory) {
     }
 
@@ -110,9 +114,11 @@ public class ReportController {
         Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
         rows.forEach(row -> row.byCategory().forEach((category, amount) -> byCategory.merge(category, amount,
                 BigDecimal::add)));
-        return new Totals(sum(rows.stream().map(RevenueRow::amount).toList()),
-                sum(rows.stream().map(RevenueRow::excluded).toList()),
-                sum(rows.stream().map(RevenueRow::counted).toList()), byCategory);
+        BigDecimal vatSales = sum(byCategory.entrySet().stream().filter(entry -> entry.getKey().chargesVat())
+                .map(Map.Entry::getValue).toList());
+        return new Totals(sum(rows.stream().map(RevenueRow::amount).toList()).subtract(vatSales),
+                sum(rows.stream().map(RevenueRow::excluded).toList()).subtract(vatSales),
+                sum(rows.stream().map(RevenueRow::counted).toList()), vatSales, byCategory);
     }
 
     private static BigDecimal sum(List<BigDecimal> amounts) {
