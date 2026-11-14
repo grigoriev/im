@@ -134,6 +134,9 @@ public class InvoiceService {
                     clock.instant(), clock.instant(), null, null, null);
         }
         Invoice saved = invoices.save(draft);
+        if (templateId != null) {
+            invoices.linkTemplate(saved.id(), templateId);
+        }
         audit.add(saved.id(), AuditAction.DRAFT_CREATED, customer.name());
         return saved;
     }
@@ -193,6 +196,16 @@ public class InvoiceService {
         Invoice draft = draft(id);
         invoices.deleteById(draft.id());
         audit.add(draft.id(), AuditAction.DRAFT_DELETED, customerName(draft));
+    }
+
+    /**
+     * Returns the template an invoice came from, for the text of its e-mail.
+     *
+     * @param invoice the invoice
+     * @return the template, empty without one or after its deletion
+     */
+    public Optional<InvoiceTemplate> template(Invoice invoice) {
+        return Optional.ofNullable(invoices.templateId(invoice.id())).flatMap(templates::findById);
     }
 
     /**

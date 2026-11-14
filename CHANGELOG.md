@@ -12,6 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- E-mail text: the admin sets the default subject and text of the e-mail with an invoice on "E-Mail", with the placeholders of the invoice texts. An invoice remembers the template it came from, whose e-mail subject and text override the default field by field.
 - Payments: "Zahlung erfassen" records the day the money came in, the amount (German style, the open amount by default) and a note. A negative amount is a refund or a correction. The invoice is "Bezahlt" while the payments cover the total, and goes back to "Versendet" or "Ausgestellt" after a refund. A cancelled invoice takes refunds only. Payments are written once and show in the history and in "Zahlungen" with the paid and open amount.
 - Dispatch by hand: "Als versendet markieren" records the day, the way (own mail program, post, portal, in person), the recipient and a note. The first dispatch moves an issued invoice to "Versendet"; every dispatch shows in its history, with its note. The history shows the detail of each entry.
 - Invoice page: an issued invoice shows its number, status, customer, total and due date, its history (draft created, issued, by whom and when), its documents and the checks it passed. The list filters by year, status and a part of the customer's name or the number.

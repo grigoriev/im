@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -124,6 +125,7 @@ class InvoiceServiceTest {
         assertThat(created.lines()).containsExactly(DraftLine.empty(TaxCategory.KLEINUNTERNEHMER));
         assertThat(created.createdAt()).isEqualTo(NOW);
         verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
+        verify(repository, never()).linkTemplate(anyLong(), anyLong());
     }
 
     @Test
@@ -143,6 +145,7 @@ class InvoiceServiceTest {
         assertThat(created.issueDate()).isEqualTo(TODAY);
         assertThat(created.version()).isNull();
         verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Verlag am Fluss GmbH");
+        verify(repository).linkTemplate(9L, 7L);
 
         when(templates.findById(8L)).thenReturn(Optional.of(new InvoiceTemplate(8L, 3L, "Fremd", InvoiceFormat.XRECHNUNG,
                 14, null, null, null, null, null, List.of(), NOW, NOW, 0L)));
@@ -267,6 +270,18 @@ class InvoiceServiceTest {
                 .hasMessage("Eine ausgestellte Rechnung ändert sich nicht mehr.");
         assertThatThrownBy(() -> service.deleteDraft(7)).isInstanceOf(InvoiceException.class);
         verify(repository, never()).deleteById(7L);
+    }
+
+    @Test
+    void findsTheTemplateOfAnInvoice() {
+        Invoice invoice = draft(List.of());
+        when(repository.templateId(5L)).thenReturn(null);
+        assertThat(service.template(invoice)).isEmpty();
+        InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_EN16931, 14, null, null,
+                null, "Betreff", "Text", List.of(), NOW, NOW, 0L);
+        when(repository.templateId(5L)).thenReturn(7L);
+        when(templates.findById(7L)).thenReturn(Optional.of(template));
+        assertThat(service.template(invoice)).contains(template);
     }
 
     @Test

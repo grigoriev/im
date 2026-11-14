@@ -48,6 +48,22 @@ test('the admin changes a default tax note and restores it', async ({ page }) =>
   await expect(note).toHaveValue('Steuerfrei gemäß § 4 Nr. 21 UStG.');
 });
 
+test('the admin changes the default e-mail text and restores it', async ({ page }) => {
+  await page.goto('/einstellungen');
+  await page.getByRole('tab', { name: /E-Mail/ }).click();
+  const subject = page.getByLabel('Betreff');
+  await expect(subject).toHaveValue('Rechnung {Rechnungsnummer}');
+  await expect(page.getByLabel('Text')).toHaveValue(/meine Rechnung \{Rechnungsnummer\}/);
+  await subject.fill('Rechnung {Rechnungsnummer} von Elena Sommer');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('E-Mail-Text gespeichert.');
+  await expect(subject).toHaveValue('Rechnung {Rechnungsnummer} von Elena Sommer');
+
+  await subject.fill('');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(subject).toHaveValue('Rechnung {Rechnungsnummer}');
+});
+
 test('a user edits the profile but not the tax notes', async ({ page, browser }) => {
   const username = uniqueUsername('st');
   await page.goto('/admin/benutzer');
@@ -68,6 +84,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await expect(user.getByRole('tab', { name: /Steuerhinweise/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Nummernkreis/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Länder/ })).toHaveCount(0);
+  await expect(user.getByRole('tab', { name: /E-Mail/ })).toHaveCount(0);
   const response = await user.goto('/admin/steuerhinweise');
   expect(response?.status()).toBe(403);
   await context.close();
