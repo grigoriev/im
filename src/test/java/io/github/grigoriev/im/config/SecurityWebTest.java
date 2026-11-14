@@ -101,7 +101,8 @@ import org.springframework.test.web.servlet.MockMvc;
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class})
-@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class})
+@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
+        SessionEpoch.class})
 @org.springframework.boot.context.properties.EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 

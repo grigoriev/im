@@ -67,7 +67,7 @@ class BackupServiceTest {
     }
 
     @SuppressWarnings("unchecked")
-    private StatementSpec statement(String sql) throws Exception {
+    private StatementSpec statement(String sql) {
         StatementSpec spec = mock(StatementSpec.class);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("sql", sql);
@@ -97,6 +97,7 @@ class BackupServiceTest {
             handle(sql, params, call.getArgument(0));
             return null;
         }).when(spec).query(any(RowCallbackHandler.class));
+        // The fake answers every query of the service; nothing else asks it.
         return spec;
     }
 
@@ -189,7 +190,9 @@ class BackupServiceTest {
         assertThat(json.readTree(entries.get("manifest.json")).get("format").asInt()).isEqualTo(1);
         assertThat(json.readTree(entries.get("manifest.json")).get("schema").asString()).isEqualTo("20");
         assertThat(json.readTree(entries.get("manifest.json")).get("exported").asString()).isEqualTo("2027-03-18T08:00:00Z");
-        assertThat(BackupService.TABLES).allSatisfy(table -> assertThat(entries).containsKey("data/" + table + ".json"));
+        for (String table : BackupService.TABLES) {
+            assertThat(entries).containsKey("data/" + table + ".json");
+        }
         assertThat(text(entries.get("data/customer.json"))).isEqualTo("[{\"id\":\"7\",\"name\":\"Verlag \\\"am\\\" Fluss\"}]");
         assertThat(text(entries.get("data/invoice_document.json"))).isEqualTo("[{\"id\":\"1\",\"sha256\":\"ab\","
                 + "\"content\":{\"file\":\"files/invoice_document/0-content\"}},{\"id\":\"2\",\"sha256\":\"cd\","
@@ -217,7 +220,9 @@ class BackupServiceTest {
         service.restore(new ByteArrayInputStream(export));
 
         List<String> sql = writes.stream().map(write -> (String) write.get("sql")).toList();
-        assertThat(sql.subList(0, BackupService.SETUP.size())).containsExactlyElementsOf(
+        assertThat(sql.getFirst()).as("the tables are locked before the checks").isEqualTo("LOCK TABLE "
+                + String.join(", ", BackupService.TABLES) + ", persistent_logins IN EXCLUSIVE MODE");
+        assertThat(sql.subList(1, BackupService.SETUP.size() + 1)).containsExactlyElementsOf(
                 BackupService.SETUP.stream().map(table -> "DELETE FROM " + table).toList());
         assertThat(sql).contains("INSERT INTO customer (id, name) OVERRIDING SYSTEM VALUE VALUES (CAST(:id AS bigint), "
                 + "CAST(:name AS character varying(200)))");
@@ -246,9 +251,10 @@ class BackupServiceTest {
 
     private void refused(byte[] zip, String message) {
         writes.clear();
-        assertThatThrownBy(() -> service.restore(new ByteArrayInputStream(zip))).isInstanceOf(BackupException.class)
-                .hasMessage(message);
-        assertThat(writes).isEmpty();
+        ByteArrayInputStream in = new ByteArrayInputStream(zip);
+        assertThatThrownBy(() -> service.restore(in)).isInstanceOf(BackupException.class).hasMessage(message);
+        assertThat(writes).as("nothing but the lock").allSatisfy(write -> assertThat((String) write.get("sql"))
+                .startsWith("LOCK TABLE"));
     }
 
     @Test
@@ -280,26 +286,41 @@ class BackupServiceTest {
         };
         assertThatThrownBy(() -> service.restore(broken)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist kein ZIP.");
+        assertThat(BackupService.MAX_BYTES).isEqualTo(512L * 1024 * 1024);
+        assertThat(BackupService.MAX_ENTRIES).isEqualTo(100_000);
     }
 
     @Test
     void refusesAnExportWithAMissingPartOrColumn() throws IOException {
         Map<String, byte[]> entries = unzip(export());
         entries.remove("files/invoice_document/0-content");
-        assertThatThrownBy(() -> service.restore(new ByteArrayInputStream(zip(entries)))).isInstanceOf(BackupException.class)
+        ByteArrayInputStream noFile = new ByteArrayInputStream(zip(entries));
+        assertThatThrownBy(() -> service.restore(noFile)).isInstanceOf(BackupException.class)
                 .hasMessage("In der Datensicherung fehlt die Datei files/invoice_document/0-content.");
         Map<String, byte[]> noData = unzip(export());
         noData.remove("data/payment.json");
-        assertThatThrownBy(() -> service.restore(new ByteArrayInputStream(zip(noData)))).isInstanceOf(BackupException.class)
+        ByteArrayInputStream noTable = new ByteArrayInputStream(zip(noData));
+        assertThatThrownBy(() -> service.restore(noTable)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist keine Datensicherung dieser App: data/payment.json fehlt.");
         Map<String, byte[]> foreign = unzip(export());
         foreign.put("data/customer.json", "[{\"id\":\"8\",\"spitzname\":\"x\"}]".getBytes(StandardCharsets.UTF_8));
-        assertThatThrownBy(() -> service.restore(new ByteArrayInputStream(zip(foreign)))).isInstanceOf(BackupException.class)
+        ByteArrayInputStream unknown = new ByteArrayInputStream(zip(foreign));
+        assertThatThrownBy(() -> service.restore(unknown)).isInstanceOf(BackupException.class)
                 .hasMessage("Die Datensicherung passt nicht zu dieser Datenbank: Spalte spitzname.");
         row("customer", "text", "Bad Name", "x");
-        Map<String, byte[]> odd = unzip(export());
-        assertThatThrownBy(() -> service.restore(new ByteArrayInputStream(zip(odd)))).isInstanceOf(BackupException.class)
+        ByteArrayInputStream odd = new ByteArrayInputStream(zip(unzip(export())));
+        assertThatThrownBy(() -> service.restore(odd)).isInstanceOf(BackupException.class)
                 .as("a column name that is no plain identifier never reaches SQL")
                 .hasMessage("Die Datensicherung passt nicht zu dieser Datenbank: Spalte Bad Name.");
+    }
+
+    @Test
+    void refusesAZipThatExpandsTooFar() throws IOException {
+        byte[] two = zip(Map.of("a", new byte[10], "b", new byte[10]));
+        assertThat(BackupService.read(new ByteArrayInputStream(two), 20, 2)).containsOnlyKeys("a", "b");
+        ByteArrayInputStream big = new ByteArrayInputStream(two);
+        assertThatThrownBy(() -> BackupService.read(big, 19, 2)).hasMessage(BackupService.TOO_BIG);
+        ByteArrayInputStream many = new ByteArrayInputStream(two);
+        assertThatThrownBy(() -> BackupService.read(many, 20, 1)).hasMessage(BackupService.TOO_BIG);
     }
 }

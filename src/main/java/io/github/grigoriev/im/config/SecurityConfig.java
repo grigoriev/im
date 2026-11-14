@@ -14,6 +14,7 @@ import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
@@ -45,10 +46,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, PersistentTokenRepository tokens,
             AppUserDetailsService users, @Value("${im.remember-me.key:im-remember-me}") String rememberMeKey,
-            StaleFormHandler staleForms, PasskeyProperties passkeys) throws Exception {
+            StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch) throws Exception {
         // The passkey login looks the users up here, even if the context holds another user store.
         http.setSharedObject(UserDetailsService.class, users);
         return http
+                .addFilterBefore(epoch.filter(), SecurityContextHolderFilter.class)
                 .userDetailsService(users)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/css/**", "/js/**", "/vendor/**", "/fonts/**", "/error",

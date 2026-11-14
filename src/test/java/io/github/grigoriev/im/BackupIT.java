@@ -166,7 +166,7 @@ class BackupIT {
         assertThat(after.keySet()).isEqualTo(before.keySet());
         for (String name : before.keySet()) {
             if (!name.equals("manifest.json")) {
-                assertThat(after.get(name)).as(name).isEqualTo(before.get(name));
+                assertThat(after).as(name).containsEntry(name, before.get(name));
             }
         }
         assertThat(copyJdbc.queryForObject("SELECT count(*) FROM app_user WHERE username = 'erster'", Integer.class))

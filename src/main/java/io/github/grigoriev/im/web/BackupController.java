@@ -2,6 +2,7 @@ package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.backup.BackupException;
 import io.github.grigoriev.im.backup.BackupService;
+import io.github.grigoriev.im.config.SessionEpoch;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
@@ -29,18 +30,22 @@ public class BackupController {
 
     static final String VIEW = "settings/backup";
     private static final String BACK = "redirect:/admin/datensicherung";
+    private static final String ERROR = "error";
 
     private final BackupService backups;
+    private final SessionEpoch sessions;
     private final Clock clock;
 
     /**
      * Creates the controller.
      *
      * @param backups writes and reads the export
+     * @param sessions ends every session after an import
      * @param clock the date in the file name
      */
-    public BackupController(BackupService backups, Clock clock) {
+    public BackupController(BackupService backups, SessionEpoch sessions, Clock clock) {
         this.backups = backups;
+        this.sessions = sessions;
         this.clock = clock;
     }
 
@@ -69,7 +74,7 @@ public class BackupController {
     }
 
     /**
-     * Reads an export into this empty installation. The users of the export replace the ones here, so the session
+     * Reads an export into this empty installation. The users of the export replace the ones here, so every session
      * ends and the login page asks for their access.
      *
      * @param file the uploaded ZIP, {@code null} without one
@@ -81,18 +86,20 @@ public class BackupController {
     public String restore(@RequestParam(required = false) MultipartFile file, HttpServletRequest request,
             RedirectAttributes flash) {
         if (file == null || file.isEmpty()) {
-            flash.addFlashAttribute("error", "Bitte eine ZIP-Datei wählen.");
+            flash.addFlashAttribute(ERROR, "Bitte eine ZIP-Datei wählen.");
             return BACK;
         }
         try (InputStream in = file.getInputStream()) {
             backups.restore(in);
         } catch (BackupException e) {
-            flash.addFlashAttribute("error", e.getMessage());
+            flash.addFlashAttribute(ERROR, e.getMessage());
             return BACK;
-        } catch (IOException e) {
-            flash.addFlashAttribute("error", "Die Datei ließ sich nicht lesen.");
+        } catch (IOException _) {
+            flash.addFlashAttribute(ERROR, "Die Datei ließ sich nicht lesen.");
             return BACK;
         }
+        // The users of the export replace the ones here: every session ends, in every browser.
+        sessions.renew();
         SecurityContextHolder.clearContext();
         HttpSession session = request.getSession(false);
         if (session != null) {

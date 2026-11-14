@@ -2,6 +2,7 @@ package io.github.grigoriev.im.backup;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -34,6 +35,15 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 public class BackupService {
 
+    /** The most an import expands to, and the most entries it has: a crafted ZIP must not fill the memory. */
+    static final long MAX_BYTES = 512L * 1024 * 1024;
+    static final int MAX_ENTRIES = 100_000;
+
+    static final String TOO_BIG = "Die Datensicherung ist zu groß oder hat zu viele Dateien.";
+
+    private static final String INVOICE = "invoice";
+    private static final String SCHEMA_KEY = "schema";
+
     /** The version of the format; an import needs the same one. */
     static final int FORMAT = 1;
     static final String MANIFEST = "manifest.json";
@@ -41,7 +51,7 @@ public class BackupService {
     /** The tables in the order their keys need. Remember-me logins and the Flyway history stay out. */
     static final List<String> TABLES = List.of("country", "app_setting", "tax_note", "number_sequence",
             "threshold_baseline", "seller_profile", "app_user", "user_entities", "user_credentials", "customer",
-            "invoice_template", "invoice_template_line", "invoice", "invoice_line", "invoice_document", "dispatch",
+            "invoice_template", "invoice_template_line", INVOICE, "invoice_line", "invoice_document", "dispatch",
             "payment", "audit_event");
 
     /** The data an installation makes by itself, for example the first admin: the import replaces it. */
@@ -49,13 +59,13 @@ public class BackupService {
             "app_user", "threshold_baseline", "number_sequence", "tax_note", "app_setting", "country");
 
     /** The data a user enters: the import needs it empty. */
-    static final List<String> BUSINESS = List.of("seller_profile", "customer", "invoice_template", "invoice");
+    static final List<String> BUSINESS = List.of("seller_profile", "customer", "invoice_template", INVOICE);
 
     /** The columns of an invoice that the import sets after its lines, so the triggers see a draft until then. */
     static final List<String> LATER = List.of("status", "number", "issued_at", "snapshot", "cancels_id", "template_id");
 
-    static final String SCHEMA = """
-            SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank DESC LIMIT 1""";
+    static final String SCHEMA = "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank DESC "
+            + "LIMIT 1";
     /** The full type of each column, with its length: a cast to plain "character" would cut a CHAR(64) to one. */
     static final String TYPES = """
             SELECT attname, format_type(atttypid, atttypmod) FROM pg_attribute
@@ -97,7 +107,7 @@ public class BackupService {
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void export(OutputStream out) {
         try (ZipOutputStream zip = new ZipOutputStream(out)) {
-            entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, "schema", schema(),
+            entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
                     "exported", clock.instant().toString(), "tables", TABLES)));
             for (String table : TABLES) {
                 Map<String, byte[]> files = new LinkedHashMap<>();
@@ -137,15 +147,17 @@ public class BackupService {
      */
     @Transactional
     public void restore(InputStream in) {
-        Map<String, byte[]> entries = read(in);
+        Map<String, byte[]> entries = read(in, MAX_BYTES, MAX_ENTRIES);
         Map<String, Object> manifest = parse(entries, MANIFEST, new TypeReference<>() { });
         if (!Integer.valueOf(FORMAT).equals(manifest.get("format"))) {
             throw new BackupException("Diese Datei ist keine Datensicherung dieser App.");
         }
-        if (!Objects.equals(manifest.get("schema"), schema())) {
-            throw new BackupException("Die Datensicherung stammt von Version " + manifest.get("schema")
+        if (!Objects.equals(manifest.get(SCHEMA_KEY), schema())) {
+            throw new BackupException("Die Datensicherung stammt von Version " + manifest.get(SCHEMA_KEY)
                     + " der Datenbank, diese App hat Version " + schema() + ". Bitte dieselbe Version verwenden.");
         }
+        // Nobody writes into these tables until the import commits: no customer can slip in between check and import.
+        jdbc.sql("LOCK TABLE " + String.join(", ", TABLES) + ", persistent_logins IN EXCLUSIVE MODE").update();
         for (String table : BUSINESS) {
             if (jdbc.sql("SELECT EXISTS (SELECT 1 FROM " + table + ")").query(Boolean.class).single()) {
                 throw new BackupException("Hier gibt es schon Daten. Eine Datensicherung lässt sich nur in eine leere "
@@ -158,13 +170,13 @@ public class BackupService {
             Map<String, String> types = types(table);
             List<Map<String, Object>> rows = parse(entries, "data/" + table + ".json", new TypeReference<>() { });
             for (Map<String, Object> row : rows) {
-                insert(table, types, entries, "invoice".equals(table) ? asDraft(row) : row);
+                insert(table, types, entries, INVOICE.equals(table) ? asDraft(row) : row);
             }
-            if ("invoice".equals(table)) {
+            if (INVOICE.equals(table)) {
                 invoices = rows;
             }
         }
-        Map<String, String> invoiceTypes = types("invoice");
+        Map<String, String> invoiceTypes = types(INVOICE);
         for (Map<String, Object> invoice : invoices) {
             finish(invoiceTypes, invoice);
         }
@@ -248,18 +260,32 @@ public class BackupService {
         }
         try {
             return json.readValue(content, type);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException _) {
             throw new BackupException("Die Datensicherung ist beschädigt: " + name + ".");
         }
     }
 
-    private static Map<String, byte[]> read(InputStream in) {
+    /** Reads the entries of a ZIP, at most {@code maxBytes} expanded and {@code maxEntries} entries. */
+    static Map<String, byte[]> read(InputStream in, long maxBytes, int maxEntries) {
         Map<String, byte[]> entries = new HashMap<>();
+        long total = 0;
+        byte[] buffer = new byte[64 * 1024];
         try (ZipInputStream zip = new ZipInputStream(in)) {
             for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
-                entries.put(entry.getName(), zip.readAllBytes());
+                if (entries.size() >= maxEntries) {
+                    throw new BackupException(TOO_BIG);
+                }
+                ByteArrayOutputStream content = new ByteArrayOutputStream();
+                for (int read = zip.read(buffer); read != -1; read = zip.read(buffer)) {
+                    total += read;
+                    if (total > maxBytes) {
+                        throw new BackupException(TOO_BIG);
+                    }
+                    content.write(buffer, 0, read);
+                }
+                entries.put(entry.getName(), content.toByteArray());
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             throw new BackupException("Diese Datei ist kein ZIP.");
         }
         return entries;

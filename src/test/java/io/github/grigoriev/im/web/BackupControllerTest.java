@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.backup.BackupException;
 import io.github.grigoriev.im.backup.BackupService;
+import io.github.grigoriev.im.config.SessionEpoch;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,9 +28,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 class BackupControllerTest {
 
     private final BackupService backups = mock(BackupService.class);
-    private final BackupController controller = new BackupController(backups,
+    private final SessionEpoch sessions = mock(SessionEpoch.class);
+    private final BackupController controller = new BackupController(backups, sessions,
             Clock.fixed(Instant.parse("2027-03-18T08:00:00Z"), ZoneOffset.UTC));
     private final MultipartFile file = new MockMultipartFile("file", "export.zip", "application/zip", new byte[] {1});
+
+    private static java.util.Map<String, Object> flashOf(RedirectAttributesModelMap flash) {
+        return new java.util.HashMap<>(flash.getFlashAttributes());
+    }
 
     @Test
     void showsThePageAndStreamsTheExport() throws IOException {
@@ -52,6 +58,7 @@ class BackupControllerTest {
         assertThat(session.isInvalid()).isTrue();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verify(backups).restore(any(InputStream.class));
+        verify(sessions).renew();
         assertThat(controller.restore(file, new MockHttpServletRequest(), new RedirectAttributesModelMap()))
                 .as("no session to end").isEqualTo("redirect:/login?eingespielt");
     }
@@ -61,11 +68,11 @@ class BackupControllerTest {
         doThrow(new BackupException("Hier gibt es schon Daten.")).when(backups).restore(any(InputStream.class));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
         assertThat(controller.restore(file, new MockHttpServletRequest(), flash)).isEqualTo("redirect:/admin/datensicherung");
-        assertThat(flash.getFlashAttributes().get("error")).isEqualTo("Hier gibt es schon Daten.");
+        assertThat(flashOf(flash)).containsEntry("error", "Hier gibt es schon Daten.");
 
         RedirectAttributesModelMap none = new RedirectAttributesModelMap();
         assertThat(controller.restore(null, new MockHttpServletRequest(), none)).isEqualTo("redirect:/admin/datensicherung");
-        assertThat(none.getFlashAttributes().get("error")).isEqualTo("Bitte eine ZIP-Datei wählen.");
+        assertThat(flashOf(none)).containsEntry("error", "Bitte eine ZIP-Datei wählen.");
         assertThat(controller.restore(new MockMultipartFile("file", new byte[0]), new MockHttpServletRequest(),
                 new RedirectAttributesModelMap())).as("an empty file").isEqualTo("redirect:/admin/datensicherung");
 
@@ -73,6 +80,7 @@ class BackupControllerTest {
         when(broken.getInputStream()).thenThrow(new IOException("gone"));
         RedirectAttributesModelMap unread = new RedirectAttributesModelMap();
         assertThat(controller.restore(broken, new MockHttpServletRequest(), unread)).isEqualTo("redirect:/admin/datensicherung");
-        assertThat(unread.getFlashAttributes().get("error")).isEqualTo("Die Datei ließ sich nicht lesen.");
+        assertThat(flashOf(unread)).containsEntry("error", "Die Datei ließ sich nicht lesen.");
+        verify(sessions, org.mockito.Mockito.never()).renew();
     }
 }
