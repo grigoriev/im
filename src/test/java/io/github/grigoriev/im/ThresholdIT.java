@@ -121,5 +121,7 @@ class ThresholdIT {
                 .isEqualByComparingTo(after.previous());
         threshold.saveBaseline(older, "");
         assertThat(threshold.baselines()).doesNotContainKey(older);
+        threshold.saveBaseline(lastYearNumber, "");
+        assertThat(threshold.baselines()).as("removing works in a year with payments").doesNotContainKey(lastYearNumber);
     }
 }

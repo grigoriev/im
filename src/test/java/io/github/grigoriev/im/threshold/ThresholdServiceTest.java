@@ -217,6 +217,9 @@ class ThresholdServiceTest {
         assertThatThrownBy(() -> service.saveBaseline(2026, "1.000,00"))
                 .hasMessage("Für dieses Jahr zählt die App die Zahlungen selbst.");
         assertThat(service.newestBaselineYear()).isEqualTo(2024);
+        service.saveBaseline(2026, "");
+        assertThat(writes.getLast()).as("removing works in a year with payments").containsEntry("sql", ThresholdService.DELETE)
+                .containsEntry("year", 2026);
         service.saveBaseline(2024, "1.000,00");
         assertThat(writes.getLast()).containsEntry("year", 2024);
         for (int year = 2000; year <= 2026; year++) {

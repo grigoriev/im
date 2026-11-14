@@ -802,13 +802,14 @@ class SecurityWebTest {
     @Test
     void theAdminKeepsTheBaselines() throws Exception {
         when(threshold.baselines()).thenReturn(java.util.Map.of());
-        when(threshold.newestBaselineYear()).thenReturn(2026);
+        when(threshold.newestBaselineYear()).thenReturn(2024);
         mvc.perform(get("/admin/vorjahre").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Noch kein Vorjahresumsatz erfasst.")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("max=\"2026\" value=\"2026\"")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("max=\"2026\" value=\"2024\"")));
         when(threshold.baselines()).thenReturn(java.util.Map.of(2026, new java.math.BigDecimal("18250.00")));
         mvc.perform(get("/admin/vorjahre").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.250,00 €")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("18.250,00 €")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"baseline-remove-2026\"")));
         mvc.perform(get("/admin/vorjahre").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
         mvc.perform(post("/admin/vorjahre").param("year", "2026").param("amount", "18.250,00")
                         .with(user("admin").roles("ADMIN")).with(csrf()))

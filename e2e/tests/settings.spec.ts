@@ -79,8 +79,7 @@ test('the admin enters the revenue of last year, and the overview counts it', as
   await expect(page.locator('#threshold-previous')).toContainText('18.250,00 €');
 
   await page.goto('/admin/vorjahre');
-  await page.getByLabel('Umsatz in €').fill('');
-  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByRole('button', { name: `Vorjahresumsatz ${lastYear} entfernen` }).click();
   await expect(page.getByText('Noch kein Vorjahresumsatz erfasst.')).toBeVisible();
 });
 

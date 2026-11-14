@@ -110,7 +110,7 @@ public class ThresholdService {
 
     /**
      * Saves the baseline of a year before this one and without payments in the app: a year the app counts itself must
-     * not count twice. A blank amount removes it.
+     * not count twice. A blank amount removes it, also in a year that got payments later.
      *
      * @param year the year
      * @param amount the counted §19 revenue of that year, German style
@@ -121,13 +121,14 @@ public class ThresholdService {
         if (year < 2000 || year >= LocalDate.now(clock).getYear()) {
             throw new SettingsException(List.of("Ein Vorjahresumsatz gehört zu einem vergangenen Jahr."));
         }
-        if (paidIn(year)) {
-            throw new SettingsException(List.of(COUNTED_BY_APP));
-        }
         if (amount == null || amount.isBlank()) {
             jdbc.sql(DELETE).param("year", year).update();
             audit.add(AuditAction.BASELINE_SAVED, year + ", entfernt");
             return;
+        }
+        if (paidIn(year)) {
+            // Removing stays possible: a payment entered later must never leave a double count behind.
+            throw new SettingsException(List.of(COUNTED_BY_APP));
         }
         BigDecimal value = DraftForm.ambiguous(amount) ? null : DraftForm.parse(amount);
         if (value == null || value.signum() < 0 || value.stripTrailingZeros().scale() > CENTS
