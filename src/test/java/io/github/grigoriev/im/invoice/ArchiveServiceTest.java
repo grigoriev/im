@@ -86,7 +86,8 @@ class ArchiveServiceTest {
         Invoice slash = invoice(6, InvoiceStatus.ISSUED, "2027/11", LocalDate.of(2027, 2, 1));
         Invoice hyphen = invoice(7, InvoiceStatus.ISSUED, "-2027-11", LocalDate.of(2027, 2, 2));
         when(invoices.list()).thenReturn(List.of(slash, hyphen));
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.restore("{}")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+                SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(documents.list(6)).thenReturn(List.of(new StoredDocument(60L, 6L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
                 new byte[] {1}, "a", 1, Instant.EPOCH)));
         when(documents.list(7)).thenReturn(List.of(new StoredDocument(70L, 7L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
@@ -95,9 +96,9 @@ class ArchiveServiceTest {
         service.write(2027, out);
         Map<String, String> entries = unzip(out.toByteArray());
         assertThat(entries.keySet()).containsExactly("Rechnung_2027-11.pdf", "Rechnung_2027-11_7.pdf", "Inhalt.csv");
-        assertThat(entries.get("Inhalt.csv")).contains("\"2027/11\";01.02.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-11.pdf;")
+        assertThat(entries.get("Inhalt.csv")).contains("\"2027/11\";01.02.2027;\"Verlag am Fluss GmbH · Frau Berg\";Rechnung_2027-11.pdf;")
                 .as("a number with a leading hyphen is no formula")
-                .contains("\"'-2027-11\";02.02.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-11_7.pdf;");
+                .contains("\"'-2027-11\";02.02.2027;\"Verlag am Fluss GmbH · Frau Berg\";Rechnung_2027-11_7.pdf;");
     }
 
     @Test

@@ -129,6 +129,8 @@ class ThresholdServiceTest {
         when(documents.restore("reading")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.restore("school")).thenReturn(SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.restore("mixed")).thenReturn(SampleInvoices.mixed(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.restore("contact")).thenReturn(io.github.grigoriev.im.einvoice.ItSamples.withBuyerContact(
+                SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
     }
 
     @Test
@@ -240,6 +242,12 @@ class ThresholdServiceTest {
         assertThat(tiny.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("0.00"))
                 .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("0.01"));
         assertThat(parts(tiny)).isEqualByComparingTo("0.01");
+    }
+
+    @Test
+    void namesTheContactPersonOfTheBuyerInARow() {
+        paid(2028, "1.00", "contact");
+        assertThat(service.rows(2028)).extracting(RevenueRow::customer).containsExactly("Verlag am Fluss GmbH · Frau Berg");
     }
 
     @Test
