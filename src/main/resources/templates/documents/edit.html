@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title th:text="${(document == null ? 'Neues Dokument' : document.title) + ' · Rechnungen'}">Dokument · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
+  <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4"
+       th:with="editable=${document == null or document.current()}">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere] min-w-0" th:text="${document == null ? 'Neues Dokument' : document.title}">Dokument</h1>
+      <a th:href="@{/documents}" class="btn"><i data-lucide="arrow-left" class="size-4"></i>Alle Dokumente</a>
+    </div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm grid gap-1" id="document-problems" th:if="${problems}">
+      <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
+    </div>
+    <div role="alert" class="alert alert-warning alert-soft text-sm text-base-content" id="document-replaced" th:unless="${editable}">
+      <i data-lucide="history" class="size-4 text-warning" aria-hidden="true"></i>
+      <span>Eine neuere Fassung ersetzt dieses Dokument. <a class="link" th:href="@{/documents/{id}(id=${versions[0].id})}">Zur aktuellen Fassung</a></span>
+    </div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" th:if="${document != null}" id="document-file">
+      <h2 class="font-semibold">Datei</h2>
+      <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+        <dt class="text-base-content/75">Name</dt><dd class="[overflow-wrap:anywhere]" th:text="${document.filename}">Bescheid.pdf</dd>
+        <dt class="text-base-content/75">Größe</dt>
+        <dd class="num" th:text="${document.size < 1048576 ? ((document.size + 1023) / 1024) + ' KB' : #numbers.formatDecimal(document.size / 1048576.0, 1, 'POINT', 1, 'COMMA') + ' MB'}">120 KB</dd>
+        <dt class="text-base-content/75">Abgelegt</dt>
+        <dd data-volatile th:text="${#temporals.format(document.createdAt, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin') + ' · ' + document.createdBy}">12.05.2028, 10:00 · anna</dd>
+        <dt class="text-base-content/75">SHA-256</dt><dd class="num text-xs [overflow-wrap:anywhere]" data-volatile th:text="${document.sha256}">abc</dd>
+      </dl>
+      <div class="form-actions"><a class="btn btn-primary" id="document-download" th:href="@{/documents/{id}/file(id=${document.id})}">
+        <i data-lucide="download" class="size-4"></i>Herunterladen</a></div>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3 @container">
+      <h2 class="font-semibold">Beschreibung</h2>
+      <form class="grid gap-4" method="post" th:object="${form}" id="document-form"
+            th:attr="enctype=${document == null} ? 'multipart/form-data'"
+            th:action="${document == null} ? @{/documents} : @{/documents/{id}(id=${document.id})}">
+        <fieldset class="grid gap-4" th:disabled="${!editable}">
+          <label class="floating-label" th:if="${document == null}"><span>Datei</span>
+            <input id="document-upload" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="file-input w-full" required aria-describedby="document-upload-hint">
+          </label>
+          <span id="document-upload-hint" class="text-xs text-base-content/75 -mt-2" th:if="${document == null}">PDF, JPG oder PNG, höchstens 25 MB.</span>
+          <div class="grid gap-4 @lg:grid-cols-2">
+            <label class="floating-label"><span>Art</span>
+              <select id="document-category" th:field="*{category}" class="select w-full" required>
+                <option th:each="option : ${categories}" th:value="${option}" th:text="${option.label()}">Steuerbescheid</option>
+              </select>
+            </label>
+            <label class="floating-label"><span>Titel</span>
+              <input id="document-title" th:field="*{title}" class="input w-full" maxlength="200" required>
+            </label>
+            <label class="floating-label"><span>Datum des Dokuments</span>
+              <input id="document-date" th:field="*{documentDate}" type="date" class="input w-full" required th:attr="data-volatile=${document == null} ? ''">
+            </label>
+            <label class="floating-label"><span>Betrifft das Jahr</span>
+              <input id="document-year" th:field="*{year}" type="number" min="2000" max="2100" class="input w-full" aria-describedby="document-year-hint">
+            </label>
+          </div>
+          <span id="document-year-hint" class="text-xs text-base-content/75 -mt-2">Zum Beispiel das Steuerjahr eines Bescheids. Das
+            Jahresarchiv nimmt das Dokument in dieses Jahr auf, ohne Angabe in das Jahr seines Datums.</span>
+          <label class="floating-label"><span>Notiz</span>
+            <textarea id="document-note" th:field="*{note}" class="textarea w-full" rows="3" maxlength="2000"></textarea>
+          </label>
+          <div class="form-actions" th:if="${editable}"><button type="submit" class="btn btn-primary" id="document-save">
+            <i th:attr="data-lucide=${document == null ? 'file-up' : 'save'}" class="size-4"></i><span th:text="${document == null ? 'Ablegen' : 'Speichern'}">Speichern</span></button></div>
+        </fieldset>
+      </form>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" th:if="${document != null and editable}" id="document-version">
+      <div>
+        <h2 class="font-semibold">Neue Fassung</h2>
+        <p class="text-sm text-base-content/75">Zum Beispiel ein geänderter Bescheid oder eine überarbeitete
+          Verfahrensdokumentation. Die neue Fassung übernimmt Art, Titel und Jahr. Diese Fassung bleibt im Verlauf.</p>
+      </div>
+      <form class="grid gap-4" method="post" enctype="multipart/form-data" th:object="${form}"
+            th:action="@{/documents/{id}/versions(id=${document.id})}">
+        <input type="hidden" th:field="*{category}" id="version-category">
+        <input type="hidden" th:field="*{title}" id="version-title">
+        <input type="hidden" th:field="*{year}" id="version-year">
+        <label class="floating-label"><span>Datei</span>
+          <input id="version-upload" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="file-input w-full" required aria-describedby="version-upload-hint">
+        </label>
+        <span id="version-upload-hint" class="text-xs text-base-content/75 -mt-2">PDF, JPG oder PNG, höchstens 25 MB.</span>
+        <label class="floating-label"><span>Datum der neuen Fassung</span>
+          <input id="version-date" th:field="*{documentDate}" type="date" class="input w-full" required>
+        </label>
+        <label class="floating-label"><span>Notiz</span>
+          <textarea id="version-note" th:field="*{note}" class="textarea w-full" rows="2" maxlength="2000"></textarea>
+        </label>
+        <div class="form-actions"><button type="submit" class="btn" id="version-save"><i data-lucide="file-up" class="size-4"></i>Neue Fassung ablegen</button></div>
+      </form>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-2" th:if="${versions.size() > 1}" id="document-versions">
+      <h2 class="font-semibold px-3 pt-3 pb-1">Fassungen</h2>
+      <ul class="menu w-full p-0">
+        <li th:each="version, state : ${versions}">
+          <a th:href="@{/documents/{id}(id=${version.id})}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3"
+             th:classappend="${version.id == document.id} ? 'menu-active'" th:attr="aria-current=${version.id == document.id} ? 'page'">
+            <span class="min-w-0 grid">
+              <span class="[overflow-wrap:anywhere]" th:text="${version.filename}">Bescheid.pdf</span>
+              <span class="text-xs opacity-75" th:text="${#temporals.format(version.documentDate, 'dd.MM.yyyy')}">12.05.2028</span>
+            </span>
+            <span class="badge badge-sm whitespace-nowrap" th:classappend="${state.first} ? 'badge-success badge-soft' : 'badge-ghost'"
+                  th:text="${state.first ? 'aktuell' : 'ersetzt'}">aktuell</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>

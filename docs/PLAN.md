@@ -259,6 +259,17 @@ The admin edits the default tax notes. A template and an invoice can override th
 3. Archive export: ZIP with all XML and PDF files of a year.
 4. Full export and import: ZIP with JSON data and all documents. This also moves the system to a new host.
 
+### Documents
+
+1. The app keeps the business documents next to the invoices: the Verfahrensdokumentation, tax assessments, letters of
+   the tax office, certificates (for example §4 Nr. 21) and contracts. Both roles use it.
+2. A document has a kind, a title, a date, an optional year it concerns and a note. Its file is a PDF, JPG or PNG of
+   at most 25 MB; the app checks the first bytes, not the name.
+3. A file never changes and never goes away, the database refuses both. A new version is a new document that names the
+   one it replaces. Only the description may change. Every upload and change goes into the audit log with the SHA-256.
+4. The yearly archive holds every version of the documents of that year: the year it concerns, else the year of its
+   date. Backups and the full export take them along.
+
 ## 8. Deployment on lemming
 
 1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.

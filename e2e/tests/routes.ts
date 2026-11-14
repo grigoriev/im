@@ -9,6 +9,8 @@ export const ROUTES = [
   // A past year without payments: the page of this year changes with the date.
   { name: 'reports', path: '/reports?year=2020', anonymous: false },
   { name: 'customer-new', path: '/customers/new', anonymous: false },
+  { name: 'documents', path: '/documents', anonymous: false },
+  { name: 'document-new', path: '/documents/new', anonymous: false },
   { name: 'settings', path: '/settings', anonymous: false },
   { name: 'tax-notes', path: '/admin/tax-notes', anonymous: false },
   { name: 'numbers', path: '/admin/numbers', anonymous: false },

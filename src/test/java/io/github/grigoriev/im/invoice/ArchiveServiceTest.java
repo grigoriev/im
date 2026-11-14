@@ -7,6 +7,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.document.BusinessDocument;
+import io.github.grigoriev.im.document.DocumentCategory;
+import io.github.grigoriev.im.document.DocumentFile;
+import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
@@ -22,6 +26,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -31,7 +36,8 @@ class ArchiveServiceTest {
 
     private final InvoiceService invoices = mock(InvoiceService.class);
     private final DocumentStore documents = mock(DocumentStore.class);
-    private final ArchiveService service = new ArchiveService(invoices, documents);
+    private final DocumentService businessDocuments = mock(DocumentService.class);
+    private final ArchiveService service = new ArchiveService(invoices, documents, businessDocuments);
 
     private static Invoice invoice(long id, InvoiceStatus status, String number, LocalDate date) {
         boolean draft = status == InvoiceStatus.DRAFT;
@@ -144,5 +150,41 @@ class ArchiveServiceTest {
         for (String start : new String[] {"+", "-", "@", "\t", "\r"}) {
             assertThat(ArchiveService.quoted(start + "a")).startsWith("\"'");
         }
+    }
+
+    @Test
+    void namesAFileWithoutExtensionApartAtItsEnd() {
+        Set<String> names = new HashSet<>();
+        assertThat(ArchiveService.unique(names, "Bescheid", 4)).isEqualTo("Bescheid");
+        assertThat(ArchiveService.unique(names, "Bescheid", 5)).isEqualTo("Bescheid_5");
+        assertThat(ArchiveService.unique(names, ".hidden", 6)).isEqualTo(".hidden");
+        assertThat(ArchiveService.unique(names, ".hidden", 7)).isEqualTo(".hidden_7");
+    }
+
+    private static BusinessDocument document(long id, String title, String filename, Integer year, Long replacedBy) {
+        return new BusinessDocument(id, DocumentCategory.TAX_ASSESSMENT, title, LocalDate.of(2027, 5, 10), year, "",
+                null, replacedBy, filename, "application/pdf", "sha-" + id, 3, Instant.EPOCH, "anna");
+    }
+
+    @Test
+    void putsTheBusinessDocumentsOfTheYearIntoTheirFolder() throws IOException {
+        when(invoices.list()).thenReturn(List.of());
+        when(businessDocuments.ofYear(2026)).thenReturn(List.of(document(1, "Bescheid 2026", "Bescheid.pdf", 2026, 2L),
+                document(2, "=Bescheid 2026", "Bescheid.pdf", null, null)));
+        when(businessDocuments.file(1)).thenReturn(Optional.of(new DocumentFile("Bescheid.pdf", "application/pdf",
+                "alt".getBytes(StandardCharsets.UTF_8))));
+        when(businessDocuments.file(2)).thenReturn(Optional.of(new DocumentFile("Bescheid.pdf", "application/pdf",
+                "neu".getBytes(StandardCharsets.UTF_8))));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        service.write(2026, out);
+        Map<String, String> entries = unzip(out.toByteArray());
+        assertThat(entries.keySet()).containsExactly("Inhalt.csv", "Dokumente/Bescheid.pdf", "Dokumente/Bescheid_2.pdf",
+                "Dokumente/Inhalt.csv");
+        assertThat(entries.get("Dokumente/Bescheid.pdf")).isEqualTo("alt");
+        assertThat(entries.get("Dokumente/Bescheid_2.pdf")).isEqualTo("neu");
+        assertThat(entries.get("Dokumente/Inhalt.csv")).isEqualTo(String.valueOf((char) 0xFEFF)
+                + ArchiveService.DOCUMENT_HEAD + "\r\n"
+                + "\"Steuerbescheid\";\"Bescheid 2026\";10.05.2027;2026;ersetzt;\"Dokumente/Bescheid.pdf\";3;sha-1\r\n"
+                + "\"Steuerbescheid\";\"'=Bescheid 2026\";10.05.2027;;aktuell;\"Dokumente/Bescheid_2.pdf\";3;sha-2\r\n");
     }
 }

@@ -11,6 +11,10 @@ import io.github.grigoriev.im.backup.BackupService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.document.BusinessDocument;
+import io.github.grigoriev.im.document.DocumentCategory;
+import io.github.grigoriev.im.document.DocumentForm;
+import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
@@ -30,6 +34,7 @@ import io.github.grigoriev.im.threshold.ThresholdService;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -98,6 +103,9 @@ class BackupIT {
     @Autowired
     private ThresholdService threshold;
 
+    @Autowired
+    private DocumentService documents;
+
     private static Map<String, byte[]> unzip(byte[] zip) throws IOException {
         Map<String, byte[]> entries = new TreeMap<>();
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip))) {
@@ -139,6 +147,12 @@ class BackupIT {
         Invoice stornoDraft = invoices.find(storno.id()).orElseThrow();
         issues.issue(stornoDraft.id(), stornoDraft.version());
         threshold.saveBaseline(2012, "1.000,00");
+        DocumentForm letter = new DocumentForm();
+        letter.setCategory(DocumentCategory.TAX_OFFICE);
+        letter.setTitle("Steuernummer");
+        letter.setDocumentDate(day);
+        BusinessDocument first = documents.add(letter, "Brief.pdf", "%PDF-1.4 erste".getBytes(StandardCharsets.US_ASCII));
+        documents.replace(first.id(), letter, "Brief.png", new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'});
     }
 
     @Test
@@ -181,6 +195,7 @@ class BackupIT {
                 .hasMessageContaining("immutable");
         assertThat(copyJdbc.queryForObject("SELECT status FROM invoice WHERE number = '2013-01'", String.class))
                 .isEqualTo("CANCELLED");
+        assertThatThrownBy(() -> copyJdbc.update("DELETE FROM business_document")).hasMessageContaining("is kept");
 
         assertThatThrownBy(() -> transaction.executeWithoutResult(status -> into.restore(
                 new ByteArrayInputStream(original.toByteArray()))))

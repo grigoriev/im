@@ -38,6 +38,12 @@ import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerException;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.document.BusinessDocument;
+import io.github.grigoriev.im.document.DocumentCategory;
+import io.github.grigoriev.im.document.DocumentException;
+import io.github.grigoriev.im.document.DocumentFile;
+import io.github.grigoriev.im.document.DocumentForm;
+import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
@@ -98,6 +104,7 @@ import io.github.grigoriev.im.web.BaselineController;
 import io.github.grigoriev.im.web.CountryController;
 import io.github.grigoriev.im.web.CurrentUserAdvice;
 import io.github.grigoriev.im.web.CustomerController;
+import io.github.grigoriev.im.web.DocumentController;
 import io.github.grigoriev.im.web.HomeController;
 import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.InvoiceRecordsController;
@@ -143,7 +150,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
         SettingsController.class, TaxNoteController.class, NumberController.class,
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
-        MailTextController.class, BaselineController.class, ReportController.class, BackupController.class})
+        MailTextController.class, BaselineController.class, ReportController.class, BackupController.class,
+        DocumentController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
         SessionEpoch.class})
 @EnableConfigurationProperties(PasskeyProperties.class)
@@ -228,6 +236,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private BackupRunService backupRuns;
+
+    @MockitoBean
+    private DocumentService businessDocuments;
 
     @BeforeEach
     void noRevenueNoPayments() {
@@ -1473,5 +1484,121 @@ class SecurityWebTest {
         mvc.perform(post("/admin/users/2/password").with(user("admin").roles("ADMIN")).with(csrf())
                         .param("password", PASSWORD).param("confirm", "anders"))
                 .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."));
+    }
+
+    private static BusinessDocument businessDocument(long id, Long replacesId, Long replacedBy) {
+        return new BusinessDocument(id, DocumentCategory.TAX_ASSESSMENT, "Einkommensteuerbescheid 2026",
+                LocalDate.of(2027, 5, 10), 2026, "Ohne Nachzahlung", replacesId, replacedBy, "Bescheid-" + id + ".pdf",
+                "application/pdf", "ab".repeat(32), 2048, Instant.parse("2027-05-12T08:00:00Z"), "elena");
+    }
+
+    @Test
+    void listsTheCurrentDocumentsOfAKind() throws Exception {
+        when(businessDocuments.list()).thenReturn(List.of());
+        mvc.perform(get("/documents").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Noch keine Dokumente.")))
+                .andExpect(content().string(Matchers.containsString("Dokument ablegen")));
+        when(businessDocuments.list()).thenReturn(List.of(businessDocument(2, 1L, null)));
+        mvc.perform(get("/documents").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Einkommensteuerbescheid 2026")))
+                .andExpect(content().string(Matchers.containsString("Steuerbescheid · 10.05.2027 · für 2026 · neue Fassung")));
+        mvc.perform(get("/documents").param("category", "CONTRACT").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Keine Dokumente dieser Art.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Einkommensteuerbescheid 2026"))));
+        mvc.perform(get("/documents").param("category", "TAX_ASSESSMENT").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Einkommensteuerbescheid 2026")));
+    }
+
+    @Test
+    void storesANewDocumentAndShowsItsProblems() throws Exception {
+        mvc.perform(get("/documents/new").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Neues Dokument")))
+                .andExpect(content().string(Matchers.containsString("enctype=\"multipart/form-data\"")))
+                .andExpect(content().string(Matchers.containsString("Datum des Dokuments")));
+        MockMultipartFile file = new MockMultipartFile("file", "Bescheid.pdf", "application/pdf", new byte[] {'%'});
+        when(businessDocuments.add(any(), eq("Bescheid.pdf"), eq(new byte[] {'%'})))
+                .thenReturn(businessDocument(1, null, null));
+        mvc.perform(MockMvcRequestBuilders.multipart("/documents").file(file).param("category", "TAX_ASSESSMENT")
+                        .param("title", "Einkommensteuerbescheid 2026").param("documentDate", "2027-05-10")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/documents/1"))
+                .andExpect(flash().attribute("success", "Dokument „Einkommensteuerbescheid 2026“ abgelegt."));
+        ArgumentCaptor<DocumentForm> form = ArgumentCaptor.forClass(DocumentForm.class);
+        verify(businessDocuments).add(form.capture(), eq("Bescheid.pdf"), any());
+        Assertions.assertThat(form.getValue().getDocumentDate()).isEqualTo(LocalDate.of(2027, 5, 10));
+        when(businessDocuments.add(any(), ArgumentMatchers.isNull(), eq(new byte[0])))
+                .thenThrow(new DocumentException(List.of("Bitte eine Datei wählen.")));
+        mvc.perform(MockMvcRequestBuilders.multipart("/documents").param("title", "Ohne Datei")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")))
+                .andExpect(content().string(Matchers.containsString("value=\"Ohne Datei\"")));
+    }
+
+    @Test
+    void showsADocumentWithItsVersions() throws Exception {
+        BusinessDocument current = businessDocument(2, 1L, null);
+        BusinessDocument old = businessDocument(1, null, 2L);
+        when(businessDocuments.find(2)).thenReturn(Optional.of(current));
+        when(businessDocuments.find(1)).thenReturn(Optional.of(old));
+        when(businessDocuments.versions(2)).thenReturn(List.of(current, old));
+        when(businessDocuments.versions(1)).thenReturn(List.of(current, old));
+        mvc.perform(get("/documents/2").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Neue Fassung ablegen")))
+                .andExpect(content().string(Matchers.containsString("Herunterladen")))
+                .andExpect(content().string(Matchers.containsString("2 KB")))
+                .andExpect(content().string(Matchers.containsString("12.05.2027, 10:00 · elena")))
+                .andExpect(content().string(Matchers.containsString("Fassungen")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Eine neuere Fassung ersetzt"))));
+        mvc.perform(get("/documents/1").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Eine neuere Fassung ersetzt dieses Dokument.")))
+                .andExpect(content().string(Matchers.containsString("href=\"/documents/2\"")))
+                .andExpect(content().string(Matchers.containsString("<fieldset class=\"grid gap-4\" disabled=\"disabled\">")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Neue Fassung ablegen"))));
+        when(businessDocuments.find(3)).thenReturn(Optional.of(new BusinessDocument(3, DocumentCategory.OTHER, "Groß",
+                LocalDate.of(2027, 5, 10), null, "", null, null, "scan.png", "image/png", "cd".repeat(32), 3_250_000,
+                Instant.EPOCH, "elena")));
+        when(businessDocuments.versions(3)).thenReturn(List.of());
+        mvc.perform(get("/documents/3").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("3,1 MB")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Fassungen"))));
+        mvc.perform(get("/documents/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void changesADocumentAndStoresANewVersion() throws Exception {
+        BusinessDocument current = businessDocument(2, null, null);
+        when(businessDocuments.find(2)).thenReturn(Optional.of(current));
+        when(businessDocuments.versions(2)).thenReturn(List.of(current));
+        mvc.perform(post("/documents/2").param("category", "TAX_ASSESSMENT").param("title", "Neu")
+                        .param("documentDate", "2027-05-10").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/documents/2")).andExpect(flash().attribute("success", "Änderungen gespeichert."));
+        verify(businessDocuments).change(eq(2L), any());
+        when(businessDocuments.change(eq(2L), any())).thenThrow(new DocumentException(List.of("Bitte Titel angeben.")));
+        mvc.perform(post("/documents/2").param("title", "").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte Titel angeben.")));
+        MockMultipartFile file = new MockMultipartFile("file", "Neu.pdf", "application/pdf", new byte[] {'%'});
+        when(businessDocuments.replace(eq(2L), any(), eq("Neu.pdf"), any())).thenReturn(businessDocument(3, 2L, null));
+        mvc.perform(MockMvcRequestBuilders.multipart("/documents/2/versions").file(file)
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/documents/3")).andExpect(flash().attribute("success", "Neue Fassung abgelegt."));
+        when(businessDocuments.replace(eq(2L), any(), ArgumentMatchers.isNull(), any()))
+                .thenThrow(new DocumentException(List.of("Bitte eine Datei wählen.")));
+        mvc.perform(MockMvcRequestBuilders.multipart("/documents/2/versions").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")));
+        mvc.perform(post("/documents/9").param("title", "x").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/documents/9"));
+    }
+
+    @Test
+    void downloadsTheStoredFile() throws Exception {
+        when(businessDocuments.file(2)).thenReturn(Optional.of(new DocumentFile("Bescheid 2026.pdf", "application/pdf",
+                new byte[] {'%', 'P'})));
+        mvc.perform(get("/documents/2/file").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", Matchers.startsWith("attachment;")))
+                .andExpect(content().bytes(new byte[] {'%', 'P'}));
+        mvc.perform(get("/documents/9/file").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+        mvc.perform(get("/documents")).andExpect(status().is3xxRedirection());
     }
 }

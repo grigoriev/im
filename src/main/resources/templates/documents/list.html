@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Dokumente · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
+  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">Dokumente</h1>
+      <a th:href="@{/documents/new}" class="btn btn-primary" id="document-new"><i data-lucide="file-up" class="size-4"></i>Dokument ablegen</a>
+    </div>
+    <p class="text-sm text-base-content/75">Verfahrensdokumentation, Steuerbescheide, Schreiben vom Finanzamt, Bescheinigungen
+      und Verträge. Eine Datei bleibt für immer erhalten. Eine neue Fassung ersetzt sie in der Liste, die alte bleibt im Verlauf.</p>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/documents}" method="get" id="document-filter" th:if="${any}">
+      <label class="floating-label grow basis-48"><span>Art</span>
+        <select id="filter-category" name="category" class="select select-sm w-full">
+          <option value="">Alle</option>
+          <option th:each="option : ${categories}" th:value="${option}" th:text="${option.label()}" th:selected="${option == category}">Steuerbescheid</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-sm" id="filter-apply"><i data-lucide="filter" class="size-4"></i>Filtern</button>
+    </form>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-2">
+      <p class="text-sm text-base-content/75 p-3" th:unless="${any}">Noch keine Dokumente.</p>
+      <p class="text-sm text-base-content/75 p-3" id="document-none" th:if="${any and rows.isEmpty()}">Keine Dokumente dieser Art.</p>
+      <ul id="document-list" class="menu w-full p-0" th:unless="${rows.isEmpty()}">
+        <li th:each="row : ${rows}">
+          <a th:href="@{/documents/{id}(id=${row.id})}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3">
+            <span class="min-w-0 grid">
+              <span class="[overflow-wrap:anywhere]" th:text="${row.title}">Einkommensteuerbescheid 2027</span>
+              <span class="text-xs text-base-content/75 [overflow-wrap:anywhere]"
+                    th:text="${row.category.label() + ' · ' + #temporals.format(row.documentDate, 'dd.MM.yyyy') + (row.year != null ? ' · für ' + row.year : '') + (row.replacesId != null ? ' · neue Fassung' : '')}">Steuerbescheid · 12.05.2028 · für 2027</span>
+            </span>
+            <span class="badge badge-sm badge-ghost whitespace-nowrap num" th:text="${row.mediaType == 'application/pdf' ? 'PDF' : (row.mediaType == 'image/png' ? 'PNG' : 'JPG')}">PDF</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>

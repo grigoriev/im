@@ -62,7 +62,13 @@ public enum AuditAction {
     /** A dispatch of an invoice was recorded. */
     INVOICE_SENT("Versand vermerkt"),
     /** A payment or a refund of an invoice was recorded. */
-    PAYMENT_RECORDED("Zahlung erfasst");
+    PAYMENT_RECORDED("Zahlung erfasst"),
+    /** A business document was stored. */
+    DOCUMENT_ADDED("Dokument abgelegt"),
+    /** A new version of a business document was stored. */
+    DOCUMENT_REPLACED("Neue Fassung abgelegt"),
+    /** The description of a business document changed. */
+    DOCUMENT_CHANGED("Dokument geändert");
 
     private final String label;
 
