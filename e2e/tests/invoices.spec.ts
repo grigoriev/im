@@ -178,3 +178,44 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await page.getByRole('button', { name: 'Filtern' }).click();
   await expect(page.locator('#invoice-none')).toHaveText('Keine Rechnungen gefunden.');
 });
+
+test('cancels an invoice with a Stornorechnung', async ({ page }) => {
+  await ensureProfile(page);
+  const customer = await newCustomer(page, `Stornokunde ${randomUUID().slice(0, 8)}`);
+  await page.goto('/rechnungen');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  await page.locator('#line-0-text').fill('Lesung');
+  await page.locator('#line-0-amount').fill('300');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  const number = (await page.locator('#invoice-number').textContent())!.trim().replace(/^Rechnung /, '');
+  const original = page.url();
+
+  await page.getByText('Stornieren…').click();
+  await page.getByRole('button', { name: 'Stornorechnung anlegen' }).click();
+  await expect(page.getByRole('status')).toHaveText('Stornorechnung als Entwurf angelegt. Die Nummer folgt beim Ausstellen.');
+  await expect(page.locator('#cancels')).toContainText(`Rechnung ${number}`);
+  await expect(page.locator('#cancel-lines')).toContainText('Lesung');
+  await expect(page.locator('#cancel-total')).toHaveText('300,00 €');
+  await expect(page.getByRole('button', { name: 'Position hinzufügen' })).toHaveCount(0);
+
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  await expect(page.getByRole('status')).toHaveText(/^Rechnung \S+ ausgestellt\.$/);
+  const storno = (await page.locator('#invoice-number').textContent())!.trim().replace(/^Rechnung /, '');
+  await expect(page.locator('#cancels')).toContainText(`Rechnung ${number}`);
+  await expect(page.locator('#invoice-payments')).toHaveCount(0);
+  await expect(page.getByText('Stornieren…')).toHaveCount(0);
+  const pdf = await page.request.get((await page.locator('#download-xml').getAttribute('href'))!);
+  expect((await pdf.body()).toString()).toContain('<ram:TypeCode>381</ram:TypeCode>');
+
+  await page.goto(original);
+  await expect(page.locator('#invoice-status')).toHaveText('Storniert');
+  await expect(page.locator('#cancelled-by')).toContainText(`Stornorechnung ${storno}`);
+  await expect(page.locator('#invoice-history li').last()).toContainText('Rechnung storniert');
+
+  await page.goto(`/rechnungen?suche=${encodeURIComponent(customer)}`);
+  await expect(page.locator('#invoice-list li').filter({ hasText: `Stornorechnung · ${storno}` })).toHaveCount(1);
+});

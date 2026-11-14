@@ -5,6 +5,7 @@ import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
+import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
@@ -17,6 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,8 @@ public class InvoiceService {
     /** The number of a draft in its texts and its preview. */
     static final String DRAFT_NUMBER = "Entwurf";
     static final String UNKNOWN = "Diese Rechnung gibt es nicht.";
+    static final String CANCEL_TWICE = "Zu dieser Rechnung gibt es schon eine Stornorechnung.";
+    static final String CANCEL_WHAT = "Stornieren lässt sich nur eine ausgestellte Rechnung, die nicht storniert ist.";
     static final int MAX_PAYMENT_DAYS = 365;
     static final int MAX_TEXT = 2000;
     static final int MAX_TAX_NOTE = 1000;
@@ -156,9 +160,15 @@ public class InvoiceService {
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
         }
         List<String> problems = new ArrayList<>();
+        boolean cancellation = invoices.cancelsId(id).isPresent();
         List<DraftLine> lines = new ArrayList<>();
-        for (int i = 0; i < form.getLines().size(); i++) {
-            lines.add(form.getLines().get(i).toLine(i + 1, problems));
+        if (cancellation) {
+            // A Stornorechnung keeps the lines and the format of the invoice it cancels.
+            lines.addAll(draft.lines());
+        } else {
+            for (int i = 0; i < form.getLines().size(); i++) {
+                lines.add(form.getLines().get(i).toLine(i + 1, problems));
+            }
         }
         LineForm.length(problems, form.getBuyerReference(), "Die Käuferreferenz", MAX_REFERENCE);
         LineForm.length(problems, form.getIntro(), "Die Einleitung", MAX_TEXT);
@@ -167,7 +177,7 @@ public class InvoiceService {
         if (form.getPaymentDays() < 0 || form.getPaymentDays() > MAX_PAYMENT_DAYS) {
             problems.add("Das Zahlungsziel liegt zwischen 0 und " + MAX_PAYMENT_DAYS + " Tagen.");
         }
-        if (form.getFormat() == null || form.getIssueDate() == null || form.getServiceFrom() == null
+        if (!cancellation && form.getFormat() == null || form.getIssueDate() == null || form.getServiceFrom() == null
                 || form.getServiceTo() == null) {
             problems.add("Bitte Format, Rechnungsdatum und Leistungszeitraum angeben.");
         }
@@ -175,7 +185,8 @@ public class InvoiceService {
             throw new InvoiceException(problems);
         }
         try {
-            return invoices.save(new Invoice(draft.id(), draft.status(), draft.customerId(), null, form.getFormat(),
+            return invoices.save(new Invoice(draft.id(), draft.status(), draft.customerId(), null,
+                    cancellation ? draft.format() : form.getFormat(),
                     form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
                     text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()),
                     text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version(), null, null));
@@ -311,11 +322,13 @@ public class InvoiceService {
         SellerProfile seller = sellers.find().orElseThrow();
         Customer customer = customers.find(invoice.customerId()).orElseThrow();
         Placeholders values = Placeholders.of(invoice, number);
+        InvoiceReference cancels = cancelled(invoice)
+                .map(original -> new InvoiceReference(original.number(), original.issueDate())).orElse(null);
         return Optional.of(new InvoiceDocument(number, invoice.issueDate(), invoice.serviceFrom(),
                 invoice.serviceTo(), invoice.dueDate(), seller.toParty(), customer.toParty(), invoice.buyerReference(),
                 seller.iban(), seller.bic(), values.fill(invoice.intro()), values.fill(invoice.closing()),
                 values.fill(invoice.taxNote()), invoice.format(),
-                invoice.lines().stream().map(DraftLine::toInvoiceLine).toList()));
+                invoice.lines().stream().map(DraftLine::toInvoiceLine).toList(), cancels));
     }
 
     /**
@@ -325,6 +338,60 @@ public class InvoiceService {
      * @return the draft
      * @throws InvoiceException if the invoice does not exist or is issued
      */
+    /**
+     * Creates the Stornorechnung of an issued invoice as a draft: same customer, format, service period, closing, tax
+     * note and lines, dated today, without intro. Its number follows at the issue, which cancels the invoice.
+     *
+     * @param id the invoice to cancel
+     * @return the draft
+     * @throws InvoiceException if the invoice is unknown, a draft, cancelled, a Stornorechnung, or has one already
+     */
+    @Transactional
+    public Invoice createCancellation(long id) {
+        Invoice original = invoices.findById(id).orElseThrow(() -> new InvoiceException(List.of(UNKNOWN)));
+        if (original.isDraft() || original.status() == InvoiceStatus.CANCELLED
+                || invoices.cancelsId(id).isPresent()) {
+            throw new InvoiceException(List.of(CANCEL_WHAT));
+        }
+        if (invoices.cancellationId(id).isPresent()) {
+            throw new InvoiceException(List.of(CANCEL_TWICE));
+        }
+        LocalDate today = LocalDate.now(clock);
+        Invoice saved = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, original.customerId(), null,
+                original.format(), today, original.serviceFrom(), original.serviceTo(), 0, original.buyerReference(),
+                null, original.closing(), original.taxNote(), original.lines(), clock.instant(), clock.instant(),
+                null, null, null));
+        try {
+            invoices.linkCancels(saved.id(), id);
+        } catch (DuplicateKeyException _) {
+            // Another window created the Stornorechnung at the same moment.
+            throw new InvoiceException(List.of(CANCEL_TWICE));
+        }
+        audit.add(saved.id(), AuditAction.DRAFT_CREATED, "Stornorechnung zu " + original.number() + ", "
+                + customerName(saved));
+        return saved;
+    }
+
+    /**
+     * Returns the invoice a Stornorechnung cancels.
+     *
+     * @param invoice the invoice
+     * @return the cancelled invoice, empty for an invoice that is no Stornorechnung
+     */
+    public Optional<Invoice> cancelled(Invoice invoice) {
+        return invoices.cancelsId(invoice.id()).flatMap(invoices::findById);
+    }
+
+    /**
+     * Returns the Stornorechnung of an invoice.
+     *
+     * @param invoice the invoice
+     * @return its Stornorechnung, a draft included, empty if there is none
+     */
+    public Optional<Invoice> cancellation(Invoice invoice) {
+        return invoices.cancellationId(invoice.id()).flatMap(invoices::findById);
+    }
+
     Invoice draft(long id) {
         Invoice invoice = invoices.findById(id)
                 .orElseThrow(() -> new InvoiceException(List.of(UNKNOWN)));

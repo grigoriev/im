@@ -67,6 +67,27 @@ class IssueServiceTest {
     }
 
     @Test
+    void aStornorechnungCancelsItsInvoice() {
+        Invoice original = new Invoice(7L, InvoiceStatus.PAID, 2L, "2027-07", InvoiceFormat.ZUGFERD_EN16931, TODAY,
+                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 3L, NOW, "{}");
+        when(invoices.cancelled(draft)).thenReturn(Optional.of(original));
+        StatementSpec cancel = mock(StatementSpec.class);
+        when(jdbc.sql(IssueService.CANCEL)).thenReturn(cancel);
+        when(cancel.param(anyString(), any())).thenReturn(cancel);
+        when(cancel.update()).thenReturn(1);
+        assertThat(service.issue(5, 3L)).isEqualTo("2027-10");
+        verify(cancel).param("at", Timestamp.from(NOW));
+        verify(cancel).param("id", 7L);
+        verify(audit).add(7L, AuditAction.INVOICE_CANCELLED, "2027-07, durch Stornorechnung 2027-10");
+        verify(store).store(5, "2027-10", files, NOW);
+
+        when(cancel.update()).thenReturn(0);
+        assertThatThrownBy(() -> service.issue(5, 3L)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Die Rechnung 2027-07 ist schon storniert. Die Stornorechnung bleibt ein Entwurf.");
+        verify(store).store(5, "2027-10", files, NOW);
+    }
+
+    @Test
     void issuesACompleteDraft() {
         assertThat(service.issue(5, 3L)).isEqualTo("2027-10");
         verify(statement).param("number", "2027-10");
@@ -76,6 +97,7 @@ class IssueServiceTest {
         verify(statement).param("version", 3L);
         verify(store).store(5, "2027-10", files, NOW);
         verify(audit).add(5L, AuditAction.INVOICE_ISSUED, "2027-10, Verlag am Fluss GmbH");
+        verify(jdbc, never()).sql(IssueService.CANCEL);
     }
 
     @Test

@@ -11,6 +11,7 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
@@ -30,6 +31,11 @@ public class IssueService {
             UPDATE invoice SET status = 'ISSUED', number = :number, issued_at = :at, snapshot = :snapshot,
                    updated_at = :at, version = version + 1
              WHERE id = :id AND version = :version AND status = 'DRAFT'""";
+    static final String CANCEL = """
+            UPDATE invoice SET status = 'CANCELLED', updated_at = :at, version = version + 1
+             WHERE id = :id AND status IN ('ISSUED', 'SENT', 'PAID')""";
+    static final String ALREADY_CANCELLED = "Die Rechnung %s ist schon storniert. Die Stornorechnung bleibt ein "
+            + "Entwurf.";
     static final String NOT_VALID = "Die E-Rechnung hat die Prüfung nicht bestanden. Die Rechnung bleibt ein Entwurf.";
     static final String NUMBER_TAKEN = "Die Rechnungsnummer %s gibt es schon. Bitte das Nummernmuster oder die "
             + "Startnummer in den Einstellungen prüfen.";
@@ -67,7 +73,7 @@ public class IssueService {
     }
 
     /**
-     * Issues a draft.
+     * Issues a draft. A Stornorechnung cancels its invoice in the same transaction.
      *
      * @param id the draft
      * @param version the version the user saw; a newer one means a change in another window
@@ -104,6 +110,16 @@ public class IssueService {
         if (updated == 0) {
             // Another window issued or saved the draft after this transaction read it.
             throw new InvoiceException(List.of(InvoiceService.CHANGED_ELSEWHERE));
+        }
+        Optional<Invoice> cancelled = invoices.cancelled(draft);
+        if (cancelled.isPresent()) {
+            Invoice original = cancelled.get();
+            // The same transaction cancels the invoice: a failure leaves both as they were, the number included.
+            if (jdbc.sql(CANCEL).param("at", Timestamp.from(at)).param("id", original.id()).update() == 0) {
+                throw new InvoiceException(List.of(ALREADY_CANCELLED.formatted(original.number())));
+            }
+            audit.add(original.id(), AuditAction.INVOICE_CANCELLED, original.number() + ", durch Stornorechnung "
+                    + number);
         }
         store.store(id, number, files, at);
         audit.add(id, AuditAction.INVOICE_ISSUED, number + ", " + document.buyer().name());

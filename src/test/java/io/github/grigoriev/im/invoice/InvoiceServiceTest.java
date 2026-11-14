@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -532,5 +533,94 @@ class InvoiceServiceTest {
         DraftForm empty = form();
         empty.setLines(new ArrayList<>(List.of(row(null, true, "1", "5", TaxCategory.KLEINUNTERNEHMER))));
         assertThat(service.saveDraft(5, empty).lines()).extracting(DraftLine::text).containsExactly("");
+    }
+
+    /** An issued invoice 2027-07 with ID 7 and one line, in the given status. */
+    private static Invoice original(InvoiceStatus status) {
+        return new Invoice(7L, status, 2L, "2027-07", InvoiceFormat.ZUGFERD_XRECHNUNG, TODAY.minusDays(10),
+                TODAY.minusDays(12), TODAY.minusDays(11), 14, "04011000-1", "Hallo", "Danke", "§ 19",
+                List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 2L, NOW, "{}");
+    }
+
+    @Test
+    void createsAStornorechnungAsADraft() {
+        when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.PAID)));
+        Invoice draft = service.createCancellation(7);
+        assertThat(draft.isDraft()).isTrue();
+        assertThat(draft.customerId()).isEqualTo(2L);
+        assertThat(draft.format()).isEqualTo(InvoiceFormat.ZUGFERD_XRECHNUNG);
+        assertThat(draft.issueDate()).isEqualTo(TODAY);
+        assertThat(draft.serviceFrom()).isEqualTo(TODAY.minusDays(12));
+        assertThat(draft.serviceTo()).isEqualTo(TODAY.minusDays(11));
+        assertThat(draft.paymentDays()).isZero();
+        assertThat(draft.buyerReference()).isEqualTo("04011000-1");
+        assertThat(draft.intro()).isNull();
+        assertThat(draft.closing()).isEqualTo("Danke");
+        assertThat(draft.taxNote()).isEqualTo("§ 19");
+        assertThat(draft.lines()).isEqualTo(original(InvoiceStatus.PAID).lines());
+        verify(repository).linkCancels(9L, 7L);
+        verify(audit).add(9L, AuditAction.DRAFT_CREATED, "Stornorechnung zu 2027-07, Verlag am Fluss GmbH");
+    }
+
+    @Test
+    void cancelsOnlyAnIssuedInvoiceOnce() {
+        when(repository.findById(6L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.createCancellation(6)).hasMessage("Diese Rechnung gibt es nicht.");
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        assertThatThrownBy(() -> service.createCancellation(5)).hasMessage(InvoiceService.CANCEL_WHAT);
+        when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.CANCELLED)));
+        assertThatThrownBy(() -> service.createCancellation(7)).hasMessage(InvoiceService.CANCEL_WHAT);
+        when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
+        when(repository.cancelsId(7L)).thenReturn(Optional.of(3L));
+        assertThatThrownBy(() -> service.createCancellation(7)).as("a Stornorechnung is not cancelled")
+                .hasMessage(InvoiceService.CANCEL_WHAT);
+        when(repository.cancelsId(7L)).thenReturn(Optional.empty());
+        when(repository.cancellationId(7L)).thenReturn(Optional.of(8L));
+        assertThatThrownBy(() -> service.createCancellation(7)).hasMessage(InvoiceService.CANCEL_TWICE);
+        verify(repository, never()).save(any());
+
+        when(repository.cancellationId(7L)).thenReturn(Optional.empty());
+        doThrow(new org.springframework.dao.DuplicateKeyException("race")).when(repository)
+                .linkCancels(9L, 7L);
+        assertThatThrownBy(() -> service.createCancellation(7)).hasMessage(InvoiceService.CANCEL_TWICE);
+        verify(audit, never()).add(anyLong(), any(), anyString());
+    }
+
+    @Test
+    void findsTheCancelledInvoiceAndTheStornorechnung() {
+        Invoice invoice = original(InvoiceStatus.ISSUED);
+        assertThat(service.cancelled(invoice)).isEmpty();
+        assertThat(service.cancellation(invoice)).isEmpty();
+        Invoice storno = draft(List.of());
+        when(repository.cancellationId(7L)).thenReturn(Optional.of(5L));
+        when(repository.findById(5L)).thenReturn(Optional.of(storno));
+        assertThat(service.cancellation(invoice)).contains(storno);
+        when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
+        when(repository.findById(7L)).thenReturn(Optional.of(invoice));
+        assertThat(service.cancelled(storno)).contains(invoice);
+    }
+
+    @Test
+    void aStornorechnungNamesItsInvoiceAndKeepsItsLinesAndFormat() {
+        Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
+                0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,
+                null, null);
+        when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
+        when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
+        InvoiceDocument document = service.document(storno, "2027-11").orElseThrow();
+        assertThat(document.cancels()).isEqualTo(new io.github.grigoriev.im.einvoice.InvoiceReference("2027-07",
+                TODAY.minusDays(10)));
+
+        when(repository.findById(5L)).thenReturn(Optional.of(storno));
+        DraftForm form = DraftForm.of(storno);
+        form.setFormat(null);
+        form.getLines().clear();
+        form.getLines().add(row("Anders", true, "1", "1", TaxCategory.KLEINUNTERNEHMER));
+        Invoice saved = service.saveDraft(5, form);
+        assertThat(saved.lines()).as("the lines of the cancelled invoice stay").isEqualTo(storno.lines());
+        assertThat(saved.format()).isEqualTo(InvoiceFormat.ZUGFERD_EN16931);
+        form.setIssueDate(null);
+        assertThatThrownBy(() -> service.saveDraft(5, form))
+                .hasMessage("Bitte Format, Rechnungsdatum und Leistungszeitraum angeben.");
     }
 }

@@ -133,7 +133,8 @@ DRAFT -> ISSUED -> SENT -> PAID
 3. `SENT` records each dispatch. One invoice can have several dispatches.
 4. `PAID` applies when the sum of all payments covers the total.
 5. `CANCELLED` links to the Stornorechnung. The cancellation invoice has its own number. It is a credit note (type 381)
-   with the lines of the cancelled invoice and names it (BT-25, BT-26).
+   with the lines of the cancelled invoice and names it (BT-25, BT-26). Its issue sets `CANCELLED` in the same
+   transaction. One invoice has at most one Stornorechnung; its lines and format stay those of the invoice.
 6. A paid invoice can be cancelled too. The money that goes back is a refund: a payment with a negative amount.
 7. A refund lowers the §19 revenue and the EÜR income in the year it is paid, not in the year of the invoice.
 

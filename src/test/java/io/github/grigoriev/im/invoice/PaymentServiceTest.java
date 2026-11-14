@@ -177,6 +177,13 @@ class PaymentServiceTest {
     }
 
     @Test
+    void aStornorechnungTakesNoPayment() {
+        when(invoices.cancelled(any())).thenReturn(Optional.of(invoice(InvoiceStatus.CANCELLED)));
+        assertThatThrownBy(() -> service.add(5, form(TODAY, "-10", null))).hasMessage(PaymentService.ON_ORIGINAL);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void refusesADraftAndAnUnknownInvoice() {
         PaymentForm form = form(TODAY, "10", null);
         is(InvoiceStatus.DRAFT);

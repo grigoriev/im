@@ -71,8 +71,9 @@ public class InvoiceController {
      * @param invoice the invoice
      * @param customer the customer's name; the frozen buyer of an issued invoice
      * @param total the gross total, {@code null} while the draft is incomplete; the frozen one of an issued invoice
+     * @param cancellation whether it is a Stornorechnung
      */
-    public record Row(Invoice invoice, String customer, BigDecimal total) {
+    public record Row(Invoice invoice, String customer, BigDecimal total, boolean cancellation) {
     }
 
     private final InvoiceService invoices;
@@ -117,7 +118,7 @@ public class InvoiceController {
         List<Row> all = invoices.list().stream().map(invoice -> {
             Optional<InvoiceDocument> document = document(invoice);
             return new Row(invoice, customerName(invoice, document),
-                    document.map(InvoiceDocument::total).orElse(null));
+                    document.map(InvoiceDocument::total).orElse(null), invoices.cancelled(invoice).isPresent());
         }).toList();
         String text = suche == null ? "" : suche.strip().toLowerCase(Locale.ROOT);
         model.addAttribute("rows", all.stream().filter(row -> matches(row, jahr, status, text)).toList());
@@ -258,6 +259,25 @@ public class InvoiceController {
     }
 
     /**
+     * Creates the Stornorechnung of an issued invoice as a draft.
+     *
+     * @param id the invoice to cancel
+     * @param flash messages for the next page
+     * @return a redirect to the draft, or back to the invoice with the problem
+     */
+    @PostMapping("/{id}/stornieren")
+    public String cancel(@PathVariable long id, RedirectAttributes flash) {
+        try {
+            long draft = invoices.createCancellation(id).id();
+            flash.addFlashAttribute(SUCCESS, "Stornorechnung als Entwurf angelegt. Die Nummer folgt beim Ausstellen.");
+            return TO_INVOICE + draft;
+        } catch (InvoiceException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+            return TO_INVOICE + id;
+        }
+    }
+
+    /**
      * Downloads a document of an issued invoice, byte for byte as it was issued.
      *
      * @param id the ID
@@ -303,6 +323,7 @@ public class InvoiceController {
         model.addAttribute("customer", customerName(invoice, document));
         model.addAttribute("document", document.orElse(null));
         model.addAttribute("formats", CustomerController.FORMATS);
+        model.addAttribute("cancelled", invoices.cancelled(invoice).orElse(null));
         if (!invoice.isDraft()) {
             issuedPage.fill(model, invoice);
             return ISSUED;

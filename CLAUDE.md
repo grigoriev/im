@@ -47,7 +47,7 @@ Package `io.github.grigoriev.im`:
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
-  validates and freezes in one transaction; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `TemplateService` keeps the templates
+  validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `TemplateService` keeps the templates
   per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
 - `mail`: the e-mail text (`MailTextService`: the admin default, the template of an invoice, the placeholders) and the
   sending (`MailService` over SMTP from `MailProperties`, `IM_SMTP_*`; a sent e-mail records a dispatch `EMAIL_APP`)

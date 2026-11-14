@@ -33,6 +33,8 @@ public class PaymentService {
              WHERE id = :id AND status <> :status AND status <> 'CANCELLED'""";
     static final String NOT_ISSUED = "Erst ausstellen, dann Zahlungen erfassen.";
     static final String CANCELLED = "Eine stornierte Rechnung bekommt nur noch Rückzahlungen, mit Minus.";
+    static final String ON_ORIGINAL = "Eine Stornorechnung bekommt keine Zahlungen. Erstattungen gehören zur "
+            + "stornierten Rechnung.";
     static final int MAX_NOTE = 500;
     static final int MAX_INTEGER_DIGITS = 10;
     static final int MAX_DECIMALS = 2;
@@ -99,6 +101,9 @@ public class PaymentService {
         Invoice invoice = invoices.find(invoiceId).orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));
         if (invoice.isDraft()) {
             throw new InvoiceException(List.of(NOT_ISSUED));
+        }
+        if (invoices.cancelled(invoice).isPresent()) {
+            throw new InvoiceException(List.of(ON_ORIGINAL));
         }
         jdbc.sql(LOCK).param("id", invoiceId).query(Long.class).single();
         String note = Fields.text(form.getNote());

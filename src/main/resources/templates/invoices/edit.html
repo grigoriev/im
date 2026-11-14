@@ -10,8 +10,12 @@
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
     <a th:href="@{/rechnungen}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
     <div>
-      <div class="text-xs uppercase tracking-wider text-base-content/75" th:text="${invoice.status.label}">Entwurf</div>
+      <div class="text-xs uppercase tracking-wider text-base-content/75"
+           th:text="${cancelled != null ? 'Stornorechnung · ' + invoice.status.label : invoice.status.label}">Entwurf</div>
       <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="${customer}">Kunde</h1>
+      <p class="text-sm text-base-content/75 mt-1" th:if="${cancelled != null}" id="cancels">
+        Storniert vollständig die <a class="link" th:href="@{/rechnungen/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
+        Positionen und Format kommen aus dieser Rechnung. Mit dem Ausstellen ist sie storniert.</p>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -24,7 +28,7 @@
       <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3 @container">
         <h2 class="font-semibold">Rechnungsdaten</h2>
         <label class="floating-label"><span>E-Rechnungsformat</span>
-          <select id="invoice-format" th:field="*{format}" class="select w-full">
+          <select id="invoice-format" th:field="*{format}" class="select w-full" th:disabled="${cancelled != null}">
             <option th:each="format : ${formatOrder}" th:value="${format}" th:text="${formats.get(format)}">Format</option>
           </select>
         </label>
@@ -52,6 +56,20 @@
           <textarea id="invoice-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
 
+        <div th:if="${cancelled != null}" class="grid gap-2" id="cancel-lines">
+          <span class="text-sm font-medium">Positionen</span>
+          <ul class="grid gap-1 text-sm">
+            <li th:each="line : ${invoice.lines}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+              <span class="[overflow-wrap:anywhere]" th:text="${line.text}">Lesung</span>
+              <span class="num" th:text="${#numbers.formatDecimal(line.toInvoiceLine().netAmount(), 1, 'POINT', 2, 'COMMA')} + ' €'">400,00 €</span>
+            </li>
+          </ul>
+          <div class="text-right" th:if="${document != null}">
+            <div class="text-xs text-base-content/75">Gesamtbetrag</div>
+            <div class="text-xl font-semibold num" id="cancel-total" th:text="${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
+          </div>
+        </div>
+        <th:block th:if="${cancelled == null}">
         <th:block th:replace="~{fragments/lines :: lines(~{::#invoice-totals})}">
           <div class="text-right" th:if="${document != null}" id="invoice-totals">
             <div class="text-sm num" th:if="${!document.vatAmounts().isEmpty()}"
@@ -61,6 +79,7 @@
             <div class="text-xs text-base-content/75">Gesamtbetrag</div>
             <div class="text-xl font-semibold num" th:text="${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
           </div>
+        </th:block>
         </th:block>
 
         <label class="grid gap-1.5"><span class="text-sm font-medium">Steuerhinweis</span>

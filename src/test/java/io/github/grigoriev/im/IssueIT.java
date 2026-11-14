@@ -312,4 +312,67 @@ class IssueIT {
         assertThatThrownBy(() -> jdbc.update("INSERT INTO payment (invoice_id, paid_on, amount, username, created_at) "
                 + "VALUES (?, '2018-05-21', 0, 'x', now())", id)).hasMessageContaining("check");
     }
+
+    @Test
+    void aStornorechnungCancelsItsInvoiceInTheSameTransaction() {
+        Invoice paid = draft(verlag, LocalDate.of(2017, 3, 1));
+        long id = paid.id();
+        issues.issue(id, paid.version());
+        payments.add(id, payment(LocalDate.of(2017, 3, 10), "400,00"));
+        assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.PAID);
+
+        Invoice storno = invoices.createCancellation(id);
+        assertThatThrownBy(() -> invoices.createCancellation(id)).as("one Stornorechnung per invoice")
+                .hasMessage("Zu dieser Rechnung gibt es schon eine Stornorechnung.");
+        assertThatThrownBy(() -> invoices.createCancellation(storno.id())).hasMessageContaining("Stornieren lässt sich nur");
+        assertThat(invoices.cancellation(invoices.find(id).orElseThrow())).map(Invoice::id).contains(storno.id());
+
+        DraftForm form = DraftForm.of(storno);
+        form.setIssueDate(LocalDate.of(2017, 4, 3));
+        form.getLines().getFirst().setAmount("1");
+        Invoice saved = invoices.saveDraft(storno.id(), form);
+        assertThat(saved.lines()).as("the lines stay those of the invoice").isEqualTo(paid.lines());
+
+        String number = issues.issue(saved.id(), saved.version());
+        assertThat(number).isEqualTo("2017-02");
+        assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.CANCELLED);
+        InvoiceDocument snapshot = documents.restore(invoices.find(storno.id()).orElseThrow().snapshot());
+        assertThat(snapshot.cancels()).isEqualTo(new io.github.grigoriev.im.einvoice.InvoiceReference("2017-01",
+                LocalDate.of(2017, 3, 1)));
+        assertThat(snapshot.total()).isEqualByComparingTo("400.00");
+        assertThat(new String(documents.find(storno.id(), DocumentKind.XML).orElseThrow().content(),
+                StandardCharsets.UTF_8)).contains("<ram:TypeCode>381</ram:TypeCode>");
+        assertThat(audit.history(id)).extracting(AuditEvent::action).endsWith(AuditAction.INVOICE_CANCELLED);
+
+        assertThatThrownBy(() -> payments.add(storno.id(), payment(LocalDate.of(2017, 4, 5), "-400,00")))
+                .hasMessage("Eine Stornorechnung bekommt keine Zahlungen. Erstattungen gehören zur stornierten Rechnung.");
+        assertThat(payments.add(id, payment(LocalDate.of(2017, 4, 5), "-400,00"))).as("the refund on the invoice")
+                .isEqualTo(InvoiceStatus.CANCELLED);
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET cancels_id = NULL WHERE id = ?", storno.id()))
+                .hasMessageContaining("immutable");
+    }
+
+    @Test
+    void aDeletedStornoDraftFreesTheInvoice() {
+        Invoice issued = draft(verlag, LocalDate.of(2016, 5, 1));
+        issues.issue(issued.id(), issued.version());
+        Invoice storno = invoices.createCancellation(issued.id());
+        invoices.deleteDraft(storno.id());
+        assertThat(invoices.cancellation(invoices.find(issued.id()).orElseThrow())).isEmpty();
+        assertThat(invoices.createCancellation(issued.id()).id()).isNotEqualTo(storno.id());
+    }
+
+    @Test
+    void anInvoiceCancelledInTheMeantimeKeepsTheStornoADraft() {
+        Invoice issued = draft(verlag, LocalDate.of(2015, 6, 1));
+        issues.issue(issued.id(), issued.version());
+        Invoice storno = invoices.createCancellation(issued.id());
+        Invoice complete = invoices.find(storno.id()).orElseThrow();
+        jdbc.update("UPDATE invoice SET status = 'CANCELLED', version = version + 1 WHERE id = ?", issued.id());
+        assertThatThrownBy(() -> issues.issue(complete.id(), complete.version()))
+                .hasMessage("Die Rechnung 2015-01 ist schon storniert. Die Stornorechnung bleibt ein Entwurf.");
+        assertThat(invoices.find(storno.id()).orElseThrow().isDraft()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT next_number FROM number_sequence WHERE year = 2015", Integer.class))
+                .as("no number lost").isEqualTo(2);
+    }
 }
