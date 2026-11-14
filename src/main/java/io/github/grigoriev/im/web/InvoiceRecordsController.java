@@ -80,7 +80,7 @@ public class InvoiceRecordsController {
             return TO_INVOICE + id;
         }
         try {
-            InvoiceStatus status = payments.record(id, form);
+            InvoiceStatus status = payments.add(id, form);
             flash.addFlashAttribute(SUCCESS, status == InvoiceStatus.PAID ? "Zahlung erfasst. Die Rechnung ist bezahlt."
                     : "Zahlung erfasst.");
         } catch (InvoiceException e) {

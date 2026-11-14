@@ -290,10 +290,10 @@ class IssueIT {
         long id = draft.id();
         issues.issue(id, draft.version());
         LocalDate day = LocalDate.of(2018, 5, 20);
-        assertThat(payments.record(id, payment(day, "150,00"))).isEqualTo(InvoiceStatus.ISSUED);
-        assertThat(payments.record(id, payment(day, "250,00"))).isEqualTo(InvoiceStatus.PAID);
+        assertThat(payments.add(id, payment(day, "150,00"))).isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(payments.add(id, payment(day, "250,00"))).isEqualTo(InvoiceStatus.PAID);
         assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.PAID);
-        assertThat(payments.record(id, payment(day, "-50,00"))).as("a refund reopens it").isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(payments.add(id, payment(day, "-50,00"))).as("a refund reopens it").isEqualTo(InvoiceStatus.ISSUED);
         assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.ISSUED);
         PaymentService.Payments summary = payments.summary(invoices.find(id).orElseThrow());
         assertThat(summary.entries()).hasSize(3);

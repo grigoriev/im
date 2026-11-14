@@ -91,7 +91,7 @@ class PaymentServiceTest {
 
     @Test
     void aFullPaymentMakesTheInvoicePaid() {
-        assertThat(service.record(5, form(TODAY, "480,00", " Überweisung "))).isEqualTo(InvoiceStatus.PAID);
+        assertThat(service.add(5, form(TODAY, "480,00", " Überweisung "))).isEqualTo(InvoiceStatus.PAID);
         verify(lock).param("id", 5L);
         verify(locked).single();
         verify(repository).save(new Payment(null, 5L, TODAY, new BigDecimal("480.00"), "Überweisung", "system", NOW));
@@ -115,16 +115,16 @@ class PaymentServiceTest {
             paid("480.00");
         }
         when(dispatches.existsByInvoiceId(5)).thenReturn(sent);
-        assertThat(service.record(5, form(TODAY, amount, null))).isEqualTo(after);
+        assertThat(service.add(5, form(TODAY, amount, null))).isEqualTo(after);
         verify(status).param("status", after.name());
     }
 
     @Test
     void partialPaymentsAddUp() {
         paid("200.00");
-        assertThat(service.record(5, form(ISSUED_ON, "279,99", null))).isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(service.add(5, form(ISSUED_ON, "279,99", null))).isEqualTo(InvoiceStatus.ISSUED);
         paid("279.99");
-        assertThat(service.record(5, form(ISSUED_ON, "0,01", null))).isEqualTo(InvoiceStatus.PAID);
+        assertThat(service.add(5, form(ISSUED_ON, "0,01", null))).isEqualTo(InvoiceStatus.PAID);
         verify(audit).add(5L, AuditAction.PAYMENT_RECORDED, "2027-01, 10.03.2027, 0,01 €");
     }
 
@@ -132,24 +132,24 @@ class PaymentServiceTest {
     void aCancelledInvoiceTakesRefundsOnly() {
         is(InvoiceStatus.CANCELLED);
         paid("480.00");
-        assertThat(service.record(5, form(TODAY, "-480,00", "Rückzahlung"))).isEqualTo(InvoiceStatus.CANCELLED);
+        assertThat(service.add(5, form(TODAY, "-480,00", "Rückzahlung"))).isEqualTo(InvoiceStatus.CANCELLED);
         verify(status, never()).update();
-        assertThatThrownBy(() -> service.record(5, form(TODAY, "10", null)))
+        assertThatThrownBy(() -> service.add(5, form(TODAY, "10", null)))
                 .hasMessage("Eine stornierte Rechnung bekommt nur noch Rückzahlungen, mit Minus.");
     }
 
     @Test
     void aRefundNeverExceedsThePayments() {
         paid("100.00");
-        assertThatThrownBy(() -> service.record(5, form(TODAY, "-100,01", null)))
+        assertThatThrownBy(() -> service.add(5, form(TODAY, "-100,01", null)))
                 .hasMessage("Die Rückzahlung ist höher als die Zahlungen bisher (100,00 €).");
-        assertThat(service.record(5, form(TODAY, "-100", null))).isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(service.add(5, form(TODAY, "-100", null))).isEqualTo(InvoiceStatus.ISSUED);
     }
 
     @Test
     void refusesWrongValues() {
         InvoiceException e = catchThrowableOfType(InvoiceException.class,
-                () -> service.record(5, form(null, " ", "n".repeat(501))));
+                () -> service.add(5, form(null, " ", "n".repeat(501))));
         assertThat(e.problems()).containsExactly("Bitte den Tag des Zahlungseingangs angeben.", "Bitte den Betrag angeben.",
                 "Die Notiz hat höchstens 500 Zeichen.");
         assertThat(problems(form(TODAY.plusDays(1), "1.500", "n".repeat(500))))
@@ -168,21 +168,21 @@ class PaymentServiceTest {
 
     @Test
     void keepsTheLargestAmountAndTrailingZeros() {
-        service.record(5, form(TODAY, "1234567890,100", null));
+        service.add(5, form(TODAY, "1234567890,100", null));
         verify(repository).save(new Payment(null, 5L, TODAY, new BigDecimal("1234567890.10"), null, "system", NOW));
     }
 
     private List<String> problems(PaymentForm form) {
-        return catchThrowableOfType(InvoiceException.class, () -> service.record(5, form)).problems();
+        return catchThrowableOfType(InvoiceException.class, () -> service.add(5, form)).problems();
     }
 
     @Test
     void refusesADraftAndAnUnknownInvoice() {
         PaymentForm form = form(TODAY, "10", null);
         is(InvoiceStatus.DRAFT);
-        assertThatThrownBy(() -> service.record(5, form)).hasMessage("Erst ausstellen, dann Zahlungen erfassen.");
+        assertThatThrownBy(() -> service.add(5, form)).hasMessage("Erst ausstellen, dann Zahlungen erfassen.");
         when(invoices.find(6)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.record(6, form)).hasMessage("Diese Rechnung gibt es nicht.");
+        assertThatThrownBy(() -> service.add(6, form)).hasMessage("Diese Rechnung gibt es nicht.");
         verify(repository, never()).save(any());
     }
 

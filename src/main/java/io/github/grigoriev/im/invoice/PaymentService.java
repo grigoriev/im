@@ -95,7 +95,7 @@ public class PaymentService {
      * @throws InvoiceException if the invoice is unknown or a draft, or a value is wrong
      */
     @Transactional
-    public InvoiceStatus record(long invoiceId, PaymentForm form) {
+    public InvoiceStatus add(long invoiceId, PaymentForm form) {
         Invoice invoice = invoices.find(invoiceId).orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));
         if (invoice.isDraft()) {
             throw new InvoiceException(List.of(NOT_ISSUED));

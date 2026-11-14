@@ -624,24 +624,24 @@ class SecurityWebTest {
 
     @Test
     void recordsAPayment() throws Exception {
-        when(payments.record(org.mockito.ArgumentMatchers.eq(6L), any()))
+        when(payments.add(org.mockito.ArgumentMatchers.eq(6L), any()))
                 .thenReturn(io.github.grigoriev.im.invoice.InvoiceStatus.PAID);
         mvc.perform(post("/rechnungen/6/zahlungen").param("paidOn", "2027-03-19").param("amount", "480,00")
                         .param("note", "Überweisung").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/rechnungen/6"))
                 .andExpect(flash().attribute("success", "Zahlung erfasst. Die Rechnung ist bezahlt."));
         var form = org.mockito.ArgumentCaptor.forClass(io.github.grigoriev.im.invoice.PaymentForm.class);
-        verify(payments).record(org.mockito.ArgumentMatchers.eq(6L), form.capture());
+        verify(payments).add(org.mockito.ArgumentMatchers.eq(6L), form.capture());
         org.assertj.core.api.Assertions.assertThat(form.getValue().getPaidOn()).isEqualTo(java.time.LocalDate.of(2027, 3, 19));
         org.assertj.core.api.Assertions.assertThat(form.getValue().getAmount()).isEqualTo("480,00");
         org.assertj.core.api.Assertions.assertThat(form.getValue().getNote()).isEqualTo("Überweisung");
 
-        when(payments.record(org.mockito.ArgumentMatchers.eq(7L), any()))
+        when(payments.add(org.mockito.ArgumentMatchers.eq(7L), any()))
                 .thenReturn(io.github.grigoriev.im.invoice.InvoiceStatus.SENT);
         mvc.perform(post("/rechnungen/7/zahlungen").param("paidOn", "2027-03-19").param("amount", "100")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(flash().attribute("success", "Zahlung erfasst."));
-        when(payments.record(org.mockito.ArgumentMatchers.eq(8L), any()))
+        when(payments.add(org.mockito.ArgumentMatchers.eq(8L), any()))
                 .thenThrow(new InvoiceException(List.of("Der Betrag ist 0.")));
         mvc.perform(post("/rechnungen/8/zahlungen").param("paidOn", "2027-03-19").param("amount", "0")
                         .with(user("elena").roles("USER")).with(csrf()))
