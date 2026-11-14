@@ -225,7 +225,8 @@ public class ThresholdService {
 
     /**
      * Splits one payment as {@link #row(LocalDate, BigDecimal, String, String, InvoiceDocument)} does, with the business
-     * the issue froze. An invoice issued before the business existed belongs to teaching if all its lines are teaching.
+     * the issue froze; {@code null} for an invoice issued before the business existed, which the report splits by its
+     * tax categories.
      */
     static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document,
             String activity) {
@@ -236,9 +237,7 @@ public class ThresholdService {
         BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS));
         return new RevenueRow(paidOn, number,
                 Customer.label(document.buyer().name(), document.buyer().contactName()), amount, counted, amount.subtract(counted),
-                byCategory, note, activity != null ? Activity.valueOf(activity)
-                        : document.lines().stream().allMatch(line -> line.category() == TaxCategory.EXEMPT_4_21)
-                                ? Activity.TEACHING : Activity.OTHER);
+                byCategory, note, activity == null ? null : Activity.valueOf(activity));
     }
 
     /** The gross amount per category: its net lines plus, for a standard rate, the VAT of that rate. */

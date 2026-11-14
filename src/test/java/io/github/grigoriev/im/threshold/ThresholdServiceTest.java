@@ -36,9 +36,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
 import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
  * The threshold with a fake database: payments per year with the snapshot of their invoice, and baselines. The sample
@@ -185,19 +185,14 @@ class ThresholdServiceTest {
     }
 
     @Test
-    void aRowCarriesTheFrozenBusinessOrTheOneOfItsLines() {
+    void aRowCarriesTheFrozenBusinessOrNoneForAnOlderInvoice() {
         LocalDate day = LocalDate.of(2027, 1, 2);
         BigDecimal amount = new BigDecimal("5.00");
-        assertThat(ThresholdService.row(day, amount, null, "2027-01", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),
-                "TEACHING").activity()).as("frozen at the issue").isEqualTo(Activity.TEACHING);
-        assertThat(ThresholdService.row(day, amount, null, "2027-01", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931))
-                .activity()).isEqualTo(Activity.OTHER);
-        InvoiceDocument teaching = ItSamples.readingWithoutContact(InvoiceFormat.ZUGFERD_EN16931);
-        teaching = new InvoiceDocument(teaching.number(), teaching.issueDate(), teaching.serviceFrom(), teaching.serviceTo(),
-                teaching.dueDate(), teaching.seller(), teaching.buyer(), null, teaching.iban(), teaching.bic(), null, null,
-                null, teaching.format(), List.of(new InvoiceLine("Kurs", BigDecimal.ONE, new BigDecimal("300.00"), TaxCategory.EXEMPT_4_21, true)), null);
-        assertThat(ThresholdService.row(day, amount, null, "2027-01", teaching).activity())
-                .as("issued before the business: teaching only").isEqualTo(Activity.TEACHING);
+        InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        assertThat(ThresholdService.row(day, amount, null, "2027-01", reading, "TEACHING").activity())
+                .as("frozen at the issue").isEqualTo(Activity.TEACHING);
+        assertThat(ThresholdService.row(day, amount, null, "2027-01", reading).activity())
+                .as("issued before the business existed").isNull();
     }
 
     @Test

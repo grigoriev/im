@@ -89,6 +89,8 @@
                 <option th:each="format : ${formatOrder}" th:value="${format}" th:text="${formats.get(format)}">Format</option>
               </select>
             </label>
+            <!-- Without a second tax number the choice stays as it is, hidden. -->
+            <input type="hidden" th:field="*{activity}" th:unless="${twoTaxNumbers}">
             <label class="floating-label" th:if="${twoTaxNumbers}"><span>Tätigkeit</span>
               <select id="customer-activity" th:field="*{activity}" class="select w-full">
                 <option value="">Aus den Positionen</option>

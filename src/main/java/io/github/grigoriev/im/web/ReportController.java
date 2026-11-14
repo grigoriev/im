@@ -160,9 +160,35 @@ public class ReportController {
         }
         return List.of(
                 new Business("-teaching", Activity.TEACHING.label(), seller.taxNumberTeaching(),
-                        totals(rows.stream().filter(row -> row.activity() == Activity.TEACHING).toList())),
+                        totals(rows.stream().map(row -> part(row, Activity.TEACHING)).toList())),
                 new Business("-other", Activity.OTHER.label(), taxNumber,
-                        totals(rows.stream().filter(row -> row.activity() != Activity.TEACHING).toList())));
+                        totals(rows.stream().map(row -> part(row, Activity.OTHER)).toList())));
+    }
+
+    /**
+     * The part of a payment that belongs to a business: all of it with the business the issue froze, nothing of it with
+     * the other one. An invoice issued before the business existed splits by its tax categories: teaching under §4 Nr. 21
+     * to teaching, the rest to the other business.
+     */
+    static RevenueRow part(RevenueRow row, Activity activity) {
+        if (row.activity() != null) {
+            return row.activity() == activity ? row : empty(row);
+        }
+        Map<TaxCategory, BigDecimal> byCategory = new EnumMap<>(TaxCategory.class);
+        row.byCategory().forEach((category, amount) -> {
+            if ((category == TaxCategory.EXEMPT_4_21) == (activity == Activity.TEACHING)) {
+                byCategory.put(category, amount);
+            }
+        });
+        BigDecimal amount = sum(List.copyOf(byCategory.values()));
+        BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO);
+        return new RevenueRow(row.paidOn(), row.number(), row.customer(), amount, counted, amount.subtract(counted),
+                byCategory, row.note(), activity);
+    }
+
+    private static RevenueRow empty(RevenueRow row) {
+        return new RevenueRow(row.paidOn(), row.number(), row.customer(), BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, Map.of(), row.note(), row.activity());
     }
 
     /**

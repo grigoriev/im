@@ -736,6 +736,19 @@ class InvoiceServiceTest {
     }
 
     @Test
+    void aStornorechnungKeepsTheBusinessOfItsInvoiceOnASave() {
+        Invoice storno = withActivity(new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
+                TODAY, TODAY, 0, null, null, null, null, List.of(lump("Kurs", "300", TaxCategory.NOT_TAXABLE_ABROAD)), NOW,
+                NOW, 0L, null, null, null), Activity.TEACHING);
+        when(repository.findById(5L)).thenReturn(Optional.of(storno));
+        when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
+        DraftForm form = DraftForm.of(storno);
+        form.setActivity(null);
+        assertThat(service.saveDraft(5, form).activity()).as("the editor sends no business for a Stornorechnung")
+                .isEqualTo(Activity.TEACHING);
+    }
+
+    @Test
     void aStornorechnungKeepsTheTaxStatusOfItsInvoice() {
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,

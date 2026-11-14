@@ -128,6 +128,16 @@ class ReportControllerTest {
         assertThat(other.totals().total()).isEqualByComparingTo("100.00");
         assertThat(other.totals().excluded()).isEqualByComparingTo("0");
         assertThat(other.totals().counted()).isEqualByComparingTo("100.00");
+
+        // An invoice issued before the business existed: its teaching part goes to teaching, the rest to the other one.
+        RevenueRow older = row("560.00", "200.00", null);
+        List<ReportController.Business> legacy = ReportController.businesses(List.of(older), two);
+        assertThat(legacy.get(0).totals().total()).isEqualByComparingTo("360.00");
+        assertThat(legacy.get(0).totals().counted()).isEqualByComparingTo("0");
+        assertThat(legacy.get(1).totals().total()).isEqualByComparingTo("200.00");
+        assertThat(legacy.get(1).totals().counted()).isEqualByComparingTo("200.00");
+        assertThat(ReportController.part(uzbekistan, Activity.OTHER).amount()).as("frozen elsewhere: nothing")
+                .isEqualByComparingTo("0");
     }
 
     @Test

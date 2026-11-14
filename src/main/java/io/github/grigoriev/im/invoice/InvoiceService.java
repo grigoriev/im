@@ -208,7 +208,7 @@ public class InvoiceService {
                     form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
                     text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()),
                     text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version(), null, null,
-                    form.getActivity()));
+                    cancellation ? draft.activity() : form.getActivity()));
         } catch (OptimisticLockingFailureException _) {
             // Two saves of one version at the same moment: the database lets the first win.
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
@@ -334,6 +334,18 @@ public class InvoiceService {
         }
     }
 
+    /** With two tax numbers, the lines must fit the business that picks the tax number. */
+    private static void activityProblems(Invoice invoice, Set<TaxCategory> used, List<String> problems) {
+        Activity activity = activity(invoice);
+        if (activity == Activity.TEACHING && used.stream()
+                .anyMatch(category -> category == TaxCategory.KLEINUNTERNEHMER || category.chargesVat())) {
+            problems.add(TEACHING_LINES);
+        }
+        if (activity == Activity.OTHER && used.contains(TaxCategory.EXEMPT_4_21)) {
+            problems.add(OTHER_LINES);
+        }
+    }
+
     private static void taxProblems(Invoice invoice, Optional<SellerProfile> seller, Optional<Customer> customer,
             List<String> problems, boolean cancellation) {
         Set<TaxCategory> used = new LinkedHashSet<>();
@@ -347,14 +359,7 @@ public class InvoiceService {
             problems.add(TEACHING_ALONE);
         }
         if (!cancellation && seller.map(SellerProfile::twoTaxNumbers).orElse(false)) {
-            Activity activity = activity(invoice);
-            if (activity == Activity.TEACHING && used.stream()
-                    .anyMatch(category -> category == TaxCategory.KLEINUNTERNEHMER || category.chargesVat())) {
-                problems.add(TEACHING_LINES);
-            }
-            if (activity == Activity.OTHER && used.contains(TaxCategory.EXEMPT_4_21)) {
-                problems.add(OTHER_LINES);
-            }
+            activityProblems(invoice, used, problems);
         }
         if (status == TaxStatus.KLEINUNTERNEHMER && used.stream().anyMatch(TaxCategory::chargesVat)) {
             problems.add("Als Kleinunternehmer stellen Sie keine Umsatzsteuer in Rechnung (§ 19 UStG).");

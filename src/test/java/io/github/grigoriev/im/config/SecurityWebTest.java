@@ -1218,7 +1218,8 @@ class SecurityWebTest {
     void offersTheBusinessWithTwoTaxNumbersOnly() throws Exception {
         when(customers.list()).thenReturn(List.of());
         mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("customer-activity"))));
+                .andExpect(content().string(Matchers.not(Matchers.containsString("customer-activity"))))
+                .andExpect(content().string(Matchers.containsString("<input type=\"hidden\" id=\"activity\" name=\"activity\"")));
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
