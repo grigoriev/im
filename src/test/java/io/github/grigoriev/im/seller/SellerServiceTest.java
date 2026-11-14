@@ -30,7 +30,8 @@ class SellerServiceTest {
     void statement() {
         when(jdbc.sql(anyString())).thenReturn(statement);
         when(statement.param(anyString(), any())).thenReturn(statement);
-        when(statement.query()).thenReturn(mock(JdbcClient.ResultQuerySpec.class));
+        JdbcClient.ResultQuerySpec rows = mock(JdbcClient.ResultQuerySpec.class);
+        when(statement.query()).thenReturn(rows);
     }
 
     private static SellerProfile with(String field, String value) {
