@@ -55,12 +55,14 @@ class MustangInvoiceMapperTest {
     void mapsAStornorechnungAsCreditNote() {
         Invoice invoice = mapper.toMustang(SampleInvoices.cancellation(InvoiceFormat.ZUGFERD_EN16931));
         assertThat(invoice.getDocumentCode()).isEqualTo("381");
-        assertThat(invoice.getInvoiceReferencedDocumentID()).isEqualTo("2027-07");
-        assertThat(invoice.getInvoiceReferencedIssueDate()).isEqualTo(utc(DAY.minusDays(10)));
+        assertThat(invoice.getInvoiceReferencedDocuments()).singleElement().satisfies(reference -> {
+            assertThat(reference.getIssuerAssignedID()).isEqualTo("2027-07");
+            assertThat(reference.getFormattedIssueDateTime()).isEqualTo(utc(DAY.minusDays(10)));
+        });
         assertThat(invoice.getPaymentTermDescription()).isEqualTo("Storno der Rechnung 2027-07");
         Invoice plain = mapper.toMustang(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         assertThat(plain.getDocumentCode()).as("380 on export, see EInvoiceServiceTest").isNull();
-        assertThat(plain.getInvoiceReferencedDocumentID()).isNull();
+        assertThat(plain.getInvoiceReferencedDocuments()).isNullOrEmpty();
     }
 
     @Test

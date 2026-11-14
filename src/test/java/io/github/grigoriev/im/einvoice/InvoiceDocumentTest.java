@@ -254,9 +254,9 @@ class InvoiceDocumentTest {
 
     @Test
     void knowsAStornorechnung() {
-        assertThat(SampleInvoices.reading(ZUGFERD).isCancellation()).isFalse();
+        assertThat(SampleInvoices.reading(ZUGFERD).cancellation()).isFalse();
         InvoiceDocument cancellation = SampleInvoices.cancellation(ZUGFERD);
-        assertThat(cancellation.isCancellation()).isTrue();
+        assertThat(cancellation.cancellation()).isTrue();
         assertThat(cancellation.cancels()).isEqualTo(new InvoiceReference("2027-07", DAY.minusDays(10)));
         assertThatThrownBy(() -> new InvoiceReference(null, DAY)).hasMessage("number");
         assertThatThrownBy(() -> new InvoiceReference("1", null)).hasMessage("issueDate");

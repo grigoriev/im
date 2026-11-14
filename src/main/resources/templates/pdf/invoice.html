@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="de">
 <head>
   <meta charset="utf-8"/>
-  <title th:text="${(invoice.cancellation ? 'Stornorechnung ' : 'Rechnung ') + invoice.number}">Rechnung</title>
+  <title th:text="${(invoice.cancellation() ? 'Stornorechnung ' : 'Rechnung ') + invoice.number}">Rechnung</title>
   <style>
     @page { size: A4; margin: 22mm 20mm 30mm 22mm;
       @bottom-left { content: element(footer); vertical-align: top; width: 168mm; } }
@@ -57,7 +57,7 @@
         <table class="meta" role="presentation">
           <tr><td>Rechnungsnummer</td><td class="strong" th:text="${invoice.number}">2027-01</td></tr>
           <tr><td>Rechnungsdatum</td><td th:text="${fmt.date(invoice.issueDate)}">01.01.2027</td></tr>
-          <tr th:if="${invoice.cancellation}"><td>Storno zu</td><td th:text="${invoice.cancels.number + ' vom ' + fmt.date(invoice.cancels.issueDate)}">2027-01 vom 01.01.2027</td></tr>
+          <tr th:if="${invoice.cancellation()}"><td>Storno zu</td><td th:text="${invoice.cancels.number + ' vom ' + fmt.date(invoice.cancels.issueDate)}">2027-01 vom 01.01.2027</td></tr>
           <tr><td>Leistungszeitraum</td><td th:text="${fmt.period(invoice.serviceFrom, invoice.serviceTo)}">01.01.2027</td></tr>
           <tr th:if="${invoice.seller.taxNumber != null}"><td>Steuernummer</td><td th:text="${invoice.seller.taxNumber}">000/000/00000</td></tr>
           <tr th:if="${invoice.seller.vatId != null}"><td>USt-IdNr.</td><td th:text="${invoice.seller.vatId}">DE000000000</td></tr>
@@ -66,7 +66,7 @@
     </tr>
   </table>
 
-  <h1 th:text="${invoice.cancellation ? 'Stornorechnung' : 'Rechnung'}">Rechnung</h1>
+  <h1 th:text="${invoice.cancellation() ? 'Stornorechnung' : 'Rechnung'}">Rechnung</h1>
   <p>Sehr geehrte Damen und Herren,</p>
   <p th:if="${invoice.intro != null}" th:text="${invoice.intro}">Einleitung</p>
 
@@ -93,8 +93,8 @@
   </table>
 
   <div class="note" th:unless="${invoice.effectiveTaxNote().isEmpty()}" th:text="${invoice.effectiveTaxNote()}">Steuerhinweis</div>
-  <p th:unless="${invoice.cancellation}" th:text="'Bitte überweisen Sie den Betrag bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
-  <p th:if="${invoice.cancellation}" th:text="'Diese Stornorechnung hebt die Rechnung ' + ${invoice.cancels.number} + ' vom ' + ${fmt.date(invoice.cancels.issueDate)} + ' vollständig auf. Bereits gezahlte Beträge werden erstattet.'">Storno</p>
+  <p th:unless="${invoice.cancellation()}" th:text="'Bitte überweisen Sie den Betrag bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
+  <p th:if="${invoice.cancellation()}" th:text="'Diese Stornorechnung hebt die Rechnung ' + ${invoice.cancels.number} + ' vom ' + ${fmt.date(invoice.cancels.issueDate)} + ' vollständig auf. Bereits gezahlte Beträge werden erstattet.'">Storno</p>
   <p th:if="${invoice.closing != null}" th:text="${invoice.closing}">Schlusstext</p>
 </body>
 </html>

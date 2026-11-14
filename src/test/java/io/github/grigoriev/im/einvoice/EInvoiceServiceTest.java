@@ -73,7 +73,7 @@ class EInvoiceServiceTest {
         assertThat(xml).as("Mustang computes the same totals")
                 .contains("<ram:GrandTotalAmount>" + document.total().toPlainString() + "</ram:GrandTotalAmount>")
                 .contains("<ram:TaxBasisTotalAmount>" + document.netTotal().toPlainString() + "</ram:TaxBasisTotalAmount>");
-        if (document.isCancellation()) {
+        if (document.cancellation()) {
             assertThat(xml).as("a credit note that names the cancelled invoice")
                     .contains("<ram:TypeCode>381</ram:TypeCode>")
                     .containsPattern("<ram:InvoiceReferencedDocument>\\s*<ram:IssuerAssignedID>2027-07</ram:IssuerAssignedID>")

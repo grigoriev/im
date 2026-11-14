@@ -117,7 +117,7 @@ public record InvoiceDocument(
      *
      * @return {@code true} if it cancels an invoice
      */
-    public boolean isCancellation() {
+    public boolean cancellation() {
         return cancels != null;
     }
 
