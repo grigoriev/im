@@ -69,7 +69,7 @@ Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontai
 
 - Conventional Commits without scope, signed commits, squash merge.
 - No em-dashes in code, comments, docs or commit messages. American spelling.
-- Buttons of a form or dialog sit on one line at its right edge (`form-actions`, `modal-foot`); a dialog grows wider instead of wrapping them. Every button has an icon; destructive ones are `btn-danger`, their confirmation `btn-error`.
+- Buttons of a form or dialog sit on one line at its right edge (`form-actions`, `modal-foot`); a dialog grows wider instead of wrapping them, and only a phone, where it cannot, wraps them. Every button has an icon; destructive ones are `btn-danger`, their confirmation `btn-error`.
 - Amounts in `BigDecimal`, never `double`. Dates as `LocalDate`, time from an injected `Clock`.
 
 ## Reviews

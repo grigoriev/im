@@ -78,7 +78,7 @@ function enhanceSelect(select) {
   let before = select.selectedIndex;
   // The active entry is also the value of the select, so a screen reader announces it as the arrows move.
   const activate = (item, follow = true) => {
-    options.querySelectorAll('[data-active]').forEach((other) => other.removeAttribute('data-active'));
+    options.querySelectorAll('[data-active]').forEach((other) => delete other.dataset.active);
     if (!item) return;
     item.dataset.active = '';
     item.scrollIntoView({ block: 'nearest' });
