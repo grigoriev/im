@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Vorjahre · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Einstellungen', 'settings', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+    <div th:replace="~{fragments/settings :: tabs('baseline')}"></div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4 @container">
+      <div>
+        <h2 class="font-semibold">Umsatz nach § 19 UStG vor der App</h2>
+        <p class="text-sm text-base-content/75">Für die Kleinunternehmergrenze zählt der Umsatz des Vorjahres. Für Jahre vor dem
+          Start der App tragen Sie ihn hier ein, nach Zahlungseingang und ohne Unterricht nach § 4 Nr. 21. Ein leeres Feld
+          entfernt den Eintrag.</p>
+      </div>
+      <form class="grid gap-3 @lg:grid-cols-[8rem_minmax(0,1fr)_auto] items-end" th:action="@{/admin/vorjahre}" method="post" id="baseline-form">
+        <label class="floating-label"><span>Jahr</span>
+          <input id="baseline-year" data-volatile name="year" type="number" class="input w-full num" min="2000" th:max="${lastYear}" th:value="${defaultYear}" required>
+        </label>
+        <label class="floating-label"><span>Umsatz in €</span>
+          <input id="baseline-amount" name="amount" class="input w-full num" inputmode="decimal" maxlength="20" placeholder="18.250,00">
+        </label>
+        <button type="submit" class="btn btn-primary">Speichern</button>
+      </form>
+      <p class="text-sm text-base-content/75" th:if="${baselines.isEmpty()}">Noch kein Vorjahresumsatz erfasst.</p>
+      <ul class="grid gap-1 text-sm" id="baseline-list" th:unless="${baselines.isEmpty()}">
+        <li th:each="entry : ${baselines}" class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-base-300 last:border-b-0 py-1">
+          <span class="num" th:text="${entry.key}">2026</span>
+          <span class="num" th:text="${#numbers.formatDecimal(entry.value, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+          <form method="post" th:action="@{/admin/vorjahre}">
+            <input type="hidden" name="year" th:value="${entry.key}">
+            <input type="hidden" name="amount" value="">
+            <button type="submit" class="btn btn-ghost btn-xs" th:id="'baseline-remove-' + ${entry.key}"
+                    th:attr="aria-label='Vorjahresumsatz ' + ${entry.key} + ' entfernen'"><i data-lucide="trash-2" class="size-3.5"></i>Entfernen</button>
+          </form>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>

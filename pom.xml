@@ -409,6 +409,8 @@
                         <param>io.github.grigoriev.im.mail.MailService</param>
                         <param>io.github.grigoriev.im.mail.MailProperties</param>
                         <param>io.github.grigoriev.im.mail.MailConfig</param>
+                        <param>io.github.grigoriev.im.threshold.ThresholdService</param>
+                        <param>io.github.grigoriev.im.threshold.Threshold</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>
@@ -420,6 +422,7 @@
                         <param>io.github.grigoriev.im.audit.*Test</param>
                         <param>io.github.grigoriev.im.invoice.*Test</param>
                         <param>io.github.grigoriev.im.mail.*Test</param>
+                        <param>io.github.grigoriev.im.threshold.*Test</param>
                     </targetTests>
                     <!-- These tests run the full validators (KoSIT, veraPDF) and take a minute each. The mutated
                          classes have fast tests of their own, so PIT leaves the slow ones out. -->

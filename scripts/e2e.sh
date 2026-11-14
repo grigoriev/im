@@ -13,6 +13,9 @@ export PLAYWRIGHT_ARGS
 IM_IMAGE="${IM_IMAGE:-im:test}"
 export IM_IMAGE
 if [[ -z "${SKIP_IMAGE_BUILD:-}" ]]; then
+    # The jar has a fixed timestamp (reproducible build). With the same size, Docker Desktop's file sharing and the
+    # build cache can hand over an old jar. A fresh timestamp makes both read the new one.
+    touch target/im.jar
     docker build --tag "$IM_IMAGE" .
 fi
 

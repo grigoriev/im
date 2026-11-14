@@ -95,7 +95,7 @@ public class DraftForm {
      * @param text the entered text
      * @return the amount, or {@code null} if the text is no number
      */
-    static BigDecimal parse(String text) {
+    public static BigDecimal parse(String text) {
         String value = text == null ? "" : text.replace(" ", "").replace("€", "").strip();
         if (AMBIGUOUS.matcher(value).matches()) {
             return null;
@@ -115,7 +115,7 @@ public class DraftForm {
      * @param text the entered text
      * @return {@code true} if the text is ambiguous
      */
-    static boolean ambiguous(String text) {
+    public static boolean ambiguous(String text) {
         return text != null && AMBIGUOUS.matcher(text.replace(" ", "").replace("€", "").strip()).matches();
     }
 

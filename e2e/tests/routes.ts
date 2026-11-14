@@ -11,6 +11,7 @@ export const ROUTES = [
   { name: 'tax-notes', path: '/admin/steuerhinweise', anonymous: false },
   { name: 'numbers', path: '/admin/nummernkreis', anonymous: false },
   { name: 'mail', path: '/admin/e-mail', anonymous: false },
+  { name: 'baseline', path: '/admin/vorjahre', anonymous: false },
   { name: 'countries', path: '/admin/laender', anonymous: false },
   // The entries of the log depend on the run: visual-data.spec.ts takes a screenshot of one entry instead.
   { name: 'audit', path: '/admin/protokoll', anonymous: false, screenshot: false },

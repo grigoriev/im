@@ -7,11 +7,75 @@
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Übersicht', 'home', ~{::content})}">
-  <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4">
-    <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="'Guten Tag, ' + ${currentUser != null ? currentUser.displayName : #authentication.name}">Guten Tag</h1>
-    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-2">
-      <h2 class="font-semibold">Der Rechnungsmanager wird gerade aufgebaut.</h2>
-      <p class="text-sm text-base-content/80">Ab 2027 erstellen Sie hier E-Rechnungen im Format ZUGFeRD und XRechnung.</p>
+  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4 @container">
+    <div>
+      <div class="text-xs uppercase tracking-wider text-base-content/75 num" data-volatile
+           th:text="'Stand ' + ${#temporals.format(today, 'dd.MM.yyyy')}">Stand 18.03.2027</div>
+      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="'Guten Tag, ' + ${currentUser != null ? currentUser.displayName : #authentication.name}">Guten Tag</h1>
+    </div>
+
+    <div class="grid gap-4 @2xl:grid-cols-3" id="tiles">
+      <a th:href="@{/rechnungen}" class="bg-base-100 rounded-box border border-base-300 p-4 hover:border-primary" id="tile-open">
+        <div class="text-xs uppercase tracking-wider text-base-content/75">Offen</div>
+        <div class="text-2xl font-semibold num mt-1" th:text="${#numbers.formatDecimal(openSum, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
+        <div class="text-xs text-base-content/75 mt-1" th:text="${open.size()} + (${open.size() == 1} ? ' Rechnung' : ' Rechnungen')">0 Rechnungen</div>
+      </a>
+      <div class="bg-base-100 rounded-box border border-base-300 p-4" id="tile-overdue">
+        <div class="text-xs uppercase tracking-wider text-base-content/75">Überfällig</div>
+        <div class="text-2xl font-semibold num mt-1" th:classappend="${overdue.isEmpty()} ? '' : 'text-error'"
+             th:text="${#numbers.formatDecimal(overdueSum, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
+        <ul class="text-xs mt-1 grid gap-0.5">
+          <li th:each="item : ${overdue}" class="[overflow-wrap:anywhere]">
+            <a class="link" th:href="@{/rechnungen/{id}(id=${item.invoice.id})}" th:text="${item.invoice.number + ', ' + item.customer}">2027-01, Kunde</a>
+          </li>
+          <li th:if="${overdue.isEmpty()}" class="text-base-content/75">Nichts überfällig.</li>
+        </ul>
+      </div>
+      <div class="bg-base-100 rounded-box border border-base-300 p-4" id="tile-received">
+        <div class="text-xs uppercase tracking-wider text-base-content/75" data-volatile th:text="'Eingegangen ' + ${threshold.year}">Eingegangen 2027</div>
+        <div class="text-2xl font-semibold num mt-1" th:text="${#numbers.formatDecimal(threshold.received, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</div>
+        <div class="text-xs text-base-content/75 mt-1">nach Zahlungseingang, Erstattungen abgezogen</div>
+      </div>
+    </div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-4" id="threshold">
+      <div class="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 class="font-semibold">Kleinunternehmergrenze</h2>
+          <p class="text-xs text-base-content/75">§ 19 UStG, zählt nur Umsätze nach § 19 und nach Zahlungseingang</p>
+        </div>
+        <span class="badge badge-sm whitespace-nowrap" data-volatile th:classappend="${threshold.applies()} ? 'badge-success' : 'badge-error'"
+              th:text="${threshold.applies()} ? 'gilt ' + ${threshold.year} : 'gilt nicht mehr'">gilt 2027</span>
+      </div>
+      <div class="grid gap-1.5">
+        <div class="flex flex-wrap justify-between gap-x-3 text-sm"><span data-volatile th:text="'Vorjahr ' + ${threshold.year - 1}">Vorjahr 2026</span>
+          <span class="num"><span id="threshold-previous" data-volatile th:text="${#numbers.formatDecimal(threshold.previous, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+            <span class="text-base-content/75">/ 25.000 €</span></span></div>
+        <progress data-volatile class="progress w-full" th:classappend="${threshold.previous.compareTo(T(io.github.grigoriev.im.threshold.Threshold).PREVIOUS_LIMIT) > 0} ? 'progress-error' : 'progress-primary'"
+                  max="100" th:value="${T(io.github.grigoriev.im.threshold.Threshold).percent(threshold.previous, T(io.github.grigoriev.im.threshold.Threshold).PREVIOUS_LIMIT)}"></progress>
+        <div class="text-xs text-base-content/75" th:if="${threshold.previousFromBaseline}" data-volatile>Mit dem Vorjahresumsatz aus den Einstellungen.</div>
+      </div>
+      <div class="grid gap-1.5">
+        <div class="flex flex-wrap justify-between gap-x-3 text-sm"><span data-volatile th:text="${threshold.year} + ' bisher'">2027 bisher</span>
+          <span class="num"><span id="threshold-current" data-volatile th:text="${#numbers.formatDecimal(threshold.current, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+            <span class="text-base-content/75">/ 100.000 €</span></span></div>
+        <progress data-volatile class="progress w-full" th:classappend="${threshold.current.compareTo(T(io.github.grigoriev.im.threshold.Threshold).CURRENT_LIMIT) > 0} ? 'progress-error' : 'progress-primary'"
+                  max="100" th:value="${T(io.github.grigoriev.im.threshold.Threshold).percent(threshold.current, T(io.github.grigoriev.im.threshold.Threshold).CURRENT_LIMIT)}"></progress>
+        <div class="text-xs text-base-content/75">Über 100.000 € endet die Regelung sofort.</div>
+      </div>
+      <div class="grid gap-1.5">
+        <div class="flex flex-wrap justify-between gap-x-3 text-sm"><span data-volatile th:text="'Prognose ' + ${threshold.year} + ' für ' + ${threshold.year + 1}">Prognose</span>
+          <span class="num"><span id="threshold-forecast" data-volatile th:text="'≈ ' + ${#numbers.formatDecimal(threshold.forecast, 1, 'POINT', 2, 'COMMA')} + ' €'">≈ 0,00 €</span>
+            <span class="text-base-content/75">/ 25.000 €</span></span></div>
+        <progress data-volatile class="progress w-full" th:classappend="${threshold.nextYearAtRisk()} ? 'progress-warning' : 'progress-primary'"
+                  max="100" th:value="${T(io.github.grigoriev.im.threshold.Threshold).percent(threshold.forecast, T(io.github.grigoriev.im.threshold.Threshold).PREVIOUS_LIMIT)}"></progress>
+        <div class="text-xs text-warning" th:if="${threshold.nextYearAtRisk()}" id="threshold-risk" data-volatile>Bei diesem Tempo gilt die Regelung im nächsten Jahr nicht mehr.</div>
+      </div>
+      <div class="bg-base-200 rounded-field p-3 text-xs grid gap-1">
+        <div class="flex flex-wrap justify-between gap-x-3"><span data-volatile th:text="'Nicht mitgezählt ' + ${threshold.year}">Nicht mitgezählt</span>
+          <span class="num font-medium" id="threshold-excluded" data-volatile th:text="${#numbers.formatDecimal(threshold.excluded, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span></div>
+        <div class="text-base-content/75">Unterricht nach § 4 Nr. 21 UStG und Leistungen an Kunden im Ausland.</div>
+      </div>
     </section>
   </div>
 </div>

@@ -8,11 +8,13 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- `scripts/e2e.sh` refreshes the timestamp of the jar before the image build: with the fixed timestamp of the reproducible build, Docker Desktop could build the image with an old jar.
 - The check of an e-mail address runs in linear time, also for a long crafted input.
 - JetBrains Mono replaces Inter in the app and in the invoice PDF; the PDF embeds the variant without code ligatures. Floating labels stay on one line and never cover their field.
 
 ### Added
 
+- Übersicht: open and overdue invoices, the money received this year, and the Kleinunternehmergrenze: the counted §19 revenue of last year against 25 000 €, of this year against 100 000 €, the forecast for next year and what does not count. A payment counts with the share of the §19 lines of its invoice, by payment date; a refund subtracts. The admin enters the revenue of years before the app on "Vorjahre"; a year with payments in the app is refused, so nothing counts twice. The draft editor warns when an invoice would cross 100 000 €.
 - Stornieren: "Stornieren…" on an issued invoice creates its Stornorechnung as a draft with the same customer, format, service period and lines; the lines stay locked. Issuing it gives it its own number and sets the invoice to "Storniert" in the same transaction. One invoice has one Stornorechnung. A refund goes on the cancelled invoice as a payment with minus; the Stornorechnung takes no payments. The list marks it.
 - Stornorechnung as an e-invoice: a credit note (type 381) with the lines of the cancelled invoice, which it names (BT-25, BT-26). The PDF says "Stornorechnung", shows "Storno zu" with number and date, and asks for no payment. Mustang and KoSIT validate it in every format.
 - Sending by e-mail: "Per E-Mail senden" sends an issued invoice over SMTP with its stored PDF, XML or both, byte for byte, to the buyer's address with the e-mail text of its template or the default. A sent e-mail records a dispatch "E-Mail aus der App"; a failed one records nothing and keeps the typed form. The form posts once. The server comes from `IM_SMTP_*` and `IM_MAIL_*`; without it the page offers the manual dispatch only.

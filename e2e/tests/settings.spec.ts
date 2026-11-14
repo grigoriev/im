@@ -64,6 +64,25 @@ test('the admin changes the default e-mail text and restores it', async ({ page 
   await expect(subject).toHaveValue('Rechnung {Rechnungsnummer}');
 });
 
+test('the admin enters the revenue of last year, and the overview counts it', async ({ page }) => {
+  const lastYear = new Date().getFullYear() - 1;
+  await page.goto('/einstellungen');
+  await page.getByRole('tab', { name: /Vorjahre/ }).click();
+  await expect(page.getByLabel('Jahr')).toHaveValue(String(lastYear));
+  await page.getByLabel('Umsatz in €').fill('18.250,00');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText(`Vorjahresumsatz ${lastYear} gespeichert.`);
+  await expect(page.locator('#baseline-list')).toContainText('18.250,00 €');
+
+  await page.goto('/');
+  await expect(page.locator('#threshold')).toContainText('Mit dem Vorjahresumsatz aus den Einstellungen.');
+  await expect(page.locator('#threshold-previous')).toContainText('18.250,00 €');
+
+  await page.goto('/admin/vorjahre');
+  await page.getByRole('button', { name: `Vorjahresumsatz ${lastYear} entfernen` }).click();
+  await expect(page.getByText('Noch kein Vorjahresumsatz erfasst.')).toBeVisible();
+});
+
 test('a user edits the profile but not the tax notes', async ({ page, browser }) => {
   const username = uniqueUsername('st');
   await page.goto('/admin/benutzer');
@@ -85,6 +104,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await expect(user.getByRole('tab', { name: /Nummernkreis/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Länder/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /E-Mail/ })).toHaveCount(0);
+  await expect(user.getByRole('tab', { name: /Vorjahre/ })).toHaveCount(0);
   const response = await user.goto('/admin/steuerhinweise');
   expect(response?.status()).toBe(403);
   await context.close();
