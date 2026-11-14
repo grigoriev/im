@@ -623,4 +623,21 @@ class InvoiceServiceTest {
         assertThatThrownBy(() -> service.saveDraft(5, form))
                 .hasMessage("Bitte Format, Rechnungsdatum und Leistungszeitraum angeben.");
     }
+
+    @Test
+    void aStornorechnungKeepsTheTaxStatusOfItsInvoice() {
+        Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
+                0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,
+                null, null);
+        SellerProfile regular = SellerTestData.profile();
+        regular = new SellerProfile(regular.name(), regular.street(), regular.postcode(), regular.city(),
+                regular.countryCode(), regular.contactName(), regular.email(), regular.phone(), regular.taxNumber(),
+                "DE123456789", regular.iban(), regular.bic(), io.github.grigoriev.im.seller.TaxStatus.REGULAR, null, null,
+                null, null);
+        when(sellers.find()).thenReturn(Optional.of(regular));
+        assertThat(service.problems(storno)).as("a new §19 draft after the change")
+                .containsExactly("Mit Regelbesteuerung gibt es keine Positionen nach § 19 UStG.");
+        when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
+        assertThat(service.problems(storno)).as("the Stornorechnung of an older §19 invoice").isEmpty();
+    }
 }

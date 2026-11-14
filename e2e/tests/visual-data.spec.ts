@@ -64,6 +64,47 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await expect(page.getByRole('status')).toHaveText('Rechnung 2031-01 ausgestellt.');
   const issued = page.url();
 
+  // A second invoice of this customer in 2032, cancelled by a Stornorechnung of the same year: numbers 2032-01 and
+  // 2032-02, all dates fixed.
+  await page.goto('/rechnungen');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  await page.locator('#line-0-text').fill('Workshop Kreatives Schreiben, 2 Tage');
+  await page.locator('#line-0-amount').fill('640');
+  await page.locator('#invoice-date').fill('2032-02-10');
+  await page.locator('#invoice-from').fill('2032-02-03');
+  await page.locator('#invoice-to').fill('2032-02-04');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  await expect(page.getByRole('status')).toHaveText('Rechnung 2032-01 ausgestellt.');
+  const cancelledInvoice = page.url();
+  await page.getByText('Stornieren…').click();
+  await page.getByRole('button', { name: 'Stornorechnung anlegen' }).click();
+  await page.locator('#invoice-date').fill('2032-02-20');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  await expect(page.getByRole('status')).toHaveText('Rechnung 2032-02 ausgestellt.');
+  const storno = page.url();
+  // A third invoice, 2033-01, whose Stornorechnung stays a draft: its lines show read-only.
+  await page.goto('/rechnungen');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  await page.locator('#line-0-text').fill('Lesung mit Gespräch');
+  await page.locator('#line-0-amount').fill('380');
+  await page.locator('#invoice-date').fill('2033-05-02');
+  await page.locator('#invoice-from').fill('2033-04-28');
+  await page.locator('#invoice-to').fill('2033-04-28');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  await expect(page.getByRole('status')).toHaveText('Rechnung 2033-01 ausgestellt.');
+  await page.getByText('Stornieren…').click();
+  await page.getByRole('button', { name: 'Stornorechnung anlegen' }).click();
+  const stornoDraft = page.url();
+
   for (const viewport of VIEWPORTS) {
     for (const scheme of ['light', 'dark'] as const) {
       const context = await browser.newContext({
@@ -108,6 +149,18 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
       await expect(view.locator('#invoice-dispatch')).toHaveScreenshot(`invoice-dispatch-${viewport.name}-${scheme}.png`, {
         mask: [view.locator('#dispatch-date')],
       });
+      await view.goto(issued);
+      await view.locator('#invoice-cancel summary').click();
+      await expect(view.locator('#invoice-cancel')).toHaveScreenshot(`invoice-cancel-${viewport.name}-${scheme}.png`);
+      await view.goto(cancelledInvoice);
+      await expect(view.locator('#cancelled-by')).toHaveScreenshot(`invoice-cancelled-by-${viewport.name}-${scheme}.png`);
+      await view.goto(storno);
+      await expect(view.locator('#cancels')).toHaveScreenshot(`invoice-cancels-${viewport.name}-${scheme}.png`);
+      await view.goto(stornoDraft);
+      await expect(view.locator('#cancels')).toHaveScreenshot(`invoice-cancel-draft-${viewport.name}-${scheme}.png`);
+      await expect(view.locator('#cancel-lines')).toHaveScreenshot(`invoice-cancel-lines-${viewport.name}-${scheme}.png`);
+      await view.goto('/rechnungen?suche=2032-02');
+      await expect(view.locator('#invoice-list li')).toHaveScreenshot(`invoice-list-storno-${viewport.name}-${scheme}.png`);
       await view.goto('/rechnungen');
       await expect(view.locator('#invoice-filter')).toHaveScreenshot(`invoice-filter-${viewport.name}-${scheme}.png`);
       await context.close();

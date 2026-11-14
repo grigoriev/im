@@ -249,7 +249,9 @@ public class InvoiceService {
         if (invoice.serviceTo().isBefore(invoice.serviceFrom())) {
             problems.add("Der Leistungszeitraum endet vor seinem Beginn.");
         }
-        taxProblems(invoice, seller, customer, problems);
+        // A Stornorechnung repeats the lines of its invoice: the tax status of that day counts, not today's.
+        boolean cancellation = invoices.cancelsId(invoice.id()).isPresent();
+        taxProblems(invoice, seller, customer, problems, cancellation);
         if (invoice.format().followsXRechnung()) {
             if (invoice.buyerReference() == null) {
                 problems.add("Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).");
@@ -277,13 +279,13 @@ public class InvoiceService {
     }
 
     private static void taxProblems(Invoice invoice, Optional<SellerProfile> seller, Optional<Customer> customer,
-            List<String> problems) {
+            List<String> problems, boolean cancellation) {
         Set<TaxCategory> used = new LinkedHashSet<>();
         invoice.lines().forEach(line -> used.add(line.category()));
         if (used.contains(TaxCategory.NOT_TAXABLE_ABROAD) && used.size() > 1) {
             problems.add("„Nicht steuerbar“ steht allein auf einer Rechnung (EN 16931, BR-O-12).");
         }
-        TaxStatus status = seller.map(SellerProfile::taxStatus).orElse(null);
+        TaxStatus status = cancellation ? null : seller.map(SellerProfile::taxStatus).orElse(null);
         if (status == TaxStatus.KLEINUNTERNEHMER && used.stream().anyMatch(TaxCategory::chargesVat)) {
             problems.add("Als Kleinunternehmer stellen Sie keine Umsatzsteuer in Rechnung (§ 19 UStG).");
         }
@@ -331,13 +333,6 @@ public class InvoiceService {
                 invoice.lines().stream().map(DraftLine::toInvoiceLine).toList(), cancels));
     }
 
-    /**
-     * Returns a draft.
-     *
-     * @param id the ID
-     * @return the draft
-     * @throws InvoiceException if the invoice does not exist or is issued
-     */
     /**
      * Creates the Stornorechnung of an issued invoice as a draft: same customer, format, service period, closing, tax
      * note and lines, dated today, without intro. Its number follows at the issue, which cancels the invoice.
@@ -392,6 +387,13 @@ public class InvoiceService {
         return invoices.cancellationId(invoice.id()).flatMap(invoices::findById);
     }
 
+    /**
+     * Returns a draft.
+     *
+     * @param id the ID
+     * @return the draft
+     * @throws InvoiceException if the invoice does not exist or is issued
+     */
     Invoice draft(long id) {
         Invoice invoice = invoices.findById(id)
                 .orElseThrow(() -> new InvoiceException(List.of(UNKNOWN)));
