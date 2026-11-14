@@ -30,6 +30,17 @@ class DraftFormTest {
     }
 
     @ParameterizedTest
+    @CsvSource({"1.500, true", "12.000, true", "-1.500, true", "' 1.500 € ', true", "1.5, false", "45.50, false",
+        "'1.500,00', false", "1500, false", "1234.567, false"})
+    void namesTheAmbiguousDotBeforeThreeDigits(String text, boolean ambiguous) {
+        assertThat(DraftForm.ambiguous(text)).isEqualTo(ambiguous);
+        if (ambiguous) {
+            assertThat(DraftForm.parse(text)).isNull();
+        }
+        assertThat(DraftForm.ambiguous(null)).isFalse();
+    }
+
+    @ParameterizedTest
     @CsvSource(delimiter = '|', value = {"''", "abc", "1,2,3", "12.34.56", "1.23,4", "4 5x"})
     void refusesWhatIsNoNumber(String text) {
         assertThat(DraftForm.parse(text)).isNull();
@@ -52,8 +63,9 @@ class DraftFormTest {
                 day.minusDays(1), 30, "04011000-12345-67", "Hallo", "Danke", "Steuerfrei.",
                 List.of(new DraftLine("Unterricht", false, new BigDecimal("16"), new BigDecimal("45"), TaxCategory.EXEMPT_4_21),
                         new DraftLine("Lesung", true, BigDecimal.ONE, new BigDecimal("400"), TaxCategory.EXEMPT_4_21)),
-                Instant.EPOCH, Instant.EPOCH);
+                Instant.EPOCH, Instant.EPOCH, 0L);
         DraftForm form = DraftForm.of(invoice);
+        assertThat(form.getVersion()).isZero();
         assertThat(form.getFormat()).isEqualTo(InvoiceFormat.XRECHNUNG);
         assertThat(form.getIssueDate()).isEqualTo(day);
         assertThat(form.getServiceFrom()).isEqualTo(day.minusDays(2));

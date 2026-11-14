@@ -59,7 +59,7 @@ class InvoiceServiceTest {
 
     private static Invoice draft(List<DraftLine> lines) {
         return new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY, 14,
-                null, "Hallo", "Danke", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", lines, NOW, NOW);
+                null, "Hallo", "Danke", "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.", lines, NOW, NOW, 0L);
     }
 
     private static DraftLine lump(String text, String amount, TaxCategory category) {
@@ -147,7 +147,7 @@ class InvoiceServiceTest {
     void savesTheEnteredDraft() {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
         DraftForm form = form(row("  Unterricht ", false, "16", "45,00", TaxCategory.EXEMPT_4_21),
-                row("Lesung", true, "7", "1.234,50", TaxCategory.EXEMPT_4_21));
+                row("Lesung", true, "1", "1.234,50", TaxCategory.EXEMPT_4_21));
         form.setIntro(" ");
         form.setBuyerReference(" 04011000-12345-67 ");
         Invoice saved = service.saveDraft(5, form);
@@ -220,12 +220,13 @@ class InvoiceServiceTest {
     @Test
     void changesOnlyAnExistingDraft() {
         when(repository.findById(6L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.saveDraft(6, form())).isInstanceOf(InvoiceException.class)
+        DraftForm form = form();
+        assertThatThrownBy(() -> service.saveDraft(6, form)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diese Rechnung gibt es nicht.");
         Invoice issued = new Invoice(7L, InvoiceStatus.ISSUED, 2L, "2027-01", InvoiceFormat.ZUGFERD_EN16931, TODAY,
-                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW);
+                TODAY, TODAY, 14, null, null, null, null, List.of(), NOW, NOW, 0L);
         when(repository.findById(7L)).thenReturn(Optional.of(issued));
-        assertThatThrownBy(() -> service.saveDraft(7, form())).isInstanceOf(InvoiceException.class)
+        assertThatThrownBy(() -> service.saveDraft(7, form)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Eine ausgestellte Rechnung ändert sich nicht mehr.");
         assertThatThrownBy(() -> service.deleteDraft(7)).isInstanceOf(InvoiceException.class);
         verify(repository, never()).deleteById(7L);
@@ -272,7 +273,7 @@ class InvoiceServiceTest {
                 "Position 1: Der Betrag ist größer als 0.");
         Invoice backwards = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
                 TODAY, TODAY.minusDays(1), 14, null, null, null, null, List.of(lump("Lesung", "1", TaxCategory.KLEINUNTERNEHMER)),
-                NOW, NOW);
+                NOW, NOW, 0L);
         assertThat(service.problems(backwards)).containsExactly("Der Leistungszeitraum endet vor seinem Beginn.");
         Invoice nullText = draft(List.of(new DraftLine(null, true, BigDecimal.ONE, BigDecimal.TEN, TaxCategory.KLEINUNTERNEHMER)));
         assertThat(service.problems(nullText)).containsExactly("Position 1: Bitte die Leistung beschreiben.");
@@ -309,13 +310,22 @@ class InvoiceServiceTest {
     @Test
     void xrechnungNeedsABuyerReference() {
         Invoice xrechnung = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.XRECHNUNG, TODAY, TODAY, TODAY,
-                14, null, null, null, null, List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW);
+                14, null, null, null, null, List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L);
         assertThat(service.problems(xrechnung))
                 .containsExactly("Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).");
+        when(customers.find(2)).thenReturn(Optional.of(CustomerTestData.vhs().withId(2L)));
         Invoice withReference = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_XRECHNUNG, TODAY,
                 TODAY, TODAY, 14, "04011000-12345-67", null, null, null,
-                List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW);
+                List.of(lump("Kurs", "1", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L);
         assertThat(service.problems(withReference)).isEmpty();
+
+        Customer v = CustomerTestData.verlag();
+        when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), v.street(), v.postcode(), v.city(),
+                v.countryCode(), null, null, null, null, v.format())));
+        assertThat(service.problems(withReference))
+                .containsExactly("Die XRechnung braucht die E-Mail-Adresse des Kunden. Bitte beim Kunden eintragen.");
+        when(customers.find(2)).thenReturn(Optional.empty());
+        assertThat(service.problems(withReference)).containsExactly("Den Kunden gibt es nicht mehr.");
     }
 
     @Test
@@ -324,6 +334,54 @@ class InvoiceServiceTest {
         when(customers.find(2)).thenReturn(Optional.empty());
         assertThat(service.problems(draft(List.of(lump("Lesung", "1", TaxCategory.KLEINUNTERNEHMER)))))
                 .containsExactly("Das Profil in den Einstellungen fehlt.", "Den Kunden gibt es nicht mehr.");
+    }
+
+    @Test
+    void refusesAFormOfAnOlderVersion() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        DraftForm stale = form();
+        stale.setVersion(-1L);
+        InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, stale));
+        assertThat(e.problems()).containsExactly(
+                "Der Entwurf wurde inzwischen in einem anderen Fenster geändert. Bitte die Seite neu laden.");
+        DraftForm missing = form();
+        missing.setVersion(null);
+        assertThatThrownBy(() -> service.saveDraft(5, missing)).isInstanceOf(InvoiceException.class);
+        verify(repository, never()).save(any());
+        assertThat(service.saveDraft(5, form()).version()).isZero();
+    }
+
+    @Test
+    void refusesAnAmbiguousAndATooLargeNumber() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        DraftForm form = form(row("Lesung", true, "1", "1.500", TaxCategory.KLEINUNTERNEHMER),
+                row("Kurs", false, "1234567890123", "999999999999,9999", TaxCategory.KLEINUNTERNEHMER));
+        InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
+        assertThat(e.problems()).containsExactly(
+                "Position 1: Der Preis ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00 oder 1,5.",
+                "Position 2: Die Menge hat höchstens 12 Stellen vor dem Komma.");
+    }
+
+    @Test
+    void aLineThatTurnsIntoALumpSumKeepsItsAmount() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        Invoice saved = service.saveDraft(5, form(row("Unterricht", true, "16", "45,00", TaxCategory.EXEMPT_4_21),
+                row("Kurs", true, "1,5", "33,33", TaxCategory.EXEMPT_4_21)));
+        assertThat(saved.lines().get(0).unitPrice()).isEqualByComparingTo("720.00");
+        assertThat(saved.lines().get(0).quantity()).isEqualByComparingTo("1");
+        assertThat(saved.lines().get(1).unitPrice()).isEqualByComparingTo("50.00");
+    }
+
+    @Test
+    void keepsTheAmountOfALumpSumWithoutAQuantity() {
+        BigDecimal price = new BigDecimal("400");
+        assertThat(InvoiceService.keptAmount(BigDecimal.ONE, price)).isSameAs(price);
+        assertThat(InvoiceService.keptAmount(new BigDecimal("1.0000"), price)).isSameAs(price);
+        assertThat(InvoiceService.keptAmount(BigDecimal.ZERO, price)).isSameAs(price);
+        assertThat(InvoiceService.keptAmount(new BigDecimal("-2"), price)).isSameAs(price);
+        assertThat(InvoiceService.keptAmount(null, price)).isSameAs(price);
+        assertThat(InvoiceService.keptAmount(BigDecimal.TEN, null)).isNull();
+        assertThat(InvoiceService.keptAmount(new BigDecimal("2"), price)).isEqualByComparingTo("800.00");
     }
 
     @Test

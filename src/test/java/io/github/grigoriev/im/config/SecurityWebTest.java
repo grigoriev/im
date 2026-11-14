@@ -139,7 +139,7 @@ class SecurityWebTest {
         return new Invoice(id, status, 3L, status == InvoiceStatus.DRAFT ? null : "2027-01", InvoiceFormat.ZUGFERD_EN16931,
                 day, day, day, 14, null, "Hallo", "Danke", null,
                 List.of(new DraftLine("Lesung", true, java.math.BigDecimal.ONE, new java.math.BigDecimal("400"),
-                        TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH, java.time.Instant.EPOCH);
+                        TaxCategory.KLEINUNTERNEHMER)), java.time.Instant.EPOCH, java.time.Instant.EPOCH, 0L);
     }
 
     private void knownUsers() {

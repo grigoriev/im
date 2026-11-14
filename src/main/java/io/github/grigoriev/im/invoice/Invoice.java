@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.MappedCollection;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -27,6 +28,8 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param lines the lines, in order
  * @param createdAt time of creation
  * @param updatedAt time of the last change
+ * @param version counts the saves; a save with an older version is refused, so two windows never overwrite
+ *     each other
  */
 @Table("invoice")
 public record Invoice(
@@ -45,7 +48,8 @@ public record Invoice(
         String taxNote,
         @MappedCollection(idColumn = "invoice_id", keyColumn = "position") List<DraftLine> lines,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        @Version Long version) {
 
     /** Copies the lines, so a stored invoice never shares a list. */
     public Invoice {

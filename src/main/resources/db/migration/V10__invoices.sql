@@ -15,6 +15,7 @@ CREATE TABLE invoice (
     tax_note        VARCHAR(1000),
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL,
+    version         BIGINT        NOT NULL,
     CHECK ((status = 'DRAFT') = (number IS NULL))
 );
 

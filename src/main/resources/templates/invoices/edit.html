@@ -20,6 +20,7 @@
     <p class="alert text-sm" th:unless="${invoice.draft}">Diese Rechnung ist ausgestellt und ändert sich nicht mehr.</p>
 
     <form th:if="${invoice.draft}" class="grid gap-4" th:action="@{/rechnungen/{id}(id=${invoice.id})}" th:object="${form}" method="post">
+      <input type="hidden" th:field="*{version}">
       <section class="bg-base-100 rounded-box border border-base-300 p-5 grid gap-3 @container">
         <h2 class="font-semibold">Rechnungsdaten</h2>
         <label class="floating-label"><span>E-Rechnungsformat</span>

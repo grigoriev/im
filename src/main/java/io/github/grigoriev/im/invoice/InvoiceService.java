@@ -11,6 +11,7 @@ import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -35,6 +36,8 @@ public class InvoiceService {
     static final int MAX_TAX_NOTE = 1000;
     static final int MAX_REFERENCE = 200;
     static final int MAX_DECIMALS = 4;
+    /** Digits before the comma, as {@code NUMERIC(16, 4)} in the database allows. */
+    static final int MAX_INTEGER_DIGITS = 12;
     static final String DEFAULT_INTRO = "Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihren Auftrag.";
     static final String DEFAULT_CLOSING = "Mit freundlichen Grüßen";
 
@@ -113,7 +116,7 @@ public class InvoiceService {
         LocalDate today = LocalDate.now(clock);
         Invoice saved = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today,
                 today, today, DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
-                notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant()));
+                notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null));
         audit.add(AuditAction.DRAFT_CREATED, customer.name());
         return saved;
     }
@@ -129,6 +132,10 @@ public class InvoiceService {
     @Transactional
     public Invoice saveDraft(long id, DraftForm form) {
         Invoice draft = draft(id);
+        if (form.getVersion() == null || !form.getVersion().equals(draft.version())) {
+            throw new InvoiceException(List.of("Der Entwurf wurde inzwischen in einem anderen Fenster geändert. "
+                    + "Bitte die Seite neu laden."));
+        }
         List<String> problems = new ArrayList<>();
         List<DraftLine> lines = new ArrayList<>();
         for (int i = 0; i < form.getLines().size(); i++) {
@@ -151,7 +158,7 @@ public class InvoiceService {
         return invoices.save(new Invoice(draft.id(), draft.status(), draft.customerId(), null, form.getFormat(),
                 form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
                 text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()), text(form.getTaxNote()),
-                lines, draft.createdAt(), clock.instant()));
+                lines, draft.createdAt(), clock.instant(), draft.version()));
     }
 
     /**
@@ -193,42 +200,59 @@ public class InvoiceService {
         if (customer.isEmpty()) {
             problems.add("Den Kunden gibt es nicht mehr.");
         }
+        lineProblems(invoice, problems);
+        if (invoice.serviceTo().isBefore(invoice.serviceFrom())) {
+            problems.add("Der Leistungszeitraum endet vor seinem Beginn.");
+        }
+        taxProblems(invoice, seller, customer, problems);
+        if (invoice.format().followsXRechnung()) {
+            if (invoice.buyerReference() == null) {
+                problems.add("Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).");
+            }
+            if (customer.isPresent() && customer.get().email() == null) {
+                problems.add("Die XRechnung braucht die E-Mail-Adresse des Kunden. Bitte beim Kunden eintragen.");
+            }
+        }
+        return problems;
+    }
+
+    private static void lineProblems(Invoice invoice, List<String> problems) {
         if (invoice.lines().isEmpty()) {
             problems.add("Die Rechnung braucht mindestens eine Position.");
         }
         for (int i = 0; i < invoice.lines().size(); i++) {
             DraftLine line = invoice.lines().get(i);
             if (line.text() == null || line.text().isBlank()) {
-                problems.add("Position " + (i + 1) + ": Bitte die Leistung beschreiben.");
+                problems.add(position(i + 1) + "Bitte die Leistung beschreiben.");
             }
             if (line.quantity().multiply(line.unitPrice()).signum() <= 0) {
-                problems.add("Position " + (i + 1) + ": Der Betrag ist größer als 0.");
+                problems.add(position(i + 1) + "Der Betrag ist größer als 0.");
             }
         }
-        if (invoice.serviceTo().isBefore(invoice.serviceFrom())) {
-            problems.add("Der Leistungszeitraum endet vor seinem Beginn.");
-        }
+    }
+
+    private static void taxProblems(Invoice invoice, Optional<SellerProfile> seller, Optional<Customer> customer,
+            List<String> problems) {
         Set<TaxCategory> used = new LinkedHashSet<>();
         invoice.lines().forEach(line -> used.add(line.category()));
         if (used.contains(TaxCategory.NOT_TAXABLE_ABROAD) && used.size() > 1) {
             problems.add("„Nicht steuerbar“ steht allein auf einer Rechnung (EN 16931, BR-O-12).");
         }
-        seller.ifPresent(profile -> {
-            if (profile.taxStatus() == TaxStatus.KLEINUNTERNEHMER && used.stream().anyMatch(TaxCategory::chargesVat)) {
-                problems.add("Als Kleinunternehmer stellen Sie keine Umsatzsteuer in Rechnung (§ 19 UStG).");
-            }
-            if (profile.taxStatus() == TaxStatus.REGULAR && used.contains(TaxCategory.KLEINUNTERNEHMER)) {
-                problems.add("Mit Regelbesteuerung gibt es keine Positionen nach § 19 UStG.");
-            }
-        });
+        TaxStatus status = seller.map(SellerProfile::taxStatus).orElse(null);
+        if (status == TaxStatus.KLEINUNTERNEHMER && used.stream().anyMatch(TaxCategory::chargesVat)) {
+            problems.add("Als Kleinunternehmer stellen Sie keine Umsatzsteuer in Rechnung (§ 19 UStG).");
+        }
+        if (status == TaxStatus.REGULAR && used.contains(TaxCategory.KLEINUNTERNEHMER)) {
+            problems.add("Mit Regelbesteuerung gibt es keine Positionen nach § 19 UStG.");
+        }
         if (used.contains(TaxCategory.REVERSE_CHARGE_EU)
                 && (seller.map(SellerProfile::vatId).isEmpty() || customer.map(Customer::vatId).isEmpty())) {
             problems.add("Reverse Charge braucht die USt-IdNr. von Ihnen und vom Kunden (§ 14a UStG).");
         }
-        if (invoice.format().followsXRechnung() && invoice.buyerReference() == null) {
-            problems.add("Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).");
-        }
-        return problems;
+    }
+
+    private static String position(int number) {
+        return "Position " + number + ": ";
     }
 
     /**
@@ -258,16 +282,31 @@ public class InvoiceService {
         return invoice;
     }
 
-    private static DraftLine line(int position, LineForm row, List<String> problems) {
-        String prefix = "Position " + position + ": ";
+    private static DraftLine line(int number, LineForm row, List<String> problems) {
+        String prefix = position(number);
         String text = row.getText() == null ? "" : row.getText().strip();
         length(problems, text, prefix + "Die Leistung", MAX_LINE_TEXT);
         if (row.getCategory() == null) {
             problems.add(prefix + "Bitte die Steuer wählen.");
         }
         BigDecimal price = number(problems, row.getPrice(), prefix + "Der Preis");
-        BigDecimal quantity = row.isLumpSum() ? BigDecimal.ONE : number(problems, row.getQuantity(), prefix + "Die Menge");
+        BigDecimal quantity = number(problems, row.getQuantity(), prefix + "Die Menge");
+        if (row.isLumpSum()) {
+            price = keptAmount(quantity, price);
+            quantity = BigDecimal.ONE;
+        }
         return new DraftLine(text, row.isLumpSum(), quantity, price, row.getCategory());
+    }
+
+    /**
+     * Returns the amount of a lump sum. A line that turns from "Mit Menge" into a lump sum keeps its amount
+     * (docs/PLAN.md, section 7): its hidden quantity times its price, rounded to the cent.
+     */
+    static BigDecimal keptAmount(BigDecimal quantity, BigDecimal price) {
+        if (price == null || quantity == null || quantity.signum() <= 0 || quantity.compareTo(BigDecimal.ONE) == 0) {
+            return price;
+        }
+        return quantity.multiply(price).setScale(2, RoundingMode.HALF_UP);
     }
 
     /**
@@ -278,9 +317,16 @@ public class InvoiceService {
         if (text == null || text.isBlank()) {
             return BigDecimal.ZERO;
         }
+        if (DraftForm.ambiguous(text)) {
+            problems.add(field + " ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00 oder 1,5.");
+            return null;
+        }
         BigDecimal value = DraftForm.parse(text);
         if (value == null) {
             problems.add(field + " ist keine Zahl, zum Beispiel 45,00.");
+        } else if (value.precision() - value.scale() > MAX_INTEGER_DIGITS) {
+            problems.add(field + " hat höchstens " + MAX_INTEGER_DIGITS + " Stellen vor dem Komma.");
+            value = null;
         } else if (value.stripTrailingZeros().scale() > MAX_DECIMALS) {
             problems.add(field + " hat höchstens " + MAX_DECIMALS + " Nachkommastellen.");
             value = null;

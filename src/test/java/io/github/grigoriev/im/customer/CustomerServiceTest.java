@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,6 +14,7 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -86,7 +88,7 @@ class CustomerServiceTest {
     @Test
     void keepsACustomerWithInvoices() {
         when(repository.findById(4L)).thenReturn(Optional.of(CustomerTestData.verlag().withId(4L)));
-        org.mockito.Mockito.doThrow(new org.springframework.dao.DataIntegrityViolationException("fk"))
+        doThrow(new DataIntegrityViolationException("fk"))
                 .when(repository).deleteById(4L);
         assertThatThrownBy(() -> service.delete(4)).isInstanceOf(CustomerException.class)
                 .hasMessage("Der Kunde hat Rechnungen und bleibt erhalten.");

@@ -18,7 +18,7 @@ class InvoiceModelTest {
     private static Invoice invoice(InvoiceStatus status, List<DraftLine> lines) {
         LocalDate day = LocalDate.of(2027, 3, 18);
         return new Invoice(1L, status, 2L, status == InvoiceStatus.DRAFT ? null : "2027-01",
-                InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, lines, Instant.EPOCH, Instant.EPOCH);
+                InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, lines, Instant.EPOCH, Instant.EPOCH, 0L);
     }
 
     @Test
@@ -38,7 +38,8 @@ class InvoiceModelTest {
         Invoice invoice = invoice(InvoiceStatus.DRAFT, lines);
         lines.clear();
         assertThat(invoice.lines()).hasSize(1);
-        assertThatThrownBy(() -> invoice.lines().clear()).isInstanceOf(UnsupportedOperationException.class);
+        List<DraftLine> stored = invoice.lines();
+        assertThatThrownBy(stored::clear).isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test
@@ -59,7 +60,8 @@ class InvoiceModelTest {
         assertThat(line).isEqualTo(new DraftLine("Kurs", false, new BigDecimal("16.0000"), new BigDecimal("45.50"),
                 TaxCategory.EXEMPT_4_21));
         assertThat(new DraftLine("Kurs", true, null, null, TaxCategory.EXEMPT_4_21).unitPrice()).isNull();
-        assertThatThrownBy(() -> new DraftLine("Kurs", true, BigDecimal.ONE, new BigDecimal("0.00001"), TaxCategory.EXEMPT_4_21))
+        BigDecimal tooFine = new BigDecimal("0.00001");
+        assertThatThrownBy(() -> new DraftLine("Kurs", true, BigDecimal.ONE, tooFine, TaxCategory.EXEMPT_4_21))
                 .isInstanceOf(ArithmeticException.class);
     }
 

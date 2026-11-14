@@ -74,10 +74,14 @@ class InvoiceIT {
         assertThat(invoices.problems(stored)).isEmpty();
         assertThat(invoices.document(stored).orElseThrow().total()).isEqualByComparingTo("531.00");
 
-        form.getLines().remove(1);
-        invoices.saveDraft(draft.id(), form);
+        DraftForm again = DraftForm.of(stored);
+        again.getLines().remove(1);
+        invoices.saveDraft(draft.id(), again);
         assertThat(invoices.find(draft.id()).orElseThrow().lines()).extracting(DraftLine::text)
                 .containsExactly("Lesung", "Signierstunde");
+        long draftId = draft.id();
+        assertThatThrownBy(() -> invoices.saveDraft(draftId, form)).as("a second window with the old version")
+                .isInstanceOf(io.github.grigoriev.im.invoice.InvoiceException.class);
         invoices.deleteDraft(draft.id());
         assertThat(invoices.find(draft.id())).isEmpty();
         assertThat(jdbc.queryForObject("SELECT count(*) FROM invoice_line WHERE invoice_id = ?", Integer.class, draft.id()))
@@ -87,7 +91,8 @@ class InvoiceIT {
     @Test
     void aCustomerWithInvoicesStays() {
         Invoice draft = invoices.createDraft(customer.id());
-        assertThatThrownBy(() -> customers.delete(customer.id())).isInstanceOf(CustomerException.class)
+        long customerId = customer.id();
+        assertThatThrownBy(() -> customers.delete(customerId)).isInstanceOf(CustomerException.class)
                 .hasMessage("Der Kunde hat Rechnungen und bleibt erhalten.");
         assertThat(customers.find(customer.id())).isPresent();
         invoices.deleteDraft(draft.id());
@@ -98,9 +103,10 @@ class InvoiceIT {
     @Test
     void aDraftHasNoNumberAndAnIssuedInvoiceHasOne() {
         Invoice draft = invoices.createDraft(customer.id());
-        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET number = '2027-01' WHERE id = ?", draft.id()))
+        long id = draft.id();
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET number = '2027-01' WHERE id = ?", id))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET status = 'ISSUED' WHERE id = ?", draft.id()))
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET status = 'ISSUED' WHERE id = ?", id))
                 .isInstanceOf(DataIntegrityViolationException.class);
         invoices.deleteDraft(draft.id());
     }

@@ -14,12 +14,19 @@ import org.springframework.format.annotation.DateTimeFormat;
 /** The editor of a draft. Quantities and prices stay text, as typed: {@code 1.234,56} or {@code 45,5}. */
 public class DraftForm {
 
-    /** German digits: thousands dots and a decimal comma, or digits with a decimal comma. */
-    private static final Pattern GERMAN = Pattern.compile("-?\\d{1,3}(\\.\\d{3})+(,\\d+)?|-?\\d+(,\\d+)?");
+    /** German digits with thousands dots and an optional decimal comma: {@code 1.234,56}. */
+    private static final Pattern THOUSANDS = Pattern.compile("-?\\d{1,3}(\\.\\d{3})+(,\\d+)?");
+
+    /** Digits with an optional decimal comma: {@code 45,5}. */
+    private static final Pattern COMMA = Pattern.compile("-?\\d+(,\\d+)?");
+
+    /** One dot before exactly three digits: {@code 1.500} is 1500 for a German and 1,5 for a keypad. */
+    private static final Pattern AMBIGUOUS = Pattern.compile("-?\\d{1,3}\\.\\d{3}");
 
     /** Digits with a decimal dot, as a Mac keypad sends them. */
     private static final Pattern PLAIN = Pattern.compile("-?\\d+\\.\\d+");
 
+    private Long version;
     private InvoiceFormat format;
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate issueDate;
@@ -42,6 +49,7 @@ public class DraftForm {
      */
     public static DraftForm of(Invoice invoice) {
         DraftForm form = new DraftForm();
+        form.version = invoice.version();
         form.format = invoice.format();
         form.issueDate = invoice.issueDate();
         form.serviceFrom = invoice.serviceFrom();
@@ -71,13 +79,26 @@ public class DraftForm {
      */
     static BigDecimal parse(String text) {
         String value = text == null ? "" : text.replace(" ", "").replace("€", "").strip();
+        if (AMBIGUOUS.matcher(value).matches()) {
+            return null;
+        }
         if (PLAIN.matcher(value).matches()) {
             return new BigDecimal(value);
         }
-        if (GERMAN.matcher(value).matches()) {
+        if (THOUSANDS.matcher(value).matches() || COMMA.matcher(value).matches()) {
             return new BigDecimal(value.replace(".", "").replace(",", "."));
         }
         return null;
+    }
+
+    /**
+     * Tells whether a text reads both as thousands and as decimals, such as {@code 1.500}.
+     *
+     * @param text the entered text
+     * @return {@code true} if the text is ambiguous
+     */
+    static boolean ambiguous(String text) {
+        return text != null && AMBIGUOUS.matcher(text.replace(" ", "").replace("€", "").strip()).matches();
     }
 
     /**
@@ -98,6 +119,16 @@ public class DraftForm {
      */
     static String quantity(BigDecimal quantity) {
         return new DecimalFormat("0.####", DecimalFormatSymbols.getInstance(Locale.GERMANY)).format(quantity);
+    }
+
+    /** @return the version of the draft that the form shows */
+    public Long getVersion() {
+        return version;
+    }
+
+    /** @param version the version of the draft that the form shows */
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     /** @return the e-invoice format */
