@@ -51,17 +51,17 @@ class CustomerTest {
     @Test
     void namesTheContactPersonInLists() {
         Customer verlag = CustomerTestData.verlag();
-        assertThat(Customer.label("Goethe-Institut", "Frau Weber")).isEqualTo("Goethe-Institut · Frau Weber");
-        assertThat(Customer.label("Goethe-Institut", null)).isEqualTo("Goethe-Institut");
-        assertThat(Customer.label("Goethe-Institut", " ")).isEqualTo("Goethe-Institut");
+        assertThat(Customer.label("Sprachschule am See", "Frau Weber")).isEqualTo("Sprachschule am See · Frau Weber");
+        assertThat(Customer.label("Sprachschule am See", null)).isEqualTo("Sprachschule am See");
+        assertThat(Customer.label("Sprachschule am See", " ")).isEqualTo("Sprachschule am See");
         assertThat(verlag.label()).isEqualTo(Customer.label(verlag.name(), verlag.contactName()));
     }
 
     @Test
     void copiesTheOrganizationForAnotherContact() {
-        Customer original = new Customer(7L, "Goethe-Institut", "Dachauer Str. 122", "80637", "München", "DE",
-                "Frau Weber", "weber@goethe.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG);
-        assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Goethe-Institut", "Dachauer Str. 122",
-                "80637", "München", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG));
+        Customer original = new Customer(7L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
+                "Frau Weber", "weber@sprachschule.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG);
+        assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Sprachschule am See", "Seeweg 5",
+                "86150", "Musterstadt", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG));
     }
 }

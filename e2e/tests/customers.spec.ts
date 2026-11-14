@@ -34,18 +34,18 @@ test('creates a public customer with XRechnung, changes and deletes it', async (
 });
 
 test('a second contact person of one organization copies its address and stays apart in the lists', async ({ page }) => {
-  const name = `Goethe-Institut ${randomUUID().slice(0, 8)}`;
+  const name = `Sprachschule am See ${randomUUID().slice(0, 8)}`;
   await page.goto('/kunden/neu');
   await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByLabel('Straße und Hausnummer').fill('Dachauer Straße 122');
-  await page.getByLabel('PLZ').fill('80637');
-  await page.getByLabel('Ort', { exact: true }).fill('München');
+  await page.getByLabel('Straße und Hausnummer').fill('Seeweg 5');
+  await page.getByLabel('PLZ').fill('86150');
+  await page.getByLabel('Ort', { exact: true }).fill('Musterstadt');
   await page.getByLabel('Ansprechpartner').fill('Frau Weber');
   await page.getByRole('button', { name: 'Anlegen' }).click();
   await expect(page.getByRole('status')).toHaveText(`Kunde „${name}“ angelegt.`);
 
   await page.getByRole('link', { name: 'Weiterer Ansprechpartner' }).click();
-  await expect(page.getByLabel('Straße und Hausnummer')).toHaveValue('Dachauer Straße 122');
+  await expect(page.getByLabel('Straße und Hausnummer')).toHaveValue('Seeweg 5');
   await expect(page.getByLabel('Ansprechpartner')).toHaveValue('');
   await page.getByLabel('Ansprechpartner').fill('Herr Klein');
   await page.getByRole('button', { name: 'Anlegen' }).click();

@@ -58,7 +58,7 @@ public record Customer(
      * Returns the name in lists: the organization and, if set, the contact person, so two contacts of one
      * organization stay apart.
      *
-     * @return for example "Goethe-Institut · Frau Weber"
+     * @return for example "Sprachschule am See · Frau Weber"
      */
     public String label() {
         return label(name, contactName);

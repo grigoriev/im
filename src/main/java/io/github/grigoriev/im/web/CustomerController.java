@@ -76,7 +76,8 @@ public class CustomerController {
         Customer form = von == null ? Customer.empty()
                 : customers.find(von).map(Customer::forAnotherContact)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        return page(model, form);
+        // A copied country stays in the list, even if the admin removed it from the short list.
+        return page(model, form, von == null ? null : form.countryCode());
     }
 
     /**

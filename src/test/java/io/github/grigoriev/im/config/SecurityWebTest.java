@@ -535,23 +535,23 @@ class SecurityWebTest {
 
     @Test
     void tellsTwoContactsOfOneOrganizationApartAndCopiesOne() throws Exception {
-        Customer weber = new Customer(5L, "Goethe-Institut", "Dachauer Str. 122", "80637", "München", "DE",
-                "Frau Weber", "weber@goethe.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
-        Customer klein = new Customer(6L, "Goethe-Institut", "Dachauer Str. 122", "80637", "München", "DE",
-                "Herr Klein", "klein@goethe.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
+        Customer weber = new Customer(5L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
+                "Frau Weber", "weber@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
+        Customer klein = new Customer(6L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
+                "Herr Klein", "klein@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931);
         when(customers.list()).thenReturn(List.of(weber, klein));
         when(customers.find(5)).thenReturn(Optional.of(weber));
         mvc.perform(get("/kunden/5").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Goethe-Institut · Frau Weber</h2>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Sprachschule am See · Frau Weber</h2>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(">Herr Klein</span>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("href=\"/kunden/neu?von=5\"")));
         mvc.perform(get("/kunden/neu").param("von", "5").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Dachauer Str. 122\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"weber@goethe.example\""))));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Seeweg 5\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"weber@sprachschule.example\""))));
         when(invoices.list()).thenReturn(List.of());
         mvc.perform(get("/rechnungen").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Goethe-Institut · Frau Weber</option>")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Goethe-Institut · Herr Klein</option>")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Sprachschule am See · Frau Weber</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(">Sprachschule am See · Herr Klein</option>")));
     }
 
     @Test
@@ -596,6 +596,12 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"CH\">Schweiz</option>")));
         mvc.perform(get("/kunden/neu").with(user("elena").roles("USER")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
+        Customer kosovar = CustomerTestData.verlag();
+        when(customers.find(7)).thenReturn(Optional.of(new Customer(7L, kosovar.name(), kosovar.street(),
+                kosovar.postcode(), kosovar.city(), "XK", "Frau Krasniqi", null, null, null, kosovar.format())));
+        when(countries.options(null, "XK")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
+        mvc.perform(get("/kunden/neu").param("von", "7").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
 
         SellerProfile p = SellerTestData.profile();
         SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
