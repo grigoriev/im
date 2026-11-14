@@ -101,4 +101,18 @@ class FieldsTest {
         Fields.matches(problems, "a@b.de", Fields.EMAIL, "falsch");
         assertThat(problems).containsExactly("falsch");
     }
+
+    @Test
+    void checksAnEmailAddressInLinearTime() {
+        assertThat(Fields.EMAIL.matcher("rechnung@mail.verlag.example").matches()).isTrue();
+        assertThat(Fields.EMAIL.matcher("a.b+c@d-e.example").matches()).isTrue();
+        assertThat(Fields.EMAIL.matcher("a@b..example").matches()).isFalse();
+        assertThat(Fields.EMAIL.matcher("a@b.example.").matches()).isFalse();
+        assertThat(Fields.EMAIL.matcher("a@.example").matches()).isFalse();
+        assertThat(Fields.EMAIL.matcher("a b@c.example").matches()).isFalse();
+        String attack = "!@!." + "!.".repeat(60_000) + "@";
+        long start = System.nanoTime();
+        assertThat(Fields.EMAIL.matcher(attack).matches()).isFalse();
+        assertThat(System.nanoTime() - start).as("linear: the old pattern took 5 s here").isLessThan(1_000_000_000L);
+    }
 }

@@ -8,8 +8,11 @@ import java.util.regex.Pattern;
 /** Normalizes form fields and collects the problems of a form. */
 public final class Fields {
 
-    /** A plausible e-mail address. The mail server has the last word. */
-    public static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
+    /**
+     * A plausible e-mail address: the domain has dot-separated labels without dots of their own. No two parts can match
+     * the same text, and the possessive quantifiers never backtrack, so the check runs in linear time. The mail server has the last word.
+     */
+    public static final Pattern EMAIL = Pattern.compile("[^@\\s]++@[^@\\s.]++(?:\\.[^@\\s.]++)++");
 
     /** VAT identification number: country code and 2 to 12 letters or digits. */
     public static final Pattern VAT_ID = Pattern.compile("[A-Z]{2}[A-Z0-9]{2,12}");

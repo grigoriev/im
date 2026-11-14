@@ -6,6 +6,8 @@ import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.mail.MailService;
+import io.github.grigoriev.im.mail.SendForm;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/** Records what happens to an issued invoice: its dispatches and its payments. Both roles use it. */
+/** Records what happens to an issued invoice: its e-mail, its dispatches and its payments. Both roles use it. */
 @Controller
 @RequestMapping("/rechnungen/{id}")
 public class InvoiceRecordsController {
@@ -26,16 +28,39 @@ public class InvoiceRecordsController {
 
     private final DispatchService dispatches;
     private final PaymentService payments;
+    private final MailService mail;
 
     /**
      * Creates the controller.
      *
      * @param dispatches records a dispatch
      * @param payments records a payment
+     * @param mail sends an invoice by e-mail
      */
-    public InvoiceRecordsController(DispatchService dispatches, PaymentService payments) {
+    public InvoiceRecordsController(DispatchService dispatches, PaymentService payments, MailService mail) {
         this.dispatches = dispatches;
         this.payments = payments;
+        this.mail = mail;
+    }
+
+    /**
+     * Sends an issued invoice by e-mail and records the dispatch. On a problem the next page shows the form as typed.
+     *
+     * @param id the ID
+     * @param form the entered values
+     * @param flash messages for the next page
+     * @return a redirect to the invoice
+     */
+    @PostMapping("/senden")
+    public String send(@PathVariable long id, @ModelAttribute SendForm form, RedirectAttributes flash) {
+        try {
+            mail.send(id, form);
+            flash.addFlashAttribute(SUCCESS, "E-Mail an " + form.getTo().strip() + " gesendet.");
+        } catch (InvoiceException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+            flash.addFlashAttribute(IssuedInvoicePage.MAIL_FORM, form);
+        }
+        return TO_INVOICE + id;
     }
 
     /**
