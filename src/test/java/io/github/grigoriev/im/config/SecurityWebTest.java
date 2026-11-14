@@ -152,6 +152,9 @@ class SecurityWebTest {
     @MockitoBean
     private io.github.grigoriev.im.invoice.DocumentStore documents;
 
+    @MockitoBean
+    private io.github.grigoriev.im.invoice.DispatchService dispatches;
+
     private static InvoiceTemplate template() {
         return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
                 null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, java.math.BigDecimal.ONE,
@@ -586,6 +589,29 @@ class SecurityWebTest {
     }
 
     @Test
+    void recordsADispatch() throws Exception {
+        mvc.perform(post("/rechnungen/6/versand").param("sentOn", "2027-03-19").param("channel", "POST")
+                        .param("recipient", "Buchhaltung").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/6")).andExpect(flash().attribute("success", "Versand vermerkt."));
+        var form = org.mockito.ArgumentCaptor.forClass(io.github.grigoriev.im.invoice.DispatchForm.class);
+        verify(dispatches).recordManual(org.mockito.ArgumentMatchers.eq(6L), form.capture());
+        org.assertj.core.api.Assertions.assertThat(form.getValue().getSentOn()).isEqualTo(java.time.LocalDate.of(2027, 3, 19));
+        org.assertj.core.api.Assertions.assertThat(form.getValue().getChannel())
+                .isEqualTo(io.github.grigoriev.im.invoice.DispatchChannel.POST);
+        org.assertj.core.api.Assertions.assertThat(form.getValue().getRecipient()).isEqualTo("Buchhaltung");
+
+        when(dispatches.recordManual(org.mockito.ArgumentMatchers.eq(7L), any())).thenThrow(
+                new InvoiceException(List.of("Erst ausstellen, dann versenden.")));
+        mvc.perform(post("/rechnungen/7/versand").param("sentOn", "2027-03-19").param("channel", "POST")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/7")).andExpect(flash().attribute("error", "Erst ausstellen, dann versenden."));
+        mvc.perform(post("/rechnungen/6/versand").param("sentOn", "kaputt").param("channel", "POST")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/rechnungen/6"))
+                .andExpect(flash().attribute("error", "Bitte gültige Daten eingeben, zum Beispiel ein Datum."));
+    }
+
+    @Test
     void filtersTheListByYearStatusAndText() throws Exception {
         Invoice draft = invoice(5, InvoiceStatus.DRAFT);
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
@@ -671,6 +697,11 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Rechnung ausgestellt")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("<span>admin</span>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ZUGFeRD und PDF/A-3 geprüft")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("2027-10, Verlag am Fluss GmbH")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-lucide=\"stamp\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Als versendet markieren…")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<option value=\"POST\">Post</option>")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("value=\"EMAIL_APP\""))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("XRechnung geprüft"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("480,00 €")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("18.03.2027 10:30")))
@@ -681,9 +712,18 @@ class SecurityWebTest {
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Rechnung ausstellen…"))))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Entwurf löschen"))));
         verify(invoices, never()).problems(issued);
-        when(audit.history(6)).thenReturn(List.of());
+        when(audit.history(6)).thenReturn(List.of(new AuditEvent(3L, java.time.Instant.parse("2027-03-19T09:30:00Z"),
+                "elena", AuditAction.INVOICE_SENT, "", 6L)));
+        when(dispatches.today()).thenReturn(java.time.LocalDate.of(2027, 3, 19));
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Einträge.")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-lucide=\"send\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"2027-03-19\" max=\"2027-03-19\"")));
+        when(audit.history(6)).thenReturn(List.of());
+        when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.CANCELLED)));
+        mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Keine Einträge.")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Als versendet markieren"))));
+        when(invoices.find(6)).thenReturn(Optional.of(issued));
         when(documents.restore("{snapshot}")).thenReturn(io.github.grigoriev.im.einvoice.SampleInvoices.reading(
                 InvoiceFormat.XRECHNUNG));
         mvc.perform(get("/rechnungen/6").with(user("elena").roles("USER")))

@@ -46,17 +46,17 @@ class AuditServiceTest {
 
     @Test
     void recordsAGivenUserAndCutsLongTexts() {
-        service.add("u".repeat(70), AuditAction.LOGIN_FAILED, "d".repeat(600));
+        service.add("u".repeat(70), AuditAction.LOGIN_FAILED, "d".repeat(2100));
         String user = "u".repeat(63) + "…";
-        String detail = "d".repeat(499) + "…";
+        String detail = "d".repeat(1999) + "…";
         verify(repository).save(new AuditEvent(null, NOW, user, AuditAction.LOGIN_FAILED, detail, null));
         assertThat(user).hasSize(64);
-        assertThat(detail).hasSize(500);
+        assertThat(detail).hasSize(2000);
     }
 
     @Test
     void keepsTextsUpToTheLimitAndTurnsNullIntoEmpty() {
-        assertThat(AuditService.cut("x".repeat(500), 500)).hasSize(500).doesNotContain("…");
+        assertThat(AuditService.cut("x".repeat(2000), 2000)).hasSize(2000).doesNotContain("…");
         assertThat(AuditService.cut(null, 500)).isEmpty();
     }
 

@@ -31,6 +31,7 @@ public class InvoiceService {
     static final int DEFAULT_PAYMENT_DAYS = 14;
     /** The number of a draft in its texts and its preview. */
     static final String DRAFT_NUMBER = "Entwurf";
+    static final String UNKNOWN = "Diese Rechnung gibt es nicht.";
     static final int MAX_PAYMENT_DAYS = 365;
     static final int MAX_TEXT = 2000;
     static final int MAX_TAX_NOTE = 1000;
@@ -313,7 +314,7 @@ public class InvoiceService {
      */
     Invoice draft(long id) {
         Invoice invoice = invoices.findById(id)
-                .orElseThrow(() -> new InvoiceException(List.of("Diese Rechnung gibt es nicht.")));
+                .orElseThrow(() -> new InvoiceException(List.of(UNKNOWN)));
         if (!invoice.isDraft()) {
             throw new InvoiceException(List.of("Eine ausgestellte Rechnung ändert sich nicht mehr."));
         }

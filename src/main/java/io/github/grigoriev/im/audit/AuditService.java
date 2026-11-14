@@ -20,7 +20,7 @@ public class AuditService {
 
     /** Maximum length of a login name and of a detail, as in the database. */
     static final int MAX_USERNAME = 64;
-    static final int MAX_DETAIL = 500;
+    static final int MAX_DETAIL = 2000;
 
     private final AuditRepository events;
     private final Clock clock;
@@ -95,7 +95,12 @@ public class AuditService {
                 invoiceId));
     }
 
-    static String currentUser() {
+    /**
+     * Returns the name of the logged-in user.
+     *
+     * @return the login name, {@code system} without a login
+     */
+    public static String currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
             return SYSTEM;

@@ -105,10 +105,20 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await expect(page.locator('#invoice-documents')).toContainText(`Rechnung_${number}.pdf`);
   await expect(page.locator('#invoice-documents')).toContainText(/SHA-256 [0-9a-f]{64}/);
 
+  await page.getByText('Als versendet markieren…').click();
+  await page.getByLabel('Weg').selectOption({ label: 'Post' });
+  await page.getByLabel('Empfänger (optional)').fill('Buchhaltung');
+  await page.getByLabel('Notiz (optional)').fill('mit Begleitbrief');
+  await page.getByRole('button', { name: 'Vermerken' }).click();
+  await expect(page.getByRole('status')).toHaveText('Versand vermerkt.');
+  await expect(page.locator('#invoice-status')).toHaveText('Versendet');
+  await expect(page.locator('#invoice-history li').last()).toContainText('Versand vermerkt');
+  await expect(page.locator('#invoice-history li').last()).toContainText(', Post, Buchhaltung, Notiz: mit Begleitbrief');
+
   await page.goto('/rechnungen');
   const row = page.locator('#invoice-list li').filter({ hasText: customer });
   await expect(row).toContainText(number);
-  await expect(row).toContainText('Ausgestellt');
+  await expect(row).toContainText('Versendet');
   await expect(row).toContainText('400,00 €');
 
   await page.getByLabel('Kunde oder Nummer').fill(number);
