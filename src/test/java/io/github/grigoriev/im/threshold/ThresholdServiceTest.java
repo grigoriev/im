@@ -119,6 +119,7 @@ class ThresholdServiceTest {
                 when(rs.getString(3)).thenReturn(value.signum() < 0 ? "Erstattung" : null);
                 when(rs.getString(4)).thenReturn(year + "-0" + (result.size() + 1));
                 when(rs.getString(5)).thenReturn((String) row[1]);
+                when(rs.getString(6)).thenReturn("OTHER");
             } else {
                 when(rs.getInt(1)).thenReturn((Integer) row[0]);
                 when(rs.getBigDecimal(2)).thenReturn((BigDecimal) row[1]);
@@ -185,27 +186,25 @@ class ThresholdServiceTest {
     }
 
     @Test
-    void aRowCarriesTheFrozenBusinessOrNoneForAnOlderInvoice() {
+    void aRowCarriesTheFrozenBusiness() {
         LocalDate day = LocalDate.of(2027, 1, 2);
         BigDecimal amount = new BigDecimal("5.00");
         InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
         assertThat(ThresholdService.row(day, amount, null, "2027-01", reading, "TEACHING").activity())
                 .as("frozen at the issue").isEqualTo(Activity.TEACHING);
-        assertThat(ThresholdService.row(day, amount, null, "2027-01", reading).activity())
-                .as("issued before the business existed").isNull();
     }
 
     @Test
     void anInvoiceWithoutTotalCountsNothing() {
         RevenueRow row = ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal("5.00"), null, "2027-01",
-                SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931));
+                SampleInvoices.free(InvoiceFormat.ZUGFERD_EN16931), "OTHER");
         assertThat(row.counted()).isEqualByComparingTo("0");
         assertThat(row.excluded()).isEqualByComparingTo("5.00");
         assertThat(row.byCategory()).isEmpty();
     }
 
     private static RevenueRow split(String amount, InvoiceDocument document) {
-        return ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal(amount), null, "2027-01", document);
+        return ThresholdService.row(LocalDate.of(2027, 1, 2), new BigDecimal(amount), null, "2027-01", document, "OTHER");
     }
 
     private static BigDecimal parts(RevenueRow row) {

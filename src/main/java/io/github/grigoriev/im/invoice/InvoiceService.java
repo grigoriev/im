@@ -354,7 +354,7 @@ public class InvoiceService {
             problems.add("„Nicht steuerbar“ steht allein auf einer Rechnung (EN 16931, BR-O-12).");
         }
         TaxStatus status = cancellation ? null : seller.map(SellerProfile::taxStatus).orElse(null);
-        // Teaching stands alone (decision 2026-11-14). A Stornorechnung repeats its invoice, which may be older.
+        // Teaching stands alone (decision 2026-11-14). A Stornorechnung repeats its invoice as it was issued.
         if (!cancellation && used.contains(TaxCategory.EXEMPT_4_21) && used.size() > 1) {
             problems.add(TEACHING_ALONE);
         }

@@ -194,8 +194,7 @@ The category is set per line. One invoice can mix categories, with these rules:
    teaching. The customer suggests it, a template overrides it, the draft can change it, the issue freezes it; without
    one, teaching only is `TEACHING`. With two numbers a teaching invoice has no §19 and no VAT lines
    (`TEACHING_LINES`), and the other business no §4 Nr. 21 lines (`OTHER_LINES`). Both share one number sequence and
-   one §19 threshold. "Berichte" shows one Anlage EÜR per business; an invoice issued before the business existed
-   splits by its categories.
+   one §19 threshold. "Berichte" shows one Anlage EÜR per business.
 9. `EXEMPT_4_21` never mixes with another category (decision 2026-11-14), with one tax number or two: teaching stands
    alone on its invoice. A Stornorechnung repeats its invoice, its business included, and is exempt from rules 8 and 9.
 The standard rates serve every business that charges VAT, for example a shop that sells goods: the project is open source.

@@ -217,16 +217,8 @@ public class ThresholdService {
     /**
      * Splits one payment by the lines of its invoice, to the cent. Each category weighs with its gross amount, its net
      * lines plus the VAT of its rate. The largest-remainder method hands out the cents: the parts add up to the
-     * payment, and none takes the other sign. The §19 part is what {@code KLEINUNTERNEHMER} gets.
-     */
-    static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document) {
-        return row(paidOn, amount, note, number, document, null);
-    }
-
-    /**
-     * Splits one payment as {@link #row(LocalDate, BigDecimal, String, String, InvoiceDocument)} does, with the business
-     * the issue froze; {@code null} for an invoice issued before the business existed, which the report splits by its
-     * tax categories.
+     * payment, and none takes the other sign. The §19 part is what {@code KLEINUNTERNEHMER} gets. The row carries the
+     * business the issue froze.
      */
     static RevenueRow row(LocalDate paidOn, BigDecimal amount, String note, String number, InvoiceDocument document,
             String activity) {
@@ -237,7 +229,7 @@ public class ThresholdService {
         BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS));
         return new RevenueRow(paidOn, number,
                 Customer.label(document.buyer().name(), document.buyer().contactName()), amount, counted, amount.subtract(counted),
-                byCategory, note, activity == null ? null : Activity.valueOf(activity));
+                byCategory, note, Activity.valueOf(activity));
     }
 
     /** The gross amount per category: its net lines plus, for a standard rate, the VAT of that rate. */
