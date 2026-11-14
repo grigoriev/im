@@ -19,7 +19,7 @@ test('saves the seller profile tab by tab and marks a wrong entry at its field',
   await expect(page.getByLabel('IBAN')).toHaveValue('DE89 3704 0044 0532 0130 00');
   await expect(page.getByLabel('BIC')).toHaveValue('COBADEFFXXX');
   await expect(page.getByLabel('Kontoinhaber')).toHaveValue('Erika Mustermann');
-  await expect(page.locator('#profile-tabs [aria-label="unvollständig"]')).toHaveCount(0);
+  await expect(page.locator('#profile-tabs .status')).toHaveCount(0);
   await page.getByRole('tab', { name: /^Steuer( unvollständig)?$/ }).click();
   await expect(page.getByLabel('Steuerstatus')).toHaveValue('KLEINUNTERNEHMER');
   await page.getByRole('tab', { name: /^Anschrift( unvollständig)?$/ }).click();

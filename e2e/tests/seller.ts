@@ -2,9 +2,10 @@ import { expect, type Page } from '@playwright/test';
 
 // The seller profile that invoices need. settings.spec.ts saves the same values, so the two specs never
 // disagree when they run in parallel.
+// Bankverbindung is the last tab fillProfile saves, so a BIC means every tab is there.
 export async function ensureProfile(page: Page): Promise<void> {
-  await page.goto('/einstellungen');
-  if ((await page.getByLabel('Name', { exact: true }).inputValue()) !== '') return;
+  await page.goto('/einstellungen?teil=bank');
+  if ((await page.getByLabel('BIC').inputValue()) !== '') return;
   await fillProfile(page);
 }
 

@@ -393,7 +393,7 @@ class SecurityWebTest {
         mvc.perform(get("/einstellungen").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"seller-name\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"seller-iban\""))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("aria-label=\"unvollständig\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<span class=\"sr-only\">unvollständig</span>")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Für Rechnungen nötig.")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("Steuerhinweise"))));
         mvc.perform(get("/einstellungen").param("teil", "steuer").with(user("elena").roles("USER")))
@@ -402,7 +402,7 @@ class SecurityWebTest {
         mvc.perform(get("/einstellungen").param("teil", "bank").with(user("admin").roles("ADMIN")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"DE89 3704 0044 0532 0130 00\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"accountHolder\" value=\"Erika Mustermann\"")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("aria-label=\"unvollständig\""))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<span class=\"sr-only\">unvollständig</span>"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Steuerhinweise")));
         mvc.perform(get("/einstellungen").param("teil", "unbekannt").with(user("admin").roles("ADMIN")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"Erika Mustermann\"")));
