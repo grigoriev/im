@@ -47,3 +47,18 @@ test('a field label keeps its gray on focus and on error', async ({ page }) => {
   await field.blur();
   expect(await colorOf()).toBe(gray);
 });
+
+// Safari on an iPhone sizes a select of the system by its longest option and keeps the picker of the system there, so
+// a long customer name pushed the field out of its card. Chromium and the emulated WebKit shrink the select anyway, so
+// the test checks the cause: every label of a field may shrink as a flex item, and a select cuts its text.
+test('a field shrinks with its card, however long its value', async ({ page }) => {
+  await page.goto('/expenses/new');
+  const labels = await page.locator('.floating-label').evaluateAll((all) => all.map((label) => getComputedStyle(label).minWidth));
+  expect(labels.length).toBeGreaterThan(0);
+  expect(new Set(labels)).toEqual(new Set(['0px']));
+  const select = await page.locator('#expense-category').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.minWidth, style.maxWidth, style.textOverflow];
+  });
+  expect(select).toEqual(['0px', '100%', 'ellipsis']);
+});
