@@ -155,7 +155,7 @@ public class UserService {
         if (user.username().equals(AuditService.currentUser())) {
             throw new UserException("Das eigene Konto lässt sich nicht löschen.");
         }
-        if (user.role() == Role.ADMIN && users.countByRole(Role.ADMIN) <= 1) {
+        if (user.role() == Role.ADMIN && users.lockAdmins().size() <= 1) {
             throw new UserException("Der letzte Administrator bleibt. Bitte zuerst einen weiteren anlegen.");
         }
         passkeys.forget(user.username());

@@ -44,6 +44,7 @@ public class AdminUserController {
      *
      * @param users the user service
      * @param passkeys the passkey service
+     * @param sessions ends the sessions of a deleted user
      */
     public AdminUserController(UserService users, PasskeyService passkeys, SessionEpoch sessions) {
         this.users = users;

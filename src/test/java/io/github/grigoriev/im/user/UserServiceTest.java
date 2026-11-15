@@ -167,7 +167,7 @@ class UserServiceTest {
     void deletesAUserWithThePasskeysAndTheLogins() {
         AppUser old = UserTestData.user(3, "admin", Role.ADMIN);
         when(repository.findById(3L)).thenReturn(Optional.of(old));
-        when(repository.countByRole(Role.ADMIN)).thenReturn(2L);
+        when(repository.lockAdmins()).thenReturn(List.of(1L, 3L));
         assertThat(service.delete(3)).isEqualTo(old);
         var order = Mockito.inOrder(passkeys, rememberMe, repository, audit);
         order.verify(passkeys).forget("admin");
@@ -180,7 +180,7 @@ class UserServiceTest {
     void deletesAUserNextToTheOnlyAdmin() {
         AppUser elena = UserTestData.user(4, "elena", Role.USER);
         when(repository.findById(4L)).thenReturn(Optional.of(elena));
-        when(repository.countByRole(Role.ADMIN)).thenReturn(1L);
+        when(repository.lockAdmins()).thenReturn(List.of(3L));
         assertThat(service.delete(4)).isEqualTo(elena);
         verify(repository).delete(elena);
     }
@@ -189,14 +189,14 @@ class UserServiceTest {
     void keepsTheLastAdminTheOwnAccountAndAnUnknownUser() {
         AppUser admin = UserTestData.user(3, "admin", Role.ADMIN);
         when(repository.findById(3L)).thenReturn(Optional.of(admin));
-        when(repository.countByRole(Role.ADMIN)).thenReturn(1L);
+        when(repository.lockAdmins()).thenReturn(List.of(3L));
         assertThatThrownBy(() -> service.delete(3)).isInstanceOf(UserException.class)
                 .hasMessage("Der letzte Administrator bleibt. Bitte zuerst einen weiteren anlegen.");
-        when(repository.countByRole(Role.ADMIN)).thenReturn(0L);
+        when(repository.lockAdmins()).thenReturn(List.of());
         assertThatThrownBy(() -> service.delete(3)).isInstanceOf(UserException.class);
         SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("admin", null, "ROLE_ADMIN"));
         try {
-            when(repository.countByRole(Role.ADMIN)).thenReturn(2L);
+            when(repository.lockAdmins()).thenReturn(List.of(1L, 3L));
             assertThatThrownBy(() -> service.delete(3)).isInstanceOf(UserException.class)
                     .hasMessage("Das eigene Konto lässt sich nicht löschen.");
         } finally {

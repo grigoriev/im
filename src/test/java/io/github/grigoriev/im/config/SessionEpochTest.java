@@ -72,7 +72,8 @@ class SessionEpochTest {
         long before = NOW.toEpochMilli() - 1;
         epoch.end("admin");
         assertThat(epoch.ended("admin", before)).isTrue();
-        assertThat(epoch.ended("admin", NOW.toEpochMilli())).as("a new login in the same moment counts").isFalse();
+        assertThat(epoch.ended("admin", NOW.toEpochMilli())).as("a session of the same millisecond ends too").isTrue();
+        assertThat(epoch.ended("admin", NOW.toEpochMilli() + 1)).as("a later login counts").isFalse();
         assertThat(epoch.ended("elena", before)).isFalse();
         assertThat(filter(sessionOf("admin", before)).isInvalid()).isTrue();
         assertThat(filter(sessionOf("admin", NOW.toEpochMilli() + 1)).isInvalid()).isFalse();

@@ -52,7 +52,7 @@ public class SessionEpoch {
     }
 
     /**
-     * Tells whether a session of a user started before the user's sessions ended.
+     * Tells whether a session of a user started before the user's sessions ended, or in the same millisecond.
      *
      * @param username the login name of the session
      * @param creationTime the start of the session, in milliseconds
@@ -60,7 +60,7 @@ public class SessionEpoch {
      */
     public boolean ended(String username, long creationTime) {
         Long at = ended.get(username);
-        return at != null && creationTime < at;
+        return at != null && creationTime <= at;
     }
 
     /**
