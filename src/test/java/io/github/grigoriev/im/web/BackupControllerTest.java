@@ -15,7 +15,9 @@ import io.github.grigoriev.im.backup.BackupStatus;
 import io.github.grigoriev.im.config.SessionEpoch;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -82,6 +84,8 @@ class BackupControllerTest {
         doAnswer(call -> {
             Path upload = call.getArgument(0);
             assertThat(upload).hasBinaryContent(new byte[] {1});
+            assertThat(Files.getPosixFilePermissions(upload)).as("for the app only")
+                    .containsExactlyInAnyOrder(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
             seen.add(upload);
             return null;
         }).when(backups).restore(any(Path.class));

@@ -10,8 +10,10 @@ import java.util.function.LongConsumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
 import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.MappingIterator;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectReader;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -88,10 +90,14 @@ final class BackupArchive {
      * @throws BackupException if the entry is missing or no valid JSON array of rows
      */
     void rows(String name, Consumer<Map<String, Object>> each) {
-        ObjectReader reader = json.readerFor(ROW);
+        // Each row is one value of the array: the rows after it are no trailing garbage.
+        ObjectReader reader = json.readerFor(ROW).without(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
         entry(name, maxBytes, in -> {
-            try (MappingIterator<Map<String, Object>> rows = reader.readValues(in)) {
-                for (Map<String, Object> row = next(name, rows); row != null; row = next(name, rows)) {
+            try (JsonParser parser = json.createParser(in)) {
+                if (token(name, parser) != JsonToken.START_ARRAY) {
+                    throw damaged(name);
+                }
+                for (Map<String, Object> row = next(name, parser, reader); row != null; row = next(name, parser, reader)) {
                     each.accept(row);
                 }
             }
@@ -99,10 +105,28 @@ final class BackupArchive {
         });
     }
 
-    /** The next row, or {@code null} after the last; a parse error is the fault of the file, not of {@code each}. */
-    private static Map<String, Object> next(String name, MappingIterator<Map<String, Object>> rows) {
+    /**
+     * The next row of the array, or {@code null} after the last. Anything else, an empty or cut entry too, is a damaged
+     * export; a parse error is the fault of the file, not of the receiver of the rows.
+     */
+    private static Map<String, Object> next(String name, JsonParser parser, ObjectReader reader) {
+        JsonToken token = token(name, parser);
+        if (token == JsonToken.END_ARRAY) {
+            return null;
+        }
+        if (token != JsonToken.START_OBJECT) {
+            throw damaged(name);
+        }
         try {
-            return rows.hasNextValue() ? rows.nextValue() : null;
+            return reader.readValue(parser);
+        } catch (JacksonException _) {
+            throw damaged(name);
+        }
+    }
+
+    private static JsonToken token(String name, JsonParser parser) {
+        try {
+            return parser.nextToken();
         } catch (JacksonException _) {
             throw damaged(name);
         }

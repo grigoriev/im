@@ -72,9 +72,16 @@ class BackupArchiveTest {
         Map<String, byte[]> entries = new LinkedHashMap<>();
         entries.put("data/cut.json", utf8("[{\"id\":\"1\"},{\"id\""));
         entries.put("data/text.json", utf8("[\"x\"]"));
+        entries.put("data/none.json", new byte[0]);
+        entries.put("data/word.json", utf8("kaputt"));
+        entries.put("data/object.json", utf8("{\"id\":\"1\"}"));
         List<Map<String, Object>> rows = new ArrayList<>();
         BackupException own = new BackupException("vom Empfänger");
-        read(zip(entries), 1000, 100, 2, archive -> {
+        read(zip(entries), 1000, 100, 5, archive -> {
+            for (String broken : List.of("data/none.json", "data/word.json", "data/object.json")) {
+                assertThatThrownBy(() -> archive.rows(broken, rows::add)).as(broken).isInstanceOf(BackupException.class)
+                        .hasMessage("Die Datensicherung ist beschädigt: " + broken + ".");
+            }
             assertThatThrownBy(() -> archive.value("manifest.json", new TypeReference<Map<String, Object>>() { }))
                     .isInstanceOf(BackupException.class)
                     .hasMessage("Diese Datei ist keine Datensicherung dieser App: manifest.json fehlt.");
