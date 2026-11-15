@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- Each PDF, XML, snapshot and business document carries a seal: an HMAC-SHA256 with the key `IM_INTEGRITY_KEY`, which lives outside the database. Every read checks the SHA-256 and the seal. A changed file shows on its page, with the facts of the XML that differ from the snapshot, and stays out of download, e-mail and the yearly archive.
+- The app checks every document at startup and every night. The overview lists what failed, the audit log records it, and "Datensicherung" checks on request.
+- An import refuses files that do not match their SHA-256 or seal.
+
+### Changed
+
+- The app connects to the database as `IM_DB_USER`, a role that may only read and write rows, and refuses to start as the owner. Flyway migrates as `IM_DB_OWNER`. Create the role before the update, see the README.
+
 ## [0.1.5] - 2026-11-15
 
 ### Added

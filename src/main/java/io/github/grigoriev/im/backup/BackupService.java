@@ -2,6 +2,8 @@ package io.github.grigoriev.im.backup;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.integrity.Damage;
+import io.github.grigoriev.im.integrity.IntegrityCheck;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
@@ -67,7 +69,10 @@ public class BackupService {
             "business_document");
 
     /** The columns of an invoice that the import sets after its lines, so the triggers see a draft until then. */
-    static final List<String> LATER = List.of("status", "number", "issued_at", "snapshot", "cancels_id", "template_id");
+    static final List<String> LATER = List.of("status", "number", "issued_at", "snapshot", "seal", "cancels_id",
+            "template_id");
+    static final String DAMAGED = "Die Datensicherung enthält Dateien, die nicht zu Prüfsumme oder Siegel passen: %s. "
+            + "Das Siegel braucht denselben IM_INTEGRITY_KEY wie die Installation, aus der die Sicherung stammt.";
 
     static final String SCHEMA = "SELECT version FROM flyway_schema_history WHERE success ORDER BY installed_rank DESC "
             + "LIMIT 1";
@@ -86,6 +91,7 @@ public class BackupService {
     private final JdbcClient jdbc;
     private final JsonMapper json;
     private final AuditService audit;
+    private final List<IntegrityCheck> checks;
     private final Clock clock;
 
     /**
@@ -94,12 +100,15 @@ public class BackupService {
      * @param jdbc reads and writes the tables
      * @param json writes and reads the manifest and the rows
      * @param audit the audit log
+     * @param checks check the imported documents and snapshots
      * @param clock the time of an export
      */
-    public BackupService(JdbcClient jdbc, JsonMapper json, AuditService audit, Clock clock) {
+    public BackupService(JdbcClient jdbc, JsonMapper json, AuditService audit, List<IntegrityCheck> checks,
+            Clock clock) {
         this.jdbc = jdbc;
         this.json = json;
         this.audit = audit;
+        this.checks = List.copyOf(checks);
         this.clock = clock;
     }
 
@@ -125,7 +134,8 @@ public class BackupService {
      * stream from the file, so an export of any size needs the memory of one document only.
      *
      * @param file the ZIP on disk
-     * @throws BackupException if the file is no export, of another version, or this installation has data
+     * @throws BackupException if the file is no export, of another version, this installation has data, or a document
+     *     does not match its SHA-256 or seal
      */
     @Transactional
     public void restore(Path file) {
@@ -157,6 +167,12 @@ public class BackupService {
         // A second pass over the invoices, after their lines and documents: the rows never sit in memory together.
         Map<String, String> invoiceTypes = types(INVOICE);
         archive.rows(data(INVOICE), invoice -> finish(invoiceTypes, invoice));
+        // A changed file, or a seal of another key, stops the import: the transaction leaves the installation empty.
+        // The check runs before the identities move on, since a rollback does not take setval back.
+        List<String> damaged = checks.stream().flatMap(check -> check.damaged().stream()).map(Damage::what).toList();
+        if (!damaged.isEmpty()) {
+            throw new BackupException(DAMAGED.formatted(String.join(", ", damaged)));
+        }
         TABLES.forEach(this::resetIdentity);
         audit.add(AuditAction.DATA_IMPORTED, "");
     }

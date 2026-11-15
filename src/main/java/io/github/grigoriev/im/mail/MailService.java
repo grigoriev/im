@@ -81,7 +81,7 @@ public class MailService {
      */
     public String preview(long invoiceId, SendForm form) {
         Invoice invoice = dispatches.sendable(invoiceId);
-        return html.render(documents.restore(invoice.snapshot()), Fields.text(form.getSubject()), form.getBody());
+        return html.render(documents.verifiedSnapshot(invoice), Fields.text(form.getSubject()), form.getBody());
     }
 
     /**
@@ -125,7 +125,7 @@ public class MailService {
         }
         Invoice invoice = dispatches.sendable(invoiceId);
         Outgoing mail = outgoing(invoiceId, form);
-        InvoiceDocument document = documents.restore(invoice.snapshot());
+        InvoiceDocument document = documents.verifiedSnapshot(invoice);
         deliver(invoice, mail, html.render(document, mail.subject(), mail.body()), MailHtml.plain(document, mail.body()));
         try {
             dispatches.recordEmail(invoiceId, mail.to(), mail.attachmentNames());
@@ -162,7 +162,7 @@ public class MailService {
      */
     public String previewReminder(long invoiceId, SendForm form) {
         Invoice invoice = reminders.remindable(invoiceId);
-        return html.renderReminder(documents.restore(invoice.snapshot()), Fields.text(form.getSubject()), form.getBody(),
+        return html.renderReminder(documents.verifiedSnapshot(invoice), Fields.text(form.getSubject()), form.getBody(),
                 reminders.open(invoice));
     }
 
@@ -180,7 +180,7 @@ public class MailService {
         }
         Invoice invoice = reminders.remindable(invoiceId);
         Outgoing mail = outgoing(invoiceId, form);
-        InvoiceDocument document = documents.restore(invoice.snapshot());
+        InvoiceDocument document = documents.verifiedSnapshot(invoice);
         deliver(invoice, mail, html.renderReminder(document, mail.subject(), mail.body(), reminders.open(invoice)),
                 MailHtml.plain(document, mail.body()));
         try {

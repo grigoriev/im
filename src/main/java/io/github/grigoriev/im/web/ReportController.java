@@ -7,7 +7,10 @@ import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.threshold.RevenueRow;
 import io.github.grigoriev.im.threshold.ThresholdService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -21,6 +24,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -28,6 +32,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.FlashMap;
+import org.springframework.web.servlet.support.RequestContextUtils;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 /**
@@ -39,6 +45,9 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 public class ReportController {
 
     static final String VIEW = "reports";
+    static final String PATH = "/reports";
+    static final String DAMAGED = "Das Archiv bleibt aus, denn diese Dateien sind beschädigt oder wurden außerhalb "
+            + "der App geändert: %s. Bitte die Seiten dieser Rechnungen und Dokumente ansehen.";
 
     /** The CSV head. A spreadsheet opens it with semicolons, German numbers and the BOM for UTF-8. */
     static final String CSV_HEAD = "Zahlungseingang;Rechnungsnummer;Kunde;Betrag;davon § 19 UStG;"
@@ -94,10 +103,21 @@ public class ReportController {
      * Downloads the archive of a year: the PDF and XML of every invoice issued in it, and their table of contents.
      *
      * @param year the year of the invoice dates
-     * @return the ZIP, written while it goes out
+     * @param request the request, for the flash message
+     * @param response the response, for the flash message
+     * @return the ZIP, written while it goes out; a redirect to the report if a file is broken or changed
      */
     @GetMapping("/archive.zip")
-    public ResponseEntity<StreamingResponseBody> zip(@RequestParam int year) {
+    public ResponseEntity<StreamingResponseBody> zip(@RequestParam int year, HttpServletRequest request,
+            HttpServletResponse response) {
+        List<String> damaged = archive.damaged(year);
+        if (!damaged.isEmpty()) {
+            // A broken or changed file stays out of the archive: the redirect carries the message as a flash attribute.
+            FlashMap flash = RequestContextUtils.getOutputFlashMap(request);
+            flash.put("error", DAMAGED.formatted(String.join(", ", damaged)));
+            RequestContextUtils.saveOutputFlashMap(PATH, request, response);
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(PATH + "?year=" + year)).build();
+        }
         StreamingResponseBody body = out -> archive.write(year, out);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/zip"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,

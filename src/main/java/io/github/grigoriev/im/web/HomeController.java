@@ -2,6 +2,8 @@ package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.einvoice.Party;
+import io.github.grigoriev.im.integrity.IntegrityMonitor;
+import io.github.grigoriev.im.integrity.IntegrityMonitor.Result;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
@@ -39,6 +41,7 @@ public class HomeController {
     private final DocumentStore documents;
     private final ThresholdService threshold;
     private final ReminderService reminders;
+    private final IntegrityMonitor integrity;
 
     /**
      * Creates the controller.
@@ -48,14 +51,16 @@ public class HomeController {
      * @param documents the buyer of an issued invoice
      * @param threshold the §19 revenue
      * @param reminders the last payment reminder of each invoice
+     * @param integrity the last check of the documents
      */
     public HomeController(InvoiceService invoices, PaymentService payments, DocumentStore documents,
-            ThresholdService threshold, ReminderService reminders) {
+            ThresholdService threshold, ReminderService reminders, IntegrityMonitor integrity) {
         this.invoices = invoices;
         this.payments = payments;
         this.documents = documents;
         this.threshold = threshold;
         this.reminders = reminders;
+        this.integrity = integrity;
     }
 
     /**
@@ -86,6 +91,7 @@ public class HomeController {
         model.addAttribute("overdue", overdue);
         model.addAttribute("overdueSum", overdue.stream().map(Open::open).reduce(BigDecimal.ZERO, BigDecimal::add));
         model.addAttribute("threshold", threshold.current());
+        model.addAttribute("damaged", integrity.last().map(Result::damaged).orElse(List.of()));
         return "home";
     }
 

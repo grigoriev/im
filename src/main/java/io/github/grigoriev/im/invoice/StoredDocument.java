@@ -16,10 +16,11 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param sha256 the SHA-256 of the bytes, hexadecimal
  * @param size the number of bytes
  * @param createdAt time of the issue
+ * @param seal the HMAC of invoice, kind and SHA-256 with the key of the app
  */
 @Table("invoice_document")
 public record StoredDocument(@Id Long id, Long invoiceId, DocumentKind kind, String filename, byte[] content,
-        String sha256, int size, Instant createdAt) {
+        String sha256, int size, Instant createdAt, String seal) {
 
     /** Keeps a copy of the bytes, so the document never changes from outside. */
     public StoredDocument {

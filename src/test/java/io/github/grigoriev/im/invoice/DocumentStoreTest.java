@@ -11,9 +11,10 @@ import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
+import io.github.grigoriev.im.integrity.Seal;
 import java.nio.charset.StandardCharsets;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -28,14 +29,9 @@ class DocumentStoreTest {
     private static final String ABC_SHA256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
 
     private final StoredDocumentRepository repository = mock(StoredDocumentRepository.class);
-    private final DocumentStore store = new DocumentStore(repository, JsonMapper.builder().findAndAddModules().build());
-
-    @Test
-    void hashesWithSha256() {
-        assertThat(DocumentStore.sha256("abc".getBytes(StandardCharsets.US_ASCII))).isEqualTo(ABC_SHA256);
-        assertThatThrownBy(() -> DocumentStore.digest("SHA-0", new byte[0])).isInstanceOf(IllegalStateException.class)
-                .hasMessage("Java lacks SHA-0").hasCauseInstanceOf(NoSuchAlgorithmException.class);
-    }
+    private final Seal seal = new Seal("test-only-integrity-key-0123456789abcdef");
+    private final DocumentStore store = new DocumentStore(repository, JsonMapper.builder().findAndAddModules().build(),
+            seal);
 
     @Test
     void storesThePdfAndTheXmlWithTheirHash() {
@@ -51,20 +47,75 @@ class DocumentStoreTest {
         assertThat(pdf.sha256()).isEqualTo(ABC_SHA256);
         assertThat(pdf.size()).isEqualTo(3);
         assertThat(pdf.createdAt()).isEqualTo(NOW);
+        assertThat(pdf.seal()).isEqualTo(seal.invoiceDocument(5, "PDF", ABC_SHA256));
+        assertThat(store.problems(pdf)).isEmpty();
         StoredDocument xml = saved.getAllValues().get(1);
         assertThat(xml.kind()).isEqualTo(DocumentKind.XML);
         assertThat(xml.filename()).isEqualTo("Rechnung_RE-2027-10.xml");
         assertThat(xml.size()).isEqualTo(2);
+        assertThat(xml.seal()).isEqualTo(seal.invoiceDocument(5, "XML", xml.sha256()));
+    }
+
+    private StoredDocument abc(long invoiceId, DocumentKind kind, String sha256, String sealOf) {
+        return new StoredDocument(1L, invoiceId, kind, "a.pdf", "abc".getBytes(StandardCharsets.US_ASCII), sha256, 3,
+                NOW, seal.invoiceDocument(5, kind.name(), sealOf));
     }
 
     @Test
     void listsAndFindsTheDocuments() {
-        StoredDocument pdf = new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, ABC_SHA256, 1, NOW);
+        StoredDocument pdf = abc(5, DocumentKind.PDF, ABC_SHA256, ABC_SHA256);
         when(repository.findByInvoiceIdOrderByKindAsc(5L)).thenReturn(List.of(pdf));
         when(repository.findByInvoiceIdAndKind(5L, DocumentKind.PDF)).thenReturn(Optional.of(pdf));
         assertThat(store.list(5)).containsExactly(pdf);
         assertThat(store.find(5, DocumentKind.PDF)).contains(pdf);
         assertThat(store.find(6, DocumentKind.XML)).isEmpty();
+    }
+
+    @Test
+    void namesAChangedFileAndRefusesToHandItOut() {
+        String other = "0".repeat(64);
+        StoredDocument changed = abc(5, DocumentKind.PDF, other, other);
+        assertThat(store.problems(changed)).as("the bytes no longer match the hash, the seal still matches the hash")
+                .containsExactly("a.pdf: Der Inhalt passt nicht zur gespeicherten Prüfsumme. Gespeichert: " + other
+                        + ", berechnet: " + ABC_SHA256 + ".");
+        when(repository.findByInvoiceIdAndKind(5L, DocumentKind.PDF)).thenReturn(Optional.of(changed));
+        assertThatThrownBy(() -> store.find(5, DocumentKind.PDF)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Die Datei a.pdf ist beschädigt oder wurde außerhalb der App geändert. Die Seite der "
+                        + "Rechnung zeigt, was abweicht.");
+        assertThat(store.problems(abc(5, DocumentKind.PDF, ABC_SHA256, other))).as("hash and bytes changed together")
+                .containsExactly("a.pdf: Das Siegel passt nicht. Prüfsumme oder Zuordnung der Datei wurden außerhalb "
+                        + "der App geändert.");
+        assertThat(store.problems(abc(6, DocumentKind.PDF, ABC_SHA256, ABC_SHA256))).as("moved to another invoice")
+                .hasSize(1);
+        assertThat(store.problems(abc(5, DocumentKind.XML, ABC_SHA256, ABC_SHA256))).isEmpty();
+        StoredDocument unsealed = new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf",
+                "abc".getBytes(StandardCharsets.US_ASCII), ABC_SHA256, 3, NOW, null);
+        assertThat(store.problems(unsealed)).hasSize(1);
+        assertThat(store.verified(pdfOf(5))).isEqualTo(pdfOf(5));
+    }
+
+    private StoredDocument pdfOf(long invoiceId) {
+        return abc(invoiceId, DocumentKind.PDF, ABC_SHA256, ABC_SHA256);
+    }
+
+    @Test
+    void sealsTheSnapshotAndReadsItBackOnlyIfItMatches() {
+        assertThat(store.seal(5, "2027-01", "{}")).isEqualTo(seal.snapshot(5, "2027-01", "{}"));
+        InvoiceDocument document = SampleInvoices.sale(InvoiceFormat.XRECHNUNG);
+        String json = store.snapshot(document);
+        LocalDate day = LocalDate.of(2027, 3, 18);
+        Invoice invoice = new Invoice(5L, InvoiceStatus.ISSUED, 2L, "2027-10", InvoiceFormat.XRECHNUNG, day, day, day,
+                14, null, null, null, null, List.of(), NOW, NOW, 1L, NOW, json, null);
+        when(repository.findSnapshotSeal(5L)).thenReturn(seal.snapshot(5, "2027-10", json));
+        assertThat(store.sealed(invoice)).isTrue();
+        assertThat(store.verifiedSnapshot(invoice)).isEqualTo(document);
+        when(repository.findSnapshotSeal(5L)).thenReturn(seal.snapshot(5, "2027-11", json));
+        assertThat(store.sealed(invoice)).isFalse();
+        assertThatThrownBy(() -> store.verifiedSnapshot(invoice)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Der Stand der Ausstellung von Rechnung 2027-10 wurde außerhalb der App geändert. Die Seite "
+                        + "der Rechnung zeigt, was abweicht.");
+        when(repository.findSnapshotSeal(5L)).thenReturn(null);
+        assertThat(store.sealed(invoice)).isFalse();
     }
 
     @ParameterizedTest

@@ -436,6 +436,9 @@
                         <param>io.github.grigoriev.im.document.BusinessDocument</param>
                         <param>io.github.grigoriev.im.document.ProcedureService</param>
                         <param>io.github.grigoriev.im.document.ProcedureForm</param>
+                        <param>io.github.grigoriev.im.einvoice.EInvoiceFacts*</param>
+                        <param>io.github.grigoriev.im.invoice.InvoiceIntegrity*</param>
+                        <param>io.github.grigoriev.im.integrity.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>
@@ -450,6 +453,7 @@
                         <param>io.github.grigoriev.im.threshold.*Test</param>
                         <param>io.github.grigoriev.im.backup.*Test</param>
                         <param>io.github.grigoriev.im.document.*Test</param>
+                        <param>io.github.grigoriev.im.integrity.*Test</param>
                     </targetTests>
                     <!-- These tests run the full validators (KoSIT, veraPDF) and take a minute each. The mutated
                          classes have fast tests of their own, so PIT leaves the slow ones out. -->

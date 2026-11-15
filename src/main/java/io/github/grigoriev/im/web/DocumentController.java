@@ -9,6 +9,7 @@ import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.document.ProcedureForm;
 import io.github.grigoriev.im.document.ProcedureService;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -47,7 +48,8 @@ public class DocumentController {
     private static final String SUCCESS = "success";
     private static final String PROBLEMS = "problems";
     private static final String FORM = "form";
-    private static final String TO_DOCUMENT = "redirect:/documents/";
+    private static final String DOCUMENT_PATH = "/documents";
+    private static final String TO_DOCUMENT = "redirect:" + DOCUMENT_PATH + "/";
 
     private final DocumentService documents;
     private final ProcedureService procedure;
@@ -238,11 +240,17 @@ public class DocumentController {
      * Downloads the file of a document.
      *
      * @param id the ID
-     * @return the file as it was stored
+     * @return the file as it was stored; a redirect to the document, which shows the check, if it is broken or changed
      */
     @GetMapping("/{id}/file")
     public ResponseEntity<byte[]> download(@PathVariable long id) {
-        DocumentFile file = documents.file(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        DocumentFile file;
+        try {
+            file = documents.file(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        } catch (DocumentException _) {
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(DOCUMENT_PATH + "/" + id))
+                    .build();
+        }
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(file.filename(), StandardCharsets.UTF_8).build().toString())
@@ -264,6 +272,7 @@ public class DocumentController {
         model.addAttribute(FORM, form);
         model.addAttribute("categories", DocumentCategory.values());
         model.addAttribute("versions", document == null ? List.of() : documents.versions(document.id()));
+        model.addAttribute("integrity", document == null ? List.of() : documents.problems(document.id()));
         return EDIT;
     }
 

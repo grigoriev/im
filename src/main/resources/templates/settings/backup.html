@@ -10,6 +10,7 @@
   <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
     <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
     <div th:replace="~{fragments/settings :: tabs('backup')}"></div>
+    <output class="alert alert-success text-sm" id="backup-success" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" id="backup-error" th:if="${error}" th:text="${error}">Fehler</div>
 
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-status">
@@ -38,6 +39,26 @@
               : ${#temporals.format(status.restoreTest().succeededAt(), 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}
                 + (${status.restoreTest().detail().isEmpty()} ? '' : ' · ' + ${status.restoreTest().detail()})">noch keiner</span></dd>
       </dl>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="integrity-check">
+      <div>
+        <h2 class="font-semibold">Prüfung der Dokumente</h2>
+        <p class="text-sm text-base-content/75">Jede Nacht und bei jedem Start prüft die App alle Rechnungen und Dokumente:
+          ob jede Datei zu ihrer Prüfsumme (SHA-256) passt und ob ihr Siegel stimmt. Das Siegel braucht den Schlüssel
+          IM_INTEGRITY_KEY, der nicht in der Datenbank liegt. So fällt auch eine Änderung direkt in der Datenbank auf.</p>
+      </div>
+      <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+        <dt class="text-base-content/75">Letzte Prüfung</dt>
+        <dd id="integrity-checked" data-volatile th:text="${integrity == null} ? 'noch keine'
+            : ${#temporals.format(integrity.checkedAt(), 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">12.05.2027, 03:30</dd>
+        <dt class="text-base-content/75">Ergebnis</dt>
+        <dd id="integrity-result" th:text="${integrity == null} ? '–' : (${integrity.intact()} ? 'Alles in Ordnung'
+            : 'Abweichungen: ' + ${integrity.damaged().size()} + ', siehe Übersicht')">Alles in Ordnung</dd>
+      </dl>
+      <form class="form-actions" method="post" th:action="@{/admin/backup/check}" id="integrity-check-form">
+        <button type="submit" class="btn" id="integrity-check-now"><i data-lucide="shield-check" class="size-4"></i>Jetzt prüfen</button>
+      </form>
     </section>
 
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-export">

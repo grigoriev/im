@@ -2,10 +2,11 @@ package io.github.grigoriev.im.document;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.integrity.Damage;
+import io.github.grigoriev.im.integrity.IntegrityCheck;
+import io.github.grigoriev.im.integrity.Seal;
 import io.github.grigoriev.im.validation.Fields;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -14,7 +15,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
  * new version names the one it replaces. Only the description of a document may change.
  */
 @Service
-public class DocumentService {
+public class DocumentService implements IntegrityCheck {
 
     /** The largest file, 25 MiB: a scanned letter of many pages fits. */
     /** The largest file of a document; the upload checks it before it reads the file. */
@@ -60,13 +60,22 @@ public class DocumentService {
     static final String FROM = " FROM business_document d LEFT JOIN business_document n ON n.replaces_id = d.id";
     static final String ALL = "SELECT " + COLUMNS + FROM + " ORDER BY d.document_date DESC, d.id DESC";
     static final String ONE = "SELECT " + COLUMNS + FROM + " WHERE d.id = :id";
-    static final String FILE = "SELECT filename, media_type, content FROM business_document WHERE id = :id";
+    static final String FILE = "SELECT filename, media_type, content, sha256, seal FROM business_document WHERE id = :id";
+    static final String IDS = "SELECT id FROM business_document ORDER BY id";
+    /** The ID comes first: the seal names it. */
+    static final String NEXT_ID = "SELECT nextval(pg_get_serial_sequence('business_document', 'id'))";
     static final String INSERT = """
-            INSERT INTO business_document (category, title, document_date, year, note, replaces_id, filename, media_type,
-                content, sha256, size, created_at, created_by)
-            VALUES (:category, :title, :documentDate, :year, :note, :replacesId, :filename, :mediaType, :content,
-                :sha256, :size, :createdAt, :createdBy)
-            RETURNING id""";
+            INSERT INTO business_document (id, category, title, document_date, year, note, replaces_id, filename,
+                media_type, content, sha256, size, created_at, created_by, seal)
+            OVERRIDING SYSTEM VALUE
+            VALUES (:id, :category, :title, :documentDate, :year, :note, :replacesId, :filename, :mediaType, :content,
+                :sha256, :size, :createdAt, :createdBy, :seal)""";
+    static final String DAMAGED = "Die Datei %s ist beschädigt oder wurde außerhalb der App geändert. Die Seite des "
+            + "Dokuments zeigt, was abweicht.";
+    static final String WRONG_SHA = "%s: Der Inhalt passt nicht zur gespeicherten Prüfsumme. Gespeichert: %s, "
+            + "berechnet: %s.";
+    static final String WRONG_SEAL = "%s: Das Siegel passt nicht. Prüfsumme oder Zuordnung der Datei wurden außerhalb "
+            + "der App geändert.";
     static final String UPDATE = """
             UPDATE business_document SET category = :category, title = :title, document_date = :documentDate,
                 year = :year, note = :note
@@ -80,6 +89,7 @@ public class DocumentService {
 
     private final JdbcClient jdbc;
     private final AuditService audit;
+    private final Seal seal;
     private final Clock clock;
 
     /**
@@ -87,11 +97,13 @@ public class DocumentService {
      *
      * @param jdbc reads and writes the documents
      * @param audit the audit log
+     * @param seal seals the files
      * @param clock the time a document is stored
      */
-    public DocumentService(JdbcClient jdbc, AuditService audit, Clock clock) {
+    public DocumentService(JdbcClient jdbc, AuditService audit, Seal seal, Clock clock) {
         this.jdbc = jdbc;
         this.audit = audit;
+        this.seal = seal;
         this.clock = clock;
     }
 
@@ -169,14 +181,70 @@ public class DocumentService {
     }
 
     /**
-     * Returns the file of a document.
+     * Returns the file of a document, after it passed the check.
      *
      * @param id the ID
      * @return the file, empty if there is none
+     * @throws DocumentException if the file does not match its SHA-256 or seal
      */
     public Optional<DocumentFile> file(long id) {
-        return jdbc.sql(FILE).param("id", id)
-                .query((rs, n) -> new DocumentFile(rs.getString(1), rs.getString(2), rs.getBytes(3))).optional();
+        return stored(id).map(file -> {
+            if (!file.problems().isEmpty()) {
+                throw new DocumentException(List.of(DAMAGED.formatted(file.file().filename())));
+            }
+            return file.file();
+        });
+    }
+
+    /**
+     * Checks the file of a document against its SHA-256 and seal.
+     *
+     * @param id the ID
+     * @return what is wrong, empty if it is in order or there is no such document
+     */
+    public List<String> problems(long id) {
+        return stored(id).map(Stored::problems).orElse(List.of());
+    }
+
+    /**
+     * Checks every version of every document.
+     *
+     * @return the documents with a problem
+     */
+    @Override
+    public List<Damage> damaged() {
+        List<Damage> damaged = new ArrayList<>();
+        for (Long id : jdbc.sql(IDS).query(Long.class).list()) {
+            Stored file = stored(id).orElseThrow();
+            if (!file.problems().isEmpty()) {
+                damaged.add(new Damage(null, "Dokument " + file.file().filename(), "/documents/" + id,
+                        file.problems()));
+            }
+        }
+        return damaged;
+    }
+
+    /** A file as it is stored, with what its check found. */
+    private record Stored(DocumentFile file, List<String> problems) {
+    }
+
+    private Optional<Stored> stored(long id) {
+        return jdbc.sql(FILE).param("id", id).query((rs, n) -> {
+            DocumentFile file = new DocumentFile(rs.getString(1), rs.getString(2), rs.getBytes(3));
+            return new Stored(file, check(id, file, rs.getString(4), rs.getString(5)));
+        }).optional();
+    }
+
+    private List<String> check(long id, DocumentFile file, String sha256, String stored) {
+        List<String> problems = new ArrayList<>();
+        String computed = Seal.sha256(file.content());
+        if (!computed.equals(sha256)) {
+            problems.add(WRONG_SHA.formatted(file.filename(), sha256, computed));
+        }
+        if (!Seal.matches(stored, seal.businessDocument(id, sha256))) {
+            problems.add(WRONG_SEAL.formatted(file.filename()));
+        }
+        return problems;
     }
 
     /**
@@ -249,13 +317,16 @@ public class DocumentService {
         List<String> problems = new ArrayList<>();
         String mediaType = mediaType(problems, content).orElse(null);
         Description description = describe(form, problems);
-        return jdbc.sql(INSERT).param(CATEGORY, description.category().name()).param(TITLE, description.title())
-                .param(DOCUMENT_DATE, form.getDocumentDate()).param(YEAR, form.getYear())
-                .param(NOTE, description.note()).param("replacesId", replacesId)
+        long id = jdbc.sql(NEXT_ID).query(Long.class).single();
+        String sha256 = Seal.sha256(content);
+        jdbc.sql(INSERT).param("id", id).param(CATEGORY, description.category().name())
+                .param(TITLE, description.title()).param(DOCUMENT_DATE, form.getDocumentDate())
+                .param(YEAR, form.getYear()).param(NOTE, description.note()).param("replacesId", replacesId)
                 .param("filename", filename(filename, mediaType)).param("mediaType", mediaType)
-                .param("content", content).param("sha256", sha256(content)).param("size", content.length)
+                .param("content", content).param("sha256", sha256).param("size", content.length)
                 .param("createdAt", Timestamp.from(clock.instant())).param("createdBy", AuditService.currentUser())
-                .query(Long.class).single();
+                .param("seal", seal.businessDocument(id, sha256)).update();
+        return id;
     }
 
     /** Checks the description; with problems found before, it throws them all. */
@@ -324,32 +395,6 @@ public class DocumentService {
         int kept = Math.min(name.length(), MAX_FILENAME) - extension.length();
         name = name.substring(0, kept) + extension;
         return name;
-    }
-
-    /**
-     * Returns the SHA-256 of bytes.
-     *
-     * @param content the bytes
-     * @return the hash, 64 hexadecimal characters
-     */
-    static String sha256(byte[] content) {
-        return digest("SHA-256", content);
-    }
-
-    /**
-     * Returns the hash of bytes.
-     *
-     * @param algorithm the algorithm
-     * @param content the bytes
-     * @return the hash, hexadecimal
-     * @throws IllegalStateException if Java lacks the algorithm; every Java has SHA-256
-     */
-    static String digest(String algorithm, byte[] content) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance(algorithm).digest(content));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Java lacks " + algorithm, e);
-        }
     }
 
     private static String detail(BusinessDocument document) {

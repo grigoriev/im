@@ -107,6 +107,7 @@ class AccessRulesIT {
             Map.entry("GET /admin/backup", Access.ADMIN),
             Map.entry("GET /admin/backup/export.zip", Access.ADMIN),
             Map.entry("POST /admin/backup/import", Access.ADMIN),
+            Map.entry("POST /admin/backup/check", Access.ADMIN),
             Map.entry("POST /admin/baselines", Access.ADMIN),
             Map.entry("POST /admin/mail", Access.ADMIN),
             Map.entry("POST /admin/mail/reminder", Access.ADMIN),

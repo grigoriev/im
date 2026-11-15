@@ -72,7 +72,9 @@ public enum AuditAction {
     /** A new version of a business document was stored. */
     DOCUMENT_REPLACED("Neue Fassung abgelegt"),
     /** The description of a business document changed. */
-    DOCUMENT_CHANGED("Dokument geändert");
+    DOCUMENT_CHANGED("Dokument geändert"),
+    /** The check found a document or snapshot changed outside the app, or broken. */
+    INTEGRITY_FAILED("Prüfung fehlgeschlagen");
 
     private final String label;
 

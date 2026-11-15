@@ -13,6 +13,8 @@ import io.github.grigoriev.im.backup.BackupRunService;
 import io.github.grigoriev.im.backup.BackupService;
 import io.github.grigoriev.im.backup.BackupStatus;
 import io.github.grigoriev.im.config.SessionEpoch;
+import io.github.grigoriev.im.integrity.Damage;
+import io.github.grigoriev.im.integrity.IntegrityMonitor;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
@@ -40,7 +43,8 @@ class BackupControllerTest {
     private final BackupService backups = mock(BackupService.class);
     private final BackupRunService runs = mock(BackupRunService.class);
     private final SessionEpoch sessions = mock(SessionEpoch.class);
-    private final BackupController controller = new BackupController(backups, runs, sessions,
+    private final IntegrityMonitor integrity = mock(IntegrityMonitor.class);
+    private final BackupController controller = new BackupController(backups, runs, sessions, integrity,
             Clock.fixed(Instant.parse("2027-03-18T08:00:00Z"), ZoneOffset.UTC));
     private final MultipartFile file = new MockMultipartFile("file", "export.zip", "application/zip", new byte[] {1});
 
@@ -55,12 +59,37 @@ class BackupControllerTest {
         ExtendedModelMap model = new ExtendedModelMap();
         assertThat(controller.show(model)).isEqualTo("settings/backup");
         assertThat(model.getAttribute("status")).isSameAs(status);
+        assertThat(model.getAttribute("integrity")).as("before the first check").isNull();
+        IntegrityMonitor.Result checked = new IntegrityMonitor.Result(Instant.EPOCH, List.of());
+        when(integrity.last()).thenReturn(Optional.of(checked));
+        controller.show(model);
+        assertThat(model.getAttribute("integrity")).isSameAs(checked);
         var export = controller.export();
         assertThat(export.getHeaders().getContentDisposition().getFilename()).isEqualTo("im-datensicherung-2027-03-18.zip");
         assertThat(export.getHeaders().getContentType()).hasToString("application/zip");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         export.getBody().writeTo(out);
         verify(backups).export(out);
+    }
+
+    @Test
+    void checksEverythingOnRequest() {
+        when(integrity.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of()));
+        RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
+        assertThat(controller.check(flash)).isEqualTo("redirect:/admin/backup");
+        assertThat(flashOf(flash)).containsExactly(Map.entry("success",
+                "Prüfung abgeschlossen: Alle Dateien passen zu Prüfsumme und Siegel."));
+        Damage one = new Damage(null, "Dokument a.pdf", "/documents/1", List.of("x"));
+        when(integrity.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of(one)));
+        flash = new RedirectAttributesModelMap();
+        controller.check(flash);
+        assertThat(flashOf(flash)).containsExactly(Map.entry("error",
+                "Prüfung fehlgeschlagen: 1 Rechnung oder Dokument passt nicht zu Prüfsumme oder Siegel."));
+        when(integrity.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of(one, one)));
+        flash = new RedirectAttributesModelMap();
+        controller.check(flash);
+        assertThat(flashOf(flash)).containsExactly(Map.entry("error",
+                "Prüfung fehlgeschlagen: 2 Rechnungen oder Dokumente passen nicht zu Prüfsumme oder Siegel."));
     }
 
     @Test

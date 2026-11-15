@@ -14,6 +14,8 @@ import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.integrity.Damage;
+import io.github.grigoriev.im.integrity.IntegrityCheck;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -55,7 +57,8 @@ class BackupServiceTest {
     private final JdbcClient jdbc = mock(JdbcClient.class);
     private final AuditService audit = mock(AuditService.class);
     private final JsonMapper json = JsonMapper.builder().build();
-    private final BackupService service = new BackupService(jdbc, json, audit,
+    private final IntegrityCheck check = mock(IntegrityCheck.class);
+    private final BackupService service = new BackupService(jdbc, json, audit, List.of(check),
             Clock.fixed(Instant.parse("2027-03-18T08:00:00Z"), ZoneOffset.UTC));
 
     /** Rows per table, each column a pair of type and value. */
@@ -177,8 +180,8 @@ class BackupServiceTest {
         row("customer", "bigint", "id", "7", "character varying(200)", "name", "Verlag \"am\" Fluss");
         row("invoice", "bigint", "id", "3", "character varying(16)", "status", "ISSUED", "character varying(32)",
                 "number", "2027-01", "integer", "customer_id", "7", "timestamp with time zone", "issued_at",
-                "2027-03-18 08:00:00+00", "text", "snapshot", "{}", "bigint", "cancels_id", null, "bigint", "template_id",
-                null);
+                "2027-03-18 08:00:00+00", "text", "snapshot", "{}", "character(64)", "seal", "5e", "bigint", "cancels_id",
+                null, "bigint", "template_id", null);
         row("invoice_document", "bigint", "id", "1", "character(64)", "sha256", "ab", "bytea", "content",
                 new byte[] {37, 80, 68, 70});
         row("invoice_document", "bigint", "id", "2", "character(64)", "sha256", "cd", "bytea", "content", null);
@@ -303,7 +306,8 @@ class BackupServiceTest {
         Map<String, Object> invoice = writes.stream().filter(write -> ((String) write.get("sql"))
                 .startsWith("INSERT INTO invoice ")).findFirst().orElseThrow();
         assertThat(invoice).containsEntry("status", "DRAFT").containsEntry("number", null)
-                .containsEntry("issued_at", null).containsEntry("snapshot", null).containsEntry("customer_id", "7");
+                .containsEntry("issued_at", null).containsEntry("snapshot", null).containsEntry("seal", null)
+                .containsEntry("customer_id", "7");
         Map<String, Object> document = writes.stream().filter(write -> ((String) write.get("sql"))
                 .startsWith("INSERT INTO invoice_document ")).findFirst().orElseThrow();
         assertThat((String) document.get("sql")).contains("CAST(:sha256 AS character(64))").contains(":content)");
@@ -311,7 +315,8 @@ class BackupServiceTest {
         Map<String, Object> finish = writes.stream().filter(write -> ((String) write.get("sql"))
                 .startsWith("UPDATE invoice SET ")).findFirst().orElseThrow();
         assertThat(finish).containsEntry("id", "3").containsEntry("status", "ISSUED").containsEntry("number", "2027-01")
-                .containsEntry("issued_at", "2027-03-18 08:00:00+00").containsEntry("snapshot", "{}");
+                .containsEntry("issued_at", "2027-03-18 08:00:00+00").containsEntry("snapshot", "{}")
+                .containsEntry("seal", "5e");
         assertThat((String) finish.get("sql")).contains("status = CAST(:status AS character varying(16))")
                 .endsWith("WHERE id = CAST(:id AS BIGINT)");
         assertThat(sql.indexOf(finish.get("sql"))).as("after the documents").isGreaterThan(sql.indexOf(document.get("sql")));
@@ -321,6 +326,19 @@ class BackupServiceTest {
                 "SELECT setval(pg_get_serial_sequence('invoice', 'id'), COALESCE((SELECT max(id) FROM invoice), 1), "
                         + "(SELECT max(id) FROM invoice) IS NOT NULL)");
         verify(audit).add(AuditAction.DATA_IMPORTED, "");
+    }
+
+    @Test
+    void refusesAnExportWithAChangedFileOrAnotherKey() {
+        when(check.damaged()).thenReturn(List.of(new Damage(3L, "Rechnung 2027-01", "/invoices/3", List.of("x")),
+                new Damage(null, "Dokument a.pdf", "/documents/1", List.of("y"))));
+        byte[] zip = export();
+        assertThatThrownBy(() -> restore(zip)).isInstanceOf(BackupException.class).hasMessage("Die Datensicherung "
+                + "enthält Dateien, die nicht zu Prüfsumme oder Siegel passen: Rechnung 2027-01, Dokument a.pdf. Das "
+                + "Siegel braucht denselben IM_INTEGRITY_KEY wie die Installation, aus der die Sicherung stammt.");
+        verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
+        assertThat(writes).as("a rollback does not take setval back: the identities stay").noneSatisfy(write ->
+                assertThat((String) write.get("sql")).startsWith("SELECT setval"));
     }
 
     private void refused(byte[] zip, String message) {
@@ -343,6 +361,8 @@ class BackupServiceTest {
         refused(fine, "Hier gibt es schon Daten. Eine Datensicherung lässt sich nur in eine leere Installation "
                 + "einspielen.");
         verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
+        assertThat(writes).as("a rollback does not take setval back: the identities stay").noneSatisfy(write ->
+                assertThat((String) write.get("sql")).startsWith("SELECT setval"));
     }
 
     @Test
@@ -362,6 +382,8 @@ class BackupServiceTest {
         assertThatThrownBy(() -> service.restore(missing)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist kein ZIP.");
         verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
+        assertThat(writes).as("a rollback does not take setval back: the identities stay").noneSatisfy(write ->
+                assertThat((String) write.get("sql")).startsWith("SELECT setval"));
     }
 
     @Test

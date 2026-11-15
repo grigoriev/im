@@ -7,6 +7,8 @@ import static org.mockito.Mockito.when;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
+import io.github.grigoriev.im.integrity.Damage;
+import io.github.grigoriev.im.integrity.IntegrityMonitor;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
@@ -33,7 +35,9 @@ class HomeControllerTest {
     private final DocumentStore documents = mock(DocumentStore.class);
     private final ThresholdService threshold = mock(ThresholdService.class);
     private final ReminderService reminders = mock(ReminderService.class);
-    private final HomeController controller = new HomeController(invoices, payments, documents, threshold, reminders);
+    private final IntegrityMonitor integrity = mock(IntegrityMonitor.class);
+    private final HomeController controller = new HomeController(invoices, payments, documents, threshold, reminders,
+            integrity);
 
     /** An issued invoice dated {@code daysAgo} days ago, due after 14 days. */
     private static Invoice invoice(long id, InvoiceStatus status, int daysAgo) {
@@ -83,6 +87,16 @@ class HomeControllerTest {
         assertThat(overdue).as("due today is not overdue yet").extracting(item -> item.invoice().id()).containsExactly(1L);
         assertThat(open).extracting(HomeController.Open::reminded).containsExactly(TODAY.minusDays(2), null, null);
         assertThat(model).containsEntry("overdueSum", new BigDecimal("480.00")).containsEntry("threshold", current)
-                .containsEntry("today", TODAY);
+                .containsEntry("today", TODAY).containsEntry("damaged", List.of());
+    }
+
+    @Test
+    void warnsOfWhatTheLastCheckFound() {
+        when(threshold.today()).thenReturn(TODAY);
+        Damage damage = new Damage(1L, "Rechnung 2027-01", "/invoices/1", List.of("Die Datei fehlt."));
+        when(integrity.last()).thenReturn(Optional.of(new IntegrityMonitor.Result(Instant.EPOCH, List.of(damage))));
+        ExtendedModelMap model = new ExtendedModelMap();
+        controller.home(model);
+        assertThat(model).containsEntry("damaged", List.of(damage));
     }
 }

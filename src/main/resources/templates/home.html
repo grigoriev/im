@@ -14,6 +14,17 @@
       <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="'Guten Tag, ' + ${currentUser != null ? currentUser.displayName : #authentication.name}">Guten Tag</h1>
     </div>
 
+    <section role="alert" class="alert alert-error alert-soft text-sm text-base-content grid-flow-row grid-cols-1 justify-items-start gap-2" id="integrity-alert"
+             th:unless="${damaged.isEmpty()}">
+      <span class="flex items-center gap-2 font-semibold"><i data-lucide="shield-alert" class="size-4 text-error" aria-hidden="true"></i>Prüfung fehlgeschlagen</span>
+      <span>Diese Dateien passen nicht mehr zu ihrer Prüfsumme oder ihrem Siegel. Bitte sie aus einer Datensicherung von
+        vor der Änderung wiederherstellen.</span>
+      <ul class="list-disc ps-5 grid gap-1">
+        <li th:each="damage : ${damaged}" class="[overflow-wrap:anywhere]">
+          <a class="link" th:href="@{${damage.href()}}" th:text="${damage.what()}">Rechnung 2027-01</a></li>
+      </ul>
+    </section>
+
     <div class="grid gap-4 @2xl:grid-cols-3" id="tiles">
       <a th:href="@{/invoices}" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 hover:border-primary" id="tile-open">
         <div class="text-xs uppercase tracking-wider text-base-content/75">Offen</div>

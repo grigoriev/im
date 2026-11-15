@@ -4,6 +4,7 @@ import io.github.grigoriev.im.backup.BackupException;
 import io.github.grigoriev.im.backup.BackupRunService;
 import io.github.grigoriev.im.backup.BackupService;
 import io.github.grigoriev.im.config.SessionEpoch;
+import io.github.grigoriev.im.integrity.IntegrityMonitor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
@@ -56,6 +57,7 @@ public class BackupController {
     private final BackupService backups;
     private final BackupRunService runs;
     private final SessionEpoch sessions;
+    private final IntegrityMonitor integrity;
     private final Clock clock;
 
     /**
@@ -64,25 +66,48 @@ public class BackupController {
      * @param backups writes and reads the export
      * @param runs the last automatic backup and restore test
      * @param sessions ends every session after an import
+     * @param integrity the check of the documents
      * @param clock the date in the file name
      */
-    public BackupController(BackupService backups, BackupRunService runs, SessionEpoch sessions, Clock clock) {
+    public BackupController(BackupService backups, BackupRunService runs, SessionEpoch sessions,
+            IntegrityMonitor integrity, Clock clock) {
         this.backups = backups;
         this.runs = runs;
         this.sessions = sessions;
+        this.integrity = integrity;
         this.clock = clock;
     }
 
     /**
      * Shows the page.
      *
-     * @param model receives the status of the automatic backup
+     * @param model receives the status of the automatic backup and the last check of the documents
      * @return the template name
      */
     @GetMapping
     public String show(Model model) {
         model.addAttribute("status", runs.status());
+        model.addAttribute("integrity", integrity.last().orElse(null));
         return VIEW;
+    }
+
+    /**
+     * Checks every document and snapshot now.
+     *
+     * @param flash the result for the next page
+     * @return a redirect to this page
+     */
+    @PostMapping("/check")
+    public String check(RedirectAttributes flash) {
+        IntegrityMonitor.Result result = integrity.check();
+        if (result.intact()) {
+            flash.addFlashAttribute("success", "Prüfung abgeschlossen: Alle Dateien passen zu Prüfsumme und Siegel.");
+        } else {
+            flash.addFlashAttribute(ERROR, "Prüfung fehlgeschlagen: " + result.damaged().size()
+                    + (result.damaged().size() == 1 ? " Rechnung oder Dokument passt" : " Rechnungen oder Dokumente passen")
+                    + " nicht zu Prüfsumme oder Siegel.");
+        }
+        return BACK;
     }
 
     /**

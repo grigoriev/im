@@ -2,6 +2,8 @@ package io.github.grigoriev.im.invoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +22,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -30,14 +33,26 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ArchiveServiceTest {
 
     private final InvoiceService invoices = mock(InvoiceService.class);
     private final DocumentStore documents = mock(DocumentStore.class);
     private final DocumentService businessDocuments = mock(DocumentService.class);
-    private final ArchiveService service = new ArchiveService(invoices, documents, businessDocuments);
+    private final InvoiceIntegrity integrity = mock(InvoiceIntegrity.class);
+    @TempDir
+    private Path folder;
+    private ArchiveService service;
+
+    @BeforeEach
+    void intact() {
+        service = new ArchiveService(invoices, documents, businessDocuments, integrity, folder);
+        when(documents.verified(any())).thenAnswer(call -> call.getArgument(0));
+        when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
+    }
 
     private static Invoice invoice(long id, InvoiceStatus status, String number, LocalDate date) {
         boolean draft = status == InvoiceStatus.DRAFT;
@@ -48,7 +63,7 @@ class ArchiveServiceTest {
     private static StoredDocument file(long invoiceId, DocumentKind kind, String number, String content) {
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
         return new StoredDocument(invoiceId * 10, invoiceId, kind, kind.filename(number), bytes, "sha-" + number,
-                bytes.length, Instant.EPOCH);
+                bytes.length, Instant.EPOCH, "seal");
     }
 
     private static Map<String, String> unzip(byte[] zip) throws IOException {
@@ -68,7 +83,7 @@ class ArchiveServiceTest {
         Invoice sameDay = invoice(3, InvoiceStatus.ISSUED, "2027-03", LocalDate.of(2027, 3, 1));
         when(invoices.list()).thenReturn(List.of(sameDay, march, invoice(4, InvoiceStatus.DRAFT, null,
                 LocalDate.of(2027, 5, 1)), january, invoice(5, InvoiceStatus.SENT, "2026-09", LocalDate.of(2026, 12, 31))));
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.list(1)).thenReturn(List.of(file(1, DocumentKind.PDF, "2027-01", "%PDF-1"),
                 file(1, DocumentKind.XML, "2027-01", "<x>1</x>")));
         when(documents.list(2)).thenReturn(List.of(file(2, DocumentKind.PDF, "2027-02", "%PDF-2")));
@@ -76,6 +91,7 @@ class ArchiveServiceTest {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         service.write(2027, out);
+        assertThat(folder).as("the archive left its folder").isEmptyDirectory();
         Map<String, String> entries = unzip(out.toByteArray());
         assertThat(entries.keySet()).as("by invoice date, then ID; drafts and other years stay out").containsExactly(
                 "Rechnung_2027-01.pdf", "Rechnung_2027-01.xml", "Rechnung_2027-02.pdf", "Rechnung_2027-03.xml",
@@ -95,12 +111,12 @@ class ArchiveServiceTest {
         Invoice slash = invoice(6, InvoiceStatus.ISSUED, "2027/11", LocalDate.of(2027, 2, 1));
         Invoice hyphen = invoice(7, InvoiceStatus.ISSUED, "-2027-11", LocalDate.of(2027, 2, 2));
         when(invoices.list()).thenReturn(List.of(slash, hyphen));
-        when(documents.restore("{}")).thenReturn(ItSamples.withBuyerContact(
+        when(documents.verifiedSnapshot(any())).thenReturn(ItSamples.withBuyerContact(
                 SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(documents.list(6)).thenReturn(List.of(new StoredDocument(60L, 6L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
-                new byte[] {1}, "a", 1, Instant.EPOCH)));
+                new byte[] {1}, "a", 1, Instant.EPOCH, "seal")));
         when(documents.list(7)).thenReturn(List.of(new StoredDocument(70L, 7L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
-                new byte[] {2}, "b", 1, Instant.EPOCH)));
+                new byte[] {2}, "b", 1, Instant.EPOCH, "seal")));
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         service.write(2027, out);
         Map<String, String> entries = unzip(out.toByteArray());
@@ -111,6 +127,51 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void namesTheBrokenFilesOfAYearBeforeTheArchiveGoesOut() {
+        Invoice good = invoice(1, InvoiceStatus.PAID, "2027-01", LocalDate.of(2027, 1, 10));
+        Invoice changed = invoice(2, InvoiceStatus.SENT, "2027-02", LocalDate.of(2027, 2, 10));
+        when(invoices.list()).thenReturn(List.of(good, changed, invoice(3, InvoiceStatus.SENT, "2026-09",
+                LocalDate.of(2026, 12, 31))));
+        when(integrity.check(good)).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
+        when(integrity.check(changed)).thenReturn(new InvoiceIntegrity.Report(List.of("x"), List.of()));
+        BusinessDocument intact = new BusinessDocument(7, DocumentCategory.OTHER, "A", LocalDate.of(2027, 1, 1), null,
+                "", null, null, "a.pdf", "application/pdf", "h", 1, Instant.EPOCH, "anna");
+        BusinessDocument broken = new BusinessDocument(8, DocumentCategory.OTHER, "B", LocalDate.of(2027, 1, 1), null,
+                "", null, null, "b.pdf", "application/pdf", "h", 1, Instant.EPOCH, "anna");
+        when(businessDocuments.ofYear(2027)).thenReturn(List.of(intact, broken));
+        when(businessDocuments.problems(8)).thenReturn(List.of("y"));
+        assertThat(service.damaged(2027)).containsExactly("Rechnung 2027-02", "Dokument b.pdf");
+        verify(integrity, never()).check(argThat(invoice -> invoice.id() == 3));
+    }
+
+    @Test
+    void aMissingOrChangedFileStopsTheArchiveBeforeItsFirstEntry() {
+        Invoice invoice = invoice(1, InvoiceStatus.PAID, "2027-01", LocalDate.of(2027, 1, 10));
+        when(invoices.list()).thenReturn(List.of(invoice));
+        when(integrity.check(invoice)).thenReturn(new InvoiceIntegrity.Report(List.of("Die Datei fehlt."), List.of()));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThatThrownBy(() -> service.write(2027, out)).isInstanceOf(InvoiceException.class).hasMessage(
+                "Das Archiv bleibt aus, denn diese Dateien fehlen, sind beschädigt oder wurden außerhalb der App "
+                        + "geändert: Rechnung 2027-01.");
+        assertThat(out.size()).as("not a single byte").isZero();
+    }
+
+    @Test
+    void aFileChangedAfterTheCheckStopsTheArchiveBeforeItsFirstByte() {
+        when(invoices.list()).thenReturn(List.of(invoice(1, InvoiceStatus.PAID, "2027-01", LocalDate.of(2027, 1, 10)),
+                invoice(2, InvoiceStatus.PAID, "2027-02", LocalDate.of(2027, 1, 11))));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.list(1)).thenReturn(List.of(file(1, DocumentKind.PDF, "2027-01", "%PDF-1")));
+        StoredDocument changed = file(2, DocumentKind.PDF, "2027-02", "%PDF-2");
+        when(documents.list(2)).thenReturn(List.of(changed));
+        when(documents.verified(changed)).thenThrow(new InvoiceException(List.of("kaputt")));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThatThrownBy(() -> service.write(2027, out)).hasMessage("kaputt");
+        assertThat(out.size()).as("the first invoice was fine, yet nothing left").isZero();
+        assertThat(folder).as("the half archive is gone").isEmptyDirectory();
+    }
+
+    @Test
     void aRenamedFileNeverHitsAnotherName() {
         Set<String> names = new HashSet<>();
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11_7.pdf", 3)).isEqualTo("Rechnung_2027-11_7.pdf");
@@ -118,6 +179,14 @@ class ArchiveServiceTest {
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 7)).isEqualTo("Rechnung_2027-11_7_2.pdf");
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 8)).isEqualTo("Rechnung_2027-11_8.pdf");
         assertThat(names).hasSize(4);
+    }
+
+    @Test
+    void growsTheArchiveInTheTemporaryFolderOfJava() throws IOException {
+        when(invoices.list()).thenReturn(List.of());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new ArchiveService(invoices, documents, businessDocuments, integrity).write(2020, out);
+        assertThat(unzip(out.toByteArray())).containsOnlyKeys("Inhalt.csv");
     }
 
     @Test

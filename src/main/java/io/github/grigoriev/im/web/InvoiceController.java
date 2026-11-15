@@ -53,6 +53,7 @@ public class InvoiceController {
     static final String LIST = "invoices/list";
     static final String EDIT = "invoices/edit";
     static final String ISSUED = "invoices/issued";
+    private static final String INVOICE_PATH = "/invoices";
 
     /** The names of the tax categories in the editor. */
     static final Map<TaxCategory, String> CATEGORIES = Map.of(
@@ -233,7 +234,7 @@ public class InvoiceController {
     public ResponseEntity<byte[]> preview(@PathVariable long id, RedirectAttributes flash) {
         Invoice invoice = invoices.find(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (!invoice.isDraft()) {
-            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/invoices/" + id + "/documents/pdf"))
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(INVOICE_PATH + "/" + id + "/documents/pdf"))
                     .build();
         }
         return invoices.document(invoice)
@@ -243,7 +244,7 @@ public class InvoiceController {
                         .body(pdf.render(document)))
                 .orElseGet(() -> {
                     flash.addFlashAttribute(ERROR, "Die Vorschau braucht einen vollständigen Entwurf.");
-                    return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create("/invoices/" + id)).build();
+                    return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(INVOICE_PATH + "/" + id)).build();
                 });
     }
 
@@ -289,7 +290,7 @@ public class InvoiceController {
      *
      * @param id the ID
      * @param kind "pdf" or "xml"
-     * @return the file
+     * @return the file; a redirect to the invoice, which shows the check, if the file is broken or changed
      */
     @GetMapping("/{id}/documents/{kind}")
     public ResponseEntity<byte[]> download(@PathVariable long id, @PathVariable String kind) {
@@ -298,8 +299,13 @@ public class InvoiceController {
             case "xml" -> DocumentKind.XML;
             default -> throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         };
-        StoredDocument document = documents.find(id, documentKind)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        StoredDocument document;
+        try {
+            document = documents.find(id, documentKind)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        } catch (InvoiceException _) {
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(INVOICE_PATH + "/" + id)).build();
+        }
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(documentKind.mediaType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(document.filename()).build().toString())
