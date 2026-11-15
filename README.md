@@ -40,7 +40,8 @@ docker run -p 8080:8080 \
 ```
 
 `IM_ADMIN_USERNAME` and `IM_ADMIN_PASSWORD` create the first admin at startup while no admin exists. The
-admin creates the other users on the page "Benutzer". `IM_REMEMBER_ME_KEY` signs the "Angemeldet bleiben"
+admin creates the other users on the page "Benutzer" and deletes them there. Once a second admin exists, the first
+one can go: it does not come back at the next start. `IM_REMEMBER_ME_KEY` signs the "Angemeldet bleiben"
 cookie: set a long random value.
 
 Passkeys need HTTPS, or `http://localhost`. `IM_WEBAUTHN_RP_ID` is the host name of the app, and

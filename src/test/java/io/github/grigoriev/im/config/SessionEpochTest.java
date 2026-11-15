@@ -10,6 +10,9 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.TestingAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 class SessionEpochTest {
 
@@ -54,5 +57,30 @@ class SessionEpochTest {
         epoch.filter().doFilter(anonymous, new MockHttpServletResponse(), chain);
         assertThat(anonymous.getSession(false)).as("no session is made").isNull();
         assertThat(chain.getRequest()).isSameAs(anonymous);
+    }
+
+    /** A session of a logged-in user that started at the given moment. */
+    private static MockHttpSession sessionOf(String username, long createdAt) {
+        MockHttpSession session = session(createdAt);
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                new SecurityContextImpl(new TestingAuthenticationToken(username, null, "ROLE_USER")));
+        return session;
+    }
+
+    @Test
+    void aDeletedUserLosesTheOwnSessionsOnly() throws Exception {
+        long before = NOW.toEpochMilli() - 1;
+        epoch.end("admin");
+        assertThat(epoch.ended("admin", before)).isTrue();
+        assertThat(epoch.ended("admin", NOW.toEpochMilli())).as("a session of the same millisecond ends too").isTrue();
+        assertThat(epoch.ended("admin", NOW.toEpochMilli() + 1)).as("a later login counts").isFalse();
+        assertThat(epoch.ended("elena", before)).isFalse();
+        assertThat(filter(sessionOf("admin", before)).isInvalid()).isTrue();
+        assertThat(filter(sessionOf("admin", NOW.toEpochMilli() + 1)).isInvalid()).isFalse();
+        assertThat(filter(sessionOf("elena", before)).isInvalid()).isFalse();
+        assertThat(filter(session(before)).isInvalid()).as("no login in the session").isFalse();
+        MockHttpSession empty = session(before);
+        empty.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, new SecurityContextImpl());
+        assertThat(filter(empty).isInvalid()).as("a context without a login").isFalse();
     }
 }

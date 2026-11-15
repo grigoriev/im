@@ -28,6 +28,7 @@ public class UserService {
     private final PersistentTokenRepository rememberMe;
     private final Clock clock;
     private final AuditService audit;
+    private final PasskeyService passkeys;
 
     /**
      * Creates the service.
@@ -37,14 +38,16 @@ public class UserService {
      * @param rememberMe the "Angemeldet bleiben" tokens
      * @param clock source of the creation time
      * @param audit the audit log
+     * @param passkeys forgets the passkeys of a deleted user
      */
     public UserService(AppUserRepository users, PasswordEncoder encoder, PersistentTokenRepository rememberMe,
-            Clock clock, AuditService audit) {
+            Clock clock, AuditService audit, PasskeyService passkeys) {
         this.users = users;
         this.encoder = encoder;
         this.rememberMe = rememberMe;
         this.clock = clock;
         this.audit = audit;
+        this.passkeys = passkeys;
     }
 
     /**
@@ -136,6 +139,30 @@ public class UserService {
         users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(username);
         audit.add(username, AuditAction.PASSWORD_CHANGED, "");
+    }
+
+    /**
+     * Deletes a user with the passkeys and the "Angemeldet bleiben" of the user. The audit log keeps the login name in
+     * its entries. Nobody deletes the own account, and the last admin stays.
+     *
+     * @param id the user
+     * @return the deleted user
+     * @throws UserException if the user does not exist, is the logged-in one or the last admin
+     */
+    @Transactional
+    public AppUser delete(long id) {
+        AppUser user = get(id);
+        if (user.username().equals(AuditService.currentUser())) {
+            throw new UserException("Das eigene Konto lässt sich nicht löschen.");
+        }
+        if (user.role() == Role.ADMIN && users.lockAdmins().size() <= 1) {
+            throw new UserException("Der letzte Administrator bleibt. Bitte zuerst einen weiteren anlegen.");
+        }
+        passkeys.forget(user.username());
+        rememberMe.removeUserTokens(user.username());
+        users.delete(user);
+        audit.add(AuditAction.USER_DELETED, user.username() + " (" + user.role() + ")");
+        return user;
     }
 
     private static void checkPassword(String password) {

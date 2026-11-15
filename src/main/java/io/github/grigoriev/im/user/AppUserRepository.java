@@ -2,6 +2,7 @@ package io.github.grigoriev.im.user;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.ListCrudRepository;
 
 /** Stores the user accounts. */
@@ -22,6 +23,15 @@ public interface AppUserRepository extends ListCrudRepository<AppUser, Long> {
      * @return {@code true} if at least one exists
      */
     boolean existsByRole(Role role);
+
+    /**
+     * Locks the admins until the transaction ends and returns their IDs. Two deletions of admins then run one after the
+     * other, so the second sees the first and the last admin stays.
+     *
+     * @return the IDs of the admins
+     */
+    @Query("SELECT id FROM app_user WHERE role = 'ADMIN' ORDER BY id FOR UPDATE")
+    List<Long> lockAdmins();
 
     /**
      * Lists all users by login name.

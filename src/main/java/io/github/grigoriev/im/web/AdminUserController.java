@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.config.SessionEpoch;
 import io.github.grigoriev.im.user.AppUser;
 import io.github.grigoriev.im.user.PasskeyService;
 import io.github.grigoriev.im.user.Role;
@@ -36,16 +37,19 @@ public class AdminUserController {
 
     private final UserService users;
     private final PasskeyService passkeys;
+    private final SessionEpoch sessions;
 
     /**
      * Creates the controller.
      *
      * @param users the user service
      * @param passkeys the passkey service
+     * @param sessions ends the sessions of a deleted user
      */
-    public AdminUserController(UserService users, PasskeyService passkeys) {
+    public AdminUserController(UserService users, PasskeyService passkeys, SessionEpoch sessions) {
         this.users = users;
         this.passkeys = passkeys;
+        this.sessions = sessions;
     }
 
     /**
@@ -110,6 +114,25 @@ public class AdminUserController {
             String username = users.get(id).username();
             int removed = passkeys.removeAll(username);
             flash.addFlashAttribute(SUCCESS, removed + " Passkey(s) von „" + username + "“ entfernt.");
+        } catch (UserException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+        }
+        return BACK;
+    }
+
+    /**
+     * Deletes a user. The sessions of the user end in every browser.
+     *
+     * @param id the user
+     * @param flash messages for the next page
+     * @return a redirect to the list
+     */
+    @PostMapping("/{id}/delete")
+    public String delete(@PathVariable long id, RedirectAttributes flash) {
+        try {
+            AppUser deleted = users.delete(id);
+            sessions.end(deleted.username());
+            flash.addFlashAttribute(SUCCESS, "Benutzer „" + deleted.username() + "“ gelöscht.");
         } catch (UserException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
         }
