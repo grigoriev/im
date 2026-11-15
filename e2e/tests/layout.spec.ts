@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test } from './fixtures';
 import { ANONYMOUS } from './accounts';
 import { ROUTES, WIDTHS } from './routes';
+import { ensureProfile, newCustomer } from './seller';
 
 // No element scrolls sideways and the page never gets wider than the window.
 for (const route of ROUTES) {
@@ -61,4 +63,15 @@ test('a field shrinks with its card, however long its value', async ({ page }) =
     return [style.minWidth, style.maxWidth, style.textOverflow];
   });
   expect(select).toEqual(['0px', '100%', 'ellipsis']);
+});
+
+test('a utility still sets the minimum width of a field', async ({ page }) => {
+  await ensureProfile(page);
+  const customer = await newCustomer(page, `Breitenkunde ${randomUUID().slice(0, 8)}`);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/invoices');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  const tax = page.locator('label').filter({ has: page.locator('#line-0-category') });
+  expect(await tax.evaluate((label) => getComputedStyle(label).minWidth), '@xl:min-w-64 of the tax field').toBe('256px');
 });

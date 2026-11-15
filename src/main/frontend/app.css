@@ -177,9 +177,11 @@
 
 /* A field never grows past its card. In a row of a form a label is a flex item, whose minimum width is by default its
    content: a select as wide as its longest option, for example a long customer name on a phone. The select cuts its
-   text with an ellipsis instead. */
-.floating-label { min-width: 0; }
-select.select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+   text with an ellipsis instead. In the components layer, so a utility such as @xl:min-w-64 still sets a minimum. */
+@layer components {
+  .floating-label { min-width: 0; }
+  select.select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+}
 
 /* Fields: a thin gray frame, a blue frame and soft ring on focus, red when wrong. */
 .input, .select, .textarea { border-color: var(--color-base-300); box-shadow: none; }
