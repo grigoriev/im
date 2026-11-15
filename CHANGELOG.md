@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-15
+
 ### Added
 
 - Dokumente: a store for the business documents next to the invoices, for example the Verfahrensdokumentation, Steuerbescheide, letters of the Finanzamt, certificates and contracts. A document has a kind, a title, a date, the year it concerns and a note, and a PDF, JPG or PNG of at most 25 MB. Its file never changes and never goes away: a new version replaces it in the list, and the old one stays in its history. The description may change. Every upload and change goes into the log with the SHA-256 of the file.
