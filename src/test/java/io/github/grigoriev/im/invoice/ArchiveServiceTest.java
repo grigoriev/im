@@ -14,6 +14,9 @@ import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentFile;
 import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.expense.Expense;
+import io.github.grigoriev.im.expense.ExpenseCategory;
+import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import java.io.ByteArrayInputStream;
@@ -21,6 +24,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -43,13 +47,14 @@ class ArchiveServiceTest {
     private final DocumentStore documents = mock(DocumentStore.class);
     private final DocumentService businessDocuments = mock(DocumentService.class);
     private final InvoiceIntegrity integrity = mock(InvoiceIntegrity.class);
+    private final ExpenseService expenses = mock(ExpenseService.class);
     @TempDir
     private Path folder;
     private ArchiveService service;
 
     @BeforeEach
     void intact() {
-        service = new ArchiveService(invoices, documents, businessDocuments, integrity, folder);
+        service = new ArchiveService(invoices, documents, businessDocuments, integrity, expenses, folder);
         when(documents.verified(any())).thenAnswer(call -> call.getArgument(0));
         when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
     }
@@ -185,7 +190,7 @@ class ArchiveServiceTest {
     void growsTheArchiveInTheTemporaryFolderOfJava() throws IOException {
         when(invoices.list()).thenReturn(List.of());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        new ArchiveService(invoices, documents, businessDocuments, integrity).write(2020, out);
+        new ArchiveService(invoices, documents, businessDocuments, integrity, expenses).write(2020, out);
         assertThat(unzip(out.toByteArray())).containsOnlyKeys("Inhalt.csv");
     }
 
@@ -254,6 +259,38 @@ class ArchiveServiceTest {
                 + ArchiveService.DOCUMENT_HEAD + "\r\n"
                 + "\"Steuerbescheid\";\"Bescheid 2026\";10.05.2027;2026;ersetzt;\"Dokumente/Bescheid.pdf\";3;sha-1\r\n"
                 + "\"Steuerbescheid\";\"'=Bescheid 2026\";10.05.2027;;aktuell;\"Dokumente/Bescheid_2.pdf\";3;sha-2\r\n");
+    }
+
+    private static Expense expense(long id, String filename, boolean asset, String cancelReason) {
+        return new Expense(id, LocalDate.of(2026, 3, id == 1 ? 2 : 9), new BigDecimal("49.90"),
+                ExpenseCategory.LITERATURE, "=Buchhandlung", "Wörterbuch", asset,
+                cancelReason == null ? null : Instant.EPOCH, cancelReason, filename, "application/pdf", "sha-e" + id, 4,
+                Instant.EPOCH, "anna");
+    }
+
+    @Test
+    void putsTheReceiptsOfTheYearIntoTheirFolderAndChecksThemFirst() throws IOException {
+        when(invoices.list()).thenReturn(List.of());
+        when(expenses.ofYear(2026)).thenReturn(List.of(expense(1, "Beleg.pdf", true, null),
+                expense(2, "Beleg.pdf", false, "doppelt")));
+        when(expenses.file(1)).thenReturn(Optional.of(new DocumentFile("Beleg.pdf", "application/pdf",
+                "eins".getBytes(StandardCharsets.UTF_8))));
+        when(expenses.file(2)).thenReturn(Optional.of(new DocumentFile("Beleg.pdf", "application/pdf",
+                "zwei".getBytes(StandardCharsets.UTF_8))));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        service.write(2026, out);
+        Map<String, String> entries = unzip(out.toByteArray());
+        assertThat(entries.keySet()).containsExactly("Inhalt.csv", "Ausgaben/Beleg.pdf", "Ausgaben/Beleg_2.pdf",
+                "Ausgaben/Inhalt.csv");
+        assertThat(entries).containsEntry("Ausgaben/Beleg.pdf", "eins").containsEntry("Ausgaben/Beleg_2.pdf", "zwei")
+                .containsEntry("Ausgaben/Inhalt.csv", String.valueOf((char) 0xFEFF) + ArchiveService.EXPENSE_HEAD + "\r\n"
+                + "02.03.2026;49,90;\"Fachliteratur\";\"'=Buchhandlung\";\"Wörterbuch\";ja;;\"Ausgaben/Beleg.pdf\";4;"
+                + "sha-e1\r\n"
+                + "09.03.2026;49,90;\"Fachliteratur\";\"'=Buchhandlung\";\"Wörterbuch\";nein;\"storniert: doppelt\";"
+                + "\"Ausgaben/Beleg_2.pdf\";4;sha-e2\r\n");
+
+        when(expenses.problems(2)).thenReturn(List.of("kaputt"));
+        assertThat(service.damaged(2026)).containsExactly("Beleg Beleg.pdf");
     }
 
     @Test

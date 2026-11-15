@@ -1,6 +1,9 @@
 package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.expense.Expense;
+import io.github.grigoriev.im.expense.ExpenseCategory;
+import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.invoice.ArchiveService;
 import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
@@ -38,7 +41,8 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 /**
  * The page "Berichte": the income of a year by payment received (Zuflussprinzip), with the fields of the Anlage EÜR,
- * the CSV of its payments and the archive of its documents. Both roles use it.
+ * the expenses by payment made (Abflussprinzip) and kind, the CSV of both and the archive of its documents. Both roles
+ * use it.
  */
 @Controller
 @RequestMapping("/reports")
@@ -52,6 +56,9 @@ public class ReportController {
     /** The CSV head. A spreadsheet opens it with semicolons, German numbers and the BOM for UTF-8. */
     static final String CSV_HEAD = "Zahlungseingang;Rechnungsnummer;Kunde;Betrag;davon § 19 UStG;"
             + "davon nicht für die Grenze;davon § 4 Nr. 21 UStG;Notiz";
+
+    /** The CSV head of the expenses, for the transfer into WISO Steuer. */
+    static final String EXPENSE_HEAD = "Zahlung;Betrag;Art;Empfänger;Beschreibung;Anlagegut;Beleg;SHA-256";
 
     /** The byte order mark that tells a spreadsheet the CSV is UTF-8. */
     static final char BOM = (char) 0xFEFF;
@@ -85,6 +92,7 @@ public class ReportController {
     private final ThresholdService threshold;
     private final ArchiveService archive;
     private final SellerService sellers;
+    private final ExpenseService expenses;
 
     /**
      * Creates the controller.
@@ -92,11 +100,14 @@ public class ReportController {
      * @param threshold the payments of a year
      * @param archive the documents of a year
      * @param sellers the tax numbers of the seller
+     * @param expenses the expenses of a year
      */
-    public ReportController(ThresholdService threshold, ArchiveService archive, SellerService sellers) {
+    public ReportController(ThresholdService threshold, ArchiveService archive, SellerService sellers,
+            ExpenseService expenses) {
         this.threshold = threshold;
         this.archive = archive;
         this.sellers = sellers;
+        this.expenses = expenses;
     }
 
     /**
@@ -140,12 +151,18 @@ public class ReportController {
         SortedSet<Integer> years = new TreeSet<>(Comparator.reverseOrder());
         years.addAll(threshold.years());
         years.addAll(archive.years());
+        years.addAll(expenses.years());
         years.add(year);
         model.addAttribute("years", years);
         model.addAttribute("rows", rows);
         model.addAttribute("totals", totals(rows));
         model.addAttribute("businesses", businesses(rows, sellers.find().orElse(null)));
         model.addAttribute("categories", InvoiceController.CATEGORIES);
+        List<Expense> spent = expenses.ofYear(year);
+        Map<ExpenseCategory, BigDecimal> expenseTotals = ExpenseService.totals(spent);
+        model.addAttribute("expenseTotals", expenseTotals);
+        model.addAttribute("expenseTotal", sum(List.copyOf(expenseTotals.values())));
+        model.addAttribute("assets", spent.stream().filter(expense -> expense.asset() && !expense.cancelled()).toList());
         return VIEW;
     }
 
@@ -167,6 +184,28 @@ public class ReportController {
         return ResponseEntity.ok().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename("Zahlungen_" + year + ".csv").build().toString())
+                .body(csv.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Downloads the valid expenses of a year as CSV, for the transfer into WISO Steuer.
+     *
+     * @param year the year of the payments
+     * @return the CSV, UTF-8 with byte order mark
+     */
+    @GetMapping("/expenses.csv")
+    public ResponseEntity<byte[]> expensesCsv(@RequestParam int year) {
+        StringBuilder csv = new StringBuilder().append(BOM).append(EXPENSE_HEAD).append("\r\n");
+        for (Expense expense : expenses.ofYear(year)) {
+            if (!expense.cancelled()) {
+                csv.append(String.join(";", GERMAN.format(expense.paidOn()), number(expense.amount()),
+                        field(expense.category().label()), field(expense.vendor()), field(expense.description()),
+                        expense.asset() ? "ja" : "nein", field(expense.filename()), expense.sha256())).append("\r\n");
+            }
+        }
+        return ResponseEntity.ok().contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename("Ausgaben_" + year + ".csv").build().toString())
                 .body(csv.toString().getBytes(StandardCharsets.UTF_8));
     }
 

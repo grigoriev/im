@@ -354,8 +354,15 @@ public class DocumentService implements IntegrityCheck {
     private record Description(DocumentForm form, DocumentCategory category, String title, String note) {
     }
 
-    /** Returns the type of a file from its first bytes, and adds a problem for anything else. */
-    static Optional<String> mediaType(List<String> problems, byte[] content) {
+    /**
+     * Returns the type of a file from its first bytes, and adds a problem for anything else. Expenses check their
+     * receipts with it too.
+     *
+     * @param problems receives what is wrong
+     * @param content the bytes
+     * @return PDF, JPEG or PNG; empty for no file, a file over 25 MB or another type
+     */
+    public static Optional<String> mediaType(List<String> problems, byte[] content) {
         if (content == null || content.length == 0) {
             problems.add("Bitte eine Datei wählen.");
             return Optional.empty();
@@ -383,7 +390,7 @@ public class DocumentService implements IntegrityCheck {
      * @param mediaType the type of the file
      * @return the name, "Dokument" with the extension of the type if nothing is left
      */
-    static String filename(String uploaded, String mediaType) {
+    public static String filename(String uploaded, String mediaType) {
         String name = uploaded == null ? "" : uploaded.substring(Math.max(uploaded.lastIndexOf('/'),
                 uploaded.lastIndexOf('\\')) + 1);
         name = name.replaceAll("\\p{Cntrl}", "").strip();

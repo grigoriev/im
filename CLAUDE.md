@@ -58,6 +58,9 @@ Package `io.github.grigoriev.im`:
 - `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file; `ProcedureService` writes the Verfahrensdokumentation from template `templates/pdf/procedure.html`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
+- `expense`: the business expenses with their receipts (`ExpenseService`: amount with VAT, day of payment, kind
+  `ExpenseCategory` after the Anlage EÜR, mark "Anlagegut"; the receipt is written once and sealed; a wrong expense is
+  cancelled, never deleted; table `expense` with a trigger). The report sums them by kind for WISO Steuer
 - `integrity`: the seals and their check. `Seal` computes the HMAC-SHA256 with `IM_INTEGRITY_KEY` over what a file
   belongs to and its SHA-256; `SealMigration` (Flyway V29) sealed what existed. `DocumentStore`, `InvoiceIntegrity`
   (snapshot, documents, ZUGFeRD XML against the XML file, `EInvoiceFacts` of the XML against the snapshot) and

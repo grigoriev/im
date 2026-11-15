@@ -146,6 +146,7 @@ Not chosen:
 | `Dispatch` | When, to whom, channel (`EMAIL_APP`, or by hand: `OWN_MAIL`, `POST`, `PORTAL`, `IN_PERSON`), by which user, note. Written once |
 | `Payment` | Date, amount, note. A negative amount is a refund |
 | `Reminder` | Payment reminder: day, channel (`EMAIL_APP` or `MANUAL`), recipient, note, by which user. Written once |
+| `Expense` | Day of payment, amount with VAT, kind, vendor, description, asset mark, receipt (written once, sealed), cancellation with reason. Never deleted |
 | `NumberSequence` | Format pattern, year, last number |
 | `ThresholdBaseline` | Revenue counted for §19 in a year before the system existed |
 | `Setting` | Key-value settings: SMTP, texts, defaults |
@@ -273,8 +274,9 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. Yearly report for Anlage EÜR: income by payment date (Zuflussprinzip).
    It shows the sums for the EÜR form fields, ready to type into WISO Steuer.
    Example: total Kleinunternehmer income, and the part excluded from the §19 threshold.
-2. CSV of all payments of a year.
-3. Archive export: ZIP with all XML and PDF files of a year.
+2. CSV of all payments of a year, and CSV of the valid expenses of a year.
+3. Archive export: ZIP with all XML and PDF files of a year, the business documents (folder "Dokumente") and the
+   receipts of the expenses (folder "Ausgaben"), each with a table of contents.
 4. Full export and import: ZIP with JSON data and all documents. This also moves the system to a new host.
    Both stream: the export reads one row at a time and writes it at once, the import reads the upload from disk entry by entry and row by
    row. Memory holds one document at most, so a large export cannot stop the container. Uploads up to 4 GB, as much as an import expands; the export stops before it writes more.
@@ -294,6 +296,23 @@ The admin edits the default tax notes. A template and an invoice can override th
    and four values of a form: valid from, the program for receipts and expenses, the place of the yearly archives and
    the change. Each save is a new version of one document; its table "Änderungen" lists the change of every version
    the app wrote (file name `Verfahrensdokumentation_<date>.pdf`). The signed scan goes in as the next version.
+
+### Expenses
+
+1. The app keeps the business expenses of the year with their receipts (decision 2026-11-15). WISO Steuer stays the
+   place of the tax return: the page "Berichte" shows the sum of each kind, ready to type in, and a CSV.
+2. An expense has the day of payment (Abflussprinzip: it counts in that year), the amount paid with VAT (a
+   Kleinunternehmerin deducts no input tax), a kind, the vendor, a description and the mark "Anlagegut". The kinds
+   follow the expenses of the Anlage EÜR and WISO: Waren und Material, Fremdleistungen, Raumkosten, Telefon und
+   Internet, Software und EDV, Arbeitsmittel, Bürobedarf und Porto, Fachliteratur, Fortbildung, Reisekosten,
+   Fahrtkosten, Werbung, Beiträge und Versicherungen, Rechts- und Steuerberatung, Kontoführung, Geschenke, Sonstiges.
+3. No split by business (decision 2026-11-15): the sums cover both tax numbers; a split happens in WISO.
+4. An asset over 800 € net carries the mark "Anlagegut"; the report lists it apart. WISO computes the AfA; the app
+   does not.
+5. Every expense needs its receipt: a PDF, JPG or PNG of at most 25 MB, written once and sealed like a document. The
+   details may change; each change goes into the audit log with before and after. An expense never goes away: a wrong
+   one is cancelled with a reason, stays with its receipt and counts no more. A cancelled expense never changes.
+6. Not in scope: mileage, the home office lump sum, Bewirtung at 70 %. They go into WISO directly.
 
 ## 8. Deployment on lemming
 

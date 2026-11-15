@@ -41,8 +41,8 @@
     <tr><td class="label">Gültig ab</td><td th:text="${validFrom}">01.01.2027</td></tr>
   </table>
   <p>Die Anwendung erstellt Ausgangsrechnungen als PDF/A-3 mit eingebetteter XML (ZUGFeRD) oder als reine XML (XRechnung),
-    erfasst Versand und Zahlungseingänge und erstellt die Auswertung für die Anlage EÜR. Eingangsrechnungen und
-    Betriebsausgaben verwaltet sie nicht; diese werden mit <span th:text="${expenses}">WISO Steuern</span> erfasst.</p>
+    erfasst Versand, Zahlungseingänge und Betriebsausgaben mit Beleg und erstellt die Auswertung für die Anlage EÜR.
+    Die Summen werden in <span th:text="${expenses}">WISO Steuern</span> übertragen, wo die Steuererklärung entsteht.</p>
 
   <h2>2. Anwenderdokumentation</h2>
   <ol>
@@ -56,8 +56,10 @@
     <li>Der Versand wird mit Tag, Weg und Empfänger vermerkt. Der E-Mail-Versand aus der Anwendung vermerkt sich selbst.</li>
     <li>Zahlungseingänge und Erstattungen werden mit dem Tag des Zahlungseingangs erfasst. Sie sind die Grundlage der
       Einnahmen in der Anlage EÜR und der Umsatzgrenze nach § 19 UStG.</li>
-    <li>Am Jahresende lädt die Unternehmerin unter „Berichte“ die Werte der Anlage EÜR, die Zahlungen als CSV und das
-      Archiv aller Rechnungen und Dokumente des Jahres herunter.</li>
+    <li>Betriebsausgaben werden mit Tag der Zahlung, Betrag, Art und Beleg erfasst. Der Beleg bleibt unverändert; eine
+      falsche Ausgabe wird mit Grund storniert, nicht gelöscht.</li>
+    <li>Am Jahresende lädt die Unternehmerin unter „Berichte“ die Werte der Anlage EÜR, Zahlungen und Ausgaben als CSV
+      und das Archiv aller Rechnungen, Belege und Dokumente des Jahres herunter.</li>
     <li>Geschäftliche Unterlagen wie Steuerbescheide, Schreiben des Finanzamts, Bescheinigungen und diese
       Verfahrensdokumentation liegen unter „Dokumente“. Eine Datei bleibt unverändert erhalten; eine neue Fassung ersetzt
       sie in der Liste, die alte bleibt im Verlauf.</li>

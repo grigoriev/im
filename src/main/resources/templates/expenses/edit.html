@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title th:text="${(expense == null ? 'Neue Ausgabe' : expense.vendor) + ' · Rechnungen'}">Ausgabe · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Ausgaben', 'expenses', ~{::content})}">
+  <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4"
+       th:with="editable=${expense == null or !expense.cancelled()}">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere] min-w-0" th:text="${expense == null ? 'Neue Ausgabe' : expense.vendor}">Ausgabe</h1>
+      <a th:href="${expense == null} ? @{/expenses} : @{/expenses(year=${expense.paidOn.year})}" class="btn" id="expense-back"><i data-lucide="arrow-left" class="size-4"></i>Alle Ausgaben</a>
+    </div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" id="expense-error" th:if="${error}" th:text="${error}">Fehler</div>
+    <div role="alert" class="alert alert-error text-sm grid gap-1" id="expense-problems" th:if="${problems}">
+      <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
+    </div>
+    <section role="alert" class="alert alert-error alert-soft text-sm text-base-content grid-flow-row grid-cols-1 justify-items-start gap-2" id="expense-integrity"
+             th:unless="${integrity == null or integrity.isEmpty()}">
+      <span class="flex items-center gap-2 font-semibold"><i data-lucide="shield-alert" class="size-4 text-error" aria-hidden="true"></i>Prüfung fehlgeschlagen</span>
+      <span>Der gespeicherte Beleg passt nicht mehr zu seiner Prüfsumme oder seinem Siegel. Herunterladen ist gesperrt.
+        Bitte den Beleg aus einer Datensicherung von vor der Änderung wiederherstellen.</span>
+      <ul class="list-disc ps-5 grid gap-1">
+        <li th:each="problem : ${integrity}" th:text="${problem}" class="[overflow-wrap:anywhere]">Problem</li>
+      </ul>
+    </section>
+    <div role="alert" class="alert alert-warning alert-soft text-sm text-base-content" id="expense-cancelled" th:if="${expense != null and expense.cancelled()}">
+      <i data-lucide="undo-2" class="size-4 text-warning" aria-hidden="true"></i>
+      <span th:text="${'Storniert am ' + #temporals.format(expense.cancelledAt, 'dd.MM.yyyy', 'Europe/Berlin') + ': ' + expense.cancelReason + '. Sie zählt nicht mehr.'}">Storniert</span>
+    </div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" th:if="${expense != null}" id="expense-receipt">
+      <h2 class="font-semibold">Beleg</h2>
+      <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+        <dt class="text-base-content/75">Name</dt><dd class="[overflow-wrap:anywhere]" th:text="${expense.filename}">Quittung.pdf</dd>
+        <dt class="text-base-content/75">Größe</dt>
+        <dd class="num" th:text="${expense.size < 1048576 ? ((expense.size + 1023) / 1024) + ' KB' : #numbers.formatDecimal(expense.size / 1048576.0, 1, 'POINT', 1, 'COMMA') + ' MB'}">120 KB</dd>
+        <dt class="text-base-content/75">Erfasst</dt>
+        <dd data-volatile th:text="${#temporals.format(expense.createdAt, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin') + ' · ' + expense.createdBy}">12.05.2027, 10:00 · anna</dd>
+        <dt class="text-base-content/75">SHA-256</dt><dd class="num text-xs [overflow-wrap:anywhere]" data-volatile th:text="${expense.sha256}">abc</dd>
+      </dl>
+      <div class="form-actions"><a class="btn btn-primary" id="expense-download" th:href="@{/expenses/{id}/file(id=${expense.id})}">
+        <i data-lucide="download" class="size-4"></i>Herunterladen</a></div>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3 @container">
+      <h2 class="font-semibold">Angaben</h2>
+      <form class="grid gap-4" method="post" th:object="${form}" id="expense-form"
+            th:attr="enctype=${expense == null} ? 'multipart/form-data'"
+            th:action="${expense == null} ? @{/expenses} : @{/expenses/{id}(id=${expense.id})}">
+        <fieldset class="grid gap-4" th:disabled="${!editable}">
+          <label class="floating-label" th:if="${expense == null}"><span>Beleg</span>
+            <input id="expense-upload" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="file-input w-full" required aria-describedby="expense-upload-hint">
+          </label>
+          <span id="expense-upload-hint" class="text-xs text-base-content/75 -mt-2" th:if="${expense == null}">Rechnung oder Quittung als PDF, JPG oder PNG, höchstens 25 MB.</span>
+          <div class="grid gap-4 @lg:grid-cols-2">
+            <label class="floating-label"><span>Tag der Zahlung</span>
+              <input id="expense-paid-on" th:field="*{paidOn}" type="date" class="input w-full" required data-volatile>
+            </label>
+            <label class="floating-label"><span>Betrag (€, brutto)</span>
+              <input id="expense-amount" th:field="*{amount}" class="input w-full num" inputmode="decimal" required placeholder="49,90">
+            </label>
+            <label class="floating-label"><span>Art</span>
+              <select id="expense-category" th:field="*{category}" class="select w-full" required>
+                <option th:each="option : ${categories}" th:value="${option}" th:text="${option.label()}">Fachliteratur</option>
+              </select>
+            </label>
+            <label class="floating-label"><span>Empfänger</span>
+              <input id="expense-vendor" th:field="*{vendor}" class="input w-full" maxlength="200" required placeholder="Buchhandlung am Markt">
+            </label>
+          </div>
+          <label class="floating-label"><span>Beschreibung</span>
+            <input id="expense-description" th:field="*{description}" class="input w-full" maxlength="500" required placeholder="Wörterbuch Deutsch-Russisch">
+          </label>
+          <label class="flex items-start gap-2 text-sm">
+            <input id="expense-asset" type="checkbox" th:field="*{asset}" class="checkbox checkbox-sm mt-0.5" aria-describedby="expense-asset-hint">
+            <span>Anlagegut<br><span id="expense-asset-hint" class="text-xs text-base-content/75">Über 800 € netto und
+              mehrere Jahre in Gebrauch, etwa ein Laptop. WISO verteilt den Betrag als AfA über die Jahre.</span></span>
+          </label>
+          <div class="form-actions" th:if="${editable}"><button type="submit" class="btn btn-primary" id="expense-save">
+            <i th:attr="data-lucide=${expense == null ? 'receipt' : 'save'}" class="size-4"></i><span th:text="${expense == null ? 'Erfassen' : 'Speichern'}">Speichern</span></button></div>
+        </fieldset>
+      </form>
+    </section>
+
+    <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="expense-cancel" th:if="${expense != null and editable}">
+      <summary class="btn btn-danger w-fit"><i data-lucide="undo-2" class="size-4"></i>Stornieren…</summary>
+      <form class="grid gap-4 mt-4" method="post" th:action="@{/expenses/{id}/cancel(id=${expense.id})}">
+        <p class="text-sm text-base-content/75">Eine Ausgabe wird nicht gelöscht. Storniert bleibt sie mit Beleg und Grund
+          erhalten und zählt nicht mehr.</p>
+        <label class="floating-label"><span>Grund</span>
+          <input id="expense-cancel-reason" name="reason" class="input w-full" maxlength="500" required placeholder="Doppelt erfasst">
+        </label>
+        <div class="form-actions"><button type="submit" class="btn btn-error" id="expense-cancel-confirm"><i data-lucide="undo-2" class="size-4"></i>Stornieren</button></div>
+      </form>
+    </details>
+  </div>
+</div>
+</body>
+</html>

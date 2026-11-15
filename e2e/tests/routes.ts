@@ -6,6 +6,9 @@ export const ROUTES = [
   { name: 'account', path: '/account', anonymous: false },
   { name: 'invoices', path: '/invoices', anonymous: false },
   { name: 'customers', path: '/customers', anonymous: false },
+  // A past year without expenses: the list of this year fills during the run.
+  { name: 'expenses', path: '/expenses?year=2020', anonymous: false },
+  { name: 'expense-new', path: '/expenses/new', anonymous: false },
   // A past year without payments: the page of this year changes with the date.
   { name: 'reports', path: '/reports?year=2020', anonymous: false },
   { name: 'customer-new', path: '/customers/new', anonymous: false },

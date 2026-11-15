@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Ausgaben · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Ausgaben', 'expenses', ~{::content})}">
+  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4 @container">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">Ausgaben</h1>
+      <div class="flex flex-wrap gap-2 items-end">
+        <form class="flex flex-wrap gap-2 items-end" th:action="@{/expenses}" method="get" id="expense-year">
+          <label class="floating-label w-28 [--label-surface:var(--color-base-200)]"><span>Jahr</span>
+            <select name="year" class="select select-sm w-full" id="expense-year-select">
+              <option th:each="option : ${years}" th:value="${option}" th:text="${option}" th:selected="${option == year}">2027</option>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-sm"><i data-lucide="eye" class="size-4"></i>Anzeigen</button>
+        </form>
+        <a th:href="@{/expenses/new}" class="btn btn-sm btn-primary" id="expense-new"><i data-lucide="receipt" class="size-4"></i>Ausgabe erfassen</a>
+      </div>
+    </div>
+    <p class="text-sm text-base-content/75">Betriebsausgaben mit Beleg, nach dem Tag der Zahlung. Der Betrag ist der gezahlte,
+      mit Umsatzsteuer. Am Jahresende stehen die Summen je Art unter „Berichte“ zum Übertrag in WISO Steuer bereit.</p>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="expense-totals">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="font-semibold" th:text="'Summe ' + ${year}">Summe 2027</h2>
+        <span class="text-xl font-semibold num" id="expense-total" th:text="${#numbers.formatDecimal(total, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+      </div>
+      <p class="text-sm text-base-content/75" th:if="${totals.isEmpty()}">Noch keine Ausgaben in diesem Jahr.</p>
+      <dl class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 text-sm" th:unless="${totals.isEmpty()}">
+        <th:block th:each="entry : ${totals}">
+          <dt class="[overflow-wrap:anywhere]" th:text="${entry.key.label()}">Fachliteratur</dt>
+          <dd class="num text-right" th:text="${#numbers.formatDecimal(entry.value, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
+        </th:block>
+      </dl>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-2" th:unless="${rows.isEmpty()}">
+      <ul id="expense-list" class="menu w-full p-0">
+        <li th:each="row : ${rows}">
+          <a th:href="@{/expenses/{id}(id=${row.id})}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3">
+            <span class="min-w-0 grid">
+              <span class="[overflow-wrap:anywhere]" th:classappend="${row.cancelled()} ? 'line-through opacity-60'"
+                    th:text="${row.vendor + ': ' + row.description}">Buchhandlung: Wörterbuch</span>
+              <span class="text-xs text-base-content/75 [overflow-wrap:anywhere]"
+                    th:text="${#temporals.format(row.paidOn, 'dd.MM.yyyy') + ' · ' + row.category.label() + (row.asset ? ' · Anlagegut' : '') + (row.cancelled() ? ' · storniert' : '')}">12.05.2027 · Fachliteratur</span>
+            </span>
+            <span class="num whitespace-nowrap" th:classappend="${row.cancelled()} ? 'line-through opacity-60'"
+                  th:text="${#numbers.formatDecimal(row.amount, 1, 'POINT', 2, 'COMMA')} + ' €'">49,90 €</span>
+          </a>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>
