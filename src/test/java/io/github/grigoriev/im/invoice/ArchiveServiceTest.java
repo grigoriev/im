@@ -46,6 +46,7 @@ class ArchiveServiceTest {
     @BeforeEach
     void intact() {
         when(documents.verified(any())).thenAnswer(call -> call.getArgument(0));
+        when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
     }
 
     private static Invoice invoice(long id, InvoiceStatus status, String number, LocalDate date) {
@@ -135,6 +136,18 @@ class ArchiveServiceTest {
         when(businessDocuments.problems(8)).thenReturn(List.of("y"));
         assertThat(service.damaged(2027)).containsExactly("Rechnung 2027-02", "Dokument b.pdf");
         verify(integrity, never()).check(argThat(invoice -> invoice.id() == 3));
+    }
+
+    @Test
+    void aMissingOrChangedFileStopsTheArchiveBeforeItsFirstEntry() {
+        Invoice invoice = invoice(1, InvoiceStatus.PAID, "2027-01", LocalDate.of(2027, 1, 10));
+        when(invoices.list()).thenReturn(List.of(invoice));
+        when(integrity.check(invoice)).thenReturn(new InvoiceIntegrity.Report(List.of("Die Datei fehlt."), List.of()));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThatThrownBy(() -> service.write(2027, out)).isInstanceOf(InvoiceException.class).hasMessage(
+                "Das Archiv bleibt aus, denn diese Dateien fehlen, sind beschädigt oder wurden außerhalb der App "
+                        + "geändert: Rechnung 2027-01.");
+        assertThat(out.size()).as("not a single byte").isZero();
     }
 
     @Test

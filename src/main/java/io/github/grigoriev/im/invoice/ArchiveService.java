@@ -29,6 +29,9 @@ public class ArchiveService {
     /** The table of contents, for a spreadsheet: semicolons, UTF-8 with byte order mark. */
     static final String CONTENTS = "Inhalt.csv";
     static final String HEAD = "Rechnungsnummer;Rechnungsdatum;Kunde;Datei;Bytes;SHA-256";
+    static final String DAMAGED = "Das Archiv bleibt aus, denn diese Dateien fehlen, sind beschädigt oder wurden "
+            + "außerhalb der App geändert: %s.";
+
     /** The folder of the business documents and its table of contents. */
     static final String FOLDER = "Dokumente/";
     static final String DOCUMENT_HEAD = "Art;Titel;Datum;Jahr;Fassung;Datei;Bytes;SHA-256";
@@ -92,8 +95,14 @@ public class ArchiveService {
      * @param year the year of the invoice dates
      * @param out where the ZIP goes; it is closed at the end
      * @throws UncheckedIOException if the output fails
+     * @throws InvoiceException if a file of the year is missing, broken or changed; then nothing is written
      */
     public void write(int year, OutputStream out) {
+        // Checked before the first entry: an entry cannot be taken back, a late failure would leave half an archive.
+        List<String> damaged = damaged(year);
+        if (!damaged.isEmpty()) {
+            throw new InvoiceException(List.of(DAMAGED.formatted(String.join(", ", damaged))));
+        }
         List<Invoice> issued = issued(year);
         StringBuilder contents = new StringBuilder().append((char) 0xFEFF).append(HEAD).append("\r\n");
         Set<String> names = new HashSet<>();
