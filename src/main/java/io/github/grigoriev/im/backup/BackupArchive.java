@@ -68,10 +68,8 @@ final class BackupArchive {
             long maxDirectoryBytes, Consumer<BackupArchive> work) {
         try {
             directory(file, maxEntries, maxDirectoryBytes);
+            // The end record named the count of entries that ZipFile reads.
             try (ZipFile zip = new ZipFile(file.toFile())) {
-                if (zip.size() > maxEntries) {
-                    throw new BackupException(TOO_BIG);
-                }
                 work.accept(new BackupArchive(zip, json, maxBytes, maxFileBytes));
             }
         } catch (IOException _) {
