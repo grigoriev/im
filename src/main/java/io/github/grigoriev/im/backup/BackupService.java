@@ -111,11 +111,17 @@ public class BackupService {
      */
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void export(OutputStream out) {
-        try (ZipOutputStream zip = new Bounded(out, MAX_ENTRIES)) {
-            entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
-                    "exported", clock.instant().toString(), "tables", TABLES)));
-            for (String table : TABLES) {
-                exportTable(zip, table);
+        try (Bounded zip = new Bounded(out, MAX_ENTRIES)) {
+            try {
+                entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
+                        "exported", clock.instant().toString(), "tables", TABLES)));
+                for (String table : TABLES) {
+                    exportTable(zip, table);
+                }
+            } catch (IOException | RuntimeException e) {
+                // A broken export must not end as a well-formed ZIP that lacks tables: no central directory.
+                zip.abort();
+                throw e;
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -178,7 +184,9 @@ public class BackupService {
                 .collect(Collectors.joining(", "));
         zip.putNextEntry(new ZipEntry(data(table)));
         AtomicInteger index = new AtomicInteger();
-        try (JsonGenerator rows = json.writer().without(StreamWriteFeature.AUTO_CLOSE_TARGET).createGenerator(zip)) {
+        try (JsonGenerator rows = json.writer()
+                .without(StreamWriteFeature.AUTO_CLOSE_TARGET).without(StreamWriteFeature.AUTO_CLOSE_CONTENT)
+                .createGenerator(zip)) {
             rows.writeStartArray();
             jdbc.sql("SELECT " + columns + order).withFetchSize(FETCH_ROWS).query(rs -> {
                 Map<String, Object> row = new LinkedHashMap<>();
@@ -301,6 +309,7 @@ public class BackupService {
 
         private final int max;
         private int entries;
+        private boolean aborted;
 
         Bounded(OutputStream out, int max) {
             super(out);
@@ -315,6 +324,19 @@ public class BackupService {
                         + "Import nicht lesen.");
             }
             super.putNextEntry(entry);
+        }
+
+        /** Gives up the ZIP: closing it then writes no central directory, so no reader takes the broken part. */
+        void abort() {
+            aborted = true;
+        }
+
+        @Override
+        public void close() throws IOException {
+            // An aborted ZIP stays unfinished; the caller closes the output, the deflater goes with the stream.
+            if (!aborted) {
+                super.close();
+            }
         }
     }
 }

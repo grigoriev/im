@@ -69,6 +69,8 @@ class BackupServiceTest {
     @TempDir
     private Path folder;
     private String schema = "20";
+    /** The table whose second row fails to read, as a lost database connection would. */
+    private String failOn;
 
     private void row(String table, Object... typeNameValue) {
         Map<String, Object[]> row = new LinkedHashMap<>();
@@ -143,7 +145,11 @@ class BackupServiceTest {
         assertThat(select.group(3)).as("the order of the first column").isEqualTo(tables.get(table) == null ? "id"
                 : tables.get(table).getFirst().keySet().iterator().next());
         List<String> columns = List.of(select.group(1).split(", "));
+        int read = 0;
         for (Map<String, Object[]> row : tables.getOrDefault(table, List.of())) {
+            if (table.equals(failOn) && read++ == 1) {
+                throw new IllegalStateException("database gone");
+            }
             ResultSet rs = mock(ResultSet.class);
             // As in a real result, a column beyond the query does not exist.
             when(rs.getBytes(anyInt())).thenThrow(new SQLException("no such column"));
@@ -252,6 +258,17 @@ class BackupServiceTest {
             }
         };
         assertThatThrownBy(() -> service.export(broken)).isInstanceOf(UncheckedIOException.class);
+        verify(audit, never()).add(AuditAction.DATA_EXPORTED, "");
+    }
+
+    @Test
+    void aFailureWithinATableLeavesNoReadableZip() {
+        failOn = "invoice_document";
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThatThrownBy(() -> service.export(out)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("database gone");
+        assertThat(out.toString(StandardCharsets.ISO_8859_1)).as("no central directory, so no reader takes the part")
+                .doesNotContain("PK\u0005\u0006").contains("data/customer.json");
         verify(audit, never()).add(AuditAction.DATA_EXPORTED, "");
     }
 
