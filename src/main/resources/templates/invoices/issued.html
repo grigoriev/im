@@ -55,7 +55,11 @@
               value="true" th:checked="${mail.xml}">XML anhängen</label>
         </div>
         <p class="text-xs text-base-content/75">Die Anhänge sind die gespeicherten Dokumente, Byte für Byte. Der Versand erscheint im Verlauf.</p>
-        <div class="form-actions"><button type="submit" class="btn btn-primary" id="mail-send"><i data-lucide="send" class="size-4"></i>Senden</button></div>
+        <div class="form-actions">
+          <button type="submit" class="btn" id="mail-preview" formtarget="_blank" formnovalidate th:formaction="@{/invoices/{id}/send/preview(id=${invoice.id})}"
+                  title="Die E-Mail so, wie der Kunde sie sieht, in einem neuen Tab"><i data-lucide="eye" class="size-4"></i>Vorschau</button>
+          <button type="submit" class="btn btn-primary" id="mail-send"><i data-lucide="send" class="size-4"></i>Senden</button>
+        </div>
       </form>
     </details>
     <p class="text-sm text-base-content/75" id="mail-off" th:if="${!mailConfigured and invoice.status.name() != 'CANCELLED'}">Das Versenden per E-Mail ist nicht eingerichtet.

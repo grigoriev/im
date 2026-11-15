@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('submit', (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement) || form.dataset.once === undefined) return;
+  // A button that opens a new tab, such as a preview, sends nothing: it never blocks the form.
+  if (event.submitter?.hasAttribute('formtarget')) return;
   if (form.dataset.sent) {
     event.preventDefault();
     return;

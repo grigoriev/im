@@ -52,7 +52,7 @@ Package `io.github.grigoriev.im`:
 - `threshold`: the §19 limit and the reports (`ThresholdService`: one `RevenueRow` per payment, rounded once, with the §19 part; baselines, forecast; `ReportController` shows Anlage EÜR Zeilen 12 and 13, one per tax number, and the CSV)
 - `backup`: the full export and import (`BackupService`: every table as PostgreSQL text, binaries as files, one transaction into an empty installation; issued invoices go in as drafts, get lines and documents, then their status); `BackupRunService` reads the last nightly backup and restore test that the host scripts write into `backup_run`
 - `mail`: the e-mail text (`MailTextService`: the admin default, the template of an invoice, the placeholders) and the
-  sending (`MailService` over SMTP from `MailProperties`, `IM_SMTP_*`; a sent e-mail records a dispatch `EMAIL_APP`)
+  sending (`MailService` over SMTP from `MailProperties`, `IM_SMTP_*`; text and HTML, the HTML from `MailHtml`, template `templates/mail/invoice.html`; `/invoices/{id}/send/preview` shows it under a CSP of its own; a sent e-mail records a dispatch `EMAIL_APP`)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file)

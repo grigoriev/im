@@ -129,7 +129,7 @@ public final class SampleInvoices {
                 lump("Versand", "5.90", TaxCategory.STANDARD_19));
     }
 
-    static SpringTemplateEngine templates() {
+    public static SpringTemplateEngine templates() {
         ClassLoaderTemplateResolver resolver = new ClassLoaderTemplateResolver();
         resolver.setPrefix("templates/");
         resolver.setSuffix(".html");

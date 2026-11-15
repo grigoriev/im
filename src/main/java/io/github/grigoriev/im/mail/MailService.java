@@ -21,7 +21,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Sends an issued invoice by e-mail over SMTP, with its stored PDF and XML byte for byte, and records the dispatch.
- * A failed send records nothing.
+ * The e-mail has the text as typed and the same text as HTML with the facts of the invoice. A failed send records
+ * nothing.
  */
 @Service
 public class MailService {
@@ -41,6 +42,7 @@ public class MailService {
     private final DispatchService dispatches;
     private final DocumentStore documents;
     private final MailTextService texts;
+    private final MailHtml html;
 
     /**
      * Creates the service.
@@ -50,14 +52,29 @@ public class MailService {
      * @param dispatches checks the invoice and records the dispatch
      * @param documents the stored PDF and XML
      * @param texts the text of the e-mail
+     * @param html writes the HTML of the e-mail
      */
     public MailService(MailProperties properties, JavaMailSender sender, DispatchService dispatches,
-            DocumentStore documents, MailTextService texts) {
+            DocumentStore documents, MailTextService texts, MailHtml html) {
         this.properties = properties;
         this.sender = sender;
         this.dispatches = dispatches;
         this.documents = documents;
         this.texts = texts;
+        this.html = html;
+    }
+
+    /**
+     * Shows the e-mail as the customer sees it: the HTML of the text as typed. It checks nothing and sends nothing.
+     *
+     * @param invoiceId the invoice
+     * @param form the entered values
+     * @return the HTML
+     * @throws InvoiceException if the invoice cannot go out
+     */
+    public String preview(long invoiceId, SendForm form) {
+        Invoice invoice = dispatches.sendable(invoiceId);
+        return html.render(documents.restore(invoice.snapshot()), Fields.text(form.getSubject()), form.getBody());
     }
 
     /**
@@ -121,7 +138,8 @@ public class MailService {
             throw new InvoiceException(problems);
         }
         try {
-            sender.send(message(to, subject, body, attachments));
+            sender.send(message(to, subject, body, html.render(documents.restore(invoice.snapshot()), subject, body),
+                    attachments));
         } catch (MailException | MessagingException e) {
             LOG.warn("Sending invoice {} to {} failed: {}", invoice.number(), to, e.getMessage());
             throw new InvoiceException(List.of(FAILED));
@@ -144,8 +162,8 @@ public class MailService {
         }
     }
 
-    private MimeMessage message(String to, String subject, String body, List<StoredDocument> attachments)
-            throws MessagingException {
+    private MimeMessage message(String to, String subject, String body, String htmlBody,
+            List<StoredDocument> attachments) throws MessagingException {
         MimeMessage message = sender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         helper.setFrom(properties.from());
@@ -154,7 +172,7 @@ public class MailService {
             helper.setBcc(properties.bcc());
         }
         helper.setSubject(subject);
-        helper.setText(body);
+        helper.setText(body, htmlBody);
         for (StoredDocument file : attachments) {
             helper.addAttachment(file.filename(), new ByteArrayResource(file.content()), file.kind().mediaType());
         }

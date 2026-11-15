@@ -78,6 +78,7 @@ class AccessRulesIT {
             Map.entry("POST /invoices/{id}/dispatches", Access.USER),
             Map.entry("POST /invoices/{id}/payments", Access.USER),
             Map.entry("POST /invoices/{id}/send", Access.USER),
+            Map.entry("POST /invoices/{id}/send/preview", Access.USER),
             Map.entry("GET /invoices/{id}/documents/{kind}", Access.USER),
             Map.entry("GET /documents", Access.USER),
             Map.entry("GET /documents/new", Access.USER),

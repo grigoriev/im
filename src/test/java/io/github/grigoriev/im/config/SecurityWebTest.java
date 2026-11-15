@@ -817,6 +817,28 @@ class SecurityWebTest {
     }
 
     @Test
+    void previewsTheEmailWithAPolicyOfItsOwn() throws Exception {
+        when(mail.preview(ArgumentMatchers.eq(6L), any())).thenReturn("<p style=\"margin:0\">Hallo</p>");
+        mvc.perform(post("/invoices/6/send/preview").param("subject", "Rechnung 2027-01").param("body", "Hallo")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/html;charset=UTF-8"))
+                .andExpect(header().string("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; "
+                        + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"))
+                .andExpect(content().string("<p style=\"margin:0\">Hallo</p>"));
+        var form = ArgumentCaptor.forClass(SendForm.class);
+        verify(mail).preview(ArgumentMatchers.eq(6L), form.capture());
+        Assertions.assertThat(form.getValue().getBody()).isEqualTo("Hallo");
+        verify(mail, never()).send(ArgumentMatchers.anyLong(), any());
+        when(mail.preview(ArgumentMatchers.eq(7L), any())).thenThrow(new InvoiceException(List.of("Storniert.")));
+        mvc.perform(post("/invoices/7/send/preview").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/invoices/6/send/preview").with(user("elena").roles("USER")))
+                .andExpect(status().is3xxRedirection());
+        verify(mail, times(2)).preview(ArgumentMatchers.anyLong(), any());
+    }
+
+    @Test
     void recordsAPayment() throws Exception {
         when(payments.add(ArgumentMatchers.eq(6L), any()))
                 .thenReturn(InvoiceStatus.PAID);

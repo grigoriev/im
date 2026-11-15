@@ -110,6 +110,11 @@ class MailIT {
         assertThat(bytes.toByteArray()).as("the stored PDF, byte for byte")
                 .isEqualTo(documents.find(invoice.id(), DocumentKind.PDF).orElseThrow().content());
         assertThat(parts.getBodyPart(2).getFileName()).isEqualTo("Rechnung_2039-01.xml");
+        Multipart related = (Multipart) parts.getBodyPart(0).getContent();
+        Multipart alternative = (Multipart) related.getBodyPart(0).getContent();
+        assertThat(alternative.getBodyPart(0).isMimeType("text/plain")).as("text first, for old programs").isTrue();
+        assertThat(alternative.getBodyPart(1).isMimeType("text/html")).isTrue();
+        assertThat((String) alternative.getBodyPart(1).getContent()).contains(">Rechnung 2039-01</td>");
 
         assertThat(invoices.find(invoice.id()).orElseThrow().status()).isEqualTo(InvoiceStatus.SENT);
         assertThat(dispatches.list(invoice.id())).singleElement().satisfies(dispatch -> {
