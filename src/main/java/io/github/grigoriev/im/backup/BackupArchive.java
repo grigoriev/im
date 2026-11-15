@@ -181,7 +181,7 @@ final class BackupArchive {
                 throw damaged(name);
             }
             Object value = value(name, parser);
-            text += value instanceof String string ? string.length() : 0;
+            text += length(value);
             // All texts of a row together, as well as each: 200 columns of the longest text would fill the memory.
             if (text > MAX_TEXT) {
                 throw damaged(name);
@@ -189,6 +189,14 @@ final class BackupArchive {
             row.put(parser.currentName(), value);
         }
         return Optional.of(row);
+    }
+
+    /** The characters a value holds: a text, the name of a file, nothing for {@code null}. */
+    private static int length(Object value) {
+        if (value instanceof Map<?, ?> file) {
+            return ((String) file.get(FILE)).length();
+        }
+        return value == null ? 0 : ((String) value).length();
     }
 
     /** A value of a column: a text, {@code null}, or {@code {"file": name}} for a binary column. */

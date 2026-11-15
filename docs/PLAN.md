@@ -265,6 +265,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 4. Full export and import: ZIP with JSON data and all documents. This also moves the system to a new host.
    Both stream: the export reads one row at a time and writes it at once, the import reads the upload from disk entry by entry and row by
    row. Memory holds one document at most, so a large export cannot stop the container. Uploads up to 4 GB, as much as an import expands; the export stops before it writes more.
+   The upload limit of the app applies to every form, so the proxy allows 4 GB for the import only and 32 MB elsewhere.
 
 ### Documents
 
