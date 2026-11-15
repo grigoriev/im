@@ -119,6 +119,27 @@ class IntegrityIT {
         }
     }
 
+    @Test
+    void aMemberOfASuperuserWhoOwnsNoTableIsRefused() {
+        JdbcClient asOwner = owner.jdbc();
+        asOwner.sql("DROP ROLE IF EXISTS super_probe_login").update();
+        asOwner.sql("DROP ROLE IF EXISTS super_probe").update();
+        asOwner.sql("CREATE ROLE super_probe SUPERUSER NOLOGIN").update();
+        asOwner.sql("CREATE ROLE super_probe_login LOGIN NOINHERIT PASSWORD 'probe'").update();
+        asOwner.sql("GRANT super_probe TO super_probe_login").update();
+        try {
+            DriverManagerDataSource probe = owner.dataSource(null);
+            probe.setUsername("super_probe_login");
+            probe.setPassword("probe");
+            ConnectionGuard guard = new ConnectionGuard(JdbcClient.create(probe));
+            assertThatThrownBy(() -> guard.run(null)).as("SET ROLE super_probe would switch any trigger off")
+                    .isInstanceOf(IllegalStateException.class);
+        } finally {
+            asOwner.sql("DROP ROLE super_probe_login").update();
+            asOwner.sql("DROP ROLE super_probe").update();
+        }
+    }
+
     private Invoice issued(LocalDate date) {
         SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");

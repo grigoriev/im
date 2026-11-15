@@ -337,6 +337,8 @@ class BackupServiceTest {
                 + "enthält Dateien, die nicht zu Prüfsumme oder Siegel passen: Rechnung 2027-01, Dokument a.pdf. Das "
                 + "Siegel braucht denselben IM_INTEGRITY_KEY wie die Installation, aus der die Sicherung stammt.");
         verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
+        assertThat(writes).as("a rollback does not take setval back: the identities stay").noneSatisfy(write ->
+                assertThat((String) write.get("sql")).startsWith("SELECT setval"));
     }
 
     private void refused(byte[] zip, String message) {
@@ -359,6 +361,8 @@ class BackupServiceTest {
         refused(fine, "Hier gibt es schon Daten. Eine Datensicherung lässt sich nur in eine leere Installation "
                 + "einspielen.");
         verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
+        assertThat(writes).as("a rollback does not take setval back: the identities stay").noneSatisfy(write ->
+                assertThat((String) write.get("sql")).startsWith("SELECT setval"));
     }
 
     @Test
@@ -378,6 +382,8 @@ class BackupServiceTest {
         assertThatThrownBy(() -> service.restore(missing)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist kein ZIP.");
         verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
+        assertThat(writes).as("a rollback does not take setval back: the identities stay").noneSatisfy(write ->
+                assertThat((String) write.get("sql")).startsWith("SELECT setval"));
     }
 
     @Test

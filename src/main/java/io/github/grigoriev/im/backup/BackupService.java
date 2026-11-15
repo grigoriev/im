@@ -167,12 +167,13 @@ public class BackupService {
         // A second pass over the invoices, after their lines and documents: the rows never sit in memory together.
         Map<String, String> invoiceTypes = types(INVOICE);
         archive.rows(data(INVOICE), invoice -> finish(invoiceTypes, invoice));
-        TABLES.forEach(this::resetIdentity);
         // A changed file, or a seal of another key, stops the import: the transaction leaves the installation empty.
+        // The check runs before the identities move on, since a rollback does not take setval back.
         List<String> damaged = checks.stream().flatMap(check -> check.damaged().stream()).map(Damage::what).toList();
         if (!damaged.isEmpty()) {
             throw new BackupException(DAMAGED.formatted(String.join(", ", damaged)));
         }
+        TABLES.forEach(this::resetIdentity);
         audit.add(AuditAction.DATA_IMPORTED, "");
     }
 

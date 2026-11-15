@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Refuses to start while the app connects to the database as a role that could switch the triggers off: a superuser,
- * the owner of a table, or a member of the owner, even one without its privileges, who could still {@code SET ROLE}.
+ * the owner of a table, or a member of either, even one without their privileges, who could still {@code SET ROLE}.
  * Flyway migrates as the owner ({@code IM_DB_OWNER}); the app connects as a role that may only read and write rows
  * ({@code IM_DB_USER}).
  */
@@ -15,10 +15,9 @@ import org.springframework.stereotype.Component;
 public class ConnectionGuard implements ApplicationRunner {
 
     static final String MIGHTY = """
-            SELECT rolsuper OR EXISTS (SELECT 1 FROM pg_tables
-                                        WHERE schemaname = current_schema()
-                                          AND pg_has_role(current_user, tableowner, 'MEMBER'))
-              FROM pg_roles WHERE rolname = current_user""";
+            SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolsuper AND pg_has_role(current_user, oid, 'MEMBER'))
+                OR EXISTS (SELECT 1 FROM pg_tables
+                            WHERE schemaname = current_schema() AND pg_has_role(current_user, tableowner, 'MEMBER'))""";
     static final String REFUSED = "The app connects to the database as a superuser or as the owner of its tables. "
             + "Set IM_DB_USER to a role that may only read and write rows, and IM_DB_OWNER to the owner for Flyway.";
 
