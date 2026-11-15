@@ -8,6 +8,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Clock;
 import java.time.LocalDate;
 import org.springframework.http.ContentDisposition;
@@ -99,8 +102,8 @@ public class BackupController {
             flash.addFlashAttribute(ERROR, "Bitte eine ZIP-Datei wählen.");
             return BACK;
         }
-        try (InputStream in = file.getInputStream()) {
-            backups.restore(in);
+        try {
+            restore(file);
         } catch (BackupException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
             return BACK;
@@ -116,5 +119,18 @@ public class BackupController {
             session.invalidate();
         }
         return "redirect:/login?restored";
+    }
+
+    /** Puts the upload into a file of its own, which the import reads entry by entry, and removes it afterwards. */
+    private void restore(MultipartFile file) throws IOException {
+        Path upload = Files.createTempFile("im-import-", ".zip");
+        try {
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, upload, StandardCopyOption.REPLACE_EXISTING);
+            }
+            backups.restore(upload);
+        } finally {
+            Files.delete(upload);
+        }
     }
 }

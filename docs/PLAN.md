@@ -263,6 +263,8 @@ The admin edits the default tax notes. A template and an invoice can override th
 2. CSV of all payments of a year.
 3. Archive export: ZIP with all XML and PDF files of a year.
 4. Full export and import: ZIP with JSON data and all documents. This also moves the system to a new host.
+   Both stream: the export reads one row at a time and writes it at once, the import reads the upload from disk entry by entry and row by
+   row. Memory holds one document at most, so a large export cannot stop the container. Uploads up to 1 GB.
 
 ### Documents
 

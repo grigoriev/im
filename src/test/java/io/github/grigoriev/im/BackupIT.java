@@ -35,6 +35,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -45,6 +47,7 @@ import java.util.zip.ZipInputStream;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -156,7 +159,7 @@ class BackupIT {
     }
 
     @Test
-    void anExportReadsBackIntoAnEmptyDatabaseExactly() throws IOException {
+    void anExportReadsBackIntoAnEmptyDatabaseExactly(@TempDir Path folder) throws IOException {
         someOfEverything();
         ByteArrayOutputStream original = new ByteArrayOutputStream();
         backups.export(original);
@@ -172,7 +175,8 @@ class BackupIT {
         copyJdbc.update("INSERT INTO app_user (username, display_name, password_hash, role, enabled) "
                 + "VALUES ('erster', 'Erster Admin', 'x', 'ADMIN', TRUE)");
 
-        transaction.executeWithoutResult(status -> into.restore(new ByteArrayInputStream(original.toByteArray())));
+        Path upload = Files.write(folder.resolve("export.zip"), original.toByteArray());
+        transaction.executeWithoutResult(status -> into.restore(upload));
 
         ByteArrayOutputStream again = new ByteArrayOutputStream();
         transaction.executeWithoutResult(status -> into.export(again));
@@ -197,8 +201,7 @@ class BackupIT {
                 .isEqualTo("CANCELLED");
         assertThatThrownBy(() -> copyJdbc.update("DELETE FROM business_document")).hasMessageContaining("is kept");
 
-        assertThatThrownBy(() -> transaction.executeWithoutResult(status -> into.restore(
-                new ByteArrayInputStream(original.toByteArray()))))
+        assertThatThrownBy(() -> transaction.executeWithoutResult(status -> into.restore(upload)))
                 .isInstanceOf(BackupException.class).hasMessageContaining("schon Daten");
         assertThat(Arrays.equals(before.get("data/invoice.json"), after.get("data/invoice.json"))).isTrue();
     }

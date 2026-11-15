@@ -2,27 +2,27 @@ package io.github.grigoriev.im.backup;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.sql.ResultSetMetaData;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.StreamWriteFeature;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -35,11 +35,13 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 public class BackupService {
 
-    /** The most an import expands to, and the most entries it has: a crafted ZIP must not fill the memory. */
-    static final long MAX_BYTES = 512L * 1024 * 1024;
+    /** The most an import expands to and the most entries it has: a crafted ZIP must not fill the disk. */
+    static final long MAX_BYTES = 4L * 1024 * 1024 * 1024;
     static final int MAX_ENTRIES = 100_000;
-
-    static final String TOO_BIG = "Die Datensicherung ist zu groß oder hat zu viele Dateien.";
+    /** The most one file or the manifest expands to: it comes into memory as a whole, a document has 25 MB. */
+    static final long MAX_FILE_BYTES = 64L * 1024 * 1024;
+    /** The export reads one row at a time: neither the rows nor the files of a table sit in memory together. */
+    static final int FETCH_ROWS = 1;
 
     private static final String INVOICE = "invoice";
     private static final String SCHEMA_KEY = "schema";
@@ -111,27 +113,7 @@ public class BackupService {
             entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
                     "exported", clock.instant().toString(), "tables", TABLES)));
             for (String table : TABLES) {
-                Map<String, byte[]> files = new LinkedHashMap<>();
-                List<Map<String, Object>> rows = new ArrayList<>();
-                jdbc.sql("SELECT * FROM " + table + " ORDER BY 1").query(rs -> {
-                    ResultSetMetaData meta = rs.getMetaData();
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    for (int i = 1; i <= meta.getColumnCount(); i++) {
-                        String column = meta.getColumnName(i);
-                        if (BINARY.equals(meta.getColumnTypeName(i)) && rs.getBytes(i) != null) {
-                            String name = "files/" + table + "/" + rows.size() + "-" + column;
-                            files.put(name, rs.getBytes(i));
-                            row.put(column, Map.of("file", name));
-                        } else {
-                            row.put(column, rs.getString(i));
-                        }
-                    }
-                    rows.add(row);
-                });
-                entry(zip, "data/" + table + ".json", json.writeValueAsBytes(rows));
-                for (Map.Entry<String, byte[]> file : files.entrySet()) {
-                    entry(zip, file.getKey(), file.getValue());
-                }
+                exportTable(zip, table);
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -141,15 +123,19 @@ public class BackupService {
 
     /**
      * Reads an export into this installation. It needs the same format and schema version, and no seller profile,
-     * customer, template or invoice yet. Users, settings and the audit log of the export replace those here.
+     * customer, template or invoice yet. Users, settings and the audit log of the export replace those here. The rows
+     * stream from the file, so an export of any size needs the memory of one document only.
      *
-     * @param in the ZIP
+     * @param file the ZIP on disk
      * @throws BackupException if the file is no export, of another version, or this installation has data
      */
     @Transactional
-    public void restore(InputStream in) {
-        Map<String, byte[]> entries = read(in, MAX_BYTES, MAX_ENTRIES);
-        Map<String, Object> manifest = parse(entries, MANIFEST, new TypeReference<>() { });
+    public void restore(Path file) {
+        BackupArchive.read(file, json, MAX_BYTES, MAX_FILE_BYTES, MAX_ENTRIES, this::restore);
+    }
+
+    private void restore(BackupArchive archive) {
+        Map<String, Object> manifest = archive.value(MANIFEST, new TypeReference<>() { });
         if (!Integer.valueOf(FORMAT).equals(manifest.get("format"))) {
             throw new BackupException("Diese Datei ist keine Datensicherung dieser App.");
         }
@@ -166,23 +152,66 @@ public class BackupService {
             }
         }
         SETUP.forEach(table -> jdbc.sql("DELETE FROM " + table).update());
-        List<Map<String, Object>> invoices = List.of();
         for (String table : TABLES) {
             Map<String, String> types = types(table);
-            List<Map<String, Object>> rows = parse(entries, "data/" + table + ".json", new TypeReference<>() { });
-            for (Map<String, Object> row : rows) {
-                insert(table, types, entries, INVOICE.equals(table) ? asDraft(row) : row);
-            }
-            if (INVOICE.equals(table)) {
-                invoices = rows;
-            }
+            archive.rows(data(table), row -> insert(table, types, archive, INVOICE.equals(table) ? asDraft(row) : row));
         }
+        // A second pass over the invoices, after their lines and documents: the rows never sit in memory together.
         Map<String, String> invoiceTypes = types(INVOICE);
-        for (Map<String, Object> invoice : invoices) {
-            finish(invoiceTypes, invoice);
-        }
+        archive.rows(data(INVOICE), invoice -> finish(invoiceTypes, invoice));
         TABLES.forEach(this::resetIdentity);
         audit.add(AuditAction.DATA_IMPORTED, "");
+    }
+
+    /**
+     * Writes the rows of a table as one JSON entry, a row at a time, and then the files of its binary columns, one at
+     * a time. Both passes read in the order of the first column, which is unique in every table with files.
+     */
+    private void exportTable(ZipOutputStream zip, String table) throws IOException {
+        Map<String, String> types = types(table);
+        List<String> binary = types.keySet().stream().filter(column -> BINARY.equals(types.get(column))).toList();
+        String order = " FROM " + table + " ORDER BY " + types.keySet().iterator().next();
+        String columns = types.keySet().stream()
+                .map(column -> binary.contains(column) ? column + " IS NOT NULL AS " + column : column)
+                .collect(Collectors.joining(", "));
+        zip.putNextEntry(new ZipEntry(data(table)));
+        AtomicInteger index = new AtomicInteger();
+        try (JsonGenerator rows = json.writer().without(StreamWriteFeature.AUTO_CLOSE_TARGET).createGenerator(zip)) {
+            rows.writeStartArray();
+            jdbc.sql("SELECT " + columns + order).withFetchSize(FETCH_ROWS).query(rs -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                int i = 1;
+                for (String column : types.keySet()) {
+                    boolean file = binary.contains(column);
+                    row.put(column, file ? reference(rs.getBoolean(i), table, index.get(), column) : rs.getString(i));
+                    i++;
+                }
+                rows.writePOJO(row);
+                index.incrementAndGet();
+            });
+            rows.writeEndArray();
+        }
+        if (!binary.isEmpty()) {
+            index.set(0);
+            jdbc.sql("SELECT " + String.join(", ", binary) + order).withFetchSize(FETCH_ROWS).query(rs -> {
+                for (int i = 0; i < binary.size(); i++) {
+                    byte[] content = rs.getBytes(i + 1);
+                    if (content != null) {
+                        file(zip, fileName(table, index.get(), binary.get(i)), content);
+                    }
+                }
+                index.incrementAndGet();
+            });
+        }
+    }
+
+    /** The JSON value of a binary column: the name of its file, or {@code null} without content. */
+    private static Object reference(boolean present, String table, int row, String column) {
+        return present ? Map.of("file", fileName(table, row, column)) : null;
+    }
+
+    private static String fileName(String table, int row, String column) {
+        return "files/" + table + "/" + row + "-" + column;
     }
 
     private String schema() {
@@ -197,13 +226,17 @@ public class BackupService {
         return types;
     }
 
-    private void insert(String table, Map<String, String> types, Map<String, byte[]> entries, Map<String, Object> row) {
+    private static String data(String table) {
+        return "data/" + table + ".json";
+    }
+
+    private void insert(String table, Map<String, String> types, BackupArchive archive, Map<String, Object> row) {
         List<String> columns = new ArrayList<>(row.keySet());
         List<String> values = columns.stream().map(column -> value(types, column)).toList();
         JdbcClient.StatementSpec insert = jdbc.sql("INSERT INTO " + table + " (" + String.join(", ", columns)
                 + ") OVERRIDING SYSTEM VALUE VALUES (" + String.join(", ", values) + ")");
         for (String column : columns) {
-            insert = insert.param(column, parameter(entries, row.get(column)));
+            insert = insert.param(column, parameter(archive, row.get(column)));
         }
         insert.update();
     }
@@ -243,53 +276,17 @@ public class BackupService {
         return BINARY.equals(type) ? ":" + column : "CAST(:" + column + " AS " + type + ")";
     }
 
-    private static Object parameter(Map<String, byte[]> entries, Object value) {
-        if (value instanceof Map<?, ?> file) {
-            byte[] content = entries.get(String.valueOf(file.get("file")));
-            if (content == null) {
-                throw new BackupException("In der Datensicherung fehlt die Datei " + file.get("file") + ".");
-            }
-            return content;
-        }
-        return value;
+    private static Object parameter(BackupArchive archive, Object value) {
+        return value instanceof Map<?, ?> file ? archive.file(String.valueOf(file.get("file"))) : value;
     }
 
-    private <T> T parse(Map<String, byte[]> entries, String name, TypeReference<T> type) {
-        byte[] content = entries.get(name);
-        if (content == null) {
-            throw new BackupException("Diese Datei ist keine Datensicherung dieser App: " + name + " fehlt.");
-        }
+    /** Writes a file while its row is read; the row reader allows no checked exception. */
+    private static void file(ZipOutputStream zip, String name, byte[] content) {
         try {
-            return json.readValue(content, type);
-        } catch (RuntimeException _) {
-            throw new BackupException("Die Datensicherung ist beschädigt: " + name + ".");
+            entry(zip, name, content);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
-    }
-
-    /** Reads the entries of a ZIP, at most {@code maxBytes} expanded and {@code maxEntries} entries. */
-    static Map<String, byte[]> read(InputStream in, long maxBytes, int maxEntries) {
-        Map<String, byte[]> entries = new HashMap<>();
-        long total = 0;
-        byte[] buffer = new byte[64 * 1024];
-        try (ZipInputStream zip = new ZipInputStream(in)) {
-            for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
-                if (entries.size() >= maxEntries) {
-                    throw new BackupException(TOO_BIG);
-                }
-                ByteArrayOutputStream content = new ByteArrayOutputStream();
-                for (int read = zip.read(buffer); read != -1; read = zip.read(buffer)) {
-                    total += read;
-                    if (total > maxBytes) {
-                        throw new BackupException(TOO_BIG);
-                    }
-                    content.write(buffer, 0, read);
-                }
-                entries.put(entry.getName(), content.toByteArray());
-            }
-        } catch (IOException _) {
-            throw new BackupException("Diese Datei ist kein ZIP.");
-        }
-        return entries;
     }
 
     private static void entry(ZipOutputStream zip, String name, byte[] content) throws IOException {
