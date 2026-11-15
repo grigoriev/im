@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- The name follows "Mit freundlichen Grüßen" on the next line, in the PDF and in the e-mail, without a paragraph between. The HTML e-mail puts the greeting with the name below the box with the facts, the address at its foot.
 - The label of a field stays gray on focus and on a wrong value. Only the frame turns blue or red.
 - The PDF puts the address into the field of DIN 5008, form B, so it shows in a window envelope. The information block starts at 50 mm on the right and also holds the VAT ID of the customer and the buyer reference. A foreign country stands as its German name in capitals.
 - A last line on the PDF names the XML data as the invoice. A ZUGFeRD PDF says that it carries them; the PDF next to an XRechnung calls itself a reading copy, so it does not count as a second invoice.

@@ -53,11 +53,48 @@ public class MailHtml {
      * @return the HTML
      */
     public String render(InvoiceDocument document, String subject, String body) {
+        Letter letter = letter(document.seller(), body);
         Context context = new Context(GERMAN, Map.of("subject", subject == null ? "" : subject,
-                "paragraphs", paragraphs(body), "heading", heading(document), "facts", facts(document),
-                "signature", signature(document.seller())));
+                "paragraphs", letter.text(), "closing", letter.closing(), "heading", heading(document),
+                "facts", facts(document), "contact", contact(document.seller())));
         return templates.process("mail/invoice", context);
     }
+
+    /**
+     * The text of a letter around the box with the facts.
+     *
+     * @param text the paragraphs above the box
+     * @param closing the last paragraph below the box with the name on its last line, empty if the text has one
+     *     paragraph only and the name follows it there
+     */
+    record Letter(List<List<String>> text, List<String> closing) {
+    }
+
+    /**
+     * Arranges the text as a letter: the paragraphs above the box, the last one, the greeting, below it. The name
+     * follows the greeting on the next line, unless the text ends with it already.
+     *
+     * @param seller the seller, whose contact person or name signs
+     * @param body the text as typed, may be {@code null}
+     * @return the letter
+     */
+    static Letter letter(Party seller, String body) {
+        String signer = signer(seller);
+        if (body == null || body.isBlank()) {
+            return new Letter(List.of(), List.of(signer));
+        }
+        List<List<String>> text = paragraphs(InvoicePdfRenderer.signed(body, signer));
+        if (text.size() > 1) {
+            return new Letter(text.subList(0, text.size() - 1), text.getLast());
+        }
+        return new Letter(text, List.of());
+    }
+
+    /** Who signs: the contact person, or the name without one, as on the PDF. */
+    static String signer(Party seller) {
+        return seller.contactName() == null ? seller.name() : seller.contactName();
+    }
+
 
     /**
      * Splits the text into paragraphs at blank lines, and each paragraph into its lines.
@@ -99,20 +136,27 @@ public class MailHtml {
     }
 
     /**
-     * Returns the text part of the e-mail: the text as typed and below it the same signature as the HTML part.
+     * Returns the text part of the e-mail: the text as typed, the name on the line after the greeting, and below the
+     * address as in the HTML part.
      *
      * @param document the invoice
      * @param body the text of the e-mail
-     * @return the text with the signature
+     * @return the signed text with the address
      */
     public static String plain(InvoiceDocument document, String body) {
-        return body + "\n\n" + String.join("\n", signature(document.seller()));
+        return InvoicePdfRenderer.signed(body, signer(document.seller())) + "\n\n"
+                + String.join("\n", contact(document.seller()));
     }
 
-    /** The lines below the text: name, address, e-mail and phone, the empty ones left out. */
-    static List<String> signature(Party seller) {
+    /**
+     * The lines at the foot: address, e-mail and phone, the empty ones left out. The name signs above them; a business
+     * name that differs from the one who signs heads the foot.
+     */
+    static List<String> contact(Party seller) {
         List<String> lines = new ArrayList<>();
-        lines.add(seller.name());
+        if (!seller.name().equals(signer(seller))) {
+            lines.add(seller.name());
+        }
         lines.add(seller.street());
         lines.add(seller.postcode() + " " + seller.city());
         String contact = String.join(" · ", Arrays.stream(new String[] {seller.email(), seller.phone()})

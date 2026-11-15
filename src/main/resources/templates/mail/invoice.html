@@ -36,9 +36,14 @@
             </table>
           </td>
         </tr>
+        <tr th:unless="${closing.isEmpty()}">
+          <td style="padding:20px 28px 0 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937;overflow-wrap:anywhere;">
+            <p style="margin:0;"><th:block th:each="line, state : ${closing}"><span th:text="${line}">Mit freundlichen Grüßen</span><br th:unless="${state.last}"></th:block></p>
+          </td>
+        </tr>
         <tr>
           <td style="padding:20px 28px 28px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#6b7280;">
-            <th:block th:each="line, state : ${signature}"><span th:text="${line}" th:style="${state.first} ? 'color:#1f2937;font-weight:600;'">Name</span><br th:unless="${state.last}"></th:block>
+            <th:block th:each="line, state : ${contact}"><span th:text="${line}">Straße</span><br th:unless="${state.last}"></th:block>
           </td>
         </tr>
       </table>
