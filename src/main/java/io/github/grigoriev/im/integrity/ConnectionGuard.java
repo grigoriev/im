@@ -17,7 +17,8 @@ public class ConnectionGuard implements ApplicationRunner {
     static final String MIGHTY = """
             SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolsuper AND pg_has_role(current_user, oid, 'MEMBER'))
                 OR EXISTS (SELECT 1 FROM pg_tables
-                            WHERE schemaname = current_schema() AND pg_has_role(current_user, tableowner, 'MEMBER'))""";
+                            WHERE schemaname = ANY (current_schemas(false))
+                              AND pg_has_role(current_user, tableowner, 'MEMBER'))""";
     static final String REFUSED = "The app connects to the database as a superuser or as the owner of its tables. "
             + "Set IM_DB_USER to a role that may only read and write rows, and IM_DB_OWNER to the owner for Flyway.";
 
