@@ -159,7 +159,8 @@ public class ProcedureService {
 
     private static boolean complete(SellerProfile seller) {
         return Fields.text(seller.name()) != null && Fields.text(seller.street()) != null
-                && Fields.text(seller.city()) != null && Fields.text(seller.taxNumber()) != null;
+                && Fields.text(seller.postcode()) != null && Fields.text(seller.city()) != null
+                && Fields.text(seller.taxNumber()) != null;
     }
 
     private byte[] render(SellerProfile seller, ProcedureForm form) {

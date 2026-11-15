@@ -50,7 +50,7 @@ class ProcedureServiceTest {
     private final Map<String, String> settings = new HashMap<>();
 
     @SuppressWarnings("unchecked")
-    private StatementSpec statement(String sql) {
+    private StatementSpec statement() {
         StatementSpec spec = mock(StatementSpec.class);
         Map<String, Object> params = new HashMap<>();
         when(spec.param(anyString(), any())).thenAnswer(call -> {
@@ -69,7 +69,7 @@ class ProcedureServiceTest {
 
     @BeforeEach
     void stubs() {
-        when(jdbc.sql(anyString())).thenAnswer(call -> statement(call.getArgument(0)));
+        when(jdbc.sql(anyString())).thenAnswer(call -> statement());
         when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile()));
         when(pdf.render(eq("pdf/procedure"), any())).thenReturn(PDF);
         when(documents.list()).thenReturn(List.of());
@@ -193,6 +193,8 @@ class ProcedureServiceTest {
                 new SellerProfile(" ", p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(),
                         p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),
                 new SellerProfile(p.name(), null, p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(),
+                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),
+                new SellerProfile(p.name(), p.street(), null, p.city(), p.countryCode(), null, p.email(), p.phone(),
                         p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),
                 new SellerProfile(p.name(), p.street(), p.postcode(), "", p.countryCode(), null, p.email(), p.phone(),
                         p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),

@@ -42,7 +42,7 @@ public class DocumentController {
 
     static final String LIST = "documents/list";
     static final String EDIT = "documents/edit";
-    static final String PROCEDURE = "documents/procedure";
+    static final String PROCEDURE_VIEW = "documents/procedure";
     private static final String PROCEDURE_FORM = "procedureForm";
     private static final String SUCCESS = "success";
     private static final String PROBLEMS = "problems";
@@ -256,7 +256,7 @@ public class DocumentController {
     private String procedurePage(Model model, ProcedureForm form) {
         model.addAttribute(PROCEDURE_FORM, form);
         model.addAttribute("current", procedure.current().orElse(null));
-        return PROCEDURE;
+        return PROCEDURE_VIEW;
     }
 
     private String page(Model model, BusinessDocument document, DocumentForm form) {
