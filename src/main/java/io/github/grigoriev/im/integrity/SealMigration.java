@@ -17,8 +17,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class SealMigration implements JavaMigration {
 
-    static final List<String> TRIGGERS = List.of("invoice_document DISABLE TRIGGER invoice_document_frozen",
-            "business_document DISABLE TRIGGER business_document_frozen", "invoice DISABLE TRIGGER invoice_frozen");
+    static final List<String> DISABLE = List.of(
+            "ALTER TABLE invoice_document DISABLE TRIGGER invoice_document_frozen",
+            "ALTER TABLE business_document DISABLE TRIGGER business_document_frozen",
+            "ALTER TABLE invoice DISABLE TRIGGER invoice_frozen");
+    static final List<String> ENABLE = List.of(
+            "ALTER TABLE invoice_document ENABLE TRIGGER invoice_document_frozen",
+            "ALTER TABLE business_document ENABLE TRIGGER business_document_frozen",
+            "ALTER TABLE invoice ENABLE TRIGGER invoice_frozen");
     static final String DOCUMENT_IDS = "SELECT id FROM invoice_document ORDER BY id";
     static final String DOCUMENT = "SELECT invoice_id, kind, content, sha256 FROM invoice_document WHERE id = ?";
     static final String SEAL_DOCUMENT = "UPDATE invoice_document SET seal = ? WHERE id = ?";
@@ -72,7 +78,7 @@ public class SealMigration implements JavaMigration {
      * @throws IllegalStateException if a file does not match its SHA-256
      */
     void migrate(JdbcTemplate jdbc) {
-        TRIGGERS.forEach(trigger -> jdbc.execute("ALTER TABLE " + trigger));
+        DISABLE.forEach(jdbc::execute);
         for (Long id : jdbc.queryForList(DOCUMENT_IDS, Long.class)) {
             jdbc.query(DOCUMENT, rs -> {
                 String sha256 = checked("invoice_document", id, rs.getBytes(3), rs.getString(4));
@@ -89,7 +95,7 @@ public class SealMigration implements JavaMigration {
             jdbc.query(INVOICE, (RowCallbackHandler) rs -> jdbc.update(SEAL_INVOICE,
                     seal.snapshot(id, rs.getString(1), rs.getString(2)), id), id);
         }
-        TRIGGERS.forEach(trigger -> jdbc.execute("ALTER TABLE " + trigger.replace("DISABLE", "ENABLE")));
+        ENABLE.forEach(jdbc::execute);
     }
 
     private static String checked(String table, long id, byte[] content, String sha256) {
