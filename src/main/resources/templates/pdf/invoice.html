@@ -102,11 +102,8 @@
   <div class="note" th:unless="${invoice.effectiveTaxNote().isEmpty()}" th:text="${invoice.effectiveTaxNote()}">Steuerhinweis</div>
   <p th:unless="${invoice.cancellation()}" th:text="'Bitte überweisen Sie den Rechnungsbetrag von ' + ${fmt.money(invoice.total())} + ' bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
   <p th:if="${invoice.cancellation()}" th:text="'Diese Stornorechnung hebt die Rechnung ' + ${invoice.cancels.number} + ' vom ' + ${fmt.date(invoice.cancels.issueDate)} + ' vollständig auf. Bereits gezahlte Beträge werden erstattet.'">Storno</p>
-  <p class="text" th:if="${invoice.closing != null}" th:text="${invoice.closing}">Schlusstext</p>
-  <!-- The name below the closing, unless the closing ends with it already. -->
-  <th:block th:with="signer=${invoice.seller.contactName ?: invoice.seller.name}">
-    <p th:if="${invoice.closing != null and !#strings.endsWith(#strings.trim(invoice.closing), signer)}" th:text="${signer}">Name</p>
-  </th:block>
+  <!-- The name follows the closing on the next line of the same paragraph, unless the closing ends with it already. -->
+  <p class="text" th:if="${invoice.closing != null}" th:with="signer=${invoice.seller.contactName ?: invoice.seller.name}"><span th:text="${#strings.trim(invoice.closing)}">Schlusstext</span><th:block th:unless="${#strings.endsWith(#strings.trim(invoice.closing), signer)}"><br/><span th:text="${signer}">Name</span></th:block></p>
   <!-- The XML is the invoice (BMF, 15.10.2025): the PDF says so, and an XRechnung copy does not count as a second one. -->
   <p class="e-invoice" th:text="${invoice.format.pdf
       ? 'Elektronische Rechnung im Format ZUGFeRD. Diese PDF-Datei enthält die Rechnungsdaten als XML; maßgeblich sind die XML-Daten.'
