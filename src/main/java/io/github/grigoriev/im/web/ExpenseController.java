@@ -45,8 +45,8 @@ public class ExpenseController {
     private static final String SUCCESS = "success";
     private static final String PROBLEMS = "problems";
     private static final String FORM = "form";
-    private static final String EXPENSES = "/expenses/";
-    private static final String TO_EXPENSE = "redirect:" + EXPENSES;
+    private static final String EXPENSE_PATH = "/expenses";
+    private static final String TO_EXPENSE = "redirect:" + EXPENSE_PATH + "/";
 
     private final ExpenseService expenses;
 
@@ -75,11 +75,13 @@ public class ExpenseController {
         years.add(expenses.today().getYear());
         years.add(year);
         var totals = ExpenseService.totals(rows);
+        List<Expense> assets = ExpenseService.assets(rows);
         model.addAttribute("year", year);
         model.addAttribute("years", years);
         model.addAttribute("rows", rows);
         model.addAttribute("totals", totals);
         model.addAttribute("total", totals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
+        model.addAttribute("assetTotal", assets.stream().map(Expense::amount).reduce(BigDecimal.ZERO, BigDecimal::add));
         return LIST;
     }
 
@@ -186,7 +188,7 @@ public class ExpenseController {
         try {
             file = expenses.file(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         } catch (ExpenseException _) {
-            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(EXPENSES + id)).build();
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(EXPENSE_PATH + "/" + id)).build();
         }
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,

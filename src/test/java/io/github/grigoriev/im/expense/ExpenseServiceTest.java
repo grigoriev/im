@@ -188,14 +188,14 @@ class ExpenseServiceTest {
         service.add(book(LocalDate.of(2027, 1, 1)), "b.pdf", PDF);
         service.add(form(LocalDate.of(2027, 1, 2), "1.299,00", ExpenseCategory.WORK_EQUIPMENT, "Laden", "Laptop", true),
                 "c.png", PNG);
-        service.add(book(TODAY), "d.pdf", PDF);
+        service.add(form(TODAY, "19,90", ExpenseCategory.LITERATURE, "Laden", "Heft", false), "d.pdf", PDF);
         service.cancel(4, "doppelt");
         assertThat(service.ofYear(2026)).extracting(Expense::id).containsExactly(1L);
         List<Expense> year = service.ofYear(2027);
         assertThat(year).extracting(Expense::id).containsExactly(2L, 3L, 4L);
-        assertThat(ExpenseService.totals(year)).containsExactly(
-                Map.entry(ExpenseCategory.WORK_EQUIPMENT, new BigDecimal("1299.00")),
-                Map.entry(ExpenseCategory.LITERATURE, new BigDecimal("49.90")));
+        assertThat(ExpenseService.totals(year)).as("the laptop is an asset, it stays out")
+                .containsExactly(Map.entry(ExpenseCategory.LITERATURE, new BigDecimal("49.90")));
+        assertThat(ExpenseService.assets(year)).extracting(Expense::id).containsExactly(3L);
         assertThat(service.years()).containsExactly(2026, 2027);
         assertThat(year.get(1).asset()).isTrue();
         assertThat(year.get(1).mediaType()).isEqualTo("image/png");
@@ -210,9 +210,11 @@ class ExpenseServiceTest {
         assertThat(changed.category()).isEqualTo(ExpenseCategory.TRAINING);
         assertThat(changed.asset()).isTrue();
         assertThat(changed.sha256()).as("the receipt stays").isEqualTo(Seal.sha256(PDF));
+        verify(jdbc).sql(ExpenseService.LOCKED);
         verify(audit).add(AuditAction.EXPENSE_CHANGED, "12.05.2027, 49,90 €, Fachliteratur, Buchhandlung am Markt: "
                 + "Wörterbuch → 11.05.2027, 59,90 €, Fortbildung, Akademie: Kurs, Anlagegut");
-        assertThatThrownBy(() -> service.change(9, book(TODAY))).isInstanceOf(ExpenseException.class)
+        ExpenseForm unknown = book(TODAY);
+        assertThatThrownBy(() -> service.change(9, unknown)).isInstanceOf(ExpenseException.class)
                 .hasMessage(ExpenseService.UNKNOWN);
     }
 

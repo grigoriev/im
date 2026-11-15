@@ -162,7 +162,7 @@ public class ReportController {
         Map<ExpenseCategory, BigDecimal> expenseTotals = ExpenseService.totals(spent);
         model.addAttribute("expenseTotals", expenseTotals);
         model.addAttribute("expenseTotal", sum(List.copyOf(expenseTotals.values())));
-        model.addAttribute("assets", spent.stream().filter(expense -> expense.asset() && !expense.cancelled()).toList());
+        model.addAttribute("assets", ExpenseService.assets(spent));
         return VIEW;
     }
 

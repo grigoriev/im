@@ -58,6 +58,8 @@ public class ExpenseService implements IntegrityCheck {
     static final String OF_YEAR = "SELECT " + COLUMNS + " FROM expense WHERE paid_on BETWEEN :from AND :to "
             + "ORDER BY paid_on, id";
     static final String ONE = "SELECT " + COLUMNS + " FROM expense WHERE id = :id";
+    /** A change or cancellation locks the row first: a change in another window waits, the log shows the true before. */
+    static final String LOCKED = ONE + " FOR UPDATE";
     static final String YEARS = "SELECT DISTINCT CAST(EXTRACT(YEAR FROM paid_on) AS INTEGER) FROM expense";
     static final String IDS = "SELECT id FROM expense ORDER BY id";
     static final String FILE = "SELECT filename, media_type, content, sha256, seal FROM expense WHERE id = :id";
@@ -73,8 +75,8 @@ public class ExpenseService implements IntegrityCheck {
             UPDATE expense SET paid_on = :paidOn, amount = :amount, category = :category, vendor = :vendor,
                 description = :description, asset = :asset
              WHERE id = :id AND cancelled_at IS NULL""";
-    static final String CANCEL = """
-            UPDATE expense SET cancelled_at = :at, cancel_reason = :reason WHERE id = :id AND cancelled_at IS NULL""";
+    static final String CANCEL =
+            "UPDATE expense SET cancelled_at = :at, cancel_reason = :reason WHERE id = :id AND cancelled_at IS NULL";
 
     private static final DateTimeFormatter GERMAN = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final String ID = "id";
@@ -129,16 +131,27 @@ public class ExpenseService implements IntegrityCheck {
     }
 
     /**
-     * Sums the valid expenses of a year by kind.
+     * Sums the valid expenses of a year by kind, the assets left out: WISO takes an asset with its AfA, so a sum that
+     * held it would deduct it twice.
      *
      * @param expenses the expenses of the year
      * @return the sum of each kind that occurs, in the order of the kinds
      */
     public static Map<ExpenseCategory, BigDecimal> totals(List<Expense> expenses) {
         Map<ExpenseCategory, BigDecimal> totals = new EnumMap<>(ExpenseCategory.class);
-        expenses.stream().filter(expense -> !expense.cancelled())
+        expenses.stream().filter(expense -> !expense.cancelled() && !expense.asset())
                 .forEach(expense -> totals.merge(expense.category(), expense.amount(), BigDecimal::add));
         return totals;
+    }
+
+    /**
+     * Returns the valid assets among the expenses of a year: they go into WISO one by one, as Anlagegut.
+     *
+     * @param expenses the expenses of the year
+     * @return the assets that are not cancelled
+     */
+    public static List<Expense> assets(List<Expense> expenses) {
+        return expenses.stream().filter(expense -> expense.asset() && !expense.cancelled()).toList();
     }
 
     /**
@@ -273,7 +286,8 @@ public class ExpenseService implements IntegrityCheck {
     }
 
     private Expense valid(long id) {
-        Expense expense = find(id).orElseThrow(() -> new ExpenseException(List.of(UNKNOWN)));
+        Expense expense = jdbc.sql(LOCKED).param(ID, id).query(ExpenseService::row).optional()
+                .orElseThrow(() -> new ExpenseException(List.of(UNKNOWN)));
         if (expense.cancelled()) {
             throw new ExpenseException(List.of(CANCELLED));
         }

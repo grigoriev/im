@@ -1617,7 +1617,8 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("Buchhandlung am Markt: Wörterbuch")))
                 .andExpect(content().string(Matchers.containsString("02.03.2027 · Fachliteratur · Anlagegut")))
                 .andExpect(content().string(Matchers.containsString("· storniert")))
-                .andExpect(content().string(Matchers.containsString("99,80 €")));
+                .andExpect(content().string(Matchers.containsString("id=\"expense-total\">49,90 €")))
+                .andExpect(content().string(Matchers.containsString("Anlagegüter, nicht in der Summe")));
         mvc.perform(get("/expenses/new").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("value=\"2027-03-18\"")))
                 .andExpect(content().string(Matchers.containsString("enctype=\"multipart/form-data\"")));

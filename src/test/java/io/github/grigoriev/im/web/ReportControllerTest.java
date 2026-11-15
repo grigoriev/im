@@ -102,10 +102,9 @@ class ReportControllerTest {
         when(expenses.ofYear(2027)).thenReturn(List.of(laptop, book, twice, returned));
         ExtendedModelMap model = new ExtendedModelMap();
         controller.show(null, model);
-        assertThat((Map<ExpenseCategory, BigDecimal>) model.get("expenseTotals")).containsExactly(
-                Map.entry(ExpenseCategory.WORK_EQUIPMENT, new BigDecimal("1299.00")),
-                Map.entry(ExpenseCategory.LITERATURE, new BigDecimal("49.90")));
-        assertThat((BigDecimal) model.get("expenseTotal")).isEqualByComparingTo("1348.90");
+        assertThat((Map<ExpenseCategory, BigDecimal>) model.get("expenseTotals")).as("the laptop goes in as an asset")
+                .containsExactly(Map.entry(ExpenseCategory.LITERATURE, new BigDecimal("49.90")));
+        assertThat((BigDecimal) model.get("expenseTotal")).isEqualByComparingTo("49.90");
         assertThat((List<Expense>) model.get("assets")).as("a cancelled asset is none").containsExactly(laptop);
 
         ResponseEntity<byte[]> csv = controller.expensesCsv(2027);

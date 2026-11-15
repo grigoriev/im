@@ -43,7 +43,7 @@ public class ArchiveService {
             + "außerhalb der App geändert: %s.";
 
     /** The folder of the receipts and its table of contents. */
-    static final String EXPENSES = "Ausgaben/";
+    static final String EXPENSE_FOLDER = "Ausgaben/";
     static final String EXPENSE_HEAD = "Zahlung;Betrag;Art;Empfänger;Beschreibung;Anlagegut;Storno;Datei;Bytes;SHA-256";
 
     /** The folder of the business documents and its table of contents. */
@@ -227,7 +227,7 @@ public class ArchiveService {
         StringBuilder contents = new StringBuilder().append((char) 0xFEFF).append(EXPENSE_HEAD).append("\r\n");
         Set<String> names = new HashSet<>();
         for (Expense expense : ofYear) {
-            String name = EXPENSES + unique(names, expense.filename(), expense.id());
+            String name = EXPENSE_FOLDER + unique(names, expense.filename(), expense.id());
             zip.putNextEntry(new ZipEntry(name));
             zip.write(expenses.file(expense.id()).orElseThrow().content());
             contents.append(String.join(";", GERMAN.format(expense.paidOn()), amount(expense.amount()),
@@ -235,7 +235,7 @@ public class ArchiveService {
                     expense.asset() ? "ja" : "nein", expense.cancelled() ? quoted("storniert: " + expense.cancelReason())
                     : "", quoted(name), Integer.toString(expense.size()), expense.sha256())).append("\r\n");
         }
-        zip.putNextEntry(new ZipEntry(EXPENSES + CONTENTS));
+        zip.putNextEntry(new ZipEntry(EXPENSE_FOLDER + CONTENTS));
         zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
     }
 
