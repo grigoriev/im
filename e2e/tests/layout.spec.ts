@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test } from './fixtures';
 import { ANONYMOUS } from './accounts';
 import { ROUTES, WIDTHS } from './routes';
+import { ensureProfile, newCustomer } from './seller';
 
 // No element scrolls sideways and the page never gets wider than the window.
 for (const route of ROUTES) {
@@ -46,4 +48,30 @@ test('a field label keeps its gray on focus and on error', async ({ page }) => {
   await field.evaluate(input => input.setAttribute('aria-invalid', 'true'));
   await field.blur();
   expect(await colorOf()).toBe(gray);
+});
+
+// Safari on an iPhone sizes a select of the system by its longest option and keeps the picker of the system there, so
+// a long customer name pushed the field out of its card. Chromium and the emulated WebKit shrink the select anyway, so
+// the test checks the cause: every label of a field may shrink as a flex item, and a select cuts its text.
+test('a field shrinks with its card, however long its value', async ({ page }) => {
+  await page.goto('/expenses/new');
+  const labels = await page.locator('.floating-label').evaluateAll((all) => all.map((label) => getComputedStyle(label).minWidth));
+  expect(labels.length).toBeGreaterThan(0);
+  expect(new Set(labels)).toEqual(new Set(['0px']));
+  const select = await page.locator('#expense-category').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.minWidth, style.maxWidth, style.textOverflow];
+  });
+  expect(select).toEqual(['0px', '100%', 'ellipsis']);
+});
+
+test('a utility still sets the minimum width of a field', async ({ page }) => {
+  await ensureProfile(page);
+  const customer = await newCustomer(page, `Breitenkunde ${randomUUID().slice(0, 8)}`);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/invoices');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  const tax = page.locator('label').filter({ has: page.locator('#line-0-category') });
+  expect(await tax.evaluate((label) => getComputedStyle(label).minWidth), '@xl:min-w-64 of the tax field').toBe('256px');
 });
