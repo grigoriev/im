@@ -104,7 +104,9 @@ public class InvoicePdfRenderer {
         String lastLine = body.substring(last).strip();
         if (lastLine.equals(signer)) {
             body = body.substring(0, last).strip();
-        } else if (lastLine.endsWith(signer)) {
+        } else if (lastLine.endsWith(signer)
+                && !Character.isLetterOrDigit(lastLine.charAt(lastLine.length() - signer.length() - 1))) {
+            // The name as a word of its own, not the end of a longer one: "ASAP" is not signed by "SAP".
             return body;
         }
         return body.isEmpty() ? signer : body + "\n" + signer;
