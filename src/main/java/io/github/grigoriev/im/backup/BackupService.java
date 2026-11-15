@@ -52,14 +52,15 @@ public class BackupService {
     static final List<String> TABLES = List.of("country", "app_setting", "tax_note", "number_sequence",
             "threshold_baseline", "seller_profile", "app_user", "user_entities", "user_credentials", "customer",
             "invoice_template", "invoice_template_line", INVOICE, "invoice_line", "invoice_document", "dispatch",
-            "payment", "audit_event");
+            "payment", "audit_event", "business_document");
 
     /** The data an installation makes by itself, for example the first admin: the import replaces it. */
     static final List<String> SETUP = List.of("audit_event", "user_credentials", "user_entities", "persistent_logins",
             "app_user", "threshold_baseline", "number_sequence", "tax_note", "app_setting", "country");
 
     /** The data a user enters: the import needs it empty. */
-    static final List<String> BUSINESS = List.of("seller_profile", "customer", "invoice_template", INVOICE);
+    static final List<String> BUSINESS = List.of("seller_profile", "customer", "invoice_template", INVOICE,
+            "business_document");
 
     /** The columns of an invoice that the import sets after its lines, so the triggers see a draft until then. */
     static final List<String> LATER = List.of("status", "number", "issued_at", "snapshot", "cancels_id", "template_id");

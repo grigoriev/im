@@ -47,7 +47,7 @@ Package `io.github.grigoriev.im`:
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
-  validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `ArchiveService` zips the documents of a year; `TemplateService` keeps the templates
+  validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `ArchiveService` zips the documents of a year, with the business documents of that year in "Dokumente"; `TemplateService` keeps the templates
   per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
 - `threshold`: the §19 limit and the reports (`ThresholdService`: one `RevenueRow` per payment, rounded once, with the §19 part; baselines, forecast; `ReportController` shows Anlage EÜR Zeilen 12 and 13, one per tax number, and the CSV)
 - `backup`: the full export and import (`BackupService`: every table as PostgreSQL text, binaries as files, one transaction into an empty installation; issued invoices go in as drafts, get lines and documents, then their status); `BackupRunService` reads the last nightly backup and restore test that the host scripts write into `backup_run`
@@ -55,6 +55,7 @@ Package `io.github.grigoriev.im`:
   sending (`MailService` over SMTP from `MailProperties`, `IM_SMTP_*`; a sent e-mail records a dispatch `EMAIL_APP`)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
+- `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`

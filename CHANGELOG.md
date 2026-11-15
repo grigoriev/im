@@ -6,9 +6,16 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- Dokumente: a store for the business documents next to the invoices, for example the Verfahrensdokumentation, Steuerbescheide, letters of the Finanzamt, certificates and contracts. A document has a kind, a title, a date, the year it concerns and a note, and a PDF, JPG or PNG of at most 25 MB. Its file never changes and never goes away: a new version replaces it in the list, and the old one stays in its history. The description may change. Every upload and change goes into the log with the SHA-256 of the file.
+- The yearly archive has a folder "Dokumente" with every version of the documents of that year and a table of contents. A document belongs to the year it concerns, without one to the year of its date. The year picker on "Berichte" offers the years of the documents too.
+- The full export and import and the nightly backup take the documents along.
+
 ### Fixed
 
 - The label of a focused field cuts through the focus ring as well as the frame, so the ring no longer runs above the label. The label turns blue on focus and red on a wrong value in every field, also in lists and in fields without a placeholder.
+- The label of a disabled field no longer sits on a white patch: below the line it takes the gray of the field.
 
 ## [0.1.3] - 2026-11-14
 

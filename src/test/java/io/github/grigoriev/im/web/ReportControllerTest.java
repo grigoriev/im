@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -59,6 +60,11 @@ class ReportControllerTest {
         controller.show(2019, model);
         assertThat(model).containsEntry("year", 2019);
         assertThat((Iterable<Object>) model.get("years")).as("the asked year joins the list").containsExactly(2027, 2026, 2019);
+
+        when(archive.years()).thenReturn(Set.of(2024, 2026));
+        controller.show(null, model);
+        assertThat((Iterable<Object>) model.get("years")).as("a year with documents only joins too")
+                .containsExactly(2027, 2026, 2024);
     }
 
     @Test

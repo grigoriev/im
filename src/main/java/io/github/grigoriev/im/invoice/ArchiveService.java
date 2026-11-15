@@ -1,7 +1,9 @@
 package io.github.grigoriev.im.invoice;
 
-import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.customer.Customer;
+import io.github.grigoriev.im.document.BusinessDocument;
+import io.github.grigoriev.im.document.DocumentService;
+import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
@@ -17,7 +19,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Writes the archive of a year (docs/PLAN.md, section 7): a ZIP with the stored PDF and XML of every invoice issued
- * with an invoice date in that year, byte for byte, and a table of contents with their SHA-256.
+ * with an invoice date in that year, byte for byte, and a table of contents with their SHA-256. The folder
+ * "Dokumente" holds every version of the business documents of that year, with a table of contents of its own.
  */
 @Service
 public class ArchiveService {
@@ -25,21 +28,36 @@ public class ArchiveService {
     /** The table of contents, for a spreadsheet: semicolons, UTF-8 with byte order mark. */
     static final String CONTENTS = "Inhalt.csv";
     static final String HEAD = "Rechnungsnummer;Rechnungsdatum;Kunde;Datei;Bytes;SHA-256";
+    /** The folder of the business documents and its table of contents. */
+    static final String FOLDER = "Dokumente/";
+    static final String DOCUMENT_HEAD = "Art;Titel;Datum;Jahr;Fassung;Datei;Bytes;SHA-256";
 
     private static final DateTimeFormatter GERMAN = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final InvoiceService invoices;
     private final DocumentStore documents;
+    private final DocumentService businessDocuments;
 
     /**
      * Creates the service.
      *
      * @param invoices the invoices
      * @param documents the stored documents and snapshots
+     * @param businessDocuments the business documents
      */
-    public ArchiveService(InvoiceService invoices, DocumentStore documents) {
+    public ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments) {
         this.invoices = invoices;
         this.documents = documents;
+        this.businessDocuments = businessDocuments;
+    }
+
+    /**
+     * Returns the years with business documents, so the year picker of the archive offers them too.
+     *
+     * @return the archive years of the documents
+     */
+    public Set<Integer> years() {
+        return businessDocuments.years();
     }
 
     /**
@@ -70,20 +88,45 @@ public class ArchiveService {
             }
             zip.putNextEntry(new ZipEntry(CONTENTS));
             zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
+            writeDocuments(year, zip);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
 
+    /** Writes the business documents of the year into their folder, one file at a time; none, no folder. */
+    private void writeDocuments(int year, ZipOutputStream zip) throws IOException {
+        List<BusinessDocument> ofYear = businessDocuments.ofYear(year);
+        if (ofYear.isEmpty()) {
+            return;
+        }
+        StringBuilder contents = new StringBuilder().append((char) 0xFEFF).append(DOCUMENT_HEAD).append("\r\n");
+        Set<String> names = new HashSet<>();
+        for (BusinessDocument document : ofYear) {
+            String name = FOLDER + unique(names, document.filename(), document.id());
+            zip.putNextEntry(new ZipEntry(name));
+            zip.write(businessDocuments.file(document.id()).orElseThrow().content());
+            contents.append(String.join(";", quoted(document.category().label()), quoted(document.title()),
+                    GERMAN.format(document.documentDate()), document.year() == null ? "" : document.year().toString(),
+                    document.current() ? "aktuell" : "ersetzt", quoted(name), Integer.toString(document.size()),
+                    document.sha256())).append("\r\n");
+        }
+        zip.putNextEntry(new ZipEntry(FOLDER + CONTENTS));
+        zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
     /**
      * Returns a file name not used in the ZIP yet. Two numbers can give the same name, for example "2027/11" and
-     * "2027-11": the second gets the invoice ID before its extension, and a counter if that name is taken too.
+     * "2027-11": the second gets the ID before its extension, and a counter if that name is taken too. A name
+     * without an extension gets them at its end.
      */
-    static String unique(Set<String> names, String filename, long invoiceId) {
+    static String unique(Set<String> names, String filename, long id) {
         String name = filename;
         int dot = filename.lastIndexOf('.');
+        String base = dot > 0 ? filename.substring(0, dot) : filename;
+        String extension = dot > 0 ? filename.substring(dot) : "";
         for (int n = 1; !names.add(name); n++) {
-            name = filename.substring(0, dot) + "_" + invoiceId + (n == 1 ? "" : "_" + n) + filename.substring(dot);
+            name = base + "_" + id + (n == 1 ? "" : "_" + n) + extension;
         }
         return name;
     }

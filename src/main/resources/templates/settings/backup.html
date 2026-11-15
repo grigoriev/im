@@ -44,7 +44,7 @@
       <div>
         <h2 class="font-semibold">Alles exportieren</h2>
         <p class="text-sm text-base-content/75">Eine ZIP-Datei mit allen Daten und Dokumenten: Profil, Kunden, Vorlagen,
-          Rechnungen mit PDF und XML, Zahlungen, Versand, Einstellungen, Benutzer mit Passwort-Hashes und Passkeys, Protokoll.
+          Rechnungen mit PDF und XML, Zahlungen, Versand, abgelegte Dokumente, Einstellungen, Benutzer mit Passwort-Hashes und Passkeys, Protokoll.
           Damit zieht die App auf einen neuen Rechner um. Bitte sicher aufbewahren.</p>
       </div>
       <div class="form-actions"><a class="btn btn-primary" id="backup-download" th:href="@{/admin/backup/export.zip}">
@@ -54,8 +54,8 @@
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="backup-import">
       <div>
         <h2 class="font-semibold">Export einspielen</h2>
-        <p class="text-sm text-base-content/75">Nur in eine leere Installation derselben Version: ohne Profil, Kunden, Vorlagen
-          und Rechnungen. Benutzer, Einstellungen und Protokoll des Exports ersetzen die hiesigen. Danach melden Sie sich mit den
+        <p class="text-sm text-base-content/75">Nur in eine leere Installation derselben Version: ohne Profil, Kunden, Vorlagen,
+          Rechnungen und Dokumente. Benutzer, Einstellungen und Protokoll des Exports ersetzen die hiesigen. Danach melden Sie sich mit den
           Zugangsdaten aus dem Export an.</p>
       </div>
       <form class="flex flex-wrap gap-2 items-end" method="post" enctype="multipart/form-data"

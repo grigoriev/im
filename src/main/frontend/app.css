@@ -170,6 +170,10 @@
     calc(50% - 3px) 50%, var(--color-base-100) 50%);
 }
 .floating-label.floating-label:has([aria-invalid="true"], .input-error, .select-error) > span { color: var(--color-error); }
+/* A disabled field is gray: below the line its label takes that gray. */
+.floating-label.floating-label:has(:disabled) > span {
+  background: linear-gradient(to bottom, transparent 50%, var(--color-base-200) 50%);
+}
 /* A field that a form needs: a red star after its label. The empty alternative keeps it out of the label text. */
 .floating-label:has(:required) > span::after { content: " *" / ""; color: var(--color-error); }
 
