@@ -89,6 +89,9 @@ class MailHtmlTest {
         Party unnamed = new Party("Sommer Sprachen GmbH", "Lindenstraße 12", "80331", "München", "DE", null, null,
                 null, null, null);
         assertThat(MailHtml.signer(company)).as("the contact person signs").isEqualTo("Elena Sommer");
+        assertThat(MailHtml.contact(company)).as("the business heads the foot").startsWith("Sommer Sprachen GmbH",
+                "Lindenstraße 12");
+        assertThat(MailHtml.contact(unnamed)).as("no second line of the same name").startsWith("Lindenstraße 12");
         assertThat(MailHtml.signer(unnamed)).isEqualTo("Sommer Sprachen GmbH");
         InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
         assertThat(MailHtml.plain(reading, " Hallo,\n\nMit freundlichen Grüßen\n")).isEqualTo("Hallo,\n\n"

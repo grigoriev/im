@@ -158,9 +158,15 @@ public class MailHtml {
         return signed + "\n\n" + String.join("\n", contact(document.seller()));
     }
 
-    /** The lines at the foot: address, e-mail and phone, the empty ones left out. The name signs above them. */
+    /**
+     * The lines at the foot: address, e-mail and phone, the empty ones left out. The name signs above them; a business
+     * name that differs from the one who signs heads the foot.
+     */
     static List<String> contact(Party seller) {
         List<String> lines = new ArrayList<>();
+        if (!seller.name().equals(signer(seller))) {
+            lines.add(seller.name());
+        }
         lines.add(seller.street());
         lines.add(seller.postcode() + " " + seller.city());
         String contact = String.join(" · ", Arrays.stream(new String[] {seller.email(), seller.phone()})
