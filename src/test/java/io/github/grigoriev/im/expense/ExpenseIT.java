@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.grigoriev.im.TestDatabase;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.IntegrityMonitor;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
@@ -55,8 +56,9 @@ class ExpenseIT {
         assertThat(expenses.file(added.id()).orElseThrow().content()).isEqualTo(PDF);
         ExpenseForm changed = form(LocalDate.of(2019, 12, 30));
         changed.setAmount("59,90");
-        changed.setAsset(true);
         assertThat(expenses.change(added.id(), changed).amount()).isEqualByComparingTo("59.90");
+        assertThat(ExpenseService.totals(expenses.ofYear(2019))).as("counts before the cancellation")
+                .containsEntry(ExpenseCategory.LITERATURE, new BigDecimal("59.90"));
 
         long id = added.id();
         assertThatThrownBy(() -> jdbc.update("DELETE FROM expense WHERE id = ?", id)).hasMessageContaining("is kept");
