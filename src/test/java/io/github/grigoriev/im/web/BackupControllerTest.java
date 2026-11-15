@@ -2,7 +2,7 @@ package io.github.grigoriev.im.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,11 +15,15 @@ import io.github.grigoriev.im.backup.BackupStatus;
 import io.github.grigoriev.im.config.SessionEpoch;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -68,18 +72,63 @@ class BackupControllerTest {
         assertThat(controller.restore(file, request, new RedirectAttributesModelMap())).isEqualTo("redirect:/login?restored");
         assertThat(session.isInvalid()).isTrue();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
-        verify(backups).restore(any(InputStream.class));
+        verify(backups).restore(any(Path.class));
         verify(sessions).renew();
         assertThat(controller.restore(file, new MockHttpServletRequest(), new RedirectAttributesModelMap()))
                 .as("no session to end").isEqualTo("redirect:/login?restored");
     }
 
     @Test
+    void theImportReadsTheUploadFromATemporaryFileAndRemovesIt() {
+        List<Path> seen = new ArrayList<>();
+        doAnswer(call -> {
+            Path upload = call.getArgument(0);
+            assertThat(upload).hasBinaryContent(new byte[] {1});
+            assertThat(Files.getPosixFilePermissions(upload)).as("for the app only")
+                    .containsExactlyInAnyOrder(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+            seen.add(upload);
+            return null;
+        }).when(backups).restore(any(Path.class));
+        controller.restore(file, new MockHttpServletRequest(), new RedirectAttributesModelMap());
+        assertThat(seen).singleElement().satisfies(upload -> assertThat(upload).doesNotExist());
+    }
+
+    @Test
+    void anUploadThatCannotBeRemovedStillEndsTheSessions() {
+        List<Path> seen = new ArrayList<>();
+        doAnswer(call -> {
+            // A directory with content in place of the file: removing it fails.
+            Path upload = call.getArgument(0);
+            Files.delete(upload);
+            Files.createDirectory(upload);
+            Files.writeString(upload.resolve("x"), "x");
+            seen.add(upload);
+            return null;
+        }).when(backups).restore(any(Path.class));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpSession session = new MockHttpSession();
+        request.setSession(session);
+        assertThat(controller.restore(file, request, new RedirectAttributesModelMap())).isEqualTo("redirect:/login?restored");
+        assertThat(session.isInvalid()).isTrue();
+        verify(sessions).renew();
+        seen.forEach(upload -> {
+            upload.resolve("x").toFile().delete();
+            upload.toFile().delete();
+        });
+    }
+
+    @Test
     void aRefusedOrUnreadableImportStays() throws IOException {
-        doThrow(new BackupException("Hier gibt es schon Daten.")).when(backups).restore(any(InputStream.class));
+        List<Path> seen = new ArrayList<>();
+        doAnswer(call -> {
+            seen.add(call.getArgument(0));
+            throw new BackupException("Hier gibt es schon Daten.");
+        }).when(backups).restore(any(Path.class));
         RedirectAttributesModelMap flash = new RedirectAttributesModelMap();
         assertThat(controller.restore(file, new MockHttpServletRequest(), flash)).isEqualTo("redirect:/admin/backup");
         assertThat(flashOf(flash)).containsEntry("error", "Hier gibt es schon Daten.");
+        assertThat(seen).singleElement().as("removed after a refusal too").satisfies(upload -> assertThat(upload)
+                .doesNotExist());
 
         RedirectAttributesModelMap none = new RedirectAttributesModelMap();
         assertThat(controller.restore(null, new MockHttpServletRequest(), none)).isEqualTo("redirect:/admin/backup");

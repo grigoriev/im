@@ -15,6 +15,7 @@ All notable changes to this project are documented in this file. The format foll
 - The PDF names the amount in the payment request, as the standard form of DATEV does.
 - The PDF signs below the closing with the contact person, or the name without one, unless the closing ends with it already. The text part of the e-mail ends with the same signature as its HTML part.
 - Profil, Kontakt: "Telefon auf der Rechnung zeigen" puts the phone number into the footer of the PDF. It is off by default; the XML carries the number anyway, as XRechnung needs it. An issued invoice keeps the choice it was issued with.
+- The full export and import stream their data. The export reads one row at a time and writes it into the ZIP at once, the rows of a table first, then its documents; the import keeps the upload on disk and reads it entry by entry and row by row. Memory holds one document at most, so a large export no longer risks the container. An import may have up to 4 GB, and the export stops before it writes more than an import takes. It checks the size of the ZIP directory before it reads it, the CRC of every entry, and that each table is one JSON array and nothing more.
 
 ### Fixed
 

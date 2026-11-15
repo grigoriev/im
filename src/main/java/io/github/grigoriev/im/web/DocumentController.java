@@ -271,7 +271,14 @@ public class DocumentController {
         return file == null ? null : file.getOriginalFilename();
     }
 
+    /** Reads the upload, unless it is too large: the upload limit serves the backup import and is far larger. */
     private static byte[] bytes(MultipartFile file) throws IOException {
-        return file == null ? new byte[0] : file.getBytes();
+        if (file == null) {
+            return new byte[0];
+        }
+        if (file.getSize() > DocumentService.MAX_BYTES) {
+            throw new DocumentException(List.of(DocumentService.TOO_LARGE));
+        }
+        return file.getBytes();
     }
 }

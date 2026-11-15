@@ -8,8 +8,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.EnumSet;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -36,6 +46,12 @@ public class BackupController {
     static final String VIEW = "settings/backup";
     private static final String BACK = "redirect:/admin/backup";
     private static final String ERROR = "error";
+
+    private static final Logger LOG = LoggerFactory.getLogger(BackupController.class);
+
+    /** Only the app may read the upload: it holds every invoice and user. */
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY = PosixFilePermissions.asFileAttribute(
+            EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
 
     private final BackupService backups;
     private final BackupRunService runs;
@@ -99,8 +115,8 @@ public class BackupController {
             flash.addFlashAttribute(ERROR, "Bitte eine ZIP-Datei wählen.");
             return BACK;
         }
-        try (InputStream in = file.getInputStream()) {
-            backups.restore(in);
+        try {
+            restore(file);
         } catch (BackupException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
             return BACK;
@@ -116,5 +132,31 @@ public class BackupController {
             session.invalidate();
         }
         return "redirect:/login?restored";
+    }
+
+    /** Puts the upload into a file of its own, which the import reads entry by entry, and removes it afterwards. */
+    private void restore(MultipartFile file) throws IOException {
+        Path upload = Files.createTempFile("im-import-", ".zip", OWNER_ONLY);
+        try {
+            // Into the file as created, so it keeps its permissions; a copy that replaces it would not.
+            try (InputStream in = file.getInputStream(); OutputStream out = Files.newOutputStream(upload)) {
+                in.transferTo(out);
+            }
+            backups.restore(upload);
+        } finally {
+            remove(upload);
+        }
+    }
+
+    /**
+     * Removes the upload. A failure here must not turn a committed import into an error: the sessions would then stay
+     * open for users who no longer exist. The file sits in the temporary directory, readable by the app only.
+     */
+    private static void remove(Path upload) {
+        try {
+            Files.deleteIfExists(upload);
+        } catch (IOException e) {
+            LOG.warn("Cannot remove the upload {}: {}", upload, e.getMessage());
+        }
     }
 }

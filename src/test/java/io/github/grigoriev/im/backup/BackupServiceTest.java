@@ -3,7 +3,10 @@ package io.github.grigoriev.im.backup;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -14,12 +17,13 @@ import io.github.grigoriev.im.audit.AuditService;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -28,12 +32,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
@@ -57,7 +63,14 @@ class BackupServiceTest {
     private final Map<String, Boolean> filled = new HashMap<>();
     private final List<String> identities = new ArrayList<>(List.of("customer", "invoice"));
     private final List<Map<String, Object>> writes = new ArrayList<>();
+    private static final Pattern SELECT = Pattern.compile("SELECT (.+) FROM (\\w+) ORDER BY (\\w+)");
+    private static final Pattern PRESENT = Pattern.compile("(\\w+) IS NOT NULL AS \\1");
+    private final Map<String, Integer> fetchSizes = new HashMap<>();
+    @TempDir
+    private Path folder;
     private String schema = "20";
+    /** The table whose second row fails to read, as a lost database connection would. */
+    private String failOn;
 
     private void row(String table, Object... typeNameValue) {
         Map<String, Object[]> row = new LinkedHashMap<>();
@@ -72,6 +85,10 @@ class BackupServiceTest {
         StatementSpec spec = mock(StatementSpec.class);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("sql", sql);
+        when(spec.withFetchSize(anyInt())).thenAnswer(call -> {
+            fetchSizes.put(sql, call.getArgument(0));
+            return spec;
+        });
         when(spec.param(anyString(), any())).thenAnswer(call -> {
             params.put(call.getArgument(0), call.getArgument(1));
             return spec;
@@ -94,7 +111,7 @@ class BackupServiceTest {
             writes.add(params);
             return 1L;
         });
-        Mockito.doAnswer(call -> {
+        doAnswer(call -> {
             handle(sql, params, call.getArgument(0));
             return null;
         }).when(spec).query(any(RowCallbackHandler.class));
@@ -108,6 +125,9 @@ class BackupServiceTest {
             Map<String, String> types = new LinkedHashMap<>();
             tables.getOrDefault((String) params.get("table"), List.of()).forEach(row ->
                     row.forEach((column, typeValue) -> types.put(column, (String) typeValue[0])));
+            if (types.isEmpty()) {
+                types.put("id", "bigint");
+            }
             if ("invoice".equals(params.get("table"))) {
                 BackupService.LATER.forEach(column -> types.putIfAbsent(column, "text"));
             }
@@ -119,21 +139,32 @@ class BackupServiceTest {
             }
             return;
         }
-        String table = sql.replace("SELECT * FROM ", "").replace(" ORDER BY 1", "");
+        Matcher select = SELECT.matcher(sql);
+        assertThat(select.matches()).as(sql).isTrue();
+        String table = select.group(2);
+        assertThat(select.group(3)).as("the order of the first column").isEqualTo(tables.get(table) == null ? "id"
+                : tables.get(table).getFirst().keySet().iterator().next());
+        List<String> columns = List.of(select.group(1).split(", "));
+        int read = 0;
         for (Map<String, Object[]> row : tables.getOrDefault(table, List.of())) {
-            List<String> columns = new ArrayList<>(row.keySet());
-            ResultSetMetaData meta = mock(ResultSetMetaData.class);
-            when(meta.getColumnCount()).thenReturn(columns.size());
+            if (table.equals(failOn) && read++ == 1) {
+                throw new IllegalStateException("database gone");
+            }
             ResultSet rs = mock(ResultSet.class);
-            when(rs.getMetaData()).thenReturn(meta);
+            // As in a real result, a column beyond the query does not exist.
+            when(rs.getBytes(anyInt())).thenThrow(new SQLException("no such column"));
             for (int i = 1; i <= columns.size(); i++) {
-                Object[] typeValue = row.get(columns.get(i - 1));
-                when(meta.getColumnName(i)).thenReturn(columns.get(i - 1));
-                when(meta.getColumnTypeName(i)).thenReturn(((String) typeValue[0]).equals("bytea") ? "bytea" : "text");
-                if (typeValue[1] instanceof byte[] bytes) {
-                    when(rs.getBytes(i)).thenReturn(bytes);
-                } else {
-                    when(rs.getString(i)).thenReturn((String) typeValue[1]);
+                Matcher present = PRESENT.matcher(columns.get(i - 1));
+                // A row without the column, as a test adds one to a table, reads NULL there.
+                Object value = row.getOrDefault(present.matches() ? present.group(1) : columns.get(i - 1),
+                        new Object[2])[1];
+                if (present.matches()) {
+                    when(rs.getBoolean(i)).thenReturn(value != null);
+                } else if (value instanceof byte[] || value == null) {
+                    doReturn(value).when(rs).getBytes(i);
+                }
+                if (!(value instanceof byte[])) {
+                    when(rs.getString(i)).thenReturn((String) value);
                 }
             }
             handler.processRow(rs);
@@ -180,6 +211,16 @@ class BackupServiceTest {
         return out.toByteArray();
     }
 
+    private void restore(byte[] zip) {
+        Path file = folder.resolve("export-" + writes.size() + ".zip");
+        try {
+            Files.write(file, zip);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        service.restore(file);
+    }
+
     private static String text(byte[] content) {
         return new String(content, StandardCharsets.UTF_8);
     }
@@ -200,6 +241,11 @@ class BackupServiceTest {
                 + "\"content\":null}]");
         assertThat(entries.get("files/invoice_document/0-content")).containsExactly(37, 80, 68, 70);
         assertThat(text(entries.get("data/payment.json"))).isEqualTo("[]");
+        assertThat(fetchSizes).as("one row at a time, so the files of a table never sit in memory together")
+                .containsEntry("SELECT id, sha256, content IS NOT NULL AS content FROM invoice_document ORDER BY id", 1)
+                .containsEntry("SELECT content FROM invoice_document ORDER BY id", 1)
+                .containsEntry("SELECT id FROM payment ORDER BY id", 1)
+                .hasSize(BackupService.TABLES.size() + 1);
         verify(audit).add(AuditAction.DATA_EXPORTED, "");
     }
 
@@ -216,9 +262,36 @@ class BackupServiceTest {
     }
 
     @Test
+    void aFailureWithinATableLeavesNoReadableZip() {
+        failOn = "invoice_document";
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThatThrownBy(() -> service.export(out)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("database gone");
+        assertThat(out.toString(StandardCharsets.ISO_8859_1)).as("no central directory, so no reader takes the part")
+                .doesNotContain("PK\u0005\u0006").contains("data/customer.json");
+        verify(audit, never()).add(AuditAction.DATA_EXPORTED, "");
+    }
+
+    @Test
+    void anOutputThatBreaksAtAFileFailsTheExport() {
+        ByteArrayOutputStream written = new ByteArrayOutputStream();
+        OutputStream breaksAtFiles = new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                written.write(b);
+                if (written.toString(StandardCharsets.ISO_8859_1).contains("files/")) {
+                    throw new IOException("disk full");
+                }
+            }
+        };
+        assertThatThrownBy(() -> service.export(breaksAtFiles)).isInstanceOf(UncheckedIOException.class)
+                .hasMessageContaining("disk full");
+        verify(audit, never()).add(AuditAction.DATA_EXPORTED, "");
+    }
+
+    @Test
     void importsIntoAnEmptyInstallationWithTheInvoiceAsDraftFirst() {
-        byte[] export = export();
-        service.restore(new ByteArrayInputStream(export));
+        restore(export());
 
         List<String> sql = writes.stream().map(write -> (String) write.get("sql")).toList();
         assertThat(sql.getFirst()).as("the tables are locked before the checks").isEqualTo("LOCK TABLE "
@@ -252,8 +325,7 @@ class BackupServiceTest {
 
     private void refused(byte[] zip, String message) {
         writes.clear();
-        ByteArrayInputStream in = new ByteArrayInputStream(zip);
-        assertThatThrownBy(() -> service.restore(in)).isInstanceOf(BackupException.class).hasMessage(message);
+        assertThatThrownBy(() -> restore(zip)).isInstanceOf(BackupException.class).hasMessage(message);
         assertThat(writes).as("nothing but the lock").allSatisfy(write -> assertThat((String) write.get("sql"))
                 .startsWith("LOCK TABLE"));
     }
@@ -275,51 +347,84 @@ class BackupServiceTest {
 
     @Test
     void refusesAFileThatIsNoExport() throws IOException {
-        refused("kein zip".getBytes(StandardCharsets.UTF_8), "Diese Datei ist keine Datensicherung dieser App: "
+        refused("kein zip".getBytes(StandardCharsets.UTF_8), "Diese Datei ist kein ZIP.");
+        refused(zip(Map.of("readme.txt", new byte[1])), "Diese Datei ist keine Datensicherung dieser App: "
                 + "manifest.json fehlt.");
         refused(zip(Map.of("manifest.json", "{kaputt".getBytes(StandardCharsets.UTF_8))),
                 "Die Datensicherung ist beschädigt: manifest.json.");
-        InputStream broken = new InputStream() {
-            @Override
-            public int read() throws IOException {
-                throw new IOException("lost");
-            }
-        };
-        assertThatThrownBy(() -> service.restore(broken)).isInstanceOf(BackupException.class)
+        Map<String, byte[]> entries = unzip(export());
+        entries.put("data/customer.json", "[{\"id\":\"8\"}, 7]".getBytes(StandardCharsets.UTF_8));
+        writes.clear();
+        byte[] damaged = zip(entries);
+        assertThatThrownBy(() -> restore(damaged)).isInstanceOf(BackupException.class)
+                .hasMessage("Die Datensicherung ist beschädigt: data/customer.json.");
+        Path missing = folder.resolve("missing.zip");
+        assertThatThrownBy(() -> service.restore(missing)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist kein ZIP.");
+        verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
     }
 
     @Test
     void refusesAnExportWithAMissingPartOrColumn() throws IOException {
         Map<String, byte[]> entries = unzip(export());
         entries.remove("files/invoice_document/0-content");
-        ByteArrayInputStream noFile = new ByteArrayInputStream(zip(entries));
-        assertThatThrownBy(() -> service.restore(noFile)).isInstanceOf(BackupException.class)
+        byte[] noFile = zip(entries);
+        assertThatThrownBy(() -> restore(noFile)).isInstanceOf(BackupException.class)
                 .hasMessage("In der Datensicherung fehlt die Datei files/invoice_document/0-content.");
         Map<String, byte[]> noData = unzip(export());
         noData.remove("data/payment.json");
-        ByteArrayInputStream noTable = new ByteArrayInputStream(zip(noData));
-        assertThatThrownBy(() -> service.restore(noTable)).isInstanceOf(BackupException.class)
+        byte[] noTable = zip(noData);
+        assertThatThrownBy(() -> restore(noTable)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist keine Datensicherung dieser App: data/payment.json fehlt.");
         Map<String, byte[]> foreign = unzip(export());
         foreign.put("data/customer.json", "[{\"id\":\"8\",\"spitzname\":\"x\"}]".getBytes(StandardCharsets.UTF_8));
-        ByteArrayInputStream unknown = new ByteArrayInputStream(zip(foreign));
-        assertThatThrownBy(() -> service.restore(unknown)).isInstanceOf(BackupException.class)
+        byte[] unknown = zip(foreign);
+        assertThatThrownBy(() -> restore(unknown)).isInstanceOf(BackupException.class)
                 .hasMessage("Die Datensicherung passt nicht zu dieser Datenbank: Spalte spitzname.");
         row("customer", "text", "Bad Name", "x");
-        ByteArrayInputStream odd = new ByteArrayInputStream(zip(unzip(export())));
-        assertThatThrownBy(() -> service.restore(odd)).isInstanceOf(BackupException.class)
+        byte[] odd = zip(unzip(export()));
+        assertThatThrownBy(() -> restore(odd)).isInstanceOf(BackupException.class)
                 .as("a column name that is no plain identifier never reaches SQL")
                 .hasMessage("Die Datensicherung passt nicht zu dieser Datenbank: Spalte Bad Name.");
     }
 
     @Test
-    void refusesAZipThatExpandsTooFar() throws IOException {
-        byte[] two = zip(Map.of("a", new byte[10], "b", new byte[10]));
-        assertThat(BackupService.read(new ByteArrayInputStream(two), 20, 2)).containsOnlyKeys("a", "b");
-        ByteArrayInputStream big = new ByteArrayInputStream(two);
-        assertThatThrownBy(() -> BackupService.read(big, 19, 2)).hasMessage(BackupService.TOO_BIG);
-        ByteArrayInputStream many = new ByteArrayInputStream(two);
-        assertThatThrownBy(() -> BackupService.read(many, 20, 1)).hasMessage(BackupService.TOO_BIG);
+    void anExportStopsBeforeMoreEntriesThanAnImportTakes() throws IOException {
+        try (BackupService.Bounded zip = new BackupService.Bounded(new ByteArrayOutputStream(), 2, 100)) {
+            zip.putNextEntry(new ZipEntry("a"));
+            zip.putNextEntry(new ZipEntry("b"));
+            ZipEntry third = new ZipEntry("c");
+            assertThatThrownBy(() -> zip.putNextEntry(third)).isInstanceOf(BackupException.class)
+                    .hasMessage("Die Datensicherung hätte mehr als 2 Dateien; so viele kann der Import nicht lesen.");
+        }
+    }
+
+    @Test
+    void anExportStopsBeforeItExpandsFurtherThanAnImportReads() throws IOException {
+        try (BackupService.Bounded zip = new BackupService.Bounded(new ByteArrayOutputStream(), 2, 5)) {
+            zip.putNextEntry(new ZipEntry("a"));
+            zip.write(new byte[5]);
+            byte[] more = new byte[1];
+            assertThatThrownBy(() -> zip.write(more)).isInstanceOf(BackupException.class)
+                    .hasMessage("Die Datensicherung wäre größer, als der Import lesen kann.");
+        }
+    }
+
+    @Test
+    void anAbortedExportClosesTheOutputAndTheCompressor() throws IOException {
+        List<String> closed = new ArrayList<>();
+        OutputStream out = new ByteArrayOutputStream() {
+            @Override
+            public void close() {
+                closed.add("out");
+            }
+        };
+        BackupService.Bounded zip = new BackupService.Bounded(out, 2, 100);
+        zip.putNextEntry(new ZipEntry("a"));
+        zip.abort();
+        zip.close();
+        assertThat(closed).containsExactly("out");
+        byte[] late = new byte[1];
+        assertThatThrownBy(() -> zip.write(late)).as("the compressor is released").isInstanceOf(IllegalStateException.class);
     }
 }
