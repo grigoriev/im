@@ -69,8 +69,8 @@
     <tr><td class="label">Anwendung</td><td th:text="'Invoice Manager, Version ' + ${version} + ', Quelltext öffentlich unter github.com/grigoriev/im'">Version</td></tr>
     <tr><td class="label">Betrieb</td><td>Docker-Container auf einem eigenen Server im Heimnetz, nur aus dem Heimnetz erreichbar</td></tr>
     <tr><td class="label">Datenbank</td><td>PostgreSQL; Rechnungen, PDF, XML, ein unveränderlicher Datenstand je Rechnung und die abgelegten Dokumente</td></tr>
-    <tr><td class="label">Unveränderbarkeit</td><td>Datenbank-Trigger verweigern jede Änderung einer ausgestellten Rechnung, ihrer Dokumente, Versandvermerke und Zahlungen sowie jede Änderung und Löschung einer abgelegten Datei</td></tr>
-    <tr><td class="label">Prüfsummen</td><td>SHA-256 je gespeichertem PDF, XML und Dokument, sichtbar in der Anwendung und im Jahresarchiv</td></tr>
+    <tr><td class="label">Unveränderbarkeit</td><td>Datenbank-Trigger verweigern jede Änderung einer ausgestellten Rechnung, ihrer Dokumente, Versandvermerke und Zahlungen sowie jede Änderung und Löschung einer abgelegten Datei; die Anwendung kann sie nicht abschalten</td></tr>
+    <tr><td class="label">Prüfsummen</td><td>SHA-256 und Siegel (HMAC, Schlüssel außerhalb der Datenbank) je PDF, XML und Dokument; jeder Zugriff und eine nächtliche Prüfung vergleichen beide</td></tr>
     <tr><td class="label">Protokoll</td><td>Anmeldungen, Ausstellung, Storno, Versand, Zahlungen, Dokumente und Änderungen der Einstellungen mit Zeit und Benutzer</td></tr>
     <tr><td class="label">Zugang</td><td>Benutzerkonten mit Passkey oder Passwort, Rollen Benutzer und Administrator</td></tr>
   </table>

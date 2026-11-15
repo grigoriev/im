@@ -3,6 +3,7 @@ package io.github.grigoriev.im.document;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -14,6 +15,8 @@ import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.integrity.Damage;
+import io.github.grigoriev.im.integrity.Seal;
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -46,7 +49,8 @@ class DocumentServiceTest {
 
     private final JdbcClient jdbc = mock(JdbcClient.class);
     private final AuditService audit = mock(AuditService.class);
-    private final DocumentService service = new DocumentService(jdbc, audit, Clock.fixed(NOW, ZoneOffset.UTC));
+    private final Seal seal = new Seal("test-only-integrity-key-0123456789abcdef");
+    private final DocumentService service = new DocumentService(jdbc, audit, seal, Clock.fixed(NOW, ZoneOffset.UTC));
 
     /** The table in memory: one map of columns per row, in the order of the IDs. */
     private final Map<Long, Map<String, Object>> rows = new LinkedHashMap<>();
@@ -69,8 +73,9 @@ class DocumentServiceTest {
         });
         MappedQuerySpec<Long> id = mock(MappedQuerySpec.class);
         when(spec.query(Long.class)).thenReturn(id);
-        when(id.single()).thenAnswer(call -> insert(params));
-        when(spec.update()).thenAnswer(call -> update(params));
+        when(id.single()).thenAnswer(call -> rows.size() + 1L);
+        when(id.list()).thenAnswer(call -> new ArrayList<>(rows.keySet()));
+        when(spec.update()).thenAnswer(call -> sql.equals(DocumentService.INSERT) ? insert(params) : update(params));
         return spec;
     }
 
@@ -107,14 +112,14 @@ class DocumentServiceTest {
         when(rs.getString(anyString())).thenAnswer(call -> (String) row.get(call.getArgument(0)));
         when(rs.getObject(anyString(), any(Class.class))).thenAnswer(call -> row.get(call.getArgument(0)));
         when(rs.getTimestamp(anyString())).thenAnswer(call -> (Timestamp) row.get(call.getArgument(0)));
-        List<String> file = List.of("filename", "media_type", "content");
+        List<String> file = List.of("filename", "media_type", "content", "sha256", "seal");
         when(rs.getString(anyInt())).thenAnswer(call -> (String) row.get(file.get((int) call.getArgument(0) - 1)));
         when(rs.getBytes(anyInt())).thenAnswer(call -> (byte[]) row.get(file.get((int) call.getArgument(0) - 1)));
         return rs;
     }
 
-    private long insert(Map<String, Object> params) {
-        long id = rows.size() + 1L;
+    private int insert(Map<String, Object> params) {
+        long id = (Long) params.get("id");
         Map<String, Object> row = new HashMap<>();
         row.put("id", id);
         row.put("category", params.get("category"));
@@ -130,8 +135,9 @@ class DocumentServiceTest {
         row.put("size", params.get("size"));
         row.put("created_at", params.get("createdAt"));
         row.put("created_by", params.get("createdBy"));
+        row.put("seal", params.get("seal"));
         rows.put(id, row);
-        return id;
+        return 1;
     }
 
     private int update(Map<String, Object> params) {
@@ -175,15 +181,18 @@ class DocumentServiceTest {
         assertThat(added.note()).as("no note is an empty one").isEmpty();
         assertThat(added.filename()).isEqualTo("Bescheid.pdf");
         assertThat(added.mediaType()).isEqualTo("application/pdf");
-        assertThat(added.sha256()).isEqualTo(DocumentService.sha256(PDF)).hasSize(64);
+        assertThat(added.sha256()).isEqualTo(Seal.sha256(PDF)).hasSize(64);
         assertThat(added.size()).isEqualTo(PDF.length);
         assertThat(added.createdAt()).isEqualTo(NOW);
         assertThat(added.createdBy()).isEqualTo("system");
         assertThat(added.replacesId()).isNull();
         assertThat(added.current()).isTrue();
         assertThat(service.file(1).orElseThrow()).isEqualTo(new DocumentFile("Bescheid.pdf", "application/pdf", PDF));
+        assertThat(rows.get(1L).get("seal")).isEqualTo(seal.businessDocument(1, Seal.sha256(PDF)));
+        assertThat(service.problems(1)).isEmpty();
+        assertThat(service.damaged()).isEmpty();
         verify(audit).add(AuditAction.DOCUMENT_ADDED, "Steuerbescheid: Einkommensteuerbescheid 2026 (Bescheid.pdf, "
-                + DocumentService.sha256(PDF) + ")");
+                + Seal.sha256(PDF) + ")");
     }
 
     @Test
@@ -299,7 +308,7 @@ class DocumentServiceTest {
         assertThat(changed.documentDate()).isEqualTo(LocalDate.of(2027, 5, 11));
         assertThat(changed.year()).isNull();
         assertThat(changed.note()).isEqualTo("Steuernummer");
-        assertThat(changed.sha256()).isEqualTo(DocumentService.sha256(PDF));
+        assertThat(changed.sha256()).isEqualTo(Seal.sha256(PDF));
         verify(audit).add(eq(AuditAction.DOCUMENT_CHANGED), anyString());
         DocumentForm blank = form(DocumentCategory.OTHER, "", LocalDate.of(2027, 1, 1), null, null);
         assertThat(catchThrowableOfType(DocumentException.class, () -> service.change(1, blank)).problems())
@@ -369,11 +378,26 @@ class DocumentServiceTest {
     }
 
     @Test
-    void hashesWithSha256() {
-        assertThat(DocumentService.sha256("abc".getBytes(StandardCharsets.US_ASCII)))
-                .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-        assertThatThrownBy(() -> DocumentService.digest("NOPE", new byte[0])).isInstanceOf(IllegalStateException.class)
-                .hasMessage("Java lacks NOPE");
+    void findsAFileChangedInTheDatabaseAndRefusesToHandItOut() {
+        service.add(assessment(LocalDate.of(2027, 5, 10)), "Bescheid.pdf", PDF);
+        service.add(assessment(LocalDate.of(2027, 5, 11)), "Zweiter.pdf", PDF);
+        String sha = Seal.sha256(PDF);
+        rows.get(1L).put("content", JPEG);
+        assertThat(service.problems(1)).as("only the bytes changed: the hash says so, the seal still fits the hash")
+                .containsExactly("Bescheid.pdf: Der Inhalt passt nicht zur gespeicherten Prüfsumme. Gespeichert: " + sha
+                        + ", berechnet: " + Seal.sha256(JPEG) + ".");
+        assertThatThrownBy(() -> service.file(1)).isInstanceOf(DocumentException.class)
+                .hasMessage("Die Datei Bescheid.pdf ist beschädigt oder wurde außerhalb der App geändert. Die Seite "
+                        + "des Dokuments zeigt, was abweicht.");
+        rows.get(1L).put("sha256", Seal.sha256(JPEG));
+        assertThat(service.problems(1)).as("bytes and hash changed together: the seal tells")
+                .containsExactly("Bescheid.pdf: Das Siegel passt nicht. Prüfsumme oder Zuordnung der Datei wurden "
+                        + "außerhalb der App geändert.");
+        rows.get(2L).put("seal", rows.get(1L).get("seal"));
+        assertThat(service.damaged()).extracting(Damage::what, Damage::href, Damage::invoiceId).containsExactly(
+                tuple("Dokument Bescheid.pdf", "/documents/1", null), tuple("Dokument Zweiter.pdf", "/documents/2", null));
+        assertThat(service.problems(9)).isEmpty();
+        assertThat(service.file(9)).isEmpty();
     }
 
     @Test

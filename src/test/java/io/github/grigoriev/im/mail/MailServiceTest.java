@@ -60,7 +60,7 @@ class MailServiceTest {
     }
 
     private static StoredDocument file(DocumentKind kind, byte[] content) {
-        return new StoredDocument(1L, 5L, kind, kind.filename("2027-07"), content, "ab", content.length, Instant.EPOCH);
+        return new StoredDocument(1L, 5L, kind, kind.filename("2027-07"), content, "ab", content.length, Instant.EPOCH, "seal");
     }
 
     private static SendForm form(String to, String subject, String body, boolean pdf, boolean xml) {

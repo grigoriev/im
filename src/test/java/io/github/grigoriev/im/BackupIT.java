@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
-import com.zaxxer.hikari.HikariDataSource;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.backup.BackupException;
 import io.github.grigoriev.im.backup.BackupService;
@@ -15,6 +14,8 @@ import io.github.grigoriev.im.document.BusinessDocument;
 import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
+import io.github.grigoriev.im.integrity.Seal;
+import io.github.grigoriev.im.integrity.SealMigration;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
@@ -40,6 +41,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
@@ -54,7 +56,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -74,7 +75,13 @@ class BackupIT {
     private JsonMapper json;
 
     @Autowired
-    private DataSource dataSource;
+    private TestDatabase.Owner owner;
+
+    @Autowired
+    private SealMigration sealMigration;
+
+    @Autowired
+    private Seal seal;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -164,12 +171,15 @@ class BackupIT {
         ByteArrayOutputStream original = new ByteArrayOutputStream();
         backups.export(original);
 
-        jdbc.execute("DROP DATABASE IF EXISTS im_copy");
-        jdbc.execute("CREATE DATABASE im_copy");
-        DataSource copy = copySource();
-        Flyway.configure().dataSource(copy).locations("classpath:db/migration").load().migrate();
-        BackupService into = new BackupService(JdbcClient.create(copy), json, mock(AuditService.class),
+        owner.jdbc().sql("DROP DATABASE IF EXISTS im_copy").update();
+        owner.jdbc().sql("CREATE DATABASE im_copy").update();
+        Flyway.configure().dataSource(owner.dataSource("im_copy")).locations("classpath:db/migration")
+                .placeholders(Map.of("appuser", "im_app")).javaMigrations(sealMigration).load().migrate();
+        DataSource copy = owner.appDataSource("im_copy");
+        DocumentService copyDocuments = new DocumentService(JdbcClient.create(copy), mock(AuditService.class), seal,
                 Clock.systemDefaultZone());
+        BackupService into = new BackupService(JdbcClient.create(copy), json, mock(AuditService.class),
+                List.of(copyDocuments), Clock.systemDefaultZone());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(copy));
         JdbcTemplate copyJdbc = new JdbcTemplate(copy);
         copyJdbc.update("INSERT INTO app_user (username, display_name, password_hash, role, enabled) "
@@ -204,14 +214,5 @@ class BackupIT {
         assertThatThrownBy(() -> transaction.executeWithoutResult(status -> into.restore(upload)))
                 .isInstanceOf(BackupException.class).hasMessageContaining("schon Daten");
         assertThat(Arrays.equals(before.get("data/invoice.json"), after.get("data/invoice.json"))).isTrue();
-    }
-
-    /** The same server as the test database, with the database im_copy. */
-    private DataSource copySource() {
-        HikariDataSource main = (HikariDataSource) dataSource;
-        DriverManagerDataSource copy = new DriverManagerDataSource(main.getJdbcUrl().replaceFirst("/[^/?]+(\\?|$)", "/im_copy$1"));
-        copy.setUsername(main.getUsername());
-        copy.setPassword(main.getPassword());
-        return copy;
     }
 }

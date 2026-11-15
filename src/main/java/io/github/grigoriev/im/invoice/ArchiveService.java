@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +38,7 @@ public class ArchiveService {
     private final InvoiceService invoices;
     private final DocumentStore documents;
     private final DocumentService businessDocuments;
+    private final InvoiceIntegrity integrity;
 
     /**
      * Creates the service.
@@ -44,11 +46,35 @@ public class ArchiveService {
      * @param invoices the invoices
      * @param documents the stored documents and snapshots
      * @param businessDocuments the business documents
+     * @param integrity checks the invoices
      */
-    public ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments) {
+    public ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
+            InvoiceIntegrity integrity) {
         this.invoices = invoices;
         this.documents = documents;
         this.businessDocuments = businessDocuments;
+        this.integrity = integrity;
+    }
+
+    /**
+     * Checks what the archive of a year would hold, before it goes out.
+     *
+     * @param year the year of the invoice dates
+     * @return the invoices and documents with a problem, empty if all is in order
+     */
+    public List<String> damaged(int year) {
+        List<String> damaged = new ArrayList<>();
+        for (Invoice invoice : issued(year)) {
+            if (!integrity.check(invoice).intact()) {
+                damaged.add("Rechnung " + invoice.number());
+            }
+        }
+        for (BusinessDocument document : businessDocuments.ofYear(year)) {
+            if (!businessDocuments.problems(document.id()).isEmpty()) {
+                damaged.add("Dokument " + document.filename());
+            }
+        }
+        return damaged;
     }
 
     /**
@@ -68,16 +94,14 @@ public class ArchiveService {
      * @throws UncheckedIOException if the output fails
      */
     public void write(int year, OutputStream out) {
-        List<Invoice> issued = invoices.list().stream()
-                .filter(invoice -> !invoice.isDraft() && invoice.issueDate().getYear() == year)
-                .sorted(Comparator.comparing(Invoice::issueDate).thenComparing(Invoice::id)).toList();
+        List<Invoice> issued = issued(year);
         StringBuilder contents = new StringBuilder().append((char) 0xFEFF).append(HEAD).append("\r\n");
         Set<String> names = new HashSet<>();
         // Each new entry and the final close end the entry before.
         try (ZipOutputStream zip = new ZipOutputStream(out, StandardCharsets.UTF_8)) {
             for (Invoice invoice : issued) {
                 InvoiceDocument document = documents.restore(invoice.snapshot());
-                for (StoredDocument file : documents.list(invoice.id())) {
+                for (StoredDocument file : documents.list(invoice.id()).stream().map(documents::verified).toList()) {
                     String name = unique(names, file.filename(), invoice.id());
                     zip.putNextEntry(new ZipEntry(name));
                     zip.write(file.content());
@@ -92,6 +116,12 @@ public class ArchiveService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    private List<Invoice> issued(int year) {
+        return invoices.list().stream()
+                .filter(invoice -> !invoice.isDraft() && invoice.issueDate().getYear() == year)
+                .sorted(Comparator.comparing(Invoice::issueDate).thenComparing(Invoice::id)).toList();
     }
 
     /** Writes the business documents of the year into their folder, one file at a time; none, no folder. */

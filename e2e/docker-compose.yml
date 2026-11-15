@@ -9,6 +9,8 @@ services:
       POSTGRES_DB: im
       POSTGRES_USER: im
       POSTGRES_PASSWORD: e2e-only
+    volumes:
+      - ./db/app-role.sql:/docker-entrypoint-initdb.d/app-role.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U im -d im"]
       interval: 2s
@@ -25,8 +27,11 @@ services:
     image: ${IM_IMAGE:-im:test}
     environment:
       IM_DB_URL: jdbc:postgresql://db:5432/im
-      IM_DB_USER: im
-      IM_DB_PASSWORD: e2e-only
+      IM_DB_USER: im_app
+      IM_DB_PASSWORD: e2e-app-only
+      IM_DB_OWNER: im
+      IM_DB_OWNER_PASSWORD: e2e-only
+      IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef
       IM_ADMIN_USERNAME: admin
       IM_ADMIN_PASSWORD: e2e-admin-passwort
       IM_REMEMBER_ME_KEY: e2e-only
@@ -47,6 +52,8 @@ services:
     network_mode: service:web
     environment:
       BASE_URL: http://localhost:8080
+      # The integrity test plays someone with the password of the owner: it changes a document in the database.
+      E2E_DB_URL: postgres://im:e2e-only@db:5432/im
       CI: ${CI:-}
       PLAYWRIGHT_ARGS: ${PLAYWRIGHT_ARGS:-}
     volumes:

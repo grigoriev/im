@@ -22,6 +22,7 @@
            th:title="'PDF und XML aller Rechnungen mit Rechnungsdatum ' + ${year}"><i data-lucide="archive" class="size-4"></i>Archiv ZIP</a>
       </form>
     </div>
+    <div role="alert" class="alert alert-error text-sm" id="report-error" th:if="${error}" th:text="${error}">Fehler</div>
 
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs" th:each="business : ${businesses}"
              th:id="'report-income' + ${business.key}" th:with="totals=${business.totals}">

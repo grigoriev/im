@@ -17,6 +17,15 @@
     <div role="alert" class="alert alert-error text-sm grid gap-1" id="document-problems" th:if="${problems}">
       <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
     </div>
+    <section role="alert" class="alert alert-error alert-soft text-sm text-base-content grid-flow-row grid-cols-1 justify-items-start gap-2" id="document-integrity"
+             th:unless="${integrity == null or integrity.isEmpty()}">
+      <span class="flex items-center gap-2 font-semibold"><i data-lucide="shield-alert" class="size-4 text-error" aria-hidden="true"></i>Prüfung fehlgeschlagen</span>
+      <span>Die gespeicherte Datei passt nicht mehr zu ihrer Prüfsumme oder ihrem Siegel. Herunterladen ist gesperrt.
+        Die unveränderte Datei liegt in der Datensicherung.</span>
+      <ul class="list-disc ps-5 grid gap-1">
+        <li th:each="problem : ${integrity}" th:text="${problem}" class="[overflow-wrap:anywhere]">Problem</li>
+      </ul>
+    </section>
     <div role="alert" class="alert alert-warning alert-soft text-sm text-base-content" id="document-replaced" th:unless="${editable}">
       <i data-lucide="history" class="size-4 text-warning" aria-hidden="true"></i>
       <span>Eine neuere Fassung ersetzt dieses Dokument. <a class="link" th:href="@{/documents/{id}(id=${versions[0].id})}">Zur aktuellen Fassung</a></span>

@@ -29,6 +29,27 @@
       <span th:unless="${cancellation.draft}">Storniert durch die
         <a class="link" th:href="@{/invoices/{id}(id=${cancellation.id})}" th:text="'Stornorechnung ' + ${cancellation.number}">Stornorechnung 2027-02</a>.</span>
     </p>
+    <section role="alert" class="alert alert-error alert-soft text-sm text-base-content grid-flow-row grid-cols-1 justify-items-start gap-2" id="invoice-integrity"
+             th:unless="${integrity.intact()}">
+      <span class="flex items-center gap-2 font-semibold"><i data-lucide="shield-alert" class="size-4 text-error" aria-hidden="true"></i>Prüfung fehlgeschlagen</span>
+      <span>Die gespeicherte Rechnung passt nicht mehr zu ihrer Prüfsumme oder ihrem Siegel. Herunterladen und Senden
+        sind gesperrt. Die unveränderten Dateien liegen in der Datensicherung.</span>
+      <ul class="list-disc ps-5 grid gap-1">
+        <li th:each="problem : ${integrity.problems()}" th:text="${problem}" class="[overflow-wrap:anywhere]">Problem</li>
+      </ul>
+      <div class="w-full" th:unless="${integrity.differences().isEmpty()}">
+        <table class="table table-sm table-fixed w-full" id="invoice-differences">
+          <thead><tr class="[&>th]:whitespace-normal [&>th]:[overflow-wrap:anywhere]"><th>Angabe</th><th>Bei der Ausstellung</th><th>In der XML-Datei</th></tr></thead>
+          <tbody>
+            <tr th:each="difference : ${integrity.differences()}">
+              <td class="[overflow-wrap:anywhere]" th:text="${difference.field()}">Gesamtbetrag</td>
+              <td class="num [overflow-wrap:anywhere]" th:text="${difference.issued()}">480,00 €</td>
+              <td class="num [overflow-wrap:anywhere]" th:text="${difference.file()}">4.800,00 €</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
     <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">

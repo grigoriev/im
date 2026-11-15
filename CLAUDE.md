@@ -58,11 +58,17 @@ Package `io.github.grigoriev.im`:
 - `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file; `ProcedureService` writes the Verfahrensdokumentation from template `templates/pdf/procedure.html`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
+- `integrity`: the seals and their check. `Seal` computes the HMAC-SHA256 with `IM_INTEGRITY_KEY` over what a file
+  belongs to and its SHA-256; `SealMigration` (Flyway V29) sealed what existed. `DocumentStore`, `InvoiceIntegrity`
+  (snapshot, documents, ZUGFeRD XML against the XML file, `EInvoiceFacts` of the XML against the snapshot) and
+  `DocumentService` check on every read; `IntegrityMonitor` checks all at startup, nightly and on request.
+  `ConnectionGuard` refuses to start while the app connects as the owner of the tables (`IM_DB_USER` vs `IM_DB_OWNER`)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
 - `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog` and gives every `select.select` a styled list).
   Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
 
-Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers, PDF baselines in
+Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers (Flyway as the owner, the app as
+`im_app`; `TestDatabase.Owner` plays whoever edits the database), PDF baselines in
 `src/test/resources/visual/pdf`, Playwright tests and screenshot baselines in `e2e/tests`.
 `AccessRulesIT` holds the access rule of every URL: a new controller URL needs an entry there, or it fails.
 
@@ -87,6 +93,7 @@ Flag these in a pull request:
 
 - Real names, addresses, tax numbers, IBANs or invoices in code, tests, fixtures or docs
 - A change to an issued invoice, its number or its documents. Issued invoices are immutable
+- A document or snapshot written without its seal, or read for download, e-mail or archive without the check
 - Invoice number assignment outside the locked transaction at issue, or a path that can leave a gap
 - Tax rules that contradict `docs/PLAN.md`: categories, §19 threshold, EN 16931 codes, rules BR-O-12 and BR-E-08
 - Threshold sums that use the invoice date instead of the payment date

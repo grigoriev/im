@@ -25,6 +25,8 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
 - Full export and import of all data and documents as one ZIP, to move to a new host.
 - The admin page shows the last nightly backup and restore test of the host, and warns when one is overdue.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
+- Seals every PDF, XML and document with a key outside the database, checks them every night and shows what a change
+  in the database altered.
 - Runs as a container with PostgreSQL in a home network.
 
 The project is in development; production use starts in 2027. See [docs/PLAN.md](docs/PLAN.md) for
@@ -36,11 +38,28 @@ The image is `ghcr.io/grigoriev/im`. It needs PostgreSQL:
 
 ```sh
 docker run -p 8080:8080 \
-  -e IM_DB_URL=jdbc:postgresql://db:5432/im -e IM_DB_USER=im -e IM_DB_PASSWORD=... \
+  -e IM_DB_URL=jdbc:postgresql://db:5432/im -e IM_DB_USER=im_app -e IM_DB_PASSWORD=... \
+  -e IM_DB_OWNER=im -e IM_DB_OWNER_PASSWORD=... -e IM_INTEGRITY_KEY=... \
   -e IM_ADMIN_USERNAME=admin -e IM_ADMIN_PASSWORD=... -e IM_REMEMBER_ME_KEY=... \
   -e IM_WEBAUTHN_RP_ID=rechnungen.example -e IM_WEBAUTHN_ALLOWED_ORIGINS=https://rechnungen.example \
   ghcr.io/grigoriev/im:latest
 ```
+
+The app uses two database roles. Flyway migrates as the owner of the tables, `IM_DB_OWNER`. The app connects as
+`IM_DB_USER`, which may only read and write rows: only the owner can switch off the triggers that keep issued invoices
+and documents unchanged. The app refuses to start as the owner or as a superuser. Create the role once, before the
+first start:
+
+```sh
+psql -U im -d im -c "CREATE ROLE im_app LOGIN PASSWORD '...'"
+```
+
+A restore of a `pg_dump` into a new server needs the role too, since the dump grants it its rights.
+
+`IM_INTEGRITY_KEY` seals each PDF, XML, snapshot and document with an HMAC-SHA256. Set a random value of at least 32
+characters and keep a copy apart from the backups: an import checks the seals with the same key. A change made in the
+database with the owner's password then shows on the invoice, on the overview and in the audit log. The app keeps a
+changed file back from download, e-mail and the yearly archive.
 
 `IM_ADMIN_USERNAME` and `IM_ADMIN_PASSWORD` create the first admin at startup while no admin exists. The
 admin creates the other users on the page "Benutzer" and deletes them there. Once a second admin exists, the first

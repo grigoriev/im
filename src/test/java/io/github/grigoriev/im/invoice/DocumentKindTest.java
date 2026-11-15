@@ -20,7 +20,7 @@ class DocumentKindTest {
     void aStoredDocumentKeepsItsBytes() {
         byte[] bytes = {1, 2, 3};
         StoredDocument document = new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", bytes, "ab", 3,
-                Instant.EPOCH);
+                Instant.EPOCH, "seal");
         bytes[0] = 9;
         assertThat(document.content()).containsExactly(1, 2, 3);
         document.content()[1] = 9;
@@ -30,13 +30,13 @@ class DocumentKindTest {
 
     @Test
     void comparesStoredDocumentsByIdentityAndHash() {
-        StoredDocument one = new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH);
-        StoredDocument same = new StoredDocument(1L, 5L, DocumentKind.PDF, "b.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH);
+        StoredDocument one = new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH, "seal");
+        StoredDocument same = new StoredDocument(1L, 5L, DocumentKind.PDF, "b.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH, "seal");
         assertThat(one.hashCode()).isEqualTo(Objects.hash(1L, 5L, DocumentKind.PDF, "ab"));
         assertThat(one).isEqualTo(same).hasSameHashCodeAs(same).isNotEqualTo("a.pdf")
-                .isNotEqualTo(new StoredDocument(2L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))
-                .isNotEqualTo(new StoredDocument(1L, 6L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))
-                .isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.XML, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH))
-                .isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "cd", 1, Instant.EPOCH));
+                .isNotEqualTo(new StoredDocument(2L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH, "seal"))
+                .isNotEqualTo(new StoredDocument(1L, 6L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH, "seal"))
+                .isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.XML, "a.pdf", new byte[] {1}, "ab", 1, Instant.EPOCH, "seal"))
+                .isNotEqualTo(new StoredDocument(1L, 5L, DocumentKind.PDF, "a.pdf", new byte[] {1}, "cd", 1, Instant.EPOCH, "seal"));
     }
 }

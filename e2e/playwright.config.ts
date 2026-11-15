@@ -22,16 +22,23 @@ export default defineConfig({
   },
   // The screenshots run first, while the database holds only the admin: tests that add data come after. The number
   // pattern is one setting for the whole app, so its test runs last, when no other test issues an invoice. The second
-  // tax number changes the shared profile, so its test runs alone, after the others and before the number pattern.
+  // tax number changes the shared profile, so its test runs alone, after the others and before the number pattern. The
+  // integrity test changes a document in the database, which every overview would show: it runs alone, last.
   projects: [
     { name: 'visual', testMatch: /visual\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     {
       name: 'chromium',
-      testIgnore: [/visual\.spec\.ts/, /numbers\.spec\.ts/, /teaching-tax\.spec\.ts/],
+      testIgnore: [/visual\.spec\.ts/, /numbers\.spec\.ts/, /teaching-tax\.spec\.ts/, /integrity\.spec\.ts/],
       dependencies: ['visual'],
       use: { ...devices['Desktop Chrome'] },
     },
     { name: 'teaching', testMatch: /teaching-tax\.spec\.ts/, dependencies: ['chromium'], use: { ...devices['Desktop Chrome'] } },
     { name: 'numbers', testMatch: /numbers\.spec\.ts/, dependencies: ['teaching'], use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'integrity',
+      testMatch: /integrity\.spec\.ts/,
+      dependencies: ['numbers'],
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 });

@@ -46,10 +46,13 @@ import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.document.ProcedureForm;
 import io.github.grigoriev.im.document.ProcedureService;
+import io.github.grigoriev.im.einvoice.EInvoiceFacts;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.integrity.Damage;
+import io.github.grigoriev.im.integrity.IntegrityMonitor;
 import io.github.grigoriev.im.invoice.ArchiveService;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
@@ -60,6 +63,7 @@ import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.DraftLine;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.invoice.InvoiceIntegrity;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.InvoiceTemplate;
@@ -255,6 +259,17 @@ class SecurityWebTest {
 
     @MockitoBean
     private ProcedureService procedure;
+
+    @MockitoBean
+    private InvoiceIntegrity integrity;
+
+    @MockitoBean
+    private IntegrityMonitor monitor;
+
+    @BeforeEach
+    void intact() {
+        when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
+    }
 
     @BeforeEach
     void noRevenueNoPayments() {
@@ -1305,7 +1320,7 @@ class SecurityWebTest {
                 InvoiceFormat.ZUGFERD_EN16931));
         when(documents.list(6)).thenReturn(List.of(new StoredDocument(1L, 6L,
                 DocumentKind.PDF, "Rechnung_2027-10.pdf", new byte[] {1}, "ab12", 12345,
-                Instant.EPOCH)));
+                Instant.EPOCH, "seal")));
         when(audit.history(6)).thenReturn(List.of(
                 new AuditEvent(1L, Instant.parse("2027-03-18T08:00:00Z"), "elena", AuditAction.DRAFT_CREATED,
                         "Verlag am Fluss GmbH", 6L),
@@ -1531,11 +1546,11 @@ class SecurityWebTest {
         when(documents.find(6, DocumentKind.PDF)).thenReturn(Optional.of(
                 new StoredDocument(1L, 6L, DocumentKind.PDF,
                         "Rechnung_2027-10.pdf", "%PDF-1.7".getBytes(StandardCharsets.US_ASCII), "ab", 8,
-                        Instant.EPOCH)));
+                        Instant.EPOCH, "seal")));
         when(documents.find(6, DocumentKind.XML)).thenReturn(Optional.of(
                 new StoredDocument(2L, 6L, DocumentKind.XML,
                         "Rechnung_2027-10.xml", "<x/>".getBytes(StandardCharsets.US_ASCII), "cd", 4,
-                        Instant.EPOCH)));
+                        Instant.EPOCH, "seal")));
         mvc.perform(get("/invoices/6/documents/pdf").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "application/pdf"))
                 .andExpect(header().string("Content-Disposition", "attachment; filename=\"Rechnung_2027-10.pdf\""))
@@ -1551,6 +1566,57 @@ class SecurityWebTest {
         when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.ISSUED)));
         mvc.perform(get("/invoices/6/preview").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
                 .andExpect(redirectedUrl("/invoices/6/documents/pdf"));
+    }
+
+    @Test
+    void showsAChangedInvoiceAndKeepsItsFilesBack() throws Exception {
+        Invoice issued = invoice(6, InvoiceStatus.ISSUED);
+        when(invoices.find(6)).thenReturn(Optional.of(issued));
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("invoice-integrity"))));
+        when(integrity.check(issued)).thenReturn(new InvoiceIntegrity.Report(
+                List.of("Die XML-Datei weicht vom Stand der Ausstellung ab."),
+                List.of(new EInvoiceFacts.Difference("Gesamtbetrag", "480,00 €", "4.800,00 €"))));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"invoice-integrity\"")))
+                .andExpect(content().string(Matchers.containsString("Prüfung fehlgeschlagen")))
+                .andExpect(content().string(Matchers.containsString("Die XML-Datei weicht vom Stand der Ausstellung ab.")))
+                .andExpect(content().string(Matchers.containsString("4.800,00 €")));
+        when(integrity.check(issued)).thenReturn(new InvoiceIntegrity.Report(List.of("Die Datei fehlt."), List.of()));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Die Datei fehlt.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("invoice-differences"))));
+        when(documents.find(6, DocumentKind.PDF)).thenThrow(new InvoiceException(List.of("kaputt")));
+        mvc.perform(get("/invoices/6/documents/pdf").with(user("elena").roles("USER")))
+                .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/invoices/6"));
+    }
+
+    @Test
+    void warnsOnTheOverviewAndChecksOnRequest() throws Exception {
+        when(monitor.last()).thenReturn(Optional.of(new IntegrityMonitor.Result(Instant.EPOCH,
+                List.of(new Damage(6L, "Rechnung 2027-10", "/invoices/6", List.of("x"))))));
+        mvc.perform(get("/").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"integrity-alert\"")))
+                .andExpect(content().string(Matchers.containsString("href=\"/invoices/6\">Rechnung 2027-10</a>")));
+        when(backupRuns.status()).thenReturn(new BackupStatus(null, null, true, true));
+        mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(Matchers.containsString("1 Rechnungen oder Dokumente abweichend")));
+        when(monitor.last()).thenReturn(Optional.of(new IntegrityMonitor.Result(Instant.EPOCH, List.of())));
+        mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(Matchers.containsString("Alles in Ordnung")))
+                .andExpect(content().string(Matchers.containsString("01.01.1970, 01:00")));
+        when(monitor.last()).thenReturn(Optional.empty());
+        mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(Matchers.containsString("noch keine")));
+        when(monitor.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of()));
+        mvc.perform(post("/admin/backup/check").with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/backup"));
+        mvc.perform(post("/admin/backup/check").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/admin/backup/check").with(user("admin").roles("ADMIN")))
+                .andExpect(status().is3xxRedirection());
+        verify(monitor, times(1)).check();
     }
 
     @Test
@@ -1786,6 +1852,20 @@ class SecurityWebTest {
                 .andExpect(content().bytes(new byte[] {'%', 'P'}));
         mvc.perform(get("/documents/9/file").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(get("/documents")).andExpect(status().is3xxRedirection());
+        when(businessDocuments.file(3)).thenThrow(new DocumentException(List.of("kaputt")));
+        mvc.perform(get("/documents/3/file").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/documents/3"));
+    }
+
+    @Test
+    void showsAChangedDocument() throws Exception {
+        when(businessDocuments.find(2)).thenReturn(Optional.of(businessDocument(2, null, null)));
+        mvc.perform(get("/documents/2").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("document-integrity"))));
+        when(businessDocuments.problems(2)).thenReturn(List.of("Bescheid.pdf: Das Siegel passt nicht."));
+        mvc.perform(get("/documents/2").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"document-integrity\"")))
+                .andExpect(content().string(Matchers.containsString("Bescheid.pdf: Das Siegel passt nicht.")));
     }
 
     @Test

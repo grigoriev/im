@@ -1,7 +1,10 @@
 package io.github.grigoriev.im.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -21,9 +24,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.ui.ExtendedModelMap;
+import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.servlet.support.SessionFlashMapManager;
 
 class ReportControllerTest {
 
@@ -151,11 +160,30 @@ class ReportControllerTest {
 
     @Test
     void streamsTheArchiveOfAYear() throws Exception {
-        ResponseEntity<StreamingResponseBody> zip = controller.zip(2027);
+        ResponseEntity<StreamingResponseBody> zip = controller.zip(2027, new MockHttpServletRequest(),
+                new MockHttpServletResponse());
         assertThat(zip.getHeaders().getContentType()).hasToString("application/zip");
         assertThat(zip.getHeaders().getContentDisposition().getFilename()).isEqualTo("Rechnungen_2027.zip");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         zip.getBody().writeTo(out);
         verify(archive).write(2027, out);
+    }
+
+    @Test
+    void aBrokenFileKeepsTheArchiveBackAndSaysWhy() {
+        when(archive.damaged(2027)).thenReturn(List.of("Rechnung 2027-02", "Dokument b.pdf"));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(DispatcherServlet.FLASH_MAP_MANAGER_ATTRIBUTE, new SessionFlashMapManager());
+        FlashMap flash = new FlashMap();
+        request.setAttribute(DispatcherServlet.OUTPUT_FLASH_MAP_ATTRIBUTE, flash);
+        ResponseEntity<StreamingResponseBody> zip = controller.zip(2027, request, new MockHttpServletResponse());
+        assertThat(zip.getStatusCode()).isEqualTo(HttpStatus.SEE_OTHER);
+        assertThat(zip.getHeaders().getLocation()).hasToString("/reports?year=2027");
+        assertThat(zip.getBody()).isNull();
+        assertThat(flash.get("error")).isEqualTo( "Das Archiv bleibt aus, denn "
+                + "diese Dateien sind beschädigt oder wurden außerhalb der App geändert: Rechnung 2027-02, Dokument "
+                + "b.pdf. Bitte die Seiten dieser Rechnungen und Dokumente ansehen.");
+        assertThat(flash.getTargetRequestPath()).isEqualTo("/reports");
+        verify(archive, never()).write(eq(2027), any());
     }
 }

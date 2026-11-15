@@ -70,7 +70,8 @@ Checked against the statutes, the official Anlage EÜR 2025 with its instruction
 ## 3. Principles
 
 1. **Correct first.** No invoice leaves the system without a passed validation for its format (see section 4).
-2. **Immutable.** Issuing freezes the invoice, its XML and its PDF. The system stores a SHA-256 of each document.
+2. **Immutable.** Issuing freezes the invoice, its XML and its PDF. The system stores a SHA-256 of each document and
+   seals it with an HMAC whose key lives outside the database. A change in the database shows, see section 6.
 3. **Snapshot.** Issuing copies seller and buyer data into the invoice. Later edits of master data do not change it.
 4. **Small footprint.** One household, two users, one container plus a database.
 5. **Own data.** Full export and import. No dependency on a cloud service.
@@ -161,7 +162,13 @@ DRAFT -> ISSUED -> SENT -> PAID
 1. `DRAFT` can change or be deleted. It has no number.
 2. `ISSUED` gets the next number, the snapshots and the frozen documents. One transaction does all of it, the
    validation included: a failure rolls back the number too, so no gap remains. Database triggers refuse any later
-   change of the content, the lines and the documents. Only the status moves on.
+   change of the content, the lines and the documents. Only the status moves on. The app connects as a role that may
+   read and write rows only, so it cannot switch a trigger off; Flyway migrates as the owner. Each document, the
+   snapshot and each business document carry a seal (HMAC-SHA256, key `IM_INTEGRITY_KEY`) over what they belong to and
+   their SHA-256. Every read checks the SHA-256 and the seal: the page of the invoice names the problem and compares
+   number, dates, amount, IBAN and parties of the XML with the snapshot. A changed file stays out of download, e-mail
+   and archive. The app checks everything at startup and every night; the overview lists what failed, the audit log
+   records it.
 3. `SENT` records each dispatch. One invoice can have several dispatches.
 4. `PAID` applies when the sum of all payments covers the total.
 5. `CANCELLED` links to the Stornorechnung. The cancellation invoice has its own number. It is a credit note (type 381)
