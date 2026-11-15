@@ -90,8 +90,9 @@ public class InvoicePdfRenderer {
     }
 
     /**
-     * Signs a text: the name on the line after its last line. A text that ends with the name already keeps it, on the
-     * line after the greeting, without blank lines between.
+     * Signs a text: the name on the line after its last line. A name typed as the last line moves up to the line after
+     * the greeting, without blank lines between; a last line that ends with the name, such as "Gruß, Elena Sommer",
+     * signs already.
      *
      * @param text the text, for example the closing
      * @param signer the name
@@ -99,8 +100,12 @@ public class InvoicePdfRenderer {
      */
     public static String signed(String text, String signer) {
         String body = text.strip();
-        if (body.endsWith(signer)) {
-            body = body.substring(0, body.length() - signer.length()).strip();
+        int last = body.lastIndexOf('\n') + 1;
+        String lastLine = body.substring(last).strip();
+        if (lastLine.equals(signer)) {
+            body = body.substring(0, last).strip();
+        } else if (lastLine.endsWith(signer)) {
+            return body;
         }
         return body.isEmpty() ? signer : body + "\n" + signer;
     }

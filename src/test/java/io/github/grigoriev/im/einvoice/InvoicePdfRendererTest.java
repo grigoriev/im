@@ -142,6 +142,10 @@ class InvoicePdfRendererTest {
         assertThat(InvoicePdfRenderer.signed(" Mit freundlichen Grüßen\n\n Elena Sommer \n", "Elena Sommer"))
                 .as("a name of its own paragraph moves up").isEqualTo("Mit freundlichen Grüßen\nElena Sommer");
         assertThat(InvoicePdfRenderer.signed("Elena Sommer", "Elena Sommer")).isEqualTo("Elena Sommer");
+        assertThat(InvoicePdfRenderer.signed("Hallo\nViele Grüße, Elena Sommer", "Elena Sommer"))
+                .as("a last line that signs already stays whole").isEqualTo("Hallo\nViele Grüße, Elena Sommer");
+        assertThat(InvoicePdfRenderer.signed("Grüße von Elena Sommer\n\nAnna", "Elena Sommer"))
+                .as("only the last line counts").isEqualTo("Grüße von Elena Sommer\n\nAnna\nElena Sommer");
         assertThat(fmt.signed("Gruß", "E")).isEqualTo("Gruß\nE");
     }
 
