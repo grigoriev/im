@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from './fixtures';
+import { ensureProfile } from './seller';
 
 // The business documents: upload, versions, description and download (docs/PLAN.md, section 7, "Documents").
 const PDF = Buffer.from('%PDF-1.4\n% Steuerbescheid\n');
@@ -80,4 +81,32 @@ test('a document keeps every version and its file', async ({ page, browser, admi
       await context.close();
     }
   }
+});
+
+test('the app writes the Verfahrensdokumentation as versions', async ({ page }) => {
+  await ensureProfile(page);
+  await page.goto('/documents');
+  await page.getByRole('link', { name: 'Erstellen' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Verfahrensdokumentation');
+  await page.getByLabel('Gültig ab').fill('2027-01-01');
+  await page.getByLabel('Programm für Belege und Ausgaben').fill('WISO Steuern');
+  await page.getByLabel('Ablageort der Jahresarchive').fill('in einem Dropbox-Ordner');
+  await page.getByLabel('Änderung dieser Fassung').fill('Erstfassung');
+  const [preview] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Vorschau (PDF)' }).click(),
+  ]);
+  expect(preview.suggestedFilename()).toBe('Verfahrensdokumentation_Entwurf.pdf');
+  await page.getByRole('button', { name: 'Als Fassung ablegen' }).click();
+  await expect(page.getByRole('status')).toContainText('Verfahrensdokumentation als neue Fassung abgelegt.');
+  await expect(page.locator('#document-file')).toContainText(/Verfahrensdokumentation_\d{4}-\d{2}-\d{2}\.pdf/);
+  const pdf = await page.request.get((await page.locator('#document-download').getAttribute('href'))!);
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+
+  await page.goto('/documents/procedure');
+  await expect(page.getByLabel('Programm für Belege und Ausgaben'), 'the values stay').toHaveValue('WISO Steuern');
+  await expect(page.locator('#procedure-current')).toContainText('Verfahrensdokumentation_');
+  await page.getByLabel('Änderung dieser Fassung').fill('Neue Version der App');
+  await page.getByRole('button', { name: 'Als Fassung ablegen' }).click();
+  await expect(page.locator('#document-versions li')).toHaveCount(2);
 });

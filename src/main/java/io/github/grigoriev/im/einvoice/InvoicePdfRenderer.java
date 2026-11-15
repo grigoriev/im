@@ -53,8 +53,18 @@ public class InvoicePdfRenderer {
      * @return the PDF/A-3B bytes
      */
     public byte[] render(InvoiceDocument document) {
-        Context context = new Context(GERMAN, Map.of("invoice", document, "fmt", new Formatter()));
-        String xhtml = templates.process("pdf/invoice", context);
+        return render("pdf/invoice", Map.of("invoice", document, "fmt", new Formatter()));
+    }
+
+    /**
+     * Renders a Thymeleaf template of the PDF layout as PDF/A-3B, with the fonts of the invoices.
+     *
+     * @param template the template, for example {@code pdf/procedure}
+     * @param variables the values of the template
+     * @return the PDF/A-3B bytes
+     */
+    public byte[] render(String template, Map<String, Object> variables) {
+        String xhtml = templates.process(template, new Context(GERMAN, variables));
         ITextRenderer renderer = new ITextRenderer();
         renderer.setPdfAConformance(PdfAConformance.PDF_A_3B);
         for (String font : fonts) {

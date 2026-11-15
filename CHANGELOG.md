@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Verfahrensdokumentation: "Dokumente" writes it from the profile and four values (valid from, program for receipts and expenses, place of the yearly archives, change), with the version of the app and a table of every change. "Vorschau (PDF)" downloads it; "Als Fassung ablegen" keeps it as a new version of the document. Print it, sign it and keep the scan as the next version.
 - Dokumente: a store for the business documents next to the invoices, for example the Verfahrensdokumentation, Steuerbescheide, letters of the Finanzamt, certificates and contracts. A document has a kind, a title, a date, the year it concerns and a note, and a PDF, JPG or PNG of at most 25 MB. Its file never changes and never goes away: a new version replaces it in the list, and the old one stays in its history. The description may change. Every upload and change goes into the log with the SHA-256 of the file.
 - The yearly archive has a folder "Dokumente" with every version of the documents of that year and a table of contents. A document belongs to the year it concerns, without one to the year of its date. The year picker on "Berichte" offers the years of the documents too.
 - The full export and import and the nightly backup take the documents along.

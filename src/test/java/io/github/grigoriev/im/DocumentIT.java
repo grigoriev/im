@@ -8,8 +8,16 @@ import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentException;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
+import io.github.grigoriev.im.document.ProcedureForm;
+import io.github.grigoriev.im.document.ProcedureService;
+import io.github.grigoriev.im.seller.SellerService;
+import io.github.grigoriev.im.seller.SellerTestData;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +36,12 @@ class DocumentIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private ProcedureService procedure;
+
+    @Autowired
+    private SellerService sellers;
 
     private static DocumentForm form(String title, LocalDate date) {
         DocumentForm form = new DocumentForm();
@@ -78,5 +92,27 @@ class DocumentIT {
                     content, sha256, size, created_at, created_by)
                 VALUES ('OTHER', 'Zweite', DATE '2027-06-02', '', ?, 'z.pdf', 'application/pdf', ?, ?, 1, now(), 'x')""",
                 id, PDF, "0".repeat(64))).as("one document has one newer version").hasMessageContaining("replaces_id");
+    }
+
+    @Test
+    void writesTheVerfahrensdokumentationAsVersions() throws IOException {
+        SellerTestData.save(sellers, SellerTestData.profile());
+        ProcedureForm form = new ProcedureForm();
+        form.setValidFrom(LocalDate.of(2027, 1, 1));
+        form.setExpenses("WISO Steuern");
+        form.setArchive("in einem Dropbox-Ordner");
+        form.setChange("Erstfassung " + System.nanoTime());
+        BusinessDocument first = procedure.save(form);
+        assertThat(first.filename()).startsWith("Verfahrensdokumentation_").endsWith(".pdf");
+        assertThat(procedure.form().getExpenses()).as("the values stay for the next version").isEqualTo("WISO Steuern");
+        form.setChange("Neue Version der App");
+        BusinessDocument second = procedure.save(form);
+        assertThat(second.replacesId()).as("a new version of the current one").isNotNull();
+        assertThat(procedure.current()).contains(documents.find(second.id()).orElseThrow());
+        try (PDDocument pdf = Loader.loadPDF(documents.file(second.id()).orElseThrow().content())) {
+            String text = new PDFTextStripper().getText(pdf);
+            assertThat(text).contains("Erika Mustermann").contains("12/345/67890").contains("WISO Steuern")
+                    .contains("Neue Version der App").contains(first.note());
+        }
     }
 }

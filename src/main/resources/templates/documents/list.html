@@ -16,6 +16,14 @@
       und Verträge. Eine Datei bleibt für immer erhalten. Eine neue Fassung ersetzt sie in der Liste, die alte bleibt im Verlauf.</p>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
 
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap items-center justify-between gap-3" id="procedure-card">
+      <div class="min-w-0 basis-64 grow">
+        <h2 class="font-semibold">Verfahrensdokumentation</h2>
+        <p class="text-sm text-base-content/75">Die App schreibt sie aus dem Profil und legt sie als neue Fassung ab.</p>
+      </div>
+      <a th:href="@{/documents/procedure}" class="btn" id="procedure-open"><i data-lucide="file-pen" class="size-4"></i>Erstellen</a>
+    </section>
+
     <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/documents}" method="get" id="document-filter" th:if="${any}">
       <label class="floating-label grow basis-48"><span>Art</span>
         <select id="filter-category" name="category" class="select select-sm w-full">
