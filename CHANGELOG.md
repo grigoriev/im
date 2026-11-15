@@ -11,7 +11,8 @@ All notable changes to this project are documented in this file. The format foll
 - The label of a field stays gray on focus and on a wrong value. Only the frame turns blue or red.
 - The PDF puts the address into the field of DIN 5008, form B, so it shows in a window envelope. The information block starts at 50 mm on the right and also holds the VAT ID of the customer and the buyer reference. A foreign country stands as its German name in capitals.
 - A last line on the PDF names the XML data as the invoice. A ZUGFeRD PDF says that it carries them; the PDF next to an XRechnung calls itself a reading copy, so it does not count as a second invoice.
-- The PDF names the amount in the payment request and shows the phone number of the seller in the footer, as the standard form of DATEV does.
+- The PDF names the amount in the payment request, as the standard form of DATEV does.
+- Profil, Kontakt: "Telefon auf der Rechnung zeigen" puts the phone number into the footer of the PDF. It is off by default; the XML carries the number anyway, as XRechnung needs it. An issued invoice keeps the choice it was issued with.
 
 ## [0.1.4] - 2026-11-15
 

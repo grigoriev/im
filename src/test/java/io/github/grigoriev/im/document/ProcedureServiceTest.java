@@ -191,15 +191,15 @@ class ProcedureServiceTest {
         SellerProfile p = SellerTestData.profile();
         List<SellerProfile> incomplete = List.of(
                 new SellerProfile(" ", p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(),
-                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),
+                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null, false),
                 new SellerProfile(p.name(), null, p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(),
-                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),
+                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null, false),
                 new SellerProfile(p.name(), p.street(), null, p.city(), p.countryCode(), null, p.email(), p.phone(),
-                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),
+                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null, false),
                 new SellerProfile(p.name(), p.street(), p.postcode(), "", p.countryCode(), null, p.email(), p.phone(),
-                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null),
+                        p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null, false),
                 new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(),
-                        p.phone(), null, "DE123456789", p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null));
+                        p.phone(), null, "DE123456789", p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null, false));
         for (SellerProfile seller : incomplete) {
             when(sellers.find()).thenReturn(Optional.of(seller));
             assertThat(catchThrowableOfType(DocumentException.class, () -> service.preview(form("Erstfassung")))

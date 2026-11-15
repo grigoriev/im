@@ -8,6 +8,18 @@ import org.junit.jupiter.api.Test;
 class SellerProfileTest {
 
     @Test
+    void showsThePhoneOnlyWhenTheProfileSaysSo() {
+        assertThat(SellerTestData.profile(true).showsPhone()).isTrue();
+        assertThat(SellerTestData.profile(false).showsPhone()).isFalse();
+        SellerProfile p = SellerTestData.profile();
+        SellerProfile otherTab = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
+                p.contactName(), p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus(),
+                p.tagline(), p.website(), p.bankName(), p.accountHolder(), p.taxNumberTeaching(), null);
+        assertThat(otherTab.showsPhone()).as("a form without the checkbox").isFalse();
+        assertThat(SellerService.normalize(otherTab).phoneOnInvoice()).as("stored as false").isFalse();
+    }
+
+    @Test
     void startsEmptyInGermanyAsKleinunternehmer() {
         SellerProfile empty = SellerProfile.empty();
         assertThat(empty.name()).isEmpty();
@@ -35,7 +47,7 @@ class SellerProfileTest {
     void keepsAnExplicitContact() {
         SellerProfile p = SellerTestData.profile();
         SellerProfile withContact = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
-                "Max Mustermann", p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null);
+                "Max Mustermann", p.email(), p.phone(), p.taxNumber(), p.vatId(), p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null, false);
         assertThat(withContact.toParty(false).contactName()).isEqualTo("Max Mustermann");
     }
 
@@ -45,7 +57,7 @@ class SellerProfileTest {
         assertThat(p.holder()).isEqualTo("Erika Mustermann");
         SellerProfile other = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null,
                 p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null,
-                "Mustermann Sprachkurse GbR", null);
+                "Mustermann Sprachkurse GbR", null, false);
         assertThat(other.holder()).isEqualTo("Mustermann Sprachkurse GbR");
         assertThat(SellerProfile.empty().tagline()).isNull();
     }
@@ -55,7 +67,7 @@ class SellerProfileTest {
         assertThat(SellerTestData.profile().ibanGrouped()).isEqualTo("DE89 3704 0044 0532 0130 00");
         SellerProfile p = SellerTestData.profile();
         assertThat(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(),
-                p.phone(), p.taxNumber(), p.vatId(), null, p.bic(), p.taxStatus(), null, null, null, null, null).ibanGrouped()).isEmpty();
+                p.phone(), p.taxNumber(), p.vatId(), null, p.bic(), p.taxStatus(), null, null, null, null, null, false).ibanGrouped()).isEmpty();
     }
 
     @Test
@@ -65,13 +77,13 @@ class SellerProfileTest {
         assertThat(one.toParty(true).taxNumber()).as("one number for everything").isEqualTo("12/345/67890");
         SellerProfile two = new SellerProfile(one.name(), one.street(), one.postcode(), one.city(), one.countryCode(),
                 null, one.email(), one.phone(), one.taxNumber(), null, one.iban(), one.bic(), one.taxStatus(), null,
-                null, null, null, "98/765/43210");
+                null, null, null, "98/765/43210", false);
         assertThat(two.twoTaxNumbers()).isTrue();
         assertThat(two.toParty(true).taxNumber()).isEqualTo("98/765/43210");
         assertThat(two.toParty(false).taxNumber()).isEqualTo("12/345/67890");
         SellerProfile blank = new SellerProfile(one.name(), one.street(), one.postcode(), one.city(),
                 one.countryCode(), null, one.email(), one.phone(), one.taxNumber(), null, one.iban(), one.bic(),
-                one.taxStatus(), null, null, null, null, " ");
+                one.taxStatus(), null, null, null, null, " ", false);
         assertThat(blank.twoTaxNumbers()).isFalse();
         assertThat(blank.toParty(true).taxNumber()).as("a blank second number falls back").isEqualTo("12/345/67890");
     }

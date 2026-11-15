@@ -21,10 +21,12 @@ export async function fillProfile(page: Page): Promise<void> {
   await expect(page.getByRole('status')).toContainText('Anschrift gespeichert.');
   await page.getByRole('tab', { name: /^Kontakt( unvollständig)?$/ }).click();
   await page.getByLabel('E-Mail').fill('erika@example.org');
-  await page.getByLabel('Telefon').fill('+49 30 1234567');
+  await page.getByLabel('Telefon', { exact: true }).fill('+49 30 1234567');
   await page.getByLabel('Website, z. B. www.example.de').fill('www.erika.example');
+  await page.getByLabel('Telefon auf der Rechnung zeigen').check();
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toContainText('Kontakt gespeichert.');
+  await expect(page.getByLabel('Telefon auf der Rechnung zeigen'), 'the choice is saved').toBeChecked();
   await page.getByRole('tab', { name: /^Steuer( unvollständig)?$/ }).click();
   await page.getByLabel('Steuernummer', { exact: true }).fill('12/345/67890');
   await page.getByRole('button', { name: 'Speichern' }).click();

@@ -89,7 +89,7 @@ class InvoiceServiceTest {
     private static SellerProfile seller(TaxStatus status, String vatId) {
         SellerProfile p = SellerTestData.profile();
         return new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null, p.email(), p.phone(),
-                p.taxNumber(), vatId, p.iban(), p.bic(), status, null, null, null, null, null);
+                p.taxNumber(), vatId, p.iban(), p.bic(), status, null, null, null, null, null, false);
     }
 
     private static DraftForm form(LineForm... lines) {
@@ -328,6 +328,9 @@ class InvoiceServiceTest {
         assertThat(document.dueDate()).isEqualTo(TODAY.plusDays(14));
         assertThat(document.intro()).isEqualTo("Hallo");
         assertThat(document.closing()).isEqualTo("Danke");
+        assertThat(document.phoneOnInvoice()).isFalse();
+        when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile(true)));
+        assertThat(service.document(complete).orElseThrow().phoneOnInvoice()).as("the choice of the profile").isTrue();
     }
 
     @Test
@@ -366,7 +369,7 @@ class InvoiceServiceTest {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, null, null, p.taxNumber(), null, null, p.bic(), p.taxStatus(), null, null, null,
-                null, null)));
+                null, null, false)));
         Invoice zugferd = draft(List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)));
         assertThat(service.problems(zugferd))
                 .containsExactly("Im Profil fehlt noch: IBAN. Bitte in den Einstellungen ergänzen.");
@@ -382,7 +385,7 @@ class InvoiceServiceTest {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
-                null, null, null, null, "98/765/43210")));
+                null, null, null, null, "98/765/43210", false)));
         Invoice mixed = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
                 lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
         assertThat(service.problems(mixed)).containsExactly(InvoiceService.TEACHING_ALONE, InvoiceService.OTHER_LINES);
@@ -402,7 +405,7 @@ class InvoiceServiceTest {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
-                null, null, null, null, "98/765/43210")));
+                null, null, null, null, "98/765/43210", false)));
         Invoice abroad = withActivity(draft(List.of(lump("Kurs in Taschkent", "300", TaxCategory.NOT_TAXABLE_ABROAD))),
                 Activity.TEACHING);
         assertThat(service.problems(abroad)).isEmpty();
@@ -718,7 +721,7 @@ class InvoiceServiceTest {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(),
-                null, null, null, null, "98/765/43210")));
+                null, null, null, null, "98/765/43210", false)));
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 0, null, null, null, null, List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null,
                 null, null);
@@ -757,7 +760,7 @@ class InvoiceServiceTest {
         regular = new SellerProfile(regular.name(), regular.street(), regular.postcode(), regular.city(),
                 regular.countryCode(), regular.contactName(), regular.email(), regular.phone(), regular.taxNumber(),
                 "DE123456789", regular.iban(), regular.bic(), TaxStatus.REGULAR, null, null,
-                null, null, null);
+                null, null, null, false);
         when(sellers.find()).thenReturn(Optional.of(regular));
         assertThat(service.problems(storno)).as("a new §19 draft after the change")
                 .containsExactly("Mit Regelbesteuerung gibt es keine Positionen nach § 19 UStG.");

@@ -412,7 +412,7 @@ public class InvoiceService {
                 invoice.buyerReference(),
                 seller.iban(), seller.bic(), values.fill(invoice.intro()), values.fill(invoice.closing()),
                 values.fill(invoice.taxNote()), invoice.format(),
-                invoice.lines().stream().map(DraftLine::toInvoiceLine).toList(), cancels));
+                invoice.lines().stream().map(DraftLine::toInvoiceLine).toList(), cancels, seller.showsPhone()));
     }
 
     /**

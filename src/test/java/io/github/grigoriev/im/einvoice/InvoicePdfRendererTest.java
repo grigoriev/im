@@ -59,7 +59,7 @@ class InvoicePdfRendererTest {
                 .contains("480,00\u00a0€")
                 .contains("Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1")
                 .contains("DE02 1203 0000 0000 2020 51")
-                .contains("Tel. +49 89 1234567")
+                .doesNotContain("Tel.")
                 .contains("Bitte überweisen Sie den Rechnungsbetrag von 480,00\u00a0€ bis zum 01.04.2027.")
                 .contains("vielen Dank für Ihren Auftrag.")
                 .contains("Mit freundlichen Grüßen")
@@ -107,6 +107,15 @@ class InvoicePdfRendererTest {
         String text = text(renderer.render(dutch));
         assertThat(text).contains("NIEDERLANDE").contains("Ihre USt-IdNr. NL123456789B01")
                 .contains("Käuferreferenz REF-1").contains("USt-IdNr. DE123456789").contains("Steuernummer 143/123/45678");
+    }
+
+    @Test
+    void showsThePhoneNumberWhenTheProfileAsks() throws IOException {
+        InvoiceDocument d = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        InvoiceDocument withPhone = new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(),
+                d.dueDate(), d.seller(), d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(), d.closing(),
+                d.taxNote(), d.format(), d.lines(), d.cancels(), true);
+        assertThat(text(renderer.render(withPhone))).contains("kontakt@sommer.example\nTel. +49 89 1234567\nSteuernummer");
     }
 
     @Test

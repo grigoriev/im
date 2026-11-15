@@ -146,7 +146,7 @@ class IssueIT {
         SellerProfile p = SellerTestData.profile();
         SellerTestData.save(sellers, new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
                 null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null,
-                "98/765/43210"));
+                "98/765/43210", false));
         try {
             Invoice teaching = draft(verlag, LocalDate.of(2049, 3, 18));
             DraftForm form = DraftForm.of(teaching);
@@ -230,7 +230,7 @@ class IssueIT {
         SellerProfile original = SellerTestData.profile();
         SellerTestData.save(sellers, new SellerProfile("Anderer Name", original.street(), original.postcode(), original.city(),
                 original.countryCode(), original.contactName(), original.email(), original.phone(), original.taxNumber(),
-                original.vatId(), original.iban(), original.bic(), original.taxStatus(), null, null, null, null, null));
+                original.vatId(), original.iban(), original.bic(), original.taxStatus(), null, null, null, null, null, false));
         assertThat(documents.restore(invoices.find(draft.id()).orElseThrow().snapshot()).seller().name())
                 .as("the snapshot keeps the seller of the issue").isEqualTo(original.name());
     }

@@ -44,8 +44,9 @@ class SellerIT {
 
         SellerProfile p = SellerTestData.profile();
         SellerTestData.save(sellers, new SellerProfile(p.name(), "Neuer Weg 2", p.postcode(), p.city(), p.countryCode(), "Max Mustermann",
-                p.email(), p.phone(), null, "DE123456789", p.iban(), p.bic(), TaxStatus.REGULAR, null, null, null, null, " 98/765/43210 "));
+                p.email(), p.phone(), null, "DE123456789", p.iban(), p.bic(), TaxStatus.REGULAR, null, null, null, null, " 98/765/43210 ", true));
         SellerProfile stored = sellers.find().orElseThrow();
+        assertThat(stored.phoneOnInvoice()).as("the choice round-trips").isTrue();
         assertThat(stored.street()).isEqualTo("Neuer Weg 2");
         assertThat(stored.contactName()).isEqualTo("Max Mustermann");
         assertThat(stored.taxNumber()).isNull();

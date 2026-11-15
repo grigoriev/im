@@ -205,7 +205,8 @@ public class SellerService {
                 upper(input.countryCode()), unlessName(input.contactName(), name), text(input.email()),
                 text(input.phone()), text(input.taxNumber()), compact(input.vatId()), compact(input.iban()),
                 compact(input.bic()), input.taxStatus(), text(input.tagline()), text(input.website()),
-                text(input.bankName()), unlessName(input.accountHolder(), name), text(input.taxNumberTeaching()));
+                text(input.bankName()), unlessName(input.accountHolder(), name), text(input.taxNumberTeaching()),
+                input.showsPhone());
     }
 
     private static String unlessName(String value, String name) {

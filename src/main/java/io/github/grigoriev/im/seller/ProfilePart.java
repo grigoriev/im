@@ -10,7 +10,7 @@ public enum ProfilePart {
     /** Name and address. */
     ADDRESS("address", "Anschrift", List.of("name", "tagline", "street", "postcode", "city", "countryCode")),
     /** Contact person, e-mail, phone and website. */
-    CONTACT("contact", "Kontakt", List.of("contactName", "email", "phone", "website")),
+    CONTACT("contact", "Kontakt", List.of("contactName", "email", "phone", "phoneOnInvoice", "website")),
     /** Tax status and tax numbers. */
     TAX("tax", "Steuer", List.of("taxStatus", "taxNumber", "vatId", "taxNumberTeaching")),
     /** Bank account. */
@@ -77,6 +77,6 @@ public enum ProfilePart {
         SellerProfile b = this == BANK ? input : stored;
         return new SellerProfile(a.name(), a.street(), a.postcode(), a.city(), a.countryCode(), c.contactName(),
                 c.email(), c.phone(), t.taxNumber(), t.vatId(), b.iban(), b.bic(), t.taxStatus(), a.tagline(),
-                c.website(), b.bankName(), b.accountHolder(), t.taxNumberTeaching());
+                c.website(), b.bankName(), b.accountHolder(), t.taxNumberTeaching(), c.phoneOnInvoice());
     }
 }

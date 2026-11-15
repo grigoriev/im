@@ -24,6 +24,8 @@ import io.github.grigoriev.im.einvoice.Party;
  * @param accountHolder holder of the account, {@code null} means the name
  * @param taxNumberTeaching a second tax number for teaching under §4 Nr. 21 UStG, when the Finanzamt gave one; an
  *     invoice of teaching names it instead of {@code taxNumber}. {@code null} if there is only one
+ * @param phoneOnInvoice whether the PDF of an invoice shows the phone number; the XML carries it anyway. A form of
+ *     another tab leaves it out, so it may be {@code null} there; a stored profile always has it
  */
 public record SellerProfile(
         String name,
@@ -43,7 +45,8 @@ public record SellerProfile(
         String website,
         String bankName,
         String accountHolder,
-        String taxNumberTeaching) {
+        String taxNumberTeaching,
+        Boolean phoneOnInvoice) {
 
     /**
      * Returns an empty profile for the first form: Germany, Kleinunternehmer.
@@ -52,7 +55,7 @@ public record SellerProfile(
      */
     public static SellerProfile empty() {
         return new SellerProfile("", "", "", "", "DE", null, "", "", null, null, "", "", TaxStatus.KLEINUNTERNEHMER,
-                null, null, null, null, null);
+                null, null, null, null, null, false);
     }
 
     /**
@@ -64,7 +67,7 @@ public record SellerProfile(
     public SellerProfile withNameAsDefault() {
         return new SellerProfile(name, street, postcode, city, countryCode, isBlank(contactName) ? name : contactName,
                 email, phone, taxNumber, vatId, iban, bic, taxStatus, tagline, website, bankName,
-                isBlank(accountHolder) ? name : accountHolder, taxNumberTeaching);
+                isBlank(accountHolder) ? name : accountHolder, taxNumberTeaching, phoneOnInvoice);
     }
 
     private static boolean isBlank(String text) {
@@ -83,6 +86,15 @@ public record SellerProfile(
         return new Party(name, street, postcode, city, countryCode, email, phone,
                 contactName == null ? name : contactName,
                 teaching && twoTaxNumbers() ? taxNumberTeaching : taxNumber, vatId);
+    }
+
+    /**
+     * Tells whether the PDF of an invoice shows the phone number.
+     *
+     * @return {@code true} only if the profile says so
+     */
+    public boolean showsPhone() {
+        return Boolean.TRUE.equals(phoneOnInvoice);
     }
 
     /**
