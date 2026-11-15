@@ -8,14 +8,21 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -36,12 +43,17 @@ public class ArchiveService {
     static final String FOLDER = "Dokumente/";
     static final String DOCUMENT_HEAD = "Art;Titel;Datum;Jahr;Fassung;Datei;Bytes;SHA-256";
 
+    /** Only the app may read the archive while it grows: it holds every invoice of the year. */
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY = PosixFilePermissions.asFileAttribute(
+            EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+
     private static final DateTimeFormatter GERMAN = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final InvoiceService invoices;
     private final DocumentStore documents;
     private final DocumentService businessDocuments;
     private final InvoiceIntegrity integrity;
+    private final Path folder;
 
     /**
      * Creates the service.
@@ -51,12 +63,28 @@ public class ArchiveService {
      * @param businessDocuments the business documents
      * @param integrity checks the invoices
      */
+    @Autowired
     public ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
             InvoiceIntegrity integrity) {
+        this(invoices, documents, businessDocuments, integrity, Path.of(System.getProperty("java.io.tmpdir")));
+    }
+
+    /**
+     * Creates the service with a folder of its own for the archive while it grows.
+     *
+     * @param invoices the invoices
+     * @param documents the stored documents and snapshots
+     * @param businessDocuments the business documents
+     * @param integrity checks the invoices
+     * @param folder where the archive grows before it goes out
+     */
+    ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
+            InvoiceIntegrity integrity, Path folder) {
         this.invoices = invoices;
         this.documents = documents;
         this.businessDocuments = businessDocuments;
         this.integrity = integrity;
+        this.folder = folder;
     }
 
     /**
@@ -103,6 +131,26 @@ public class ArchiveService {
         if (!damaged.isEmpty()) {
             throw new InvoiceException(List.of(DAMAGED.formatted(String.join(", ", damaged))));
         }
+        // The ZIP grows in a file of its own and goes out only once every file passed its check on the way in: a file
+        // changed after the check above stops it before a single byte leaves.
+        try {
+            Path file = Files.createTempFile(folder, "im-archive-", ".zip", OWNER_ONLY);
+            try {
+                try (OutputStream zip = Files.newOutputStream(file)) {
+                    zip(year, zip);
+                }
+                try (out) {
+                    Files.copy(file, out);
+                }
+            } finally {
+                Files.delete(file);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private void zip(int year, OutputStream out) throws IOException {
         List<Invoice> issued = issued(year);
         StringBuilder contents = new StringBuilder().append((char) 0xFEFF).append(HEAD).append("\r\n");
         Set<String> names = new HashSet<>();
@@ -122,8 +170,6 @@ public class ArchiveService {
             zip.putNextEntry(new ZipEntry(CONTENTS));
             zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
             writeDocuments(year, zip);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
     }
 

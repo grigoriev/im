@@ -54,7 +54,7 @@
             : ${#temporals.format(integrity.checkedAt(), 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">12.05.2027, 03:30</dd>
         <dt class="text-base-content/75">Ergebnis</dt>
         <dd id="integrity-result" th:text="${integrity == null} ? '–' : (${integrity.intact()} ? 'Alles in Ordnung'
-            : ${integrity.damaged().size()} + ' Rechnungen oder Dokumente abweichend, siehe Übersicht')">Alles in Ordnung</dd>
+            : 'Abweichungen: ' + ${integrity.damaged().size()} + ', siehe Übersicht')">Alles in Ordnung</dd>
       </dl>
       <form class="form-actions" method="post" th:action="@{/admin/backup/check}" id="integrity-check-form">
         <button type="submit" class="btn" id="integrity-check-now"><i data-lucide="shield-check" class="size-4"></i>Jetzt prüfen</button>

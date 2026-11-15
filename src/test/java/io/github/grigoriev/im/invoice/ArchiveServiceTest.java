@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -34,6 +35,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ArchiveServiceTest {
 
@@ -41,10 +43,13 @@ class ArchiveServiceTest {
     private final DocumentStore documents = mock(DocumentStore.class);
     private final DocumentService businessDocuments = mock(DocumentService.class);
     private final InvoiceIntegrity integrity = mock(InvoiceIntegrity.class);
-    private final ArchiveService service = new ArchiveService(invoices, documents, businessDocuments, integrity);
+    @TempDir
+    private Path folder;
+    private ArchiveService service;
 
     @BeforeEach
     void intact() {
+        service = new ArchiveService(invoices, documents, businessDocuments, integrity, folder);
         when(documents.verified(any())).thenAnswer(call -> call.getArgument(0));
         when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
     }
@@ -86,6 +91,7 @@ class ArchiveServiceTest {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         service.write(2027, out);
+        assertThat(folder).as("the archive left its folder").isEmptyDirectory();
         Map<String, String> entries = unzip(out.toByteArray());
         assertThat(entries.keySet()).as("by invoice date, then ID; drafts and other years stay out").containsExactly(
                 "Rechnung_2027-01.pdf", "Rechnung_2027-01.xml", "Rechnung_2027-02.pdf", "Rechnung_2027-03.xml",
@@ -151,13 +157,18 @@ class ArchiveServiceTest {
     }
 
     @Test
-    void aBrokenFileStopsTheArchive() {
-        when(invoices.list()).thenReturn(List.of(invoice(1, InvoiceStatus.PAID, "2027-01", LocalDate.of(2027, 1, 10))));
+    void aFileChangedAfterTheCheckStopsTheArchiveBeforeItsFirstByte() {
+        when(invoices.list()).thenReturn(List.of(invoice(1, InvoiceStatus.PAID, "2027-01", LocalDate.of(2027, 1, 10)),
+                invoice(2, InvoiceStatus.PAID, "2027-02", LocalDate.of(2027, 1, 11))));
         when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
-        StoredDocument pdf = file(1, DocumentKind.PDF, "2027-01", "%PDF-1");
-        when(documents.list(1)).thenReturn(List.of(pdf));
-        when(documents.verified(pdf)).thenThrow(new InvoiceException(List.of("kaputt")));
-        assertThatThrownBy(() -> service.write(2027, new ByteArrayOutputStream())).hasMessage("kaputt");
+        when(documents.list(1)).thenReturn(List.of(file(1, DocumentKind.PDF, "2027-01", "%PDF-1")));
+        StoredDocument changed = file(2, DocumentKind.PDF, "2027-02", "%PDF-2");
+        when(documents.list(2)).thenReturn(List.of(changed));
+        when(documents.verified(changed)).thenThrow(new InvoiceException(List.of("kaputt")));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThatThrownBy(() -> service.write(2027, out)).hasMessage("kaputt");
+        assertThat(out.size()).as("the first invoice was fine, yet nothing left").isZero();
+        assertThat(folder).as("the half archive is gone").isEmptyDirectory();
     }
 
     @Test
@@ -168,6 +179,14 @@ class ArchiveServiceTest {
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 7)).isEqualTo("Rechnung_2027-11_7_2.pdf");
         assertThat(ArchiveService.unique(names, "Rechnung_2027-11.pdf", 8)).isEqualTo("Rechnung_2027-11_8.pdf");
         assertThat(names).hasSize(4);
+    }
+
+    @Test
+    void growsTheArchiveInTheTemporaryFolderOfJava() throws IOException {
+        when(invoices.list()).thenReturn(List.of());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new ArchiveService(invoices, documents, businessDocuments, integrity).write(2020, out);
+        assertThat(unzip(out.toByteArray())).containsOnlyKeys("Inhalt.csv");
     }
 
     @Test

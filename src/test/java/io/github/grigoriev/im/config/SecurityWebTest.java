@@ -1614,7 +1614,7 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("href=\"/invoices/6\">Rechnung 2027-10</a>")));
         when(backupRuns.status()).thenReturn(new BackupStatus(null, null, true, true));
         mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN")))
-                .andExpect(content().string(Matchers.containsString("1 Rechnungen oder Dokumente abweichend")));
+                .andExpect(content().string(Matchers.containsString("Abweichungen: 1, siehe Übersicht")));
         when(monitor.last()).thenReturn(Optional.of(new IntegrityMonitor.Result(Instant.EPOCH, List.of())));
         mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN")))
                 .andExpect(content().string(Matchers.containsString("Alles in Ordnung")))
