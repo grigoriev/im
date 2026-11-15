@@ -74,7 +74,7 @@ was created for. Each user adds passkeys on the page "Mein Konto". The admin can
 Sending invoices by e-mail needs an SMTP server: `IM_SMTP_HOST`, `IM_SMTP_PORT` (587), `IM_SMTP_USERNAME`,
 `IM_SMTP_PASSWORD`, `IM_SMTP_STARTTLS` (`true`), the sender `IM_MAIL_FROM` and an optional blind copy
 `IM_MAIL_BCC`. Without `IM_SMTP_HOST` and `IM_MAIL_FROM` the app sends nothing, and the user records each
-dispatch by hand. The admin sets the default e-mail text and the text of a payment reminder on "E-Mail".
+dispatch by hand. Both roles set the default e-mail text and the text of a payment reminder on "E-Mail".
 
 The app takes uploads up to 4 GB for the backup import. A reverse proxy should allow that size for
 `/admin/backup/import` only and about 32 MB for the rest: the largest document has 25 MB.

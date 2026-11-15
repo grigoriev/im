@@ -244,7 +244,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 
 1. Send from the app: SMTP (Fastmail) with the PDF, the XML, or both. ZUGFeRD sends the PDF by default, XRechnung both.
 2. The SMTP server comes from the environment (`IM_SMTP_*`, `IM_MAIL_*`), so its password stays outside the database.
-   The admin sets the default e-mail text in the admin panel. An invoice remembers its template, whose e-mail text overrides the default.
+   The owner sets the default e-mail text under "Einstellungen", "E-Mail" (both roles, decision 2026-11-15). An invoice remembers its template, whose e-mail text overrides the default.
 3. Mark as sent by hand: date, recipient, optional note. This covers sending from her own mail program.
 4. Each dispatch shows in the invoice history. The history holds the entries of the audit log for the invoice.
 5. The e-mail has two parts with the same text: plain text as typed, and HTML. The HTML adds a box with date, amount,
@@ -258,7 +258,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 3. Overview of open and overdue invoices, with the day of the last payment reminder.
 4. Payment reminder (decision 2026-11-15: a simple reminder, no fees or interest): an invoice with money open gets a
    reminder by e-mail from the app, with the open amount and the PDF, or one noted by hand with its day and a note
-   (phone, letter). Reminders are written once and form the history; the invoice stays as issued. The admin sets the
+   (phone, letter). Reminders are written once and form the history; the invoice stays as issued. Both roles set the
    reminder text on "E-Mail", with the placeholder `{Offener Betrag}`. A reminder does not put the customer in default
    on purpose: §286 BGB, fees and interest stay a manual step.
 

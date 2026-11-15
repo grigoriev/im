@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The text of the e-mail with an invoice. The admin sets the default; a template overrides it per field. The
+ * The text of the e-mail with an invoice. The owner sets the default; a template overrides it per field. The
  * placeholders of the invoice texts work here too.
  */
 @Service
@@ -74,7 +74,7 @@ public class MailTextService {
     /**
      * Returns the default text, with its placeholders.
      *
-     * @return the text the admin set, or the built-in one
+     * @return the text set on "E-Mail", or the built-in one
      */
     public MailText defaults() {
         return new MailText(read(SUBJECT_KEY).orElse(DEFAULT_SUBJECT), read(BODY_KEY).orElse(DEFAULT_BODY));
@@ -95,7 +95,7 @@ public class MailTextService {
     /**
      * Returns the default text of a payment reminder, with its placeholders.
      *
-     * @return the text the admin set, or the built-in one
+     * @return the text set on "E-Mail", or the built-in one
      */
     public MailText reminderDefaults() {
         return new MailText(read(REMINDER_SUBJECT_KEY).orElse(DEFAULT_REMINDER_SUBJECT),

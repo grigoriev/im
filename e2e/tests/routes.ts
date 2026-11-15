@@ -18,7 +18,7 @@ export const ROUTES = [
   { name: 'settings', path: '/settings', anonymous: false },
   { name: 'tax-notes', path: '/admin/tax-notes', anonymous: false },
   { name: 'numbers', path: '/admin/numbers', anonymous: false },
-  { name: 'mail', path: '/admin/mail', anonymous: false },
+  { name: 'mail', path: '/settings/mail', anonymous: false },
   { name: 'baseline', path: '/admin/baselines', anonymous: false },
   { name: 'backup', path: '/admin/backup', anonymous: false },
   { name: 'countries', path: '/admin/countries', anonymous: false },

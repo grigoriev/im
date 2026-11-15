@@ -129,7 +129,7 @@ test('a user edits the profile but not the tax notes', async ({ page, browser })
   await expect(user.getByRole('tab', { name: /Steuerhinweise/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Nummernkreis/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Länder/ })).toHaveCount(0);
-  await expect(user.getByRole('tab', { name: /E-Mail/ })).toHaveCount(0);
+  await expect(user.getByRole('tab', { name: 'E-Mail' }), 'the owner writes her e-mail texts').toBeVisible();
   await expect(user.getByRole('tab', { name: /Vorjahre/ })).toHaveCount(0);
   await expect(user.getByRole('tab', { name: /Datensicherung/ })).toHaveCount(0);
   const response = await user.goto('/admin/tax-notes');
