@@ -21,6 +21,7 @@ import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import jakarta.mail.Message;
 import jakarta.mail.Multipart;
@@ -28,6 +29,7 @@ import jakarta.mail.Part;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -50,6 +52,7 @@ class MailServiceTest {
     private final DispatchService dispatches = mock(DispatchService.class);
     private final DocumentStore documents = mock(DocumentStore.class);
     private final MailTextService texts = mock(MailTextService.class);
+    private final ReminderService reminders = mock(ReminderService.class);
 
     private static Invoice invoice(InvoiceFormat format) {
         return new Invoice(5L, InvoiceStatus.ISSUED, 2L, "2027-07", format, DAY, DAY, DAY, 14, null, null, null, null,
@@ -71,13 +74,16 @@ class MailServiceTest {
     }
 
     private MailService service(MailProperties properties) {
-        return new MailService(properties, sender, dispatches, documents, texts, new MailHtml(SampleInvoices.templates()));
+        return new MailService(properties, sender, dispatches, documents, texts, new MailHtml(SampleInvoices.templates()),
+                reminders);
     }
 
     @BeforeEach
     void stored() {
         when(sender.createMimeMessage()).thenAnswer(call -> new MimeMessage(Session.getInstance(new Properties())));
         when(dispatches.sendable(5)).thenReturn(invoice(InvoiceFormat.ZUGFERD_EN16931));
+        when(reminders.remindable(5)).thenReturn(invoice(InvoiceFormat.ZUGFERD_EN16931));
+        when(reminders.open(any())).thenReturn(new BigDecimal("80.00"));
         when(documents.find(5, DocumentKind.PDF)).thenReturn(Optional.of(file(DocumentKind.PDF, new byte[] {'%', 'P'})));
         when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.find(5, DocumentKind.XML)).thenReturn(Optional.of(file(DocumentKind.XML, "<x/>".getBytes())));
@@ -238,6 +244,51 @@ class MailServiceTest {
     void previewsTheHtmlOfTheTextAsTyped() {
         String page = service(ON).preview(5, form(null, " Rechnung 2027-07 ", "Hallo <Welt>", true, false));
         assertThat(page).contains("<title>Rechnung 2027-07</title>").contains("<span>Hallo &lt;Welt&gt;</span>");
+        verify(sender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void sendsAReminderWithTheOpenAmountAndRecordsIt() throws Exception {
+        service(ON).sendReminder(5, form("a@b.example", " Zahlungserinnerung ", "Bitte zahlen.", true, false));
+        MimeMessage message = sent();
+        message.saveChanges();
+        assertThat(message.getSubject()).isEqualTo("Zahlungserinnerung");
+        List<Part> parts = parts(message);
+        assertThat(parts).extracting(Part::getFileName).containsExactly(null, "Rechnung_2027-07.pdf");
+        assertThat((String) text(parts.get(0), "text/html")).contains(">Offener Betrag</td>").contains(">80,00\u00a0€</td>")
+                .contains(">Fällig am</td>").doesNotContain(">Zahlbar bis</td>");
+        assertThat((String) text(parts.get(0))).startsWith("Bitte zahlen.\nElena Sommer");
+        verify(reminders).recordEmail(5, "a@b.example");
+        verify(dispatches, never()).recordEmail(anyLong(), anyString(), anyString());
+    }
+
+    @Test
+    void aReminderChecksItsFormAndSaysWhenItsRecordFails() {
+        assertThatThrownBy(() -> service(ON).sendReminder(5, form("keine-adresse", "Betreff", "Text", true, false)))
+                .hasMessage("Bitte eine gültige E-Mail-Adresse angeben.");
+        verify(sender, never()).send(any(MimeMessage.class));
+        doThrow(new InvoiceException(List.of("Für diese Rechnung ist nichts offen."))).when(reminders)
+                .recordEmail(5, "a@b.example");
+        assertThatThrownBy(() -> service(ON).sendReminder(5, form("a@b.example", "Betreff", "Text", true, false)))
+                .hasMessage(MailService.REMINDER_NOT_RECORDED);
+        MailService off = service(new MailProperties("", 587, "", "", true, "", ""));
+        assertThatThrownBy(() -> off.sendReminder(5, form("a@b.example", "Betreff", "Text", true, false)))
+                .hasMessage(MailService.NOT_CONFIGURED);
+    }
+
+    @Test
+    void fillsAndPreviewsAReminder() {
+        Invoice invoice = invoice(InvoiceFormat.XRECHNUNG);
+        when(texts.forReminder(invoice, new BigDecimal("80.00"))).thenReturn(new MailText("Erinnerung", "Bitte"));
+        SendForm form = service(ON).reminderForm(invoice, "a@b.example");
+        assertThat(form.getTo()).isEqualTo("a@b.example");
+        assertThat(form.getSubject()).isEqualTo("Erinnerung");
+        assertThat(form.getBody()).isEqualTo("Bitte");
+        assertThat(form.isPdf()).isTrue();
+        assertThat(form.isXml()).as("a reminder attaches the PDF only").isFalse();
+        String page = service(ON).previewReminder(5, form(null, " Erinnerung ", "Bitte <zahlen>", true, false));
+        assertThat(page).contains("<title>Erinnerung</title>").contains("<span>Bitte &lt;zahlen&gt;</span>")
+                .contains(">80,00\u00a0€</td>");
         verify(sender, never()).send(any(MimeMessage.class));
     }
 }

@@ -17,6 +17,7 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
   record.
 - Cancellation by a Stornorechnung: a validated credit note with its own number that names the cancelled invoice.
 - Payments and refunds by the day the money came in, which the income report and the threshold use.
+- Payment reminders for open invoices: by e-mail with the open amount, or noted by hand, with their history.
 - Issued PDF and XML stay in the database with their SHA-256, so one `pg_dump` backs up everything.
 - A store of business documents: the Verfahrensdokumentation, tax assessments, letters, certificates and contracts.
   Every file stays, a new version replaces it in the list, and the yearly archive takes them along. The app writes
@@ -53,7 +54,7 @@ was created for. Each user adds passkeys on the page "Mein Konto". The admin can
 Sending invoices by e-mail needs an SMTP server: `IM_SMTP_HOST`, `IM_SMTP_PORT` (587), `IM_SMTP_USERNAME`,
 `IM_SMTP_PASSWORD`, `IM_SMTP_STARTTLS` (`true`), the sender `IM_MAIL_FROM` and an optional blind copy
 `IM_MAIL_BCC`. Without `IM_SMTP_HOST` and `IM_MAIL_FROM` the app sends nothing, and the user records each
-dispatch by hand. The admin sets the default e-mail text on "E-Mail".
+dispatch by hand. The admin sets the default e-mail text and the text of a payment reminder on "E-Mail".
 
 The app takes uploads up to 4 GB for the backup import. A reverse proxy should allow that size for
 `/admin/backup/import` only and about 32 MB for the rest: the largest document has 25 MB.

@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- Zahlungserinnerung: an issued invoice with money open gets a reminder by e-mail, with the open amount, the due date and the PDF, and a preview; or the user notes a reminder given by phone or letter with its day and a note. Every reminder stays in the history of the invoice and in the log; none changes or goes away. "Übersicht" shows the day of the last reminder of an overdue invoice. The admin sets the reminder text on "E-Mail", with the placeholder {Offener Betrag}.
+
 ### Changed
 
 - The name follows "Mit freundlichen Grüßen" on the next line, in the PDF and in the e-mail, without a paragraph between. The HTML e-mail puts the greeting with the name below the box with the facts, the address at its foot.

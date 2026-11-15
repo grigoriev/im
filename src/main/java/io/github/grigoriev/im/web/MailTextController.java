@@ -17,6 +17,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class MailTextController {
 
     static final String VIEW = "settings/mail";
+    private static final String SUBJECT = "subject";
+    private static final String BODY = "body";
+    private static final String ERROR = "error";
+    private static final String SUCCESS = "success";
+    private static final String BACK = "redirect:/admin/mail";
 
     private final MailTextService texts;
 
@@ -38,9 +43,16 @@ public class MailTextController {
     @GetMapping
     public String show(Model model) {
         MailText text = texts.defaults();
-        model.addAttribute("subject", text.subject());
-        model.addAttribute("body", text.body());
+        model.addAttribute(SUBJECT, text.subject());
+        model.addAttribute(BODY, text.body());
+        reminder(model);
         return VIEW;
+    }
+
+    private void reminder(Model model) {
+        MailText reminder = texts.reminderDefaults();
+        model.addAttribute("reminderSubject", reminder.subject());
+        model.addAttribute("reminderBody", reminder.body());
     }
 
     /**
@@ -58,12 +70,40 @@ public class MailTextController {
         try {
             texts.save(subject, body);
         } catch (SettingsException e) {
-            model.addAttribute("error", e.getMessage());
-            model.addAttribute("subject", subject);
-            model.addAttribute("body", body);
+            model.addAttribute(ERROR, e.getMessage());
+            model.addAttribute(SUBJECT, subject);
+            model.addAttribute(BODY, body);
+            reminder(model);
             return VIEW;
         }
-        flash.addFlashAttribute("success", "E-Mail-Text gespeichert.");
-        return "redirect:/admin/mail";
+        flash.addFlashAttribute(SUCCESS, "E-Mail-Text gespeichert.");
+        return BACK;
+    }
+
+    /**
+     * Saves the default text of a payment reminder.
+     *
+     * @param subject the subject
+     * @param body the text
+     * @param model the page model
+     * @param flash messages for the next page
+     * @return a redirect to the page, or the page with the problems
+     */
+    @PostMapping("/reminder")
+    public String saveReminder(@RequestParam(required = false) String subject,
+            @RequestParam(required = false) String body, Model model, RedirectAttributes flash) {
+        try {
+            texts.saveReminder(subject, body);
+        } catch (SettingsException e) {
+            MailText text = texts.defaults();
+            model.addAttribute(ERROR, e.getMessage());
+            model.addAttribute(SUBJECT, text.subject());
+            model.addAttribute(BODY, text.body());
+            model.addAttribute("reminderSubject", subject);
+            model.addAttribute("reminderBody", body);
+            return VIEW;
+        }
+        flash.addFlashAttribute(SUCCESS, "Text der Zahlungserinnerung gespeichert.");
+        return BACK;
     }
 }

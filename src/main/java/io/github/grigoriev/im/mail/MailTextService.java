@@ -2,11 +2,13 @@ package io.github.grigoriev.im.mail;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceTemplate;
 import io.github.grigoriev.im.invoice.Placeholders;
 import io.github.grigoriev.im.seller.SettingsException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +32,19 @@ public class MailTextService {
             anbei erhalten Sie meine Rechnung {Rechnungsnummer} vom {Rechnungsdatum}, zahlbar bis {Zahlungsziel}.
 
             Mit freundlichen Grüßen""";
+    static final String REMINDER_SUBJECT_KEY = "reminder-subject";
+    static final String REMINDER_BODY_KEY = "reminder-body";
+    static final String DEFAULT_REMINDER_SUBJECT = "Zahlungserinnerung zur Rechnung {Rechnungsnummer}";
+    static final String DEFAULT_REMINDER_BODY = """
+            Sehr geehrte Damen und Herren,
+
+            meine Rechnung {Rechnungsnummer} vom {Rechnungsdatum} war am {Zahlungsziel} fällig. Offen sind noch \
+            {Offener Betrag}. Bitte überweisen Sie den Betrag in den nächsten Tagen.
+
+            Falls sich Ihre Zahlung mit dieser E-Mail überschnitten hat, betrachten Sie sie bitte als gegenstandslos.
+
+            Mit freundlichen Grüßen""";
+    static final String OPEN_AMOUNT = "{Offener Betrag}";
     static final int MAX_SUBJECT = 200;
     static final int MAX_BODY = 4000;
 
@@ -74,6 +89,49 @@ public class MailTextService {
      */
     @Transactional
     public void save(String subject, String body) {
+        save(subject, body, SUBJECT_KEY, BODY_KEY, new MailText(DEFAULT_SUBJECT, DEFAULT_BODY), "");
+    }
+
+    /**
+     * Returns the default text of a payment reminder, with its placeholders.
+     *
+     * @return the text the admin set, or the built-in one
+     */
+    public MailText reminderDefaults() {
+        return new MailText(read(REMINDER_SUBJECT_KEY).orElse(DEFAULT_REMINDER_SUBJECT),
+                read(REMINDER_BODY_KEY).orElse(DEFAULT_REMINDER_BODY));
+    }
+
+    /**
+     * Saves the default text of a payment reminder. A blank field or the built-in text goes back to the built-in one.
+     *
+     * @param subject the subject
+     * @param body the text
+     * @throws SettingsException if a field is too long
+     */
+    @Transactional
+    public void saveReminder(String subject, String body) {
+        save(subject, body, REMINDER_SUBJECT_KEY, REMINDER_BODY_KEY,
+                new MailText(DEFAULT_REMINDER_SUBJECT, DEFAULT_REMINDER_BODY), "Zahlungserinnerung");
+    }
+
+    /**
+     * Returns the text of a payment reminder with the placeholders filled in, the open amount among them.
+     *
+     * @param invoice the issued invoice
+     * @param open what it still waits for
+     * @return the text to send
+     */
+    public MailText forReminder(Invoice invoice, BigDecimal open) {
+        MailText defaults = reminderDefaults();
+        Placeholders values = Placeholders.of(invoice, invoice.number());
+        String amount = new InvoicePdfRenderer.Formatter().money(open);
+        return new MailText(values.fill(defaults.subject().replace(OPEN_AMOUNT, amount)),
+                values.fill(defaults.body().replace(OPEN_AMOUNT, amount)));
+    }
+
+    private void save(String subject, String body, String subjectKey, String bodyKey, MailText builtIn,
+            String detail) {
         String newSubject = subject == null ? "" : subject.strip();
         String newBody = body == null ? "" : body.strip().replace("\r\n", "\n");
         List<String> problems = new ArrayList<>();
@@ -86,9 +144,9 @@ public class MailTextService {
         if (!problems.isEmpty()) {
             throw new SettingsException(problems);
         }
-        write(SUBJECT_KEY, newSubject, DEFAULT_SUBJECT);
-        write(BODY_KEY, newBody, DEFAULT_BODY);
-        audit.add(AuditAction.MAIL_TEXT_SAVED, "");
+        write(subjectKey, newSubject, builtIn.subject());
+        write(bodyKey, newBody, builtIn.body());
+        audit.add(AuditAction.MAIL_TEXT_SAVED, detail);
     }
 
     /**

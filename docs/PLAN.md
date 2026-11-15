@@ -144,6 +144,7 @@ Not chosen:
 | `Document` | Generated PDF or XML: type, file name, content (in the database), SHA-256, size. Written once |
 | `Dispatch` | When, to whom, channel (`EMAIL_APP`, or by hand: `OWN_MAIL`, `POST`, `PORTAL`, `IN_PERSON`), by which user, note. Written once |
 | `Payment` | Date, amount, note. A negative amount is a refund |
+| `Reminder` | Payment reminder: day, channel (`EMAIL_APP` or `MANUAL`), recipient, note, by which user. Written once |
 | `NumberSequence` | Format pattern, year, last number |
 | `ThresholdBaseline` | Revenue counted for §19 in a year before the system existed |
 | `Setting` | Key-value settings: SMTP, texts, defaults |
@@ -246,7 +247,12 @@ The admin edits the default tax notes. A template and an invoice can override th
 
 1. Record a payment: date and amount. Partial payments are allowed.
 2. Record a refund after a Stornorechnung: a payment with a negative amount.
-3. Overview of open and overdue invoices.
+3. Overview of open and overdue invoices, with the day of the last payment reminder.
+4. Payment reminder (decision 2026-11-15: a simple reminder, no fees or interest): an invoice with money open gets a
+   reminder by e-mail from the app, with the open amount and the PDF, or one noted by hand with its day and a note
+   (phone, letter). Reminders are written once and form the history; the invoice stays as issued. The admin sets the
+   reminder text on "E-Mail", with the placeholder `{Offener Betrag}`. A reminder does not put the customer in default
+   on purpose: §286 BGB, fees and interest stay a manual step.
 
 ### Threshold tracking
 

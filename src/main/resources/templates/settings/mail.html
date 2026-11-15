@@ -29,6 +29,23 @@
       </label>
       <div class="form-actions"><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
+
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" th:action="@{/admin/mail/reminder}" method="post" id="reminder-text">
+      <div>
+        <h2 class="font-semibold">Zahlungserinnerung</h2>
+        <p class="text-sm text-base-content/75">Vorgabe für eine Erinnerung an eine offene Rechnung. Ein leeres Feld stellt den
+          ursprünglichen Text wieder her.</p>
+        <p class="text-sm text-base-content/75">Platzhalter: <code>{Rechnungsnummer}</code>, <code>{Rechnungsdatum}</code>,
+          <code>{Leistungszeitraum}</code>, <code>{Zahlungsziel}</code>, <code>{Offener Betrag}</code>.</p>
+      </div>
+      <label class="floating-label"><span>Betreff</span>
+        <input id="reminder-subject" name="subject" class="input w-full" maxlength="200" th:value="${reminderSubject}">
+      </label>
+      <label class="floating-label"><span>Text</span>
+        <textarea id="reminder-body" name="body" class="textarea w-full h-48" maxlength="4000" th:text="${reminderBody}">Text</textarea>
+      </label>
+      <div class="form-actions"><button type="submit" class="btn btn-primary" id="reminder-text-save"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
+    </form>
   </div>
 </div>
 </body>

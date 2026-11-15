@@ -6,6 +6,7 @@ import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.validation.Fields;
 import jakarta.mail.MessagingException;
@@ -33,6 +34,8 @@ public class MailService {
             + "von Hand vermerken.";
     static final String NOT_RECORDED = "Die E-Mail ist raus, aber der Versand ließ sich nicht vermerken. Bitte den "
             + "Versand von Hand vermerken.";
+    static final String REMINDER_NOT_RECORDED = "Die Erinnerung ist raus, aber sie ließ sich nicht vermerken. Bitte "
+            + "die Erinnerung von Hand vermerken.";
     static final int MAX_SUBJECT = 200;
     static final int MAX_BODY = 4000;
 
@@ -44,6 +47,7 @@ public class MailService {
     private final DocumentStore documents;
     private final MailTextService texts;
     private final MailHtml html;
+    private final ReminderService reminders;
 
     /**
      * Creates the service.
@@ -54,15 +58,17 @@ public class MailService {
      * @param documents the stored PDF and XML
      * @param texts the text of the e-mail
      * @param html writes the HTML of the e-mail
+     * @param reminders checks and records a payment reminder
      */
     public MailService(MailProperties properties, JavaMailSender sender, DispatchService dispatches,
-            DocumentStore documents, MailTextService texts, MailHtml html) {
+            DocumentStore documents, MailTextService texts, MailHtml html, ReminderService reminders) {
         this.properties = properties;
         this.sender = sender;
         this.dispatches = dispatches;
         this.documents = documents;
         this.texts = texts;
         this.html = html;
+        this.reminders = reminders;
     }
 
     /**
@@ -118,6 +124,83 @@ public class MailService {
             throw new InvoiceException(List.of(NOT_CONFIGURED));
         }
         Invoice invoice = dispatches.sendable(invoiceId);
+        Outgoing mail = outgoing(invoiceId, form);
+        InvoiceDocument document = documents.restore(invoice.snapshot());
+        deliver(invoice, mail, html.render(document, mail.subject(), mail.body()), MailHtml.plain(document, mail.body()));
+        try {
+            dispatches.recordEmail(invoiceId, mail.to(), mail.attachmentNames());
+        } catch (RuntimeException e) {
+            LOG.warn("Invoice {} went to {}, but its dispatch was not recorded", invoice.number(), mail.to(), e);
+            throw new InvoiceException(List.of(NOT_RECORDED));
+        }
+    }
+
+    /**
+     * Returns the form of a payment reminder: the buyer's address, the reminder text with the open amount, and the PDF.
+     *
+     * @param invoice the issued invoice that waits for its money
+     * @param buyerEmail the buyer's address from the snapshot, may be {@code null}
+     * @return the filled form
+     */
+    public SendForm reminderForm(Invoice invoice, String buyerEmail) {
+        MailText text = texts.forReminder(invoice, reminders.open(invoice));
+        SendForm form = new SendForm();
+        form.setTo(buyerEmail);
+        form.setSubject(text.subject());
+        form.setBody(text.body());
+        form.setPdf(true);
+        return form;
+    }
+
+    /**
+     * Shows a payment reminder as the customer sees it. It checks nothing and sends nothing.
+     *
+     * @param invoiceId the invoice
+     * @param form the entered values
+     * @return the HTML
+     * @throws InvoiceException if the invoice waits for nothing
+     */
+    public String previewReminder(long invoiceId, SendForm form) {
+        Invoice invoice = reminders.remindable(invoiceId);
+        return html.renderReminder(documents.restore(invoice.snapshot()), Fields.text(form.getSubject()), form.getBody(),
+                reminders.open(invoice));
+    }
+
+    /**
+     * Sends a payment reminder with the invoice attached and records it.
+     *
+     * @param invoiceId the invoice
+     * @param form the entered values
+     * @throws InvoiceException if sending is not set up, the invoice waits for nothing, a value is wrong or the send
+     *     fails
+     */
+    public void sendReminder(long invoiceId, SendForm form) {
+        if (!configured()) {
+            throw new InvoiceException(List.of(NOT_CONFIGURED));
+        }
+        Invoice invoice = reminders.remindable(invoiceId);
+        Outgoing mail = outgoing(invoiceId, form);
+        InvoiceDocument document = documents.restore(invoice.snapshot());
+        deliver(invoice, mail, html.renderReminder(document, mail.subject(), mail.body(), reminders.open(invoice)),
+                MailHtml.plain(document, mail.body()));
+        try {
+            reminders.recordEmail(invoiceId, mail.to());
+        } catch (RuntimeException e) {
+            LOG.warn("The reminder of invoice {} went to {}, but was not recorded", invoice.number(), mail.to(), e);
+            throw new InvoiceException(List.of(REMINDER_NOT_RECORDED));
+        }
+    }
+
+    /** A checked e-mail: address, subject, text and the stored documents to attach. */
+    private record Outgoing(String to, String subject, String body, List<StoredDocument> attachments) {
+
+        String attachmentNames() {
+            return String.join(", ", attachments.stream().map(file -> file.kind().name()).toList());
+        }
+    }
+
+    /** Checks the entered values and gathers the attachments. */
+    private Outgoing outgoing(long invoiceId, SendForm form) {
         String to = Fields.text(form.getTo());
         String subject = Fields.text(form.getSubject());
         String body = form.getBody() == null || form.getBody().isBlank() ? null : form.getBody().strip();
@@ -138,20 +221,15 @@ public class MailService {
         if (!problems.isEmpty()) {
             throw new InvoiceException(problems);
         }
+        return new Outgoing(to, subject, body, attachments);
+    }
+
+    private void deliver(Invoice invoice, Outgoing mail, String htmlBody, String plainBody) {
         try {
-            InvoiceDocument document = documents.restore(invoice.snapshot());
-            sender.send(message(to, subject, MailHtml.plain(document, body), html.render(document, subject, body),
-                    attachments));
+            sender.send(message(mail.to(), mail.subject(), plainBody, htmlBody, mail.attachments()));
         } catch (MailException | MessagingException e) {
-            LOG.warn("Sending invoice {} to {} failed: {}", invoice.number(), to, e.getMessage());
+            LOG.warn("Sending invoice {} to {} failed: {}", invoice.number(), mail.to(), e.getMessage());
             throw new InvoiceException(List.of(FAILED));
-        }
-        try {
-            dispatches.recordEmail(invoiceId, to,
-                    String.join(", ", attachments.stream().map(file -> file.kind().name()).toList()));
-        } catch (RuntimeException e) {
-            LOG.warn("Invoice {} went to {}, but its dispatch was not recorded", invoice.number(), to, e);
-            throw new InvoiceException(List.of(NOT_RECORDED));
         }
     }
 

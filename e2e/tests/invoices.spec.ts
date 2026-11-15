@@ -210,6 +210,60 @@ test('issues an invoice with its number and documents', async ({ page }) => {
     .toBeLessThanOrEqual(375);
 });
 
+test('reminds of an open invoice by hand and by e-mail and keeps the history', async ({ page }) => {
+  await ensureProfile(page);
+  const customer = await newCustomer(page, `Erinnerungskunde ${randomUUID().slice(0, 8)}`);
+  await page.goto('/invoices');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+  await page.locator('#line-0-text').fill('Lesung');
+  await page.locator('#line-0-amount').fill('300');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  const number = (await page.locator('#invoice-number').textContent())!.trim().replace(/^Rechnung /, '');
+  await expect(page.locator('#invoice-reminders'), 'no reminder yet').toHaveCount(0);
+
+  await page.getByText('Zahlungserinnerung…').click();
+  await page.locator('#reminder-note').fill('telefonisch erinnert');
+  await page.locator('#invoice-reminder').getByRole('button', { name: 'Vermerken' }).click();
+  await expect(page.getByRole('status')).toHaveText('Erinnerung vermerkt.');
+  await expect(page.locator('#invoice-status'), 'a reminder changes nothing of the invoice').toHaveText('Ausgestellt');
+  await expect(page.locator('#invoice-reminders li')).toHaveCount(1);
+  await expect(page.locator('#invoice-reminders')).toContainText('telefonisch erinnert');
+  await expect(page.locator('#invoice-history li').last()).toContainText('Zahlungserinnerung vermerkt');
+  await expect(page.locator('#invoice-history li').last()).toContainText('Von Hand vermerkt, Notiz: telefonisch erinnert');
+
+  const address = `erinnerung-${randomUUID().slice(0, 8)}@kunde.example`;
+  await page.getByText('Zahlungserinnerung…').click();
+  await expect(page.locator('#reminder-subject')).toHaveValue(`Zahlungserinnerung zur Rechnung ${number}`);
+  await expect(page.locator('#reminder-body')).toContainText('Offen sind noch 300,00');
+  await expect(page.locator('#reminder-pdf')).toBeChecked();
+  const [preview] = await Promise.all([
+    page.waitForEvent('popup'),
+    page.locator('#reminder-preview').click(),
+  ]);
+  await expect(preview.locator('body')).toContainText('Offener Betrag');
+  await expect(preview.locator('body')).toContainText('300,00');
+  await preview.close();
+  await page.locator('#reminder-to').fill(address);
+  await page.getByRole('button', { name: 'Erinnerung senden' }).click();
+  await expect(page.getByRole('status')).toHaveText(`Zahlungserinnerung an ${address} gesendet.`);
+  await expect(page.locator('#invoice-reminders li')).toHaveCount(2);
+  await expect(page.locator('#invoice-reminders li').last()).toContainText(`E-Mail aus der App an ${address}`);
+  await expect(page.locator('#invoice-status'), 'a reminder is no dispatch').toHaveText('Ausgestellt');
+  const inbox = await (await page.request.get(`http://mail:8080/api/user/${address}/messages/INBOX`)).json();
+  expect(inbox).toHaveLength(1);
+  expect(inbox[0].subject).toBe(`Zahlungserinnerung zur Rechnung ${number}`);
+  expect(inbox[0].mimeMessage).toContain(`filename=Rechnung_${number}.pdf`);
+
+  await page.getByText('Zahlung erfassen…').click();
+  await page.getByRole('button', { name: 'Erfassen' }).click();
+  await expect(page.getByRole('status')).toHaveText('Zahlung erfasst. Die Rechnung ist bezahlt.');
+  await expect(page.getByText('Zahlungserinnerung…'), 'nothing open, no reminder').toHaveCount(0);
+  await expect(page.locator('#invoice-reminders li'), 'the history stays').toHaveCount(2);
+});
+
 test('cancels an invoice with a Stornorechnung', async ({ page }) => {
   await ensureProfile(page);
   const customer = await newCustomer(page, `Stornokunde ${randomUUID().slice(0, 8)}`);
