@@ -59,7 +59,8 @@ class InvoicePdfRendererTest {
                 .contains("480,00\u00a0€")
                 .contains("Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1")
                 .contains("DE02 1203 0000 0000 2020 51")
-                .contains("Bitte überweisen Sie den Betrag bis zum 01.04.2027.")
+                .contains("Tel. +49 89 1234567")
+                .contains("Bitte überweisen Sie den Rechnungsbetrag von 480,00\u00a0€ bis zum 01.04.2027.")
                 .contains("vielen Dank für Ihren Auftrag.")
                 .contains("Mit freundlichen Grüßen")
                 .doesNotContain("Käuferreferenz")
@@ -104,8 +105,21 @@ class InvoicePdfRendererTest {
         InvoiceDocument dutch = SampleInvoices.invoice(SampleInvoices.SELLER_EU, SampleInvoices.DUTCH, "REF-1",
                 InvoiceFormat.XRECHNUNG, SampleInvoices.line("Workshop", "1", "600.00", TaxCategory.REVERSE_CHARGE_EU));
         String text = text(renderer.render(dutch));
-        assertThat(text).contains("NL").contains("USt-IdNr. NL123456789B01").contains("Käuferreferenz REF-1")
-                .contains("USt-IdNr. DE123456789").contains("Steuernummer 143/123/45678");
+        assertThat(text).contains("NIEDERLANDE").contains("Ihre USt-IdNr. NL123456789B01")
+                .contains("Käuferreferenz REF-1").contains("USt-IdNr. DE123456789").contains("Steuernummer 143/123/45678");
+    }
+
+    @Test
+    void namesTheXmlAsTheInvoice() throws IOException {
+        String zugferd = "Elektronische Rechnung im Format ZUGFeRD. Diese PDF-Datei enthält die Rechnungsdaten als XML; "
+                + "maßgeblich sind die XML-Daten.";
+        String copy = "Lesefassung der elektronischen Rechnung im Format XRechnung. Maßgeblich ist die XML-Datei.";
+        for (InvoiceFormat format : List.of(InvoiceFormat.ZUGFERD_EN16931, InvoiceFormat.ZUGFERD_XRECHNUNG)) {
+            assertThat(text(renderer.render(SampleInvoices.reading(format))).replaceAll("\\s+", " ")).contains(zugferd)
+                    .doesNotContain("Lesefassung");
+        }
+        assertThat(text(renderer.render(SampleInvoices.reading(InvoiceFormat.XRECHNUNG))).replaceAll("\\s+", " "))
+                .contains(copy).doesNotContain("Format ZUGFeRD");
     }
 
     @Test
@@ -158,6 +172,8 @@ class InvoicePdfRendererTest {
         assertThat(fmt.date(LocalDate.of(2027, 3, 8))).isEqualTo("08.03.2027");
         assertThat(fmt.period(LocalDate.of(2027, 3, 8), LocalDate.of(2027, 3, 8))).isEqualTo("08.03.2027");
         assertThat(fmt.period(LocalDate.of(2027, 3, 1), LocalDate.of(2027, 3, 31))).isEqualTo("01.03.2027 bis 31.03.2027");
+        assertThat(fmt.country("AT")).isEqualTo("ÖSTERREICH");
+        assertThat(fmt.country("GR")).isEqualTo("GRIECHENLAND");
         assertThat(fmt.iban("DE02120300000000202051")).isEqualTo("DE02 1203 0000 0000 2020 51");
         assertThat(fmt.iban("DE021203")).isEqualTo("DE02 1203");
         assertThat(fmt.percent(new BigDecimal("19"))).isEqualTo("19\u00a0%");

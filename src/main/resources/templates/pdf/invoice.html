@@ -15,11 +15,15 @@
     .footer td.page { width: 16%; padding-right: 0; text-align: right; white-space: nowrap; }
     .footer .page-number:before { content: counter(page); }
     .footer .page-count:before { content: counter(pages); }
-    .sender { font-size: 7pt; color: #616e7c; margin-bottom: 2mm; }
-    .head { width: 100%; margin-bottom: 12mm; }
-    .head td { vertical-align: top; }
+    /* DIN 5008, form B, for a window envelope: the address field starts 45 mm from the top edge and is 85 mm wide.
+       Its first 17.7 mm hold the sender line at their bottom, the address follows. The information block on the
+       right starts at 50 mm. The page margin and the first line box take about 25.5 mm. */
+    .head { width: 100%; margin-bottom: 10mm; }
+    .head td { vertical-align: top; padding: 24.5mm 0 0 0; }
+    .head td.address { width: 85mm; padding-top: 33.3mm; }
+    .sender { font-size: 7pt; line-height: 3.9mm; color: #616e7c; white-space: nowrap; overflow: hidden; }
     .meta { text-align: right; font-size: 8.5pt; margin-left: auto; }
-    .meta td { padding: 0 0 0.6mm 4mm; }
+    .meta td { padding: 0 0 0.6mm 4mm; white-space: nowrap; }
     h1 { font-size: 14pt; font-weight: 600; margin: 0 0 5mm 0; }
     .lines { width: 100%; border-collapse: collapse; margin: 5mm 0; -fs-table-paginate: paginate; }
     .lines tr { page-break-inside: avoid; }
@@ -30,6 +34,7 @@
     .total td { border-bottom: 0; font-weight: 600; padding-top: 2.5mm; }
     .note { white-space: pre-line; margin-top: 4mm; }
     .strong { font-weight: 600; }
+    .e-invoice { margin-top: 8mm; font-size: 7pt; color: #616e7c; }
   </style>
 </head>
 <body>
@@ -37,21 +42,19 @@
     <tr>
       <td><span th:text="${invoice.seller.name}">Name</span><br/><span th:text="${invoice.seller.street}">Straße</span><br/><span th:text="${invoice.seller.postcode + ' ' + invoice.seller.city}">Ort</span></td>
       <td class="bank">IBAN <span th:text="${fmt.iban(invoice.iban)}">IBAN</span><br/>BIC <span th:text="${invoice.bic}">BIC</span></td>
-      <td><span th:if="${invoice.seller.email != null}" th:text="${invoice.seller.email}">E-Mail</span><th:block th:if="${invoice.seller.taxNumber != null}"><br th:if="${invoice.seller.email != null}"/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></th:block><th:block th:if="${invoice.seller.vatId != null}"><br th:if="${invoice.seller.email != null or invoice.seller.taxNumber != null}"/>USt-IdNr. <span th:text="${invoice.seller.vatId}">USt-IdNr.</span></th:block></td>
+      <td><span th:if="${invoice.seller.email != null}" th:text="${invoice.seller.email}">E-Mail</span><th:block th:if="${invoice.seller.phone != null}"><br th:if="${invoice.seller.email != null}"/>Tel. <span th:text="${invoice.seller.phone}">Telefon</span></th:block><th:block th:if="${invoice.seller.taxNumber != null}"><br th:if="${invoice.seller.email != null or invoice.seller.phone != null}"/>Steuernummer <span th:text="${invoice.seller.taxNumber}">Steuernummer</span></th:block><th:block th:if="${invoice.seller.vatId != null}"><br th:if="${invoice.seller.email != null or invoice.seller.phone != null or invoice.seller.taxNumber != null}"/>USt-IdNr. <span th:text="${invoice.seller.vatId}">USt-IdNr.</span></th:block></td>
       <td class="page">Seite <span class="page-number"></span> von <span class="page-count"></span></td>
     </tr>
   </table>
 
-  <div class="sender" th:text="${invoice.seller.name + ' · ' + invoice.seller.street + ' · ' + invoice.seller.postcode + ' ' + invoice.seller.city}">Absender</div>
   <table class="head" role="presentation">
     <tr>
-      <td>
+      <td class="address">
+        <div class="sender" th:text="${invoice.seller.name + ' · ' + invoice.seller.street + ' · ' + invoice.seller.postcode + ' ' + invoice.seller.city}">Absender</div>
         <div class="strong" th:text="${invoice.buyer.name}">Kunde</div>
         <div th:text="${invoice.buyer.street}">Straße</div>
         <div th:text="${invoice.buyer.postcode + ' ' + invoice.buyer.city}">Ort</div>
-        <div th:if="${invoice.buyer.countryCode != 'DE'}" th:text="${invoice.buyer.countryCode}">Land</div>
-        <div th:if="${invoice.buyer.vatId != null}" th:text="'USt-IdNr. ' + ${invoice.buyer.vatId}">USt-IdNr.</div>
-        <div th:if="${invoice.buyerReference != null}" th:text="'Käuferreferenz ' + ${invoice.buyerReference}">Käuferreferenz</div>
+        <div th:if="${invoice.buyer.countryCode != 'DE'}" th:text="${fmt.country(invoice.buyer.countryCode)}">Land</div>
       </td>
       <td>
         <table class="meta" role="presentation">
@@ -61,6 +64,8 @@
           <tr><td>Leistungszeitraum</td><td th:text="${fmt.period(invoice.serviceFrom, invoice.serviceTo)}">01.01.2027</td></tr>
           <tr th:if="${invoice.seller.taxNumber != null}"><td>Steuernummer</td><td th:text="${invoice.seller.taxNumber}">000/000/00000</td></tr>
           <tr th:if="${invoice.seller.vatId != null}"><td>USt-IdNr.</td><td th:text="${invoice.seller.vatId}">DE000000000</td></tr>
+          <tr th:if="${invoice.buyer.vatId != null}"><td>Ihre USt-IdNr.</td><td th:text="${invoice.buyer.vatId}">ATU00000000</td></tr>
+          <tr th:if="${invoice.buyerReference != null}"><td>Käuferreferenz</td><td th:text="${invoice.buyerReference}">04011000-12345-67</td></tr>
         </table>
       </td>
     </tr>
@@ -93,8 +98,12 @@
   </table>
 
   <div class="note" th:unless="${invoice.effectiveTaxNote().isEmpty()}" th:text="${invoice.effectiveTaxNote()}">Steuerhinweis</div>
-  <p th:unless="${invoice.cancellation()}" th:text="'Bitte überweisen Sie den Betrag bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
+  <p th:unless="${invoice.cancellation()}" th:text="'Bitte überweisen Sie den Rechnungsbetrag von ' + ${fmt.money(invoice.total())} + ' bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
   <p th:if="${invoice.cancellation()}" th:text="'Diese Stornorechnung hebt die Rechnung ' + ${invoice.cancels.number} + ' vom ' + ${fmt.date(invoice.cancels.issueDate)} + ' vollständig auf. Bereits gezahlte Beträge werden erstattet.'">Storno</p>
   <p th:if="${invoice.closing != null}" th:text="${invoice.closing}">Schlusstext</p>
+  <!-- The XML is the invoice (BMF, 15.10.2025): the PDF says so, and an XRechnung copy does not count as a second one. -->
+  <p class="e-invoice" th:text="${invoice.format.pdf
+      ? 'Elektronische Rechnung im Format ZUGFeRD. Diese PDF-Datei enthält die Rechnungsdaten als XML; maßgeblich sind die XML-Daten.'
+      : 'Lesefassung der elektronischen Rechnung im Format XRechnung. Maßgeblich ist die XML-Datei.'}">Hinweis</p>
 </body>
 </html>
