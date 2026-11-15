@@ -43,6 +43,7 @@ class UserIT {
         assertThat(repository.findById(guest.id())).isEmpty();
         assertThat(repository.findById(first.id())).isEmpty();
         assertThat(repository.findById(second.id())).isPresent();
-        assertThatThrownBy(() -> users.delete(first.id())).isInstanceOf(UserException.class);
+        long gone = first.id();
+        assertThatThrownBy(() -> users.delete(gone)).isInstanceOf(UserException.class);
     }
 }
