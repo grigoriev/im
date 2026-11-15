@@ -218,6 +218,50 @@ class BackupArchiveTest {
     }
 
     @Test
+    void takesRowsOfTextsNullsAndFilesOnly() throws IOException {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("data/fine.json", utf8("[{\"a\":\"x\",\"b\":null,\"c\":{\"file\":\"f\"}}]"));
+        entries.put("data/number.json", utf8("[{\"a\":1}]"));
+        entries.put("data/extra.json", utf8("[{\"c\":{\"file\":\"f\",\"x\":\"y\"}}]"));
+        entries.put("data/other.json", utf8("[{\"c\":{\"name\":\"f\"}}]"));
+        entries.put("data/filenumber.json", utf8("[{\"c\":{\"file\":1}}]"));
+        entries.put("data/array.json", utf8("[{\"c\":[]}]"));
+        entries.put("data/emptyfile.json", utf8("[{\"c\":{}}]"));
+        entries.put("data/cut.json", utf8("[{\"a\":\"x\""));
+        StringBuilder wide = new StringBuilder("[{");
+        for (int i = 0; i <= BackupArchive.MAX_COLUMNS; i++) {
+            wide.append(i == 0 ? "" : ",").append("\"c").append(i).append("\":null");
+        }
+        entries.put("data/wide.json", utf8(wide.append("}]").toString()));
+        entries.put("data/long.json", utf8("[{\"a\":\"" + "x".repeat(BackupArchive.MAX_TEXT + 1) + "\"}]"));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        read(zip(entries), 100_000_000, 100, 11, archive -> {
+            archive.rows("data/fine.json", rows::add);
+            for (String broken : List.of("data/number.json", "data/extra.json", "data/other.json", "data/filenumber.json",
+                    "data/array.json", "data/emptyfile.json", "data/cut.json", "data/wide.json", "data/long.json")) {
+                assertThatThrownBy(() -> archive.rows(broken, row -> { })).as(broken).isInstanceOf(BackupException.class)
+                        .hasMessage("Die Datensicherung ist beschädigt: " + broken + ".");
+            }
+        });
+        Map<String, Object> expected = new LinkedHashMap<>();
+        expected.put("a", "x");
+        expected.put("b", null);
+        expected.put("c", Map.of("file", "f"));
+        assertThat(rows).containsExactly(expected);
+    }
+
+    @Test
+    void anEntryReadTwiceCountsOnce() throws IOException {
+        Path file = zip(Map.of("data/rows.json", utf8("[{\"id\":\"1\"}]")));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        read(file, 14, 100, 1, archive -> {
+            archive.rows("data/rows.json", rows::add);
+            archive.rows("data/rows.json", rows::add);
+        });
+        assertThat(rows).hasSize(2);
+    }
+
+    @Test
     void refusesNoZipAndTooManyEntries() throws IOException {
         Path text = Files.write(folder.resolve("text.zip"), utf8("kein zip"));
         List<BackupArchive> opened = new ArrayList<>();

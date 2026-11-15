@@ -111,7 +111,7 @@ public class BackupService {
      */
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void export(OutputStream out) {
-        try (ZipOutputStream zip = new ZipOutputStream(out)) {
+        try (ZipOutputStream zip = new Bounded(out, MAX_ENTRIES)) {
             entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
                     "exported", clock.instant().toString(), "tables", TABLES)));
             for (String table : TABLES) {
@@ -294,5 +294,27 @@ public class BackupService {
     private static void entry(ZipOutputStream zip, String name, byte[] content) throws IOException {
         zip.putNextEntry(new ZipEntry(name));
         zip.write(content);
+    }
+
+    /** A ZIP of at most as many entries as an import takes: an export the import refuses must not come about. */
+    static final class Bounded extends ZipOutputStream {
+
+        private final int max;
+        private int entries;
+
+        Bounded(OutputStream out, int max) {
+            super(out);
+            this.max = max;
+        }
+
+        @Override
+        public void putNextEntry(ZipEntry entry) throws IOException {
+            entries++;
+            if (entries > max) {
+                throw new BackupException("Die Datensicherung hätte mehr als " + max + " Dateien; so viele kann der "
+                        + "Import nicht lesen.");
+            }
+            super.putNextEntry(entry);
+        }
     }
 }

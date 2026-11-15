@@ -8,8 +8,11 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.zip.CRC32;
@@ -17,11 +20,11 @@ import java.util.zip.CheckedInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.StreamReadConstraints;
+import tools.jackson.core.json.JsonFactory;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
 import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.ObjectReader;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -32,7 +35,14 @@ final class BackupArchive {
 
     static final String TOO_BIG = "Die Datensicherung ist zu groß oder hat zu viele Dateien.";
 
-    private static final TypeReference<Map<String, Object>> ROW = new TypeReference<>() { };
+    /** The most columns of a row; the widest table has about 30. */
+    static final int MAX_COLUMNS = 200;
+    /** The longest text of a column, in characters; the largest, an invoice snapshot, has some kilobytes. */
+    static final int MAX_TEXT = 16 * 1024 * 1024;
+    private static final String FILE = "file";
+    /** Reads the rows, with the longest text bounded, so one value cannot fill the memory either. */
+    private static final JsonMapper ROWS = JsonMapper.builder(JsonFactory.builder()
+            .streamReadConstraints(StreamReadConstraints.builder().maxStringLength(MAX_TEXT).build()).build()).build();
 
     /** The end record of a ZIP: its signature, its size without the comment, and the longest comment. */
     private static final int END_SIGNATURE = 0x06054b50;
@@ -44,6 +54,7 @@ final class BackupArchive {
     private final long maxBytes;
     private final long maxFileBytes;
     private long expanded;
+    private final Set<String> counted = new HashSet<>();
 
     private BackupArchive(ZipFile zip, JsonMapper json, long maxBytes, long maxFileBytes) {
         this.zip = zip;
@@ -128,15 +139,12 @@ final class BackupArchive {
      * @throws BackupException if the entry is missing or no valid JSON array of rows
      */
     void rows(String name, Consumer<Map<String, Object>> each) {
-        // Each row is one value of the array: the rows after it are no trailing garbage.
-        ObjectReader reader = json.readerFor(ROW).without(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
         entry(name, maxBytes, in -> {
-            try (JsonParser parser = json.createParser(in)) {
+            try (JsonParser parser = ROWS.createParser(in)) {
                 if (token(name, parser) != JsonToken.START_ARRAY) {
                     throw damaged(name);
                 }
-                for (Optional<Map<String, Object>> row = next(name, parser, reader); row.isPresent();
-                        row = next(name, parser, reader)) {
+                for (Optional<Map<String, Object>> row = next(name, parser); row.isPresent(); row = next(name, parser)) {
                     each.accept(row.get());
                 }
                 // A second array after the first would go unread: nothing may follow.
@@ -149,10 +157,11 @@ final class BackupArchive {
     }
 
     /**
-     * The next row of the array, or none after the last. Anything else, an empty or cut entry too, is a damaged
-     * export; a parse error is the fault of the file, not of the receiver of the rows.
+     * The next row of the array, or none after the last. A row is an object of at most {@link #MAX_COLUMNS} columns,
+     * each a text, {@code null} or the name of a file, as the export writes it: a crafted row cannot grow into a map
+     * larger than its JSON. Anything else, an empty or cut entry too, is a damaged export.
      */
-    private static Optional<Map<String, Object>> next(String name, JsonParser parser, ObjectReader reader) {
+    private static Optional<Map<String, Object>> next(String name, JsonParser parser) {
         JsonToken token = token(name, parser);
         if (token == JsonToken.END_ARRAY) {
             return Optional.empty();
@@ -160,8 +169,39 @@ final class BackupArchive {
         if (token != JsonToken.START_OBJECT) {
             throw damaged(name);
         }
+        Map<String, Object> row = new LinkedHashMap<>();
+        // Inside an object the parser yields a property name or the end of the object, nothing else.
+        for (JsonToken column = token(name, parser); column != JsonToken.END_OBJECT; column = token(name, parser)) {
+            if (row.size() >= MAX_COLUMNS) {
+                throw damaged(name);
+            }
+            row.put(parser.currentName(), value(name, parser));
+        }
+        return Optional.of(row);
+    }
+
+    /** A value of a column: a text, {@code null}, or {@code {"file": name}} for a binary column. */
+    private static Object value(String name, JsonParser parser) {
+        JsonToken token = token(name, parser);
+        if (token == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        if (token == JsonToken.VALUE_STRING) {
+            return text(name, parser);
+        }
+        if (token == JsonToken.START_OBJECT && token(name, parser) == JsonToken.PROPERTY_NAME
+                && FILE.equals(parser.currentName()) && token(name, parser) == JsonToken.VALUE_STRING) {
+            String file = text(name, parser);
+            if (token(name, parser) == JsonToken.END_OBJECT) {
+                return Map.of(FILE, file);
+            }
+        }
+        throw damaged(name);
+    }
+
+    private static String text(String name, JsonParser parser) {
         try {
-            return Optional.of(reader.readValue(parser));
+            return parser.getString();
         } catch (JacksonException _) {
             throw damaged(name);
         }
@@ -197,8 +237,10 @@ final class BackupArchive {
         }
         // ZipFile checks no CRC: the reader does, over the whole entry, so a changed byte is a damaged export too.
         CRC32 crc = new CRC32();
+        // An entry read twice, as the invoices are, counts once against the size of the export.
+        LongConsumer total = counted.add(name) ? this::count : bytes -> { };
         try (InputStream in = new Limited(new CheckedInputStream(zip.getInputStream(entry), crc), maxEntryBytes,
-                this::count)) {
+                total)) {
             T value = reader.read(new KeepOpen(in));
             in.transferTo(OutputStream.nullOutputStream());
             if (crc.getValue() != entry.getCrc()) {

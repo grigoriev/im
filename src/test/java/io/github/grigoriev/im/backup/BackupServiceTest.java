@@ -370,4 +370,15 @@ class BackupServiceTest {
                 .as("a column name that is no plain identifier never reaches SQL")
                 .hasMessage("Die Datensicherung passt nicht zu dieser Datenbank: Spalte Bad Name.");
     }
+
+    @Test
+    void anExportStopsBeforeMoreEntriesThanAnImportTakes() throws IOException {
+        try (BackupService.Bounded zip = new BackupService.Bounded(new ByteArrayOutputStream(), 2)) {
+            zip.putNextEntry(new ZipEntry("a"));
+            zip.putNextEntry(new ZipEntry("b"));
+            ZipEntry third = new ZipEntry("c");
+            assertThatThrownBy(() -> zip.putNextEntry(third)).isInstanceOf(BackupException.class)
+                    .hasMessage("Die Datensicherung hätte mehr als 2 Dateien; so viele kann der Import nicht lesen.");
+        }
+    }
 }
