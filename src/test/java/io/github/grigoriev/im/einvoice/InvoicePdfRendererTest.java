@@ -59,9 +59,10 @@ class InvoicePdfRendererTest {
                 .contains("480,00\u00a0€")
                 .contains("Für diese Leistung gilt die Steuerbefreiung für Kleinunternehmer (§ 19 Abs. 1")
                 .contains("DE02 1203 0000 0000 2020 51")
-                .contains("Bitte überweisen Sie den Betrag bis zum 01.04.2027.")
+                .doesNotContain("Tel.")
+                .contains("Bitte überweisen Sie den Rechnungsbetrag von 480,00\u00a0€ bis zum 01.04.2027.")
                 .contains("vielen Dank für Ihren Auftrag.")
-                .contains("Mit freundlichen Grüßen")
+                .contains("Mit freundlichen Grüßen\nElena Sommer\n")
                 .doesNotContain("Käuferreferenz")
                 .doesNotContain("USt-IdNr.");
     }
@@ -104,8 +105,47 @@ class InvoicePdfRendererTest {
         InvoiceDocument dutch = SampleInvoices.invoice(SampleInvoices.SELLER_EU, SampleInvoices.DUTCH, "REF-1",
                 InvoiceFormat.XRECHNUNG, SampleInvoices.line("Workshop", "1", "600.00", TaxCategory.REVERSE_CHARGE_EU));
         String text = text(renderer.render(dutch));
-        assertThat(text).contains("NL").contains("USt-IdNr. NL123456789B01").contains("Käuferreferenz REF-1")
-                .contains("USt-IdNr. DE123456789").contains("Steuernummer 143/123/45678");
+        assertThat(text).contains("NIEDERLANDE").contains("Ihre USt-IdNr. NL123456789B01")
+                .contains("Käuferreferenz REF-1").contains("USt-IdNr. DE123456789").contains("Steuernummer 143/123/45678");
+    }
+
+    @Test
+    void showsThePhoneNumberWhenTheProfileAsks() throws IOException {
+        InvoiceDocument d = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        InvoiceDocument withPhone = new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(),
+                d.dueDate(), d.seller(), d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(), d.closing(),
+                d.taxNote(), d.format(), d.lines(), d.cancels(), true);
+        assertThat(text(renderer.render(withPhone))).contains("kontakt@sommer.example\nTel. +49 89 1234567\nSteuernummer");
+    }
+
+    @Test
+    void signsOnceBelowTheClosing() throws IOException {
+        InvoiceDocument d = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        InvoiceDocument signed = new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(),
+                d.dueDate(), d.seller(), d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(),
+                "Mit freundlichen Grüßen\nElena Sommer ", d.taxNote(), d.format(), d.lines());
+        assertThat(text(renderer.render(signed))).as("a closing that ends with the name gets no second one")
+                .containsPattern("Grüßen\nElena Sommer ?\nElektronische").doesNotContain("Elena Sommer\nElena Sommer");
+        Party company = new Party("Sommer Sprachen GmbH", "Lindenstraße 12", "80331", "München", "DE",
+                "kontakt@sommer.example", null, null, "143/123/45678", null);
+        InvoiceDocument unnamed = new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(),
+                d.dueDate(), company, d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(), d.closing(),
+                d.taxNote(), d.format(), d.lines());
+        assertThat(text(renderer.render(unnamed))).as("without a contact person the name signs")
+                .contains("Grüßen\nSommer Sprachen GmbH\n");
+    }
+
+    @Test
+    void namesTheXmlAsTheInvoice() throws IOException {
+        String zugferd = "Elektronische Rechnung im Format ZUGFeRD. Diese PDF-Datei enthält die Rechnungsdaten als XML; "
+                + "maßgeblich sind die XML-Daten.";
+        String copy = "Lesefassung der elektronischen Rechnung im Format XRechnung. Maßgeblich ist die XML-Datei.";
+        for (InvoiceFormat format : List.of(InvoiceFormat.ZUGFERD_EN16931, InvoiceFormat.ZUGFERD_XRECHNUNG)) {
+            assertThat(text(renderer.render(SampleInvoices.reading(format))).replaceAll("\\s+", " ")).contains(zugferd)
+                    .doesNotContain("Lesefassung");
+        }
+        assertThat(text(renderer.render(SampleInvoices.reading(InvoiceFormat.XRECHNUNG))).replaceAll("\\s+", " "))
+                .contains(copy).doesNotContain("Format ZUGFeRD");
     }
 
     @Test
@@ -126,7 +166,8 @@ class InvoicePdfRendererTest {
                 "BIC", null, null, null, InvoiceFormat.ZUGFERD_EN16931,
                 List.of(SampleInvoices.line("x", "1", "1", TaxCategory.KLEINUNTERNEHMER)));
         String text = text(renderer.render(plain));
-        assertThat(text).doesNotContain("vielen Dank").doesNotContain("Mit freundlichen");
+        assertThat(text).doesNotContain("vielen Dank").doesNotContain("Mit freundlichen")
+                .as("no closing, no signature").doesNotContain("München\nElena Sommer\n");
     }
 
     @Test
@@ -158,6 +199,8 @@ class InvoicePdfRendererTest {
         assertThat(fmt.date(LocalDate.of(2027, 3, 8))).isEqualTo("08.03.2027");
         assertThat(fmt.period(LocalDate.of(2027, 3, 8), LocalDate.of(2027, 3, 8))).isEqualTo("08.03.2027");
         assertThat(fmt.period(LocalDate.of(2027, 3, 1), LocalDate.of(2027, 3, 31))).isEqualTo("01.03.2027 bis 31.03.2027");
+        assertThat(fmt.country("AT")).isEqualTo("ÖSTERREICH");
+        assertThat(fmt.country("GR")).isEqualTo("GRIECHENLAND");
         assertThat(fmt.iban("DE02120300000000202051")).isEqualTo("DE02 1203 0000 0000 2020 51");
         assertThat(fmt.iban("DE021203")).isEqualTo("DE02 1203");
         assertThat(fmt.percent(new BigDecimal("19"))).isEqualTo("19\u00a0%");

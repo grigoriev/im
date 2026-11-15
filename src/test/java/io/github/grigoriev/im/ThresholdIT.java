@@ -97,7 +97,7 @@ class ThresholdIT {
         SellerProfile p = SellerTestData.profile();
         SellerTestData.save(sellers, new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(),
                 null, p.email(), p.phone(), p.taxNumber(), "DE123456789", p.iban(), p.bic(), p.taxStatus(), null, null,
-                null, null, null));
+                null, null, null, false));
         numbers.savePattern("{YYYY}-{NN}");
         Customer v = CustomerTestData.verlag();
         Customer customer = customers.create(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), "AT", null,

@@ -57,6 +57,13 @@ class PdfVisualTest {
                 d.buyer(), d.buyerReference(), iban, d.bic(), d.intro(), d.closing(), d.taxNote(), d.format(), d.lines());
     }
 
+    /** The invoice with the phone number on its PDF. */
+    private static InvoiceDocument withPhone(InvoiceDocument d) {
+        return new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(), d.dueDate(), d.seller(),
+                d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(), d.closing(), d.taxNote(), d.format(), d.lines(),
+                d.cancels(), true);
+    }
+
     static Stream<Arguments> layouts() {
         List<InvoiceLine> many = new ArrayList<>();
         IntStream.rangeClosed(1, 40).forEach(n -> many.add(
@@ -74,8 +81,8 @@ class PdfVisualTest {
                 Arguments.of("xrechnung-buyer-reference", invoice(SCHOOL, "04011000-12345-67", InvoiceFormat.XRECHNUNG,
                         line("Integrationskurs Modul 4, je 45 Min.", "24", "41.00", TaxCategory.EXEMPT_4_21))),
                 Arguments.of("seller-without-contact", ItSamples.readingWithoutContact(InvoiceFormat.ZUGFERD_EN16931)),
-                Arguments.of("long-contact", invoice(LONG_CONTACT, SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
-                        many.subList(0, 30).toArray(InvoiceLine[]::new))),
+                Arguments.of("long-contact", withPhone(invoice(LONG_CONTACT, SCHOOL, null, InvoiceFormat.ZUGFERD_EN16931,
+                        many.subList(0, 30).toArray(InvoiceLine[]::new)))),
                 Arguments.of("long-iban", withIban(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),
                         "MT84MALT011000012345MTLCAST001S")),
                 Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
@@ -103,7 +110,7 @@ class PdfVisualTest {
         SellerProfile p = SellerTestData.profile();
         SellerProfile seller = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null,
                 p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null,
-                "98/765/43210");
+                "98/765/43210", false);
         List<BufferedImage> pages = render(renderer.render("pdf/procedure", Map.of("seller", seller,
                 "validFrom", "01.01.2027", "expenses", "WISO Steuern", "archive", "in einem Dropbox-Ordner",
                 "version", "0.1.4", "changes", List.of(new ProcedureService.Change("04.01.2027", "Erstfassung"),

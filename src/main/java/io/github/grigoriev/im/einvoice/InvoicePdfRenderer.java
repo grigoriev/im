@@ -170,5 +170,15 @@ public class InvoicePdfRenderer {
         public String period(LocalDate from, LocalDate to) {
             return from.equals(to) ? date(from) : date(from) + " bis " + date(to);
         }
+
+        /**
+         * Names a country for the last line of an address, in German capitals as DIN 5008 asks.
+         *
+         * @param code the ISO country code
+         * @return for example {@code ÖSTERREICH}
+         */
+        public String country(String code) {
+            return Locale.of("", code).getDisplayCountry(GERMAN).toUpperCase(GERMAN);
+        }
     }
 }

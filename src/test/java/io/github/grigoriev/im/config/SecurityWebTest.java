@@ -519,7 +519,7 @@ class SecurityWebTest {
                 argThat(profile -> profile.taxStatus() == TaxStatus.REGULAR));
 
         when(sellers.save(any(), any())).thenReturn(new SellerProfile("Erika", null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null));
+                null, null, null, null, null, null, null, null, null, null, null, false));
         mvc.perform(post("/settings").param("part", "address").param("name", "Erika")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(flash().attribute("success", "Anschrift gespeichert. Für Rechnungen fehlt noch: Straße, PLZ, "
@@ -690,7 +690,7 @@ class SecurityWebTest {
 
         SellerProfile p = SellerTestData.profile();
         SellerProfile kosovo = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), "XK", null, p.email(),
-                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null);
+                p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null, null, false);
         when(sellers.find()).thenReturn(Optional.of(kosovo));
         when(countries.options("XK", null)).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/settings").with(user("elena").roles("USER")))
@@ -1009,7 +1009,7 @@ class SecurityWebTest {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
-                null, null, null, "98/765/43210")));
+                null, null, null, "98/765/43210", false)));
         mvc.perform(get("/reports").param("year", "2027").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("Betriebseinnahmen: Unterricht")))
                 .andExpect(content().string(Matchers.containsString("Betriebseinnahmen: Übrige Leistungen")))
@@ -1287,7 +1287,7 @@ class SecurityWebTest {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),
                 p.countryCode(), null, p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null,
-                null, null, null, "98/765/43210")));
+                null, null, null, "98/765/43210", false)));
         mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("id=\"customer-activity\"")))
                 .andExpect(content().string(Matchers.containsString(">Übrige Leistungen</option>")));

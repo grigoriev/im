@@ -96,6 +96,7 @@
             <th:block th:replace="~{fragments/field :: hint('phone', 'Für XRechnung nötig.')}"></th:block>
           </div>
         </div>
+        <label class="flex items-center gap-2 text-sm"><input id="seller-phone-on-invoice" th:field="*{phoneOnInvoice}" type="checkbox" class="checkbox checkbox-sm">Telefon auf der Rechnung zeigen</label>
         <div class="grid gap-1">
           <label class="floating-label"><span>Website, z. B. www.example.de</span>
             <input id="seller-website" th:field="*{website}" class="input w-full" autocomplete="url" maxlength="200" th:classappend="(${invalid != null and invalid.containsKey('website')} or ${missing.containsKey('website')}) ? 'input-error'" th:attr="aria-invalid=(${invalid != null and invalid.containsKey('website')} or ${missing.containsKey('website')}) ? 'true' : null,aria-describedby='website-hint'">

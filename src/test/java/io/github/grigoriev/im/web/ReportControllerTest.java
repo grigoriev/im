@@ -112,7 +112,7 @@ class ReportControllerTest {
         SellerProfile two = new SellerProfile(single.name(),
                 single.street(), single.postcode(), single.city(), single.countryCode(), null, single.email(),
                 single.phone(), single.taxNumber(), null, single.iban(), single.bic(), single.taxStatus(), null, null,
-                null, null, "98/765/43210");
+                null, null, "98/765/43210", false);
         // Teaching abroad is not taxable in Germany, yet it belongs to teaching: the business splits, not the category.
         TaxCategory abroad = TaxCategory.NOT_TAXABLE_ABROAD;
         RevenueRow uzbekistan = new RevenueRow(LocalDate.of(2027, 4, 1), "2027-02", "Goethe-Zentrum", new BigDecimal("300.00"),

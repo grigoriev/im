@@ -30,8 +30,19 @@ public final class SellerTestData {
      * @return the profile
      */
     public static SellerProfile profile() {
+        return profile(false);
+    }
+
+    /**
+     * Returns a valid Kleinunternehmer profile.
+     *
+     * @param phoneOnInvoice whether the PDF shows the phone number
+     * @return the profile
+     */
+    public static SellerProfile profile(boolean phoneOnInvoice) {
         return new SellerProfile("Erika Mustermann", "Musterweg 1", "12345", "Musterstadt", "DE", null,
                 "erika@example.org", "+49 30 1234567", "12/345/67890", null, IBAN, "COBADEFFXXX",
-                TaxStatus.KLEINUNTERNEHMER, "Freiberufliche Dozentin", "www.erika.example", "Commerzbank", null, null);
+                TaxStatus.KLEINUNTERNEHMER, "Freiberufliche Dozentin", "www.erika.example", "Commerzbank", null, null,
+                phoneOnInvoice);
     }
 }

@@ -71,17 +71,17 @@ public class SellerService {
     static final String UPSERT = """
             INSERT INTO seller_profile (id, name, street, postcode, city, country_code, contact_name, email, phone,
                                         tax_number, vat_id, iban, bic, tax_status, tagline, website, bank_name,
-                                        account_holder, tax_number_teaching)
+                                        account_holder, tax_number_teaching, phone_on_invoice)
             VALUES (1, :name, :street, :postcode, :city, :countryCode, :contactName, :email, :phone,
                     :taxNumber, :vatId, :iban, :bic, :taxStatus, :tagline, :website, :bankName, :accountHolder,
-                    :taxNumberTeaching)
+                    :taxNumberTeaching, :phoneOnInvoice)
             ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, street = EXCLUDED.street,
                 postcode = EXCLUDED.postcode, city = EXCLUDED.city, country_code = EXCLUDED.country_code,
                 contact_name = EXCLUDED.contact_name, email = EXCLUDED.email, phone = EXCLUDED.phone,
                 tax_number = EXCLUDED.tax_number, vat_id = EXCLUDED.vat_id, iban = EXCLUDED.iban,
                 bic = EXCLUDED.bic, tax_status = EXCLUDED.tax_status, tagline = EXCLUDED.tagline,
                 website = EXCLUDED.website, bank_name = EXCLUDED.bank_name, account_holder = EXCLUDED.account_holder,
-                tax_number_teaching = EXCLUDED.tax_number_teaching""";
+                tax_number_teaching = EXCLUDED.tax_number_teaching, phone_on_invoice = EXCLUDED.phone_on_invoice""";
     /** The scheme of a website, in any case. */
     static final Pattern SCHEME = Pattern.compile("^https?://", Pattern.CASE_INSENSITIVE);
 
@@ -147,6 +147,7 @@ public class SellerService {
                 .param("tagline", profile.tagline()).param("website", profile.website())
                 .param("bankName", profile.bankName()).param("accountHolder", profile.accountHolder())
                 .param("taxNumberTeaching", profile.taxNumberTeaching())
+                .param("phoneOnInvoice", profile.showsPhone())
                 .update();
         audit.add(AuditAction.PROFILE_SAVED, profile.name() == null ? "" : profile.name());
         return profile;
@@ -205,7 +206,8 @@ public class SellerService {
                 upper(input.countryCode()), unlessName(input.contactName(), name), text(input.email()),
                 text(input.phone()), text(input.taxNumber()), compact(input.vatId()), compact(input.iban()),
                 compact(input.bic()), input.taxStatus(), text(input.tagline()), text(input.website()),
-                text(input.bankName()), unlessName(input.accountHolder(), name), text(input.taxNumberTeaching()));
+                text(input.bankName()), unlessName(input.accountHolder(), name), text(input.taxNumberTeaching()),
+                input.showsPhone());
     }
 
     private static String unlessName(String value, String name) {
