@@ -37,7 +37,8 @@ final class BackupArchive {
 
     /** The most columns of a row; the widest table has about 30. */
     static final int MAX_COLUMNS = 200;
-    /** The longest text of a column, in characters; the largest, an invoice snapshot, has some kilobytes. */
+    /** The longest text of a column and of all columns of a row together, in characters; the largest, an invoice
+     * snapshot, has some kilobytes. */
     static final int MAX_TEXT = 16 * 1024 * 1024;
     private static final String FILE = "file";
     /** Reads the rows, with the longest text bounded, so one value cannot fill the memory either. */
@@ -173,12 +174,19 @@ final class BackupArchive {
             throw damaged(name);
         }
         Map<String, Object> row = new LinkedHashMap<>();
+        long text = 0;
         // Inside an object the parser yields a property name or the end of the object, nothing else.
         for (JsonToken column = token(name, parser); column != JsonToken.END_OBJECT; column = token(name, parser)) {
             if (row.size() >= MAX_COLUMNS) {
                 throw damaged(name);
             }
-            row.put(parser.currentName(), value(name, parser));
+            Object value = value(name, parser);
+            text += value instanceof String string ? string.length() : 0;
+            // All texts of a row together, as well as each: 200 columns of the longest text would fill the memory.
+            if (text > MAX_TEXT) {
+                throw damaged(name);
+            }
+            row.put(parser.currentName(), value);
         }
         return Optional.of(row);
     }

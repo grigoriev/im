@@ -111,7 +111,7 @@ public class BackupService {
      */
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void export(OutputStream out) {
-        try (Bounded zip = new Bounded(out, MAX_ENTRIES)) {
+        try (Bounded zip = new Bounded(out, MAX_ENTRIES, MAX_BYTES)) {
             try {
                 entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
                         "exported", clock.instant().toString(), "tables", TABLES)));
@@ -307,23 +307,38 @@ public class BackupService {
     /** A ZIP of at most as many entries as an import takes: an export the import refuses must not come about. */
     static final class Bounded extends ZipOutputStream {
 
-        private final int max;
+        private final int maxEntries;
+        private final long maxBytes;
+        private final OutputStream target;
         private int entries;
+        private long bytes;
         private boolean aborted;
 
-        Bounded(OutputStream out, int max) {
+        Bounded(OutputStream out, int maxEntries, long maxBytes) {
             super(out);
-            this.max = max;
+            this.target = out;
+            this.maxEntries = maxEntries;
+            this.maxBytes = maxBytes;
         }
 
         @Override
         public void putNextEntry(ZipEntry entry) throws IOException {
             entries++;
-            if (entries > max) {
-                throw new BackupException("Die Datensicherung hätte mehr als " + max + " Dateien; so viele kann der "
-                        + "Import nicht lesen.");
+            if (entries > maxEntries) {
+                throw new BackupException("Die Datensicherung hätte mehr als " + maxEntries + " Dateien; so viele kann "
+                        + "der Import nicht lesen.");
             }
             super.putNextEntry(entry);
+        }
+
+        /** Counts what the entries hold before compression, against the limit of what an import expands. */
+        @Override
+        public void write(byte[] buffer, int offset, int length) throws IOException {
+            bytes += length;
+            if (bytes > maxBytes) {
+                throw new BackupException("Die Datensicherung wäre größer, als der Import lesen kann.");
+            }
+            super.write(buffer, offset, length);
         }
 
         /** Gives up the ZIP: closing it then writes no central directory, so no reader takes the broken part. */
@@ -331,10 +346,13 @@ public class BackupService {
             aborted = true;
         }
 
+        /** Finishes the ZIP; an aborted one only releases the compressor and closes the output. */
         @Override
         public void close() throws IOException {
-            // An aborted ZIP stays unfinished; the caller closes the output, the deflater goes with the stream.
-            if (!aborted) {
+            if (aborted) {
+                def.end();
+                target.close();
+            } else {
                 super.close();
             }
         }

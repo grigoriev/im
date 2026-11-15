@@ -390,12 +390,41 @@ class BackupServiceTest {
 
     @Test
     void anExportStopsBeforeMoreEntriesThanAnImportTakes() throws IOException {
-        try (BackupService.Bounded zip = new BackupService.Bounded(new ByteArrayOutputStream(), 2)) {
+        try (BackupService.Bounded zip = new BackupService.Bounded(new ByteArrayOutputStream(), 2, 100)) {
             zip.putNextEntry(new ZipEntry("a"));
             zip.putNextEntry(new ZipEntry("b"));
             ZipEntry third = new ZipEntry("c");
             assertThatThrownBy(() -> zip.putNextEntry(third)).isInstanceOf(BackupException.class)
                     .hasMessage("Die Datensicherung hätte mehr als 2 Dateien; so viele kann der Import nicht lesen.");
         }
+    }
+
+    @Test
+    void anExportStopsBeforeItExpandsFurtherThanAnImportReads() throws IOException {
+        try (BackupService.Bounded zip = new BackupService.Bounded(new ByteArrayOutputStream(), 2, 5)) {
+            zip.putNextEntry(new ZipEntry("a"));
+            zip.write(new byte[5]);
+            byte[] more = new byte[1];
+            assertThatThrownBy(() -> zip.write(more)).isInstanceOf(BackupException.class)
+                    .hasMessage("Die Datensicherung wäre größer, als der Import lesen kann.");
+        }
+    }
+
+    @Test
+    void anAbortedExportClosesTheOutputAndTheCompressor() throws IOException {
+        List<String> closed = new ArrayList<>();
+        OutputStream out = new ByteArrayOutputStream() {
+            @Override
+            public void close() {
+                closed.add("out");
+            }
+        };
+        BackupService.Bounded zip = new BackupService.Bounded(out, 2, 100);
+        zip.putNextEntry(new ZipEntry("a"));
+        zip.abort();
+        zip.close();
+        assertThat(closed).containsExactly("out");
+        byte[] late = new byte[1];
+        assertThatThrownBy(() -> zip.write(late)).as("the compressor is released").isInstanceOf(IllegalStateException.class);
     }
 }

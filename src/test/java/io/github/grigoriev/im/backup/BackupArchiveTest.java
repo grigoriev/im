@@ -234,11 +234,16 @@ class BackupArchiveTest {
         }
         entries.put("data/wide.json", utf8(wide.append("}]").toString()));
         entries.put("data/long.json", utf8("[{\"a\":\"" + "x".repeat(BackupArchive.MAX_TEXT + 1) + "\"}]"));
+        String half = "x".repeat(BackupArchive.MAX_TEXT / 2);
+        entries.put("data/sum.json", utf8("[{\"a\":\"" + half + "\",\"b\":\"" + half + "x\"}]"));
+        entries.put("data/full.json", utf8("[{\"a\":\"" + half + "\",\"b\":\"" + half + "\",\"c\":null}]"));
         List<Map<String, Object>> rows = new ArrayList<>();
-        read(zip(entries), 100_000_000, 100, 11, archive -> {
+        read(zip(entries), 100_000_000, 100, 13, archive -> {
             archive.rows("data/fine.json", rows::add);
+            archive.rows("data/full.json", row -> assertThat(row).as("texts of the limit together").hasSize(3));
             for (String broken : List.of("data/number.json", "data/extra.json", "data/other.json", "data/filenumber.json",
-                    "data/array.json", "data/emptyfile.json", "data/cut.json", "data/wide.json", "data/long.json")) {
+                    "data/array.json", "data/emptyfile.json", "data/cut.json", "data/wide.json", "data/long.json",
+                    "data/sum.json")) {
                 assertThatThrownBy(() -> archive.rows(broken, row -> { })).as(broken).isInstanceOf(BackupException.class)
                         .hasMessage("Die Datensicherung ist beschädigt: " + broken + ".");
             }
