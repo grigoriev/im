@@ -73,6 +73,37 @@
       </div>
     </section>
 
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="report-expenses">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="font-semibold" th:text="'Betriebsausgaben ' + ${year}">Betriebsausgaben 2027</h2>
+        <a class="btn btn-sm" id="report-expenses-csv" th:href="@{/reports/expenses.csv(year=${year})}"><i data-lucide="sheet" class="size-4"></i>CSV</a>
+      </div>
+      <p class="text-sm text-base-content/75">Nach dem Tag der Zahlung, mit Umsatzsteuer. Diese Summen je Art in WISO
+        Steuer unter „Betriebsausgaben“ eintragen. Anlagegüter sind darin nicht enthalten: sie stehen darunter und kommen
+        in WISO einzeln als Anlagegut mit Kaufdatum und Betrag hinein, WISO berechnet die AfA.</p>
+      <p class="text-sm text-base-content/75" th:if="${expenseTotals.isEmpty() and assets.isEmpty()}">Keine Ausgaben in diesem Jahr.</p>
+      <ul class="grid gap-1 text-sm" th:unless="${expenseTotals.isEmpty()}">
+        <li th:each="entry : ${expenseTotals}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <span class="[overflow-wrap:anywhere]" th:text="${entry.key.label()}">Fachliteratur</span>
+          <span class="num text-right" th:text="${#numbers.formatDecimal(entry.value, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+        </li>
+      </ul>
+      <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm border-t border-base-300 pt-2">
+        <span>Summe</span>
+        <span class="num text-right font-medium" id="report-expense-total" th:text="${#numbers.formatDecimal(expenseTotal, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+      </div>
+      <div class="grid gap-1 text-sm" id="report-assets" th:unless="${assets.isEmpty()}">
+        <span class="font-medium">Anlagegüter, nicht in der Summe</span>
+        <ul class="grid gap-1">
+          <li th:each="asset : ${assets}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+            <a class="link [overflow-wrap:anywhere]" th:href="@{/expenses/{id}(id=${asset.id})}"
+               th:text="${#temporals.format(asset.paidOn, 'dd.MM.yyyy') + ' · ' + asset.vendor + ': ' + asset.description}">Laptop</a>
+            <span class="num text-right" th:text="${#numbers.formatDecimal(asset.amount, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="report-payments">
       <h2 class="font-semibold">Zahlungen</h2>
       <p class="text-sm text-base-content/75" th:if="${rows.isEmpty()}">Keine Zahlungen in diesem Jahr.</p>

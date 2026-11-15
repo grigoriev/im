@@ -47,6 +47,10 @@ import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.document.ProcedureForm;
 import io.github.grigoriev.im.document.ProcedureService;
 import io.github.grigoriev.im.einvoice.EInvoiceFacts;
+import io.github.grigoriev.im.expense.Expense;
+import io.github.grigoriev.im.expense.ExpenseCategory;
+import io.github.grigoriev.im.expense.ExpenseException;
+import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
@@ -115,6 +119,7 @@ import io.github.grigoriev.im.web.CountryController;
 import io.github.grigoriev.im.web.CurrentUserAdvice;
 import io.github.grigoriev.im.web.CustomerController;
 import io.github.grigoriev.im.web.DocumentController;
+import io.github.grigoriev.im.web.ExpenseController;
 import io.github.grigoriev.im.web.HomeController;
 import io.github.grigoriev.im.web.InvoiceController;
 import io.github.grigoriev.im.web.InvoiceRecordsController;
@@ -137,6 +142,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.assertj.core.api.Assertions;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -162,7 +168,7 @@ import tools.jackson.core.exc.StreamReadException;
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class,
-        DocumentController.class})
+        DocumentController.class, ExpenseController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
         SessionEpoch.class})
 @EnableConfigurationProperties(PasskeyProperties.class)
@@ -263,6 +269,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private InvoiceIntegrity integrity;
+
+    @MockitoBean
+    private ExpenseService expenses;
 
     @MockitoBean
     private IntegrityMonitor monitor;
@@ -1587,6 +1596,98 @@ class SecurityWebTest {
         when(documents.find(6, DocumentKind.PDF)).thenThrow(new InvoiceException(List.of("kaputt")));
         mvc.perform(get("/invoices/6/documents/pdf").with(user("elena").roles("USER")))
                 .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/invoices/6"));
+    }
+
+    private static Expense expense(long id, boolean cancelled) {
+        return new Expense(id, LocalDate.of(2027, 3, 2), new BigDecimal("49.90"), ExpenseCategory.LITERATURE,
+                "Buchhandlung am Markt", "Wörterbuch", id == 2, cancelled ? Instant.parse("2027-03-05T10:00:00Z") : null,
+                cancelled ? "doppelt erfasst" : null, "Quittung.pdf", "application/pdf", "ab12", 2048,
+                Instant.parse("2027-03-02T09:00:00Z"), "elena");
+    }
+
+    @Test
+    void listsAndEntersExpenses() throws Exception {
+        when(expenses.today()).thenReturn(LocalDate.of(2027, 3, 18));
+        when(expenses.years()).thenReturn(Set.of(2026));
+        mvc.perform(get("/expenses").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Noch keine Ausgaben in diesem Jahr.")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"2026\">2026</option>")));
+        when(expenses.ofYear(2026)).thenReturn(List.of(expense(1, false), expense(2, false), expense(3, true)));
+        mvc.perform(get("/expenses").param("year", "2026").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Buchhandlung am Markt: Wörterbuch")))
+                .andExpect(content().string(Matchers.containsString("02.03.2027 · Fachliteratur · Anlagegut")))
+                .andExpect(content().string(Matchers.containsString("· storniert")))
+                .andExpect(content().string(Matchers.containsString("id=\"expense-total\">49,90 €")))
+                .andExpect(content().string(Matchers.containsString("Anlagegüter, nicht in der Summe")));
+        mvc.perform(get("/expenses/new").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("value=\"2027-03-18\"")))
+                .andExpect(content().string(Matchers.containsString("enctype=\"multipart/form-data\"")));
+        when(expenses.add(any(), eq("Quittung.pdf"), any())).thenReturn(expense(7, false));
+        MockMultipartFile receipt = new MockMultipartFile("file", "Quittung.pdf", "application/pdf", new byte[] {'%'});
+        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").file(receipt).param("amount", "49,90")
+                .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/expenses/7")).andExpect(flash().attribute("success", "Ausgabe erfasst."));
+        when(expenses.add(any(), any(), eq(new byte[0]))).thenThrow(new ExpenseException(List.of("Bitte eine Datei wählen.")));
+        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")));
+        MockMultipartFile huge = new MockMultipartFile("file", "x.pdf", "application/pdf",
+                new byte[DocumentService.MAX_BYTES + 1]);
+        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").file(huge).with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString(DocumentService.TOO_LARGE)));
+        mvc.perform(get("/expenses")).andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    void theReportListsAssetsAndSaysNothingIsMissing() throws Exception {
+        when(threshold.today()).thenReturn(LocalDate.of(2027, 3, 18));
+        mvc.perform(get("/reports").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Keine Ausgaben in diesem Jahr.")));
+        when(expenses.ofYear(2027)).thenReturn(List.of(expense(2, false)));
+        mvc.perform(get("/reports").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Anlagegüter, nicht in der Summe")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Keine Ausgaben in diesem Jahr."))));
+    }
+
+    @Test
+    void showsChangesAndCancelsAnExpense() throws Exception {
+        when(expenses.find(1)).thenReturn(Optional.of(expense(1, false)));
+        mvc.perform(get("/expenses/1").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("value=\"49,90\"")))
+                .andExpect(content().string(Matchers.containsString("Stornieren…")))
+                .andExpect(content().string(Matchers.containsString("href=\"/expenses?year=2027\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("expense-integrity"))));
+        mvc.perform(post("/expenses/1").param("amount", "59,90").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/expenses/1")).andExpect(flash().attribute("success", "Änderungen gespeichert."));
+        when(expenses.change(eq(1L), any())).thenThrow(new ExpenseException(List.of("Bitte die Art wählen.")));
+        mvc.perform(post("/expenses/1").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte die Art wählen.")));
+        mvc.perform(post("/expenses/1/cancel").param("reason", "doppelt").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/expenses/1"))
+                .andExpect(flash().attribute("success", "Ausgabe storniert. Sie zählt nicht mehr."));
+        when(expenses.cancel(1, null)).thenThrow(new ExpenseException(List.of("Bitte den Grund angeben.")));
+        mvc.perform(post("/expenses/1/cancel").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/expenses/1")).andExpect(flash().attribute("error", "Bitte den Grund angeben."));
+        when(expenses.find(3)).thenReturn(Optional.of(expense(3, true)));
+        when(expenses.problems(3)).thenReturn(List.of("Quittung.pdf: Das Siegel passt nicht."));
+        mvc.perform(get("/expenses/3").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Storniert am 05.03.2027: doppelt erfasst.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Stornieren…"))))
+                .andExpect(content().string(Matchers.containsString("id=\"expense-integrity\"")));
+        mvc.perform(get("/expenses/9").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void downloadsAReceipt() throws Exception {
+        when(expenses.file(1)).thenReturn(Optional.of(new DocumentFile("Quittung März.pdf", "application/pdf",
+                new byte[] {'%', 'P'})));
+        mvc.perform(get("/expenses/1/file").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", Matchers.containsString("Quittung%20M%C3%A4rz.pdf")))
+                .andExpect(content().bytes(new byte[] {'%', 'P'}));
+        mvc.perform(get("/expenses/9/file").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+        when(expenses.file(3)).thenThrow(new ExpenseException(List.of("kaputt")));
+        mvc.perform(get("/expenses/3/file").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/expenses/3"));
     }
 
     @Test

@@ -75,6 +75,17 @@ public class Seal {
     }
 
     /**
+     * Returns the seal of the receipt of an expense.
+     *
+     * @param id the expense
+     * @param sha256 the SHA-256 of the receipt
+     * @return the seal, 64 hexadecimal characters
+     */
+    public String expense(long id, String sha256) {
+        return seal("expense", Long.toString(id), sha256);
+    }
+
+    /**
      * Compares a stored seal with the one it should be, in constant time.
      *
      * @param stored the stored seal, may be {@code null}

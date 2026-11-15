@@ -74,7 +74,13 @@ public enum AuditAction {
     /** The description of a business document changed. */
     DOCUMENT_CHANGED("Dokument geändert"),
     /** The check found a document or snapshot changed outside the app, or broken. */
-    INTEGRITY_FAILED("Prüfung fehlgeschlagen");
+    INTEGRITY_FAILED("Prüfung fehlgeschlagen"),
+    /** An expense was entered with its receipt. */
+    EXPENSE_ADDED("Ausgabe erfasst"),
+    /** The details of an expense changed. */
+    EXPENSE_CHANGED("Ausgabe geändert"),
+    /** An expense was cancelled. */
+    EXPENSE_CANCELLED("Ausgabe storniert");
 
     private final String label;
 

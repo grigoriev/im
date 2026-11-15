@@ -14,9 +14,13 @@ import io.github.grigoriev.im.document.BusinessDocument;
 import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
+import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.expense.Expense;
+import io.github.grigoriev.im.expense.ExpenseCategory;
+import io.github.grigoriev.im.expense.ExpenseForm;
+import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.integrity.Seal;
 import io.github.grigoriev.im.integrity.SealMigration;
-import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
 import io.github.grigoriev.im.invoice.DispatchService;
@@ -82,6 +86,9 @@ class BackupIT {
 
     @Autowired
     private Seal seal;
+
+    @Autowired
+    private ExpenseService expenses;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -163,6 +170,15 @@ class BackupIT {
         letter.setDocumentDate(day);
         BusinessDocument first = documents.add(letter, "Brief.pdf", "%PDF-1.4 erste".getBytes(StandardCharsets.US_ASCII));
         documents.replace(first.id(), letter, "Brief.png", new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'});
+        ExpenseForm book = new ExpenseForm();
+        book.setPaidOn(day);
+        book.setAmount("49,90");
+        book.setCategory(ExpenseCategory.LITERATURE);
+        book.setVendor("Buchhandlung");
+        book.setDescription("Wörterbuch");
+        expenses.add(book, "Quittung.pdf", "%PDF-1.4 Quittung".getBytes(StandardCharsets.US_ASCII));
+        Expense twice = expenses.add(book, "Quittung.pdf", "%PDF-1.4 Quittung".getBytes(StandardCharsets.US_ASCII));
+        expenses.cancel(twice.id(), "doppelt");
     }
 
     @Test
@@ -178,8 +194,10 @@ class BackupIT {
         DataSource copy = owner.appDataSource("im_copy");
         DocumentService copyDocuments = new DocumentService(JdbcClient.create(copy), mock(AuditService.class), seal,
                 Clock.systemDefaultZone());
+        ExpenseService copyExpenses = new ExpenseService(JdbcClient.create(copy), mock(AuditService.class), seal,
+                Clock.systemDefaultZone());
         BackupService into = new BackupService(JdbcClient.create(copy), json, mock(AuditService.class),
-                List.of(copyDocuments), Clock.systemDefaultZone());
+                List.of(copyDocuments, copyExpenses), Clock.systemDefaultZone());
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(copy));
         JdbcTemplate copyJdbc = new JdbcTemplate(copy);
         copyJdbc.update("INSERT INTO app_user (username, display_name, password_hash, role, enabled) "
@@ -210,6 +228,7 @@ class BackupIT {
         assertThat(copyJdbc.queryForObject("SELECT status FROM invoice WHERE number = '2013-01'", String.class))
                 .isEqualTo("CANCELLED");
         assertThatThrownBy(() -> copyJdbc.update("DELETE FROM business_document")).hasMessageContaining("is kept");
+        assertThatThrownBy(() -> copyJdbc.update("DELETE FROM expense")).hasMessageContaining("is kept");
 
         assertThatThrownBy(() -> transaction.executeWithoutResult(status -> into.restore(upload)))
                 .isInstanceOf(BackupException.class).hasMessageContaining("schon Daten");

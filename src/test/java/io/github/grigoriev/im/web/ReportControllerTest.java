@@ -9,6 +9,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.expense.Expense;
+import io.github.grigoriev.im.expense.ExpenseCategory;
+import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.invoice.ArchiveService;
 import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
@@ -19,6 +22,7 @@ import io.github.grigoriev.im.threshold.ThresholdService;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -39,7 +43,8 @@ class ReportControllerTest {
     private final ThresholdService threshold = mock(ThresholdService.class);
     private final ArchiveService archive = mock(ArchiveService.class);
     private final SellerService sellers = mock(SellerService.class);
-    private final ReportController controller = new ReportController(threshold, archive, sellers);
+    private final ExpenseService expenses = mock(ExpenseService.class);
+    private final ReportController controller = new ReportController(threshold, archive, sellers, expenses);
 
     private static RevenueRow row(String amount, String counted, String note) {
         BigDecimal value = new BigDecimal(amount);
@@ -74,6 +79,40 @@ class ReportControllerTest {
         controller.show(null, model);
         assertThat((Iterable<Object>) model.get("years")).as("a year with documents only joins too")
                 .containsExactly(2027, 2026, 2024);
+        when(expenses.years()).thenReturn(Set.of(2023));
+        controller.show(null, model);
+        assertThat((Iterable<Object>) model.get("years")).as("a year with expenses only joins too")
+                .containsExactly(2027, 2026, 2024, 2023);
+    }
+
+    private static Expense expense(long id, ExpenseCategory category, String amount, boolean asset, boolean cancelled) {
+        return new Expense(id, LocalDate.of(2027, 2, (int) id), new BigDecimal(amount), category, "=Laden", "Kauf",
+                asset, cancelled ? Instant.EPOCH : null, cancelled ? "doppelt" : null, "Beleg.pdf", "application/pdf",
+                "sha" + id, 3, Instant.EPOCH, "anna");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void sumsTheExpensesByKindAndWritesTheirCsv() {
+        when(threshold.today()).thenReturn(LocalDate.of(2027, 5, 1));
+        Expense laptop = expense(1, ExpenseCategory.WORK_EQUIPMENT, "1299.00", true, false);
+        Expense book = expense(2, ExpenseCategory.LITERATURE, "49.90", false, false);
+        Expense twice = expense(3, ExpenseCategory.LITERATURE, "49.90", false, true);
+        Expense returned = expense(4, ExpenseCategory.WORK_EQUIPMENT, "899.00", true, true);
+        when(expenses.ofYear(2027)).thenReturn(List.of(laptop, book, twice, returned));
+        ExtendedModelMap model = new ExtendedModelMap();
+        controller.show(null, model);
+        assertThat((Map<ExpenseCategory, BigDecimal>) model.get("expenseTotals")).as("the laptop goes in as an asset")
+                .containsExactly(Map.entry(ExpenseCategory.LITERATURE, new BigDecimal("49.90")));
+        assertThat((BigDecimal) model.get("expenseTotal")).isEqualByComparingTo("49.90");
+        assertThat((List<Expense>) model.get("assets")).as("a cancelled asset is none").containsExactly(laptop);
+
+        ResponseEntity<byte[]> csv = controller.expensesCsv(2027);
+        assertThat(csv.getHeaders().getContentDisposition().getFilename()).isEqualTo("Ausgaben_2027.csv");
+        assertThat(new String(csv.getBody(), StandardCharsets.UTF_8)).isEqualTo(ReportController.BOM
+                + ReportController.EXPENSE_HEAD + "\r\n"
+                + "01.02.2027;1299,00;\"Arbeitsmittel\";\"'=Laden\";\"Kauf\";ja;\"Beleg.pdf\";sha1\r\n"
+                + "02.02.2027;49,90;\"Fachliteratur\";\"'=Laden\";\"Kauf\";nein;\"Beleg.pdf\";sha2\r\n");
     }
 
     @Test

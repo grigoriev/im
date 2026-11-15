@@ -8,6 +8,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- "Ausgaben": business expenses with their receipts, by day of payment, with the amount paid, a kind after the Anlage EÜR, the vendor, a description and the mark "Anlagegut". The receipt is written once and sealed. A wrong expense is cancelled with a reason and stays.
+- "Berichte" sums the expenses of a year by kind for WISO Steuer, lists the assets and offers a CSV. The yearly archive holds the receipts in the folder "Ausgaben".
 - Each PDF, XML, snapshot and business document carries a seal: an HMAC-SHA256 with the key `IM_INTEGRITY_KEY`, which lives outside the database. Every read checks the SHA-256 and the seal. A changed file shows on its page, with the facts of the XML that differ from the snapshot, and stays out of download, e-mail and the yearly archive.
 - The app checks every document at startup and every night. The overview lists what failed, the audit log records it, and "Datensicherung" checks on request.
 - An import refuses files that do not match their SHA-256 or seal.

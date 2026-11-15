@@ -46,6 +46,7 @@
       <ul class="menu w-full px-3 gap-0.5">
         <li><a th:href="@{/}" th:classappend="${active == 'home'} ? 'menu-active'"><i data-lucide="layout-dashboard" class="size-4"></i>Übersicht</a></li>
         <li><a th:href="@{/invoices}" th:classappend="${active == 'invoices'} ? 'menu-active'"><i data-lucide="file-text" class="size-4"></i>Rechnungen</a></li>
+        <li><a th:href="@{/expenses}" th:classappend="${active == 'expenses'} ? 'menu-active'"><i data-lucide="receipt" class="size-4"></i>Ausgaben</a></li>
         <li><a th:href="@{/customers}" th:classappend="${active == 'customers'} ? 'menu-active'"><i data-lucide="contact" class="size-4"></i>Kunden</a></li>
         <li><a th:href="@{/documents}" th:classappend="${active == 'documents'} ? 'menu-active'"><i data-lucide="folder-archive" class="size-4"></i>Dokumente</a></li>
         <li><a th:href="@{/reports}" th:classappend="${active == 'reports'} ? 'menu-active'"><i data-lucide="chart-column" class="size-4"></i>Berichte</a></li>

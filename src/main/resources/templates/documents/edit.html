@@ -65,7 +65,7 @@
               <input id="document-title" th:field="*{title}" class="input w-full" maxlength="200" required>
             </label>
             <label class="floating-label"><span>Datum des Dokuments</span>
-              <input id="document-date" th:field="*{documentDate}" type="date" class="input w-full" required th:attr="data-volatile=${document == null} ? ''">
+              <input id="document-date" th:field="*{documentDate}" type="date" class="input w-full" required data-volatile>
             </label>
             <label class="floating-label"><span>Betrifft das Jahr</span>
               <input id="document-year" th:field="*{year}" type="number" min="2000" max="2100" class="input w-full" aria-describedby="document-year-hint">

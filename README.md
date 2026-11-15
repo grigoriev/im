@@ -25,6 +25,7 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
 - Full export and import of all data and documents as one ZIP, to move to a new host.
 - The admin page shows the last nightly backup and restore test of the host, and warns when one is overdue.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
+- Business expenses with their receipts, summed by kind for the Anlage EÜR in WISO Steuer, with a CSV.
 - Seals every PDF, XML and document with a key outside the database, checks them every night and shows what a change
   in the database altered.
 - Runs as a container with PostgreSQL in a home network.

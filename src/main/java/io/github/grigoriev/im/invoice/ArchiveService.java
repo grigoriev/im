@@ -4,9 +4,12 @@ import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.document.BusinessDocument;
 import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
+import io.github.grigoriev.im.expense.Expense;
+import io.github.grigoriev.im.expense.ExpenseService;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,6 +42,10 @@ public class ArchiveService {
     static final String DAMAGED = "Das Archiv bleibt aus, denn diese Dateien fehlen, sind beschädigt oder wurden "
             + "außerhalb der App geändert: %s.";
 
+    /** The folder of the receipts and its table of contents. */
+    static final String EXPENSE_FOLDER = "Ausgaben/";
+    static final String EXPENSE_HEAD = "Zahlung;Betrag;Art;Empfänger;Beschreibung;Anlagegut;Storno;Datei;Bytes;SHA-256";
+
     /** The folder of the business documents and its table of contents. */
     static final String FOLDER = "Dokumente/";
     static final String DOCUMENT_HEAD = "Art;Titel;Datum;Jahr;Fassung;Datei;Bytes;SHA-256";
@@ -53,6 +60,7 @@ public class ArchiveService {
     private final DocumentStore documents;
     private final DocumentService businessDocuments;
     private final InvoiceIntegrity integrity;
+    private final ExpenseService expenses;
     private final Path workFolder;
 
     /**
@@ -62,11 +70,13 @@ public class ArchiveService {
      * @param documents the stored documents and snapshots
      * @param businessDocuments the business documents
      * @param integrity checks the invoices
+     * @param expenses the expenses and their receipts
      */
     @Autowired
     public ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
-            InvoiceIntegrity integrity) {
-        this(invoices, documents, businessDocuments, integrity, Path.of(System.getProperty("java.io.tmpdir")));
+            InvoiceIntegrity integrity, ExpenseService expenses) {
+        this(invoices, documents, businessDocuments, integrity, expenses,
+                Path.of(System.getProperty("java.io.tmpdir")));
     }
 
     /**
@@ -76,14 +86,16 @@ public class ArchiveService {
      * @param documents the stored documents and snapshots
      * @param businessDocuments the business documents
      * @param integrity checks the invoices
+     * @param expenses the expenses and their receipts
      * @param workFolder where the archive grows before it goes out
      */
     ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
-            InvoiceIntegrity integrity, Path workFolder) {
+            InvoiceIntegrity integrity, ExpenseService expenses, Path workFolder) {
         this.invoices = invoices;
         this.documents = documents;
         this.businessDocuments = businessDocuments;
         this.integrity = integrity;
+        this.expenses = expenses;
         this.workFolder = workFolder;
     }
 
@@ -103,6 +115,11 @@ public class ArchiveService {
         for (BusinessDocument document : businessDocuments.ofYear(year)) {
             if (!businessDocuments.problems(document.id()).isEmpty()) {
                 damaged.add("Dokument " + document.filename());
+            }
+        }
+        for (Expense expense : expenses.ofYear(year)) {
+            if (!expenses.problems(expense.id()).isEmpty()) {
+                damaged.add("Beleg " + expense.filename());
             }
         }
         return damaged;
@@ -170,6 +187,7 @@ public class ArchiveService {
             zip.putNextEntry(new ZipEntry(CONTENTS));
             zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
             writeDocuments(year, zip);
+            writeExpenses(year, zip);
         }
     }
 
@@ -198,6 +216,31 @@ public class ArchiveService {
         }
         zip.putNextEntry(new ZipEntry(FOLDER + CONTENTS));
         zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Writes the receipts of the year into their folder, the cancelled ones too, marked; none, no folder. */
+    private void writeExpenses(int year, ZipOutputStream zip) throws IOException {
+        List<Expense> ofYear = expenses.ofYear(year);
+        if (ofYear.isEmpty()) {
+            return;
+        }
+        StringBuilder contents = new StringBuilder().append((char) 0xFEFF).append(EXPENSE_HEAD).append("\r\n");
+        Set<String> names = new HashSet<>();
+        for (Expense expense : ofYear) {
+            String name = EXPENSE_FOLDER + unique(names, expense.filename(), expense.id());
+            zip.putNextEntry(new ZipEntry(name));
+            zip.write(expenses.file(expense.id()).orElseThrow().content());
+            contents.append(String.join(";", GERMAN.format(expense.paidOn()), amount(expense.amount()),
+                    quoted(expense.category().label()), quoted(expense.vendor()), quoted(expense.description()),
+                    expense.asset() ? "ja" : "nein", expense.cancelled() ? quoted("storniert: " + expense.cancelReason())
+                    : "", quoted(name), Integer.toString(expense.size()), expense.sha256())).append("\r\n");
+        }
+        zip.putNextEntry(new ZipEntry(EXPENSE_FOLDER + CONTENTS));
+        zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String amount(BigDecimal amount) {
+        return amount.toPlainString().replace('.', ',');
     }
 
     /**
