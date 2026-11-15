@@ -53,7 +53,7 @@ public class ArchiveService {
     private final DocumentStore documents;
     private final DocumentService businessDocuments;
     private final InvoiceIntegrity integrity;
-    private final Path folder;
+    private final Path workFolder;
 
     /**
      * Creates the service.
@@ -76,15 +76,15 @@ public class ArchiveService {
      * @param documents the stored documents and snapshots
      * @param businessDocuments the business documents
      * @param integrity checks the invoices
-     * @param folder where the archive grows before it goes out
+     * @param workFolder where the archive grows before it goes out
      */
     ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
-            InvoiceIntegrity integrity, Path folder) {
+            InvoiceIntegrity integrity, Path workFolder) {
         this.invoices = invoices;
         this.documents = documents;
         this.businessDocuments = businessDocuments;
         this.integrity = integrity;
-        this.folder = folder;
+        this.workFolder = workFolder;
     }
 
     /**
@@ -134,7 +134,7 @@ public class ArchiveService {
         // The ZIP grows in a file of its own and goes out only once every file passed its check on the way in: a file
         // changed after the check above stops it before a single byte leaves.
         try {
-            Path file = Files.createTempFile(folder, "im-archive-", ".zip", OWNER_ONLY);
+            Path file = Files.createTempFile(workFolder, "im-archive-", ".zip", OWNER_ONLY);
             try {
                 try (OutputStream zip = Files.newOutputStream(file)) {
                     zip(year, zip);
