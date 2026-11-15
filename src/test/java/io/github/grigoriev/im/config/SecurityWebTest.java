@@ -44,6 +44,8 @@ import io.github.grigoriev.im.document.DocumentException;
 import io.github.grigoriev.im.document.DocumentFile;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
+import io.github.grigoriev.im.document.ProcedureForm;
+import io.github.grigoriev.im.document.ProcedureService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
@@ -158,6 +160,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 class SecurityWebTest {
 
     private static final String PASSWORD = "lang-genug-123";
+    private static final String NO_PROFILE = "Bitte zuerst das Profil mit Name, Anschrift und Steuernummer ausfüllen.";
 
     @Autowired
     private SessionEpoch sessionEpoch;
@@ -242,6 +245,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private DocumentService businessDocuments;
+
+    @MockitoBean
+    private ProcedureService procedure;
 
     @BeforeEach
     void noRevenueNoPayments() {
@@ -1648,5 +1654,51 @@ class SecurityWebTest {
                 .andExpect(content().bytes(new byte[] {'%', 'P'}));
         mvc.perform(get("/documents/9/file").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
         mvc.perform(get("/documents")).andExpect(status().is3xxRedirection());
+    }
+
+    @Test
+    void writesTheVerfahrensdokumentation() throws Exception {
+        ProcedureForm form = new ProcedureForm();
+        form.setChange("Erstfassung");
+        when(procedure.form()).thenReturn(form);
+        mvc.perform(get("/documents/procedure").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("value=\"Erstfassung\"")))
+                .andExpect(content().string(Matchers.containsString("Vorschau (PDF)")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Aktuelle Fassung"))));
+        when(procedure.current()).thenReturn(Optional.of(businessDocument(5, null, null)));
+        mvc.perform(get("/documents/procedure").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Aktuelle Fassung")))
+                .andExpect(content().string(Matchers.containsString("href=\"/documents/5\"")));
+        when(procedure.save(any())).thenReturn(businessDocument(6, 5L, null));
+        mvc.perform(post("/documents/procedure").param("validFrom", "2027-01-01").param("expenses", "WISO Steuern")
+                        .param("archive", "in einem Dropbox-Ordner").param("change", "Erstfassung")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/documents/6"))
+                .andExpect(flash().attribute("success", Matchers.startsWith("Verfahrensdokumentation als neue Fassung")));
+        ArgumentCaptor<ProcedureForm> saved = ArgumentCaptor.forClass(ProcedureForm.class);
+        verify(procedure).save(saved.capture());
+        Assertions.assertThat(saved.getValue().getValidFrom()).isEqualTo(LocalDate.of(2027, 1, 1));
+        Assertions.assertThat(saved.getValue().getExpenses()).isEqualTo("WISO Steuern");
+        when(procedure.save(any())).thenThrow(new DocumentException(List.of("Bitte die Änderung angeben.")));
+        mvc.perform(post("/documents/procedure").param("expenses", "WISO").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Bitte die Änderung angeben.")))
+                .andExpect(content().string(Matchers.containsString("value=\"WISO\"")));
+    }
+
+    @Test
+    void previewsTheVerfahrensdokumentationAsAPdf() throws Exception {
+        when(procedure.preview(any())).thenReturn(new byte[] {'%', 'P'});
+        mvc.perform(post("/documents/procedure/preview").param("change", "Erstfassung")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"Verfahrensdokumentation_Entwurf.pdf\""))
+                .andExpect(content().bytes(new byte[] {'%', 'P'}));
+        when(procedure.preview(any())).thenThrow(new DocumentException(List.of(NO_PROFILE)));
+        mvc.perform(post("/documents/procedure/preview").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString(NO_PROFILE)));
     }
 }

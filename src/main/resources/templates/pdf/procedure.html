@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <title>Verfahrensdokumentation Rechnungsstellung</title>
+  <!-- The Verfahrensdokumentation of the invoicing (GoBD, Rz. 151 ff.), filled from the profile and the form on
+       "Dokumente". The text follows docs/PLAN.md: change both together. -->
+  <style>
+    @page { size: A4; margin: 20mm 18mm 22mm 20mm;
+      @bottom-right { content: "Seite " counter(page) " von " counter(pages); font-family: "JetBrains Mono NL", monospace; font-size: 7pt; color: #616e7c; } }
+    body { font-family: "JetBrains Mono NL", monospace; font-size: 8.5pt; line-height: 1.45; color: #1f2933; }
+    h1 { font-size: 13pt; font-weight: 600; margin: 0 0 4mm 0; }
+    h2 { font-size: 10pt; font-weight: 600; margin: 6mm 0 2mm 0; page-break-after: avoid; }
+    p { margin: 0 0 2.5mm 0; }
+    table.facts { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm 0; page-break-inside: avoid; }
+    table.facts th, table.facts td { border: 0.5pt solid #cbd2d9; padding: 1.2mm 2mm; text-align: left; vertical-align: top; }
+    table.facts th { background: #f5f7fa; font-weight: 600; }
+    table.facts td.label { width: 30%; }
+    ol { margin: 0 0 2.5mm 0; padding-left: 6mm; }
+    li { margin: 0 0 1.2mm 0; }
+    .sign { width: 100%; margin-top: 16mm; page-break-inside: avoid; }
+    .sign td { width: 50%; padding-right: 8mm; vertical-align: bottom; }
+    .line { border-top: 0.5pt solid #1f2933; padding-top: 1mm; font-size: 7pt; color: #616e7c; }
+  </style>
+</head>
+<body>
+  <h1>Verfahrensdokumentation Rechnungsstellung</h1>
+  <p>Nach den GoBD (BMF-Schreiben zu den Grundsätzen ordnungsmäßiger Führung und Aufbewahrung von Büchern, Aufzeichnungen
+    und Unterlagen in elektronischer Form, Rz. 151 ff.). Sie beschreibt, wie Ausgangsrechnungen mit der Anwendung
+    „Invoice Manager“ erstellt, gespeichert und aufbewahrt werden. Jede Änderung des Verfahrens wird mit Datum unter
+    „Änderungen“ festgehalten.</p>
+
+  <h2>1. Allgemeine Beschreibung</h2>
+  <table class="facts">
+    <tr><th>Angabe</th><th>Inhalt</th></tr>
+    <tr><td class="label">Unternehmerin</td><td th:text="${seller.name + ', ' + seller.street + ', ' + seller.postcode + ' ' + seller.city}">Name, Anschrift</td></tr>
+    <tr><td class="label">Tätigkeiten</td><td th:text="${seller.twoTaxNumbers()} ? 'Unterricht nach § 4 Nr. 21 UStG; übrige Leistungen als Kleinunternehmerin nach § 19 UStG' : 'Leistungen als Kleinunternehmerin nach § 19 UStG, Unterricht nach § 4 Nr. 21 UStG'">Tätigkeiten</td></tr>
+    <tr><td class="label" th:text="${seller.twoTaxNumbers()} ? 'Steuernummern' : 'Steuernummer'">Steuernummern</td>
+      <td th:text="${seller.twoTaxNumbers()} ? 'Unterricht: ' + ${seller.taxNumberTeaching} + '; übrige Leistungen: ' + ${seller.taxNumber} : ${seller.taxNumber}">Steuernummer</td></tr>
+    <tr><td class="label">Gewinnermittlung</td><td th:text="${seller.twoTaxNumbers()} ? 'Einnahmenüberschussrechnung nach § 4 Abs. 3 EStG, je Steuernummer eine Anlage EÜR' : 'Einnahmenüberschussrechnung nach § 4 Abs. 3 EStG'">EÜR</td></tr>
+    <tr><td class="label">Gültig ab</td><td th:text="${validFrom}">01.01.2027</td></tr>
+  </table>
+  <p>Die Anwendung erstellt Ausgangsrechnungen als PDF/A-3 mit eingebetteter XML (ZUGFeRD) oder als reine XML (XRechnung),
+    erfasst Versand und Zahlungseingänge und erstellt die Auswertung für die Anlage EÜR. Eingangsrechnungen und
+    Betriebsausgaben verwaltet sie nicht; diese werden mit <span th:text="${expenses}">WISO Steuern</span> erfasst.</p>
+
+  <h2>2. Anwenderdokumentation</h2>
+  <ol>
+    <li>Die Unternehmerin legt Kunden und Vorlagen an.</li>
+    <li>Ein Entwurf ist änderbar. Die Anwendung prüft ihn auf Pflichtangaben und nennt, was fehlt.</li>
+    <li>„Rechnung ausstellen“ vergibt die nächste Nummer des Nummernkreises lückenlos und fortlaufend, erzeugt PDF und XML
+      und prüft sie gegen EN 16931 und das gewählte Format (Mustang, veraPDF, KoSIT). Scheitert die Prüfung, bleibt der
+      Entwurf bestehen und die Nummer wird nicht verbraucht.</li>
+    <li>Eine ausgestellte Rechnung lässt sich nicht mehr ändern. Eine Korrektur erfolgt durch eine Stornorechnung mit
+      eigener Nummer, die auf die ursprüngliche Rechnung verweist.</li>
+    <li>Der Versand wird mit Tag, Weg und Empfänger vermerkt. Der E-Mail-Versand aus der Anwendung vermerkt sich selbst.</li>
+    <li>Zahlungseingänge und Erstattungen werden mit dem Tag des Zahlungseingangs erfasst. Sie sind die Grundlage der
+      Einnahmen in der Anlage EÜR und der Umsatzgrenze nach § 19 UStG.</li>
+    <li>Am Jahresende lädt die Unternehmerin unter „Berichte“ die Werte der Anlage EÜR, die Zahlungen als CSV und das
+      Archiv aller Rechnungen und Dokumente des Jahres herunter.</li>
+    <li>Geschäftliche Unterlagen wie Steuerbescheide, Schreiben des Finanzamts, Bescheinigungen und diese
+      Verfahrensdokumentation liegen unter „Dokumente“. Eine Datei bleibt unverändert erhalten; eine neue Fassung ersetzt
+      sie in der Liste, die alte bleibt im Verlauf.</li>
+  </ol>
+
+  <h2>3. Technische Systemdokumentation</h2>
+  <table class="facts">
+    <tr><th>Bestandteil</th><th>Beschreibung</th></tr>
+    <tr><td class="label">Anwendung</td><td th:text="'Invoice Manager, Version ' + ${version} + ', Quelltext öffentlich unter github.com/grigoriev/im'">Version</td></tr>
+    <tr><td class="label">Betrieb</td><td>Docker-Container auf einem eigenen Server im Heimnetz, nur aus dem Heimnetz erreichbar</td></tr>
+    <tr><td class="label">Datenbank</td><td>PostgreSQL; Rechnungen, PDF, XML, ein unveränderlicher Datenstand je Rechnung und die abgelegten Dokumente</td></tr>
+    <tr><td class="label">Unveränderbarkeit</td><td>Datenbank-Trigger verweigern jede Änderung einer ausgestellten Rechnung, ihrer Dokumente, Versandvermerke und Zahlungen sowie jede Änderung und Löschung einer abgelegten Datei</td></tr>
+    <tr><td class="label">Prüfsummen</td><td>SHA-256 je gespeichertem PDF, XML und Dokument, sichtbar in der Anwendung und im Jahresarchiv</td></tr>
+    <tr><td class="label">Protokoll</td><td>Anmeldungen, Ausstellung, Storno, Versand, Zahlungen, Dokumente und Änderungen der Einstellungen mit Zeit und Benutzer</td></tr>
+    <tr><td class="label">Zugang</td><td>Benutzerkonten mit Passkey oder Passwort, Rollen Benutzer und Administrator</td></tr>
+  </table>
+
+  <h2>4. Betriebsdokumentation</h2>
+  <ol>
+    <li>Datensicherung: jede Nacht ein vollständiger Datenbankauszug, verschlüsselt auf einen zweiten Server außer Haus
+      übertragen (restic). Aufbewahrt werden 7 tägliche, 8 wöchentliche, 24 monatliche und 10 jährliche Stände.</li>
+    <li>Wiederherstellungstest: jeden Monat automatisch; die Anwendung zeigt den letzten erfolgreichen Lauf. Ein Fehler
+      meldet sich per E-Mail.</li>
+    <li>Aufbewahrung: Rechnungen 8 Jahre (§ 14b UStG, § 147 Abs. 3 AO), gerechnet ab dem Ende des Kalenderjahres. Die
+      Jahresarchive mit PDF, XML, Dokumenten und Inhaltsverzeichnis werden zusätzlich <span th:text="${archive}">in einem Dropbox-Ordner</span> abgelegt.</li>
+    <li>Datenzugriff der Finanzverwaltung: PDF und XML liegen im Originalformat vor; die Zahlungen als CSV, das Protokoll
+      und die Prüfsummen sind maschinell auswertbar.</li>
+    <li>Änderungen der Anwendung werden als Versionen mit Änderungsprotokoll (CHANGELOG) veröffentlicht. Eine neue Version
+      ändert keine ausgestellte Rechnung.</li>
+  </ol>
+
+  <h2>Änderungen</h2>
+  <table class="facts">
+    <tr><th>Datum</th><th>Änderung</th></tr>
+    <tr th:each="change : ${changes}"><td class="label" th:text="${change.date}">14.11.2026</td><td th:text="${change.text}">Erstfassung</td></tr>
+  </table>
+
+  <table class="sign" role="presentation">
+    <tr>
+      <td><div th:text="${seller.city + ', '}">Ort, </div><div class="line">Ort, Datum</div></td>
+      <td><div>&#160;</div><div class="line">Unterschrift</div></td>
+    </tr>
+  </table>
+</body>
+</html>

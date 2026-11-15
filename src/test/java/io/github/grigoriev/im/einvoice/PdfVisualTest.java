@@ -8,12 +8,16 @@ import static io.github.grigoriev.im.einvoice.SampleInvoices.invoice;
 import static io.github.grigoriev.im.einvoice.SampleInvoices.line;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.grigoriev.im.document.ProcedureService;
+import io.github.grigoriev.im.seller.SellerProfile;
+import io.github.grigoriev.im.seller.SellerTestData;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.imageio.ImageIO;
@@ -21,6 +25,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -89,6 +94,24 @@ class PdfVisualTest {
             compare(name + "-p" + (page + 1), pages.get(page));
         }
         assertThat(Files.exists(BASELINES.resolve(name + "-p" + (pages.size() + 1) + ".png")))
+                .as("baseline for a page that no longer exists").isFalse();
+    }
+
+    /** The Verfahrensdokumentation with two tax numbers and three changes: every page against its baseline. */
+    @Test
+    void theProcedureMatchesTheBaseline() throws IOException {
+        SellerProfile p = SellerTestData.profile();
+        SellerProfile seller = new SellerProfile(p.name(), p.street(), p.postcode(), p.city(), p.countryCode(), null,
+                p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null,
+                "98/765/43210");
+        List<BufferedImage> pages = render(renderer.render("pdf/procedure", Map.of("seller", seller,
+                "validFrom", "01.01.2027", "expenses", "WISO Steuern", "archive", "in einem Dropbox-Ordner",
+                "version", "0.1.4", "changes", List.of(new ProcedureService.Change("04.01.2027", "Erstfassung"),
+                        new ProcedureService.Change("01.06.2027", "Neue Version der App")))));
+        for (int page = 0; page < pages.size(); page++) {
+            compare("procedure-p" + (page + 1), pages.get(page));
+        }
+        assertThat(Files.exists(BASELINES.resolve("procedure-p" + (pages.size() + 1) + ".png")))
                 .as("baseline for a page that no longer exists").isFalse();
     }
 

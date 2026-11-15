@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Verfahrensdokumentation · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
+  <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">Verfahrensdokumentation</h1>
+      <a th:href="@{/documents}" class="btn"><i data-lucide="arrow-left" class="size-4"></i>Alle Dokumente</a>
+    </div>
+    <div role="alert" class="alert alert-error text-sm grid gap-1" id="procedure-problems" th:if="${problems}">
+      <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>
+    </div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container">
+      <div>
+        <h2 class="font-semibold">Angaben</h2>
+        <p class="text-sm text-base-content/75">Die App schreibt die Verfahrensdokumentation nach den GoBD. Name, Anschrift und
+          Steuernummern kommen aus dem Profil, die Version aus der App. Jedes Speichern legt eine neue Fassung unter
+          „Dokumente“ ab und trägt die Änderung in die Tabelle „Änderungen“ ein.</p>
+        <p class="text-sm text-base-content/75 mt-2" id="procedure-current" th:if="${current != null}">Aktuelle Fassung:
+          <a class="link" th:href="@{/documents/{id}(id=${current.id})}" th:text="${current.filename}">Verfahrensdokumentation.pdf</a></p>
+      </div>
+      <form class="grid gap-4" method="post" th:object="${procedureForm}" th:action="@{/documents/procedure}" id="procedure-form">
+        <div class="grid gap-4 @lg:grid-cols-2">
+          <label class="floating-label"><span>Gültig ab</span>
+            <input id="procedure-valid-from" th:field="*{validFrom}" type="date" class="input w-full" required>
+          </label>
+          <label class="floating-label"><span>Programm für Belege und Ausgaben</span>
+            <input id="procedure-expenses" th:field="*{expenses}" class="input w-full" maxlength="200" required>
+          </label>
+        </div>
+        <label class="floating-label"><span>Ablageort der Jahresarchive</span>
+          <input id="procedure-archive" th:field="*{archive}" class="input w-full" maxlength="200" required aria-describedby="procedure-archive-hint">
+        </label>
+        <span id="procedure-archive-hint" class="text-xs text-base-content/75 -mt-2">Ergänzt den Satz „Die Jahresarchive werden
+          zusätzlich … abgelegt“, zum Beispiel „in einem Dropbox-Ordner“.</span>
+        <label class="floating-label"><span>Änderung dieser Fassung</span>
+          <input id="procedure-change" th:field="*{change}" class="input w-full" maxlength="200" required aria-describedby="procedure-change-hint">
+        </label>
+        <span id="procedure-change-hint" class="text-xs text-base-content/75 -mt-2">Zum Beispiel „Erstfassung“ oder „Neue Version
+          der App“.</span>
+        <div class="form-actions">
+          <button type="submit" class="btn" id="procedure-preview" th:formaction="@{/documents/procedure/preview}"><i data-lucide="file-search" class="size-4"></i>Vorschau (PDF)</button>
+          <button type="submit" class="btn btn-primary" id="procedure-save"><i data-lucide="file-check" class="size-4"></i>Als Fassung ablegen</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+</body>
+</html>

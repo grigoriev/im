@@ -11,6 +11,7 @@ export const ROUTES = [
   { name: 'customer-new', path: '/customers/new', anonymous: false },
   { name: 'documents', path: '/documents', anonymous: false },
   { name: 'document-new', path: '/documents/new', anonymous: false },
+  { name: 'procedure', path: '/documents/procedure', anonymous: false },
   { name: 'settings', path: '/settings', anonymous: false },
   { name: 'tax-notes', path: '/admin/tax-notes', anonymous: false },
   { name: 'numbers', path: '/admin/numbers', anonymous: false },

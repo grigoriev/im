@@ -59,7 +59,7 @@ Checked against the statutes, the official Anlage EÜR 2025 with its instruction
 8. The income with which the threshold is crossed is already taxable (instructions to Zeile 12). The app counts by
    payment and warns before the crossing.
 9. Retention of invoices: 8 years since 2025 (§14b UStG, §147 Abs. 3 AO). The backups keep yearly snapshots for 10.
-10. GoBD: `docs/verfahrensdokumentation.md` is the template of the process documentation.
+10. GoBD: the app writes the process documentation (Verfahrensdokumentation), see section 7, "Documents".
 11. Services to businesses abroad: the place of supply is where the recipient, or its branch that receives the service,
     is established (§3a Abs. 2), so they are not taxable in Germany and count neither for §19 nor with German VAT.
     Outside the EU (for example Uzbekistan) the category "nicht steuerbar" fits. In another EU state the invoice needs
@@ -274,6 +274,10 @@ The admin edits the default tax notes. A template and an invoice can override th
    one it replaces. Only the description may change. Every upload and change goes into the audit log with the SHA-256.
 4. The yearly archive holds every version of the documents of that year: the year it concerns, else the year of its
    date. Backups and the full export take them along.
+5. The app writes the Verfahrensdokumentation (GoBD, Rz. 151 ff.) as a PDF from the profile, the version of the app
+   and four values of a form: valid from, the program for receipts and expenses, the place of the yearly archives and
+   the change. Each save is a new version of one document; its table "Änderungen" lists the change of every version
+   the app wrote (file name `Verfahrensdokumentation_<date>.pdf`). The signed scan goes in as the next version.
 
 ## 8. Deployment on lemming
 

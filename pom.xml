@@ -218,6 +218,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <!-- META-INF/build-info.properties: the version the Verfahrensdokumentation names. -->
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <!-- CSS (Tailwind, daisyUI) and the browser libraries, built into target/classes/static. -->
             <plugin>
@@ -426,6 +434,8 @@
                         <param>io.github.grigoriev.im.document.DocumentForm</param>
                         <param>io.github.grigoriev.im.document.DocumentFile</param>
                         <param>io.github.grigoriev.im.document.BusinessDocument</param>
+                        <param>io.github.grigoriev.im.document.ProcedureService</param>
+                        <param>io.github.grigoriev.im.document.ProcedureForm</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>

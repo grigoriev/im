@@ -55,7 +55,7 @@ Package `io.github.grigoriev.im`:
   sending (`MailService` over SMTP from `MailProperties`, `IM_SMTP_*`; text and HTML, the HTML from `MailHtml`, template `templates/mail/invoice.html`; `/invoices/{id}/send/preview` shows it under a CSP of its own; a sent e-mail records a dispatch `EMAIL_APP`)
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
-- `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file)
+- `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file; `ProcedureService` writes the Verfahrensdokumentation from template `templates/pdf/procedure.html`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
