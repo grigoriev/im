@@ -44,17 +44,31 @@ test('the admin changes a default tax note and restores it', async ({ page }) =>
 test('the admin changes the default e-mail text and restores it', async ({ page }) => {
   await page.goto('/settings');
   await page.getByRole('tab', { name: /E-Mail/ }).click();
-  const subject = page.getByLabel('Betreff');
+  const invoiceText = page.locator('#mail-text');
+  const subject = invoiceText.getByLabel('Betreff');
   await expect(subject).toHaveValue('Rechnung {Rechnungsnummer}');
-  await expect(page.getByLabel('Text')).toHaveValue(/meine Rechnung \{Rechnungsnummer\}/);
+  await expect(invoiceText.getByLabel('Text')).toHaveValue(/meine Rechnung \{Rechnungsnummer\}/);
   await subject.fill('Rechnung {Rechnungsnummer} von Elena Sommer');
-  await page.getByRole('button', { name: 'Speichern' }).click();
+  await invoiceText.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toHaveText('E-Mail-Text gespeichert.');
   await expect(subject).toHaveValue('Rechnung {Rechnungsnummer} von Elena Sommer');
 
   await subject.fill('');
-  await page.getByRole('button', { name: 'Speichern' }).click();
+  await invoiceText.getByRole('button', { name: 'Speichern' }).click();
   await expect(subject).toHaveValue('Rechnung {Rechnungsnummer}');
+
+  const reminderText = page.locator('#reminder-text');
+  const reminderSubject = reminderText.getByLabel('Betreff');
+  await expect(reminderSubject).toHaveValue('Zahlungserinnerung zur Rechnung {Rechnungsnummer}');
+  await expect(reminderText.getByLabel('Text')).toHaveValue(/\{Offener Betrag\}/);
+  await reminderSubject.fill('Erinnerung {Rechnungsnummer}');
+  await reminderText.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Text der Zahlungserinnerung gespeichert.');
+  await expect(reminderSubject).toHaveValue('Erinnerung {Rechnungsnummer}');
+  await expect(subject, 'the invoice text stays').toHaveValue('Rechnung {Rechnungsnummer}');
+  await reminderSubject.fill('');
+  await reminderText.getByRole('button', { name: 'Speichern' }).click();
+  await expect(reminderSubject).toHaveValue('Zahlungserinnerung zur Rechnung {Rechnungsnummer}');
 });
 
 test('the admin enters the revenue of last year, and the overview counts it', async ({ page }) => {

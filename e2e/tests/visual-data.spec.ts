@@ -159,6 +159,10 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
       await expect(view.locator('#invoice-dispatch')).toHaveScreenshot(`invoice-dispatch-${viewport.name}-${scheme}.png`, {
         mask: [view.locator('#dispatch-date')],
       });
+      await view.locator('#invoice-reminder summary').click();
+      await expect(view.locator('#invoice-reminder')).toHaveScreenshot(`invoice-reminder-${viewport.name}-${scheme}.png`, {
+        mask: [view.locator('#reminder-date')],
+      });
       await view.goto(issued);
       await view.getByRole('button', { name: 'Stornieren…' }).click();
       await expect(view.locator('#invoice-cancel .modal-box')).toHaveScreenshot(`invoice-cancel-${viewport.name}-${scheme}.png`);
