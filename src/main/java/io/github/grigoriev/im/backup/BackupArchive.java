@@ -48,6 +48,8 @@ final class BackupArchive {
     private static final int END_SIGNATURE = 0x06054b50;
     private static final int END_RECORD = 22;
     private static final int MAX_COMMENT = 0xFFFF;
+    /** ZipFile reads the tail in blocks of 128 bytes and so looks up to one block further back than the comment. */
+    private static final int READ_BLOCK = 128;
 
     private final ZipFile zip;
     private final JsonMapper json;
@@ -55,6 +57,7 @@ final class BackupArchive {
     private final long maxFileBytes;
     private long expanded;
     private final Set<String> counted = new HashSet<>();
+    private final Set<String> files = new HashSet<>();
 
     private BackupArchive(ZipFile zip, JsonMapper json, long maxBytes, long maxFileBytes) {
         this.zip = zip;
@@ -98,7 +101,7 @@ final class BackupArchive {
      */
     private static void directory(Path file, int maxEntries, long maxDirectoryBytes) throws IOException {
         try (RandomAccessFile in = new RandomAccessFile(file.toFile(), "r")) {
-            int tail = (int) Math.min(in.length(), (long) END_RECORD + MAX_COMMENT);
+            int tail = (int) Math.min(in.length(), (long) END_RECORD + MAX_COMMENT + READ_BLOCK);
             byte[] bytes = new byte[tail];
             in.seek(in.length() - tail);
             in.readFully(bytes);
@@ -225,6 +228,10 @@ final class BackupArchive {
     byte[] file(String name) {
         if (zip.getEntry(name) == null) {
             throw new BackupException("In der Datensicherung fehlt die Datei " + name + ".");
+        }
+        // The export writes each file for one row: a second row that names it would get around the size limit.
+        if (!files.add(name)) {
+            throw damaged(name);
         }
         return entry(name, maxFileBytes, InputStream::readAllBytes);
     }

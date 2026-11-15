@@ -251,6 +251,32 @@ class BackupArchiveTest {
     }
 
     @Test
+    void aFileServesOneRowOnly() throws IOException {
+        Path file = zip(Map.of("f", new byte[] {1}));
+        read(file, 100, 100, 1, archive -> {
+            assertThat(archive.file("f")).containsExactly(1);
+            assertThatThrownBy(() -> archive.file("f")).isInstanceOf(BackupException.class)
+                    .hasMessage("Die Datensicherung ist beschädigt: f.");
+        });
+    }
+
+    @Test
+    void checksTheEndRecordsAsFarBackAsZipFileLooks() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(out)) {
+            for (int i = 0; i < 3; i++) {
+                zip.putNextEntry(new ZipEntry("e" + i));
+            }
+        }
+        out.write(new byte[22 + 0xFFFF + 50]);
+        Path file = Files.write(folder.resolve("trailing.zip"), out.toByteArray());
+        List<BackupArchive> opened = new ArrayList<>();
+        assertThatThrownBy(() -> BackupArchive.read(file, json, 1000, 100, 2, 1000, opened::add))
+                .hasMessage(BackupArchive.TOO_BIG);
+        assertThat(opened).isEmpty();
+    }
+
+    @Test
     void anEntryReadTwiceCountsOnce() throws IOException {
         Path file = zip(Map.of("data/rows.json", utf8("[{\"id\":\"1\"}]")));
         List<Map<String, Object>> rows = new ArrayList<>();
