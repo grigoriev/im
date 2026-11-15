@@ -85,9 +85,9 @@ public class IntegrityMonitor {
     public synchronized Result check() {
         List<Damage> damaged = checks.stream().flatMap(check -> check.damaged().stream()).toList();
         Set<String> known = last == null ? Set.of()
-                : last.damaged().stream().map(Damage::summary).collect(Collectors.toSet());
+                : last.damaged().stream().map(IntegrityMonitor::key).collect(Collectors.toSet());
         for (Damage damage : damaged) {
-            if (!known.contains(damage.summary())) {
+            if (!known.contains(key(damage))) {
                 LOG.warn("Integrity check failed: {}", damage.summary());
                 if (damage.invoiceId() == null) {
                     audit.add(AuditAction.INTEGRITY_FAILED, damage.summary());
@@ -98,6 +98,11 @@ public class IntegrityMonitor {
         }
         last = new Result(clock.instant(), damaged);
         return last;
+    }
+
+    /** Two findings with the same text may concern two objects: the page of each tells them apart. */
+    private static String key(Damage damage) {
+        return damage.href() + "\n" + damage.summary();
     }
 
     /**

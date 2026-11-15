@@ -2,6 +2,7 @@ package io.github.grigoriev.im.integrity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -54,5 +55,10 @@ class IntegrityMonitorTest {
 
         assertThat(monitor.check().damaged()).as("the same findings go into the log once").hasSize(2);
         verifyNoMoreInteractions(audit);
+
+        Damage twin = new Damage(null, "Dokument a.pdf", "/documents/3", List.of("Siegel."));
+        when(documents.damaged()).thenReturn(List.of(document, twin));
+        monitor.check();
+        verify(audit, times(2)).add(AuditAction.INTEGRITY_FAILED, "Dokument a.pdf: Siegel.");
     }
 }

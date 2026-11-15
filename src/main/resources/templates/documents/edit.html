@@ -21,7 +21,7 @@
              th:unless="${integrity == null or integrity.isEmpty()}">
       <span class="flex items-center gap-2 font-semibold"><i data-lucide="shield-alert" class="size-4 text-error" aria-hidden="true"></i>Prüfung fehlgeschlagen</span>
       <span>Die gespeicherte Datei passt nicht mehr zu ihrer Prüfsumme oder ihrem Siegel. Herunterladen ist gesperrt.
-        Die unveränderte Datei liegt in der Datensicherung.</span>
+        Bitte die Datei aus einer Datensicherung von vor der Änderung wiederherstellen.</span>
       <ul class="list-disc ps-5 grid gap-1">
         <li th:each="problem : ${integrity}" th:text="${problem}" class="[overflow-wrap:anywhere]">Problem</li>
       </ul>
