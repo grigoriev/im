@@ -86,6 +86,9 @@ class ReminderServiceTest {
         assertThat(saved).isEqualTo(new Reminder(null, 5L, TODAY, ReminderChannel.EMAIL_APP, "a@b.example", null,
                 "system", NOW));
         verify(audit).add(5L, AuditAction.REMINDER_RECORDED, "2027-01, 05.04.2027, E-Mail aus der App, a@b.example");
+        open("0.00");
+        assertThat(service.recordEmail(5, "a@b.example").channel())
+                .as("a payment during the send keeps the sent e-mail in the history").isEqualTo(ReminderChannel.EMAIL_APP);
     }
 
     @Test

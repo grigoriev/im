@@ -146,16 +146,18 @@ public class ReminderService {
     }
 
     /**
-     * Records a reminder the app sent, today.
+     * Records a reminder the app sent, today. The check came before the send: a payment that arrived meanwhile does not
+     * keep the sent e-mail out of the history.
      *
      * @param invoiceId the invoice
      * @param recipient the address
      * @return the saved reminder
-     * @throws InvoiceException if the invoice waits for nothing
+     * @throws InvoiceException if the invoice is unknown
      */
     @Transactional
     public Reminder recordEmail(long invoiceId, String recipient) {
-        return save(remindable(invoiceId), today(), ReminderChannel.EMAIL_APP, recipient, null);
+        Invoice invoice = invoices.find(invoiceId).orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));
+        return save(invoice, today(), ReminderChannel.EMAIL_APP, recipient, null);
     }
 
     private Reminder save(Invoice invoice, LocalDate remindedOn, ReminderChannel channel, String recipient,
