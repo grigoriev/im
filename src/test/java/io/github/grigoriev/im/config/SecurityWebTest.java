@@ -1586,6 +1586,12 @@ class SecurityWebTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")))
                 .andExpect(content().string(Matchers.containsString("value=\"Ohne Datei\"")));
+        mvc.perform(MockMvcRequestBuilders.multipart("/documents").file(new MockMultipartFile("file", "Riesig.pdf",
+                        "application/pdf", new byte[DocumentService.MAX_BYTES + 1])).param("title", "Riesig")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Die Datei ist größer als 25 MB.")));
+        verify(businessDocuments, never()).add(any(), eq("Riesig.pdf"), any());
     }
 
     @Test

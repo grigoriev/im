@@ -112,17 +112,7 @@ public class BackupService {
     @Transactional(isolation = Isolation.REPEATABLE_READ)
     public void export(OutputStream out) {
         try (Bounded zip = new Bounded(out, MAX_ENTRIES, MAX_BYTES)) {
-            try {
-                entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
-                        "exported", clock.instant().toString(), "tables", TABLES)));
-                for (String table : TABLES) {
-                    exportTable(zip, table);
-                }
-            } catch (IOException | RuntimeException e) {
-                // A broken export must not end as a well-formed ZIP that lacks tables: no central directory.
-                zip.abort();
-                throw e;
-            }
+            writeAll(zip);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -169,6 +159,20 @@ public class BackupService {
         archive.rows(data(INVOICE), invoice -> finish(invoiceTypes, invoice));
         TABLES.forEach(this::resetIdentity);
         audit.add(AuditAction.DATA_IMPORTED, "");
+    }
+
+    /** Writes the manifest and every table; a broken export must not end as a well-formed ZIP that lacks tables. */
+    private void writeAll(Bounded zip) throws IOException {
+        try {
+            entry(zip, MANIFEST, json.writeValueAsBytes(Map.of("format", FORMAT, SCHEMA_KEY, schema(),
+                    "exported", clock.instant().toString(), "tables", TABLES)));
+            for (String table : TABLES) {
+                exportTable(zip, table);
+            }
+        } catch (IOException | RuntimeException e) {
+            zip.abort();
+            throw e;
+        }
     }
 
     /**
@@ -333,7 +337,7 @@ public class BackupService {
 
         /** Counts what the entries hold before compression, against the limit of what an import expands. */
         @Override
-        public void write(byte[] buffer, int offset, int length) throws IOException {
+        public synchronized void write(byte[] buffer, int offset, int length) throws IOException {
             bytes += length;
             if (bytes > maxBytes) {
                 throw new BackupException("Die Datensicherung wäre größer, als der Import lesen kann.");

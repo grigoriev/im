@@ -33,7 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class DocumentService {
 
     /** The largest file, 25 MiB: a scanned letter of many pages fits. */
-    static final int MAX_BYTES = 25 * 1024 * 1024;
+    /** The largest file of a document; the upload checks it before it reads the file. */
+    public static final int MAX_BYTES = 25 * 1024 * 1024;
+    /** The problem of a file over {@link #MAX_BYTES}. */
+    public static final String TOO_LARGE = "Die Datei ist größer als " + MAX_BYTES / 1024 / 1024 + " MB.";
     static final int MAX_TITLE = 200;
     static final int MAX_NOTE = 2000;
     static final int MAX_FILENAME = 200;
@@ -287,7 +290,7 @@ public class DocumentService {
             return Optional.empty();
         }
         if (content.length > MAX_BYTES) {
-            problems.add("Die Datei ist größer als " + MAX_BYTES / 1024 / 1024 + " MB.");
+            problems.add(TOO_LARGE);
             return Optional.empty();
         }
         Optional<String> type = SIGNATURES.entrySet().stream().filter(entry -> startsWith(content, entry.getValue()))
