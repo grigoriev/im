@@ -160,16 +160,14 @@
   position: static; translate: none; padding: 0; background: none; white-space: normal; max-width: none; overflow: visible;
   font-size: 0.8125rem;
 }
-/* A focused field has a ring outside its frame. The label then turns blue and covers the ring too, so the gap cuts
-   through both. The ring lies on the surface around the field: a white card, unless the field sets --label-surface,
-   as one on the gray page does. A wrong field has a red label. The doubled class outweighs the :not(:has(...)) of the
-   base rule. */
+/* A focused field has a ring outside its frame. The label covers the ring too, so the gap cuts through both. The ring
+   lies on the surface around the field: a white card, unless the field sets --label-surface, as one on the gray page
+   does. The label stays gray on focus and on error: only the frame changes color. The doubled class outweighs the
+   :not(:has(...)) of the base rule. */
 .floating-label.floating-label:focus-within > span {
-  color: var(--color-primary);
   background: linear-gradient(to bottom, transparent calc(50% - 3px), var(--label-surface, var(--color-base-100))
     calc(50% - 3px) 50%, var(--color-base-100) 50%);
 }
-.floating-label.floating-label:has([aria-invalid="true"], .input-error, .select-error) > span { color: var(--color-error); }
 /* A disabled field is gray: below the line its label takes that gray. */
 .floating-label.floating-label:has(:disabled) > span {
   background: linear-gradient(to bottom, transparent 50%, var(--color-base-200) 50%);

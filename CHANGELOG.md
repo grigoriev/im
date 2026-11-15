@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- The label of a field stays gray on focus and on a wrong value. Only the frame turns blue or red.
+
 ## [0.1.4] - 2026-11-15
 
 ### Added
