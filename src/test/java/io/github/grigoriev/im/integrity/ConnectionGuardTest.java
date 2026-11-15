@@ -31,7 +31,8 @@ class ConnectionGuardTest {
 
     @Test
     void refusesTheOwnerOrASuperuser() {
-        assertThatThrownBy(() -> guard(true).run(null)).isInstanceOf(IllegalStateException.class)
+        ConnectionGuard guard = guard(true);
+        assertThatThrownBy(() -> guard.run(null)).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("IM_DB_USER").hasMessageContaining("IM_DB_OWNER");
     }
 }

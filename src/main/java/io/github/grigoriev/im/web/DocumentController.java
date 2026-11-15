@@ -48,8 +48,8 @@ public class DocumentController {
     private static final String SUCCESS = "success";
     private static final String PROBLEMS = "problems";
     private static final String FORM = "form";
-    private static final String DOCUMENTS = "/documents/";
-    private static final String TO_DOCUMENT = "redirect:" + DOCUMENTS;
+    private static final String DOCUMENT_PATH = "/documents/";
+    private static final String TO_DOCUMENT = "redirect:" + DOCUMENT_PATH;
 
     private final DocumentService documents;
     private final ProcedureService procedure;
@@ -248,7 +248,7 @@ public class DocumentController {
         try {
             file = documents.file(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         } catch (DocumentException _) {
-            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(DOCUMENTS + id))
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(DOCUMENT_PATH + id))
                     .build();
         }
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(file.mediaType()))

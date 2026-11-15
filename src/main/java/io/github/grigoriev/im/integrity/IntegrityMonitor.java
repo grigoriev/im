@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ public class IntegrityMonitor {
     private final List<IntegrityCheck> checks;
     private final AuditService audit;
     private final Clock clock;
-    private volatile Result last;
+    private final AtomicReference<Result> last = new AtomicReference<>();
 
     /**
      * The result of a check.
@@ -84,20 +85,23 @@ public class IntegrityMonitor {
      */
     public synchronized Result check() {
         List<Damage> damaged = checks.stream().flatMap(check -> check.damaged().stream()).toList();
-        Set<String> known = last == null ? Set.of()
-                : last.damaged().stream().map(IntegrityMonitor::key).collect(Collectors.toSet());
+        Result before = last.get();
+        Set<String> known = before == null ? Set.of()
+                : before.damaged().stream().map(IntegrityMonitor::key).collect(Collectors.toSet());
         for (Damage damage : damaged) {
             if (!known.contains(key(damage))) {
-                LOG.warn("Integrity check failed: {}", damage.summary());
+                String summary = damage.summary();
+                LOG.warn("Integrity check failed: {}", summary);
                 if (damage.invoiceId() == null) {
-                    audit.add(AuditAction.INTEGRITY_FAILED, damage.summary());
+                    audit.add(AuditAction.INTEGRITY_FAILED, summary);
                 } else {
-                    audit.add(damage.invoiceId(), AuditAction.INTEGRITY_FAILED, damage.summary());
+                    audit.add(damage.invoiceId(), AuditAction.INTEGRITY_FAILED, summary);
                 }
             }
         }
-        last = new Result(clock.instant(), damaged);
-        return last;
+        Result result = new Result(clock.instant(), damaged);
+        last.set(result);
+        return result;
     }
 
     /** Two findings with the same text may concern two objects: the page of each tells them apart. */
@@ -111,6 +115,6 @@ public class IntegrityMonitor {
      * @return the result, empty before the first check
      */
     public Optional<Result> last() {
-        return Optional.ofNullable(last);
+        return Optional.ofNullable(last.get());
     }
 }

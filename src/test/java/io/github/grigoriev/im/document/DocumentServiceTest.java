@@ -188,7 +188,7 @@ class DocumentServiceTest {
         assertThat(added.replacesId()).isNull();
         assertThat(added.current()).isTrue();
         assertThat(service.file(1).orElseThrow()).isEqualTo(new DocumentFile("Bescheid.pdf", "application/pdf", PDF));
-        assertThat(rows.get(1L).get("seal")).isEqualTo(seal.businessDocument(1, Seal.sha256(PDF)));
+        assertThat(rows.get(1L)).containsEntry("seal", seal.businessDocument(1, Seal.sha256(PDF)));
         assertThat(service.problems(1)).isEmpty();
         assertThat(service.damaged()).isEmpty();
         verify(audit).add(AuditAction.DOCUMENT_ADDED, "Steuerbescheid: Einkommensteuerbescheid 2026 (Bescheid.pdf, "

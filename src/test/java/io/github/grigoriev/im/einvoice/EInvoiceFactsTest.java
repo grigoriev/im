@@ -82,11 +82,14 @@ class EInvoiceFactsTest {
 
     @Test
     void refusesWhatIsNoXmlAndADoctype() {
-        assertThatThrownBy(() -> EInvoiceFacts.read("kein XML".getBytes(StandardCharsets.UTF_8)))
+        byte[] text = "kein XML".getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> EInvoiceFacts.read(text))
                 .isInstanceOf(EInvoiceException.class).hasMessage("The XML cannot be read");
-        assertThatThrownBy(() -> EInvoiceFacts.read(("<!DOCTYPE x [<!ENTITY e SYSTEM \"file:///etc/passwd\">]>"
-                + "<x>&e;</x>").getBytes(StandardCharsets.UTF_8))).isInstanceOf(EInvoiceException.class);
-        assertThatThrownBy(() -> EInvoiceFacts.read("<!DOCTYPE x [<!ENTITY e \"boom\">]><x>&e;</x>"
-                .getBytes(StandardCharsets.UTF_8))).as("not even an inner entity").isInstanceOf(EInvoiceException.class);
+        byte[] external = ("<!DOCTYPE x [<!ENTITY e SYSTEM \"file:///etc/passwd\">]><x>&e;</x>")
+                .getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> EInvoiceFacts.read(external)).isInstanceOf(EInvoiceException.class);
+        byte[] inner = "<!DOCTYPE x [<!ENTITY e \"boom\">]><x>&e;</x>".getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> EInvoiceFacts.read(inner)).as("not even an inner entity")
+                .isInstanceOf(EInvoiceException.class);
     }
 }

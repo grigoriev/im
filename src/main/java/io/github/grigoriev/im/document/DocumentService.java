@@ -60,8 +60,7 @@ public class DocumentService implements IntegrityCheck {
     static final String FROM = " FROM business_document d LEFT JOIN business_document n ON n.replaces_id = d.id";
     static final String ALL = "SELECT " + COLUMNS + FROM + " ORDER BY d.document_date DESC, d.id DESC";
     static final String ONE = "SELECT " + COLUMNS + FROM + " WHERE d.id = :id";
-    static final String FILE = """
-            SELECT filename, media_type, content, sha256, seal FROM business_document WHERE id = :id""";
+    static final String FILE = "SELECT filename, media_type, content, sha256, seal FROM business_document WHERE id = :id";
     static final String IDS = "SELECT id FROM business_document ORDER BY id";
     /** The ID comes first: the seal names it. */
     static final String NEXT_ID = "SELECT nextval(pg_get_serial_sequence('business_document', 'id'))";

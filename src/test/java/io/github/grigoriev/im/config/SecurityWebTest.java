@@ -268,12 +268,8 @@ class SecurityWebTest {
     private IntegrityMonitor monitor;
 
     @BeforeEach
-    void intact() {
-        when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
-    }
-
-    @BeforeEach
     void noRevenueNoPayments() {
+        when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
         when(threshold.today()).thenReturn(LocalDate.of(2027, 3, 18));
         when(threshold.current()).thenReturn(new Threshold(2027,
                 new BigDecimal("18250.00"), true, new BigDecimal("101000.00"),

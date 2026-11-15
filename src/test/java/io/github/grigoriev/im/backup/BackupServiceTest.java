@@ -332,7 +332,8 @@ class BackupServiceTest {
     void refusesAnExportWithAChangedFileOrAnotherKey() {
         when(check.damaged()).thenReturn(List.of(new Damage(3L, "Rechnung 2027-01", "/invoices/3", List.of("x")),
                 new Damage(null, "Dokument a.pdf", "/documents/1", List.of("y"))));
-        assertThatThrownBy(() -> restore(export())).isInstanceOf(BackupException.class).hasMessage("Die Datensicherung "
+        byte[] zip = export();
+        assertThatThrownBy(() -> restore(zip)).isInstanceOf(BackupException.class).hasMessage("Die Datensicherung "
                 + "enthält Dateien, die nicht zu Prüfsumme oder Siegel passen: Rechnung 2027-01, Dokument a.pdf. Das "
                 + "Siegel braucht denselben IM_INTEGRITY_KEY wie die Installation, aus der die Sicherung stammt.");
         verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");

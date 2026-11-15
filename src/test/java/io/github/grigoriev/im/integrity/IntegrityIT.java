@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.grigoriev.im.TestDatabase;
 import io.github.grigoriev.im.audit.AuditAction;
+import io.github.grigoriev.im.audit.AuditEvent;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
@@ -95,7 +96,8 @@ class IntegrityIT {
         assertThatThrownBy(() -> jdbc.execute("TRUNCATE audit_event")).isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> jdbc.update("DELETE FROM flyway_schema_history"))
                 .isInstanceOf(DataAccessException.class);
-        assertThatThrownBy(() -> new ConnectionGuard(owner.jdbc()).run(null)).isInstanceOf(IllegalStateException.class);
+        ConnectionGuard asOwner = new ConnectionGuard(owner.jdbc());
+        assertThatThrownBy(() -> asOwner.run(null)).isInstanceOf(IllegalStateException.class);
         new ConnectionGuard(JdbcClient.create(jdbc.getDataSource())).run(null);
     }
 
@@ -109,7 +111,8 @@ class IntegrityIT {
             DriverManagerDataSource probe = owner.dataSource(null);
             probe.setUsername("guard_probe");
             probe.setPassword("probe");
-            assertThatThrownBy(() -> new ConnectionGuard(JdbcClient.create(probe)).run(null))
+            ConnectionGuard guard = new ConnectionGuard(JdbcClient.create(probe));
+            assertThatThrownBy(() -> guard.run(null))
                     .as("SET ROLE would reach the triggers").isInstanceOf(IllegalStateException.class);
         } finally {
             asOwner.sql("DROP ROLE guard_probe").update();
@@ -163,11 +166,12 @@ class IntegrityIT {
                     "Die XML in der PDF-Datei weicht von der XML-Datei ab.")
                     .anySatisfy(problem -> assertThat(problem).contains("Das Siegel passt nicht"));
             assertThat(report.differences()).contains(new Difference("Gesamtbetrag", "400,00 €", "4.000,00 €"));
-            assertThatThrownBy(() -> documents.find(invoice.id(), DocumentKind.XML))
+            long id = invoice.id();
+            assertThatThrownBy(() -> documents.find(id, DocumentKind.XML))
                     .isInstanceOf(InvoiceException.class);
             assertThat(documents.find(invoice.id(), DocumentKind.PDF)).as("the PDF itself is intact").isPresent();
             assertThat(monitor.check().damaged()).extracting(Damage::invoiceId).contains(invoice.id());
-            assertThat(audit.history(invoice.id())).extracting(event -> event.action())
+            assertThat(audit.history(invoice.id())).extracting(AuditEvent::action)
                     .contains(AuditAction.INTEGRITY_FAILED);
         } finally {
             asOwner("invoice_document", "invoice_document_frozen",
@@ -205,7 +209,8 @@ class IntegrityIT {
         try {
             assertThat(businessDocuments.problems(added.id())).singleElement().asString()
                     .contains("Der Inhalt passt nicht zur gespeicherten Prüfsumme");
-            assertThatThrownBy(() -> businessDocuments.file(added.id())).isInstanceOf(DocumentException.class);
+            long id = added.id();
+            assertThatThrownBy(() -> businessDocuments.file(id)).isInstanceOf(DocumentException.class);
         } finally {
             asOwner("business_document", "business_document_frozen",
                     "UPDATE business_document SET content = ? WHERE id = ?",
@@ -226,7 +231,8 @@ class IntegrityIT {
                 .hasMessageContaining("immutable");
         assertThatThrownBy(() -> jdbc.update("UPDATE invoice_document SET filename = 'x' WHERE invoice_id = ?",
                 invoice.id())).hasMessageContaining("immutable");
-        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET seal = NULL WHERE id = ?", invoice.id()))
+        long id = invoice.id();
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET seal = NULL WHERE id = ?", id))
                 .isInstanceOf(DataAccessException.class);
     }
 }

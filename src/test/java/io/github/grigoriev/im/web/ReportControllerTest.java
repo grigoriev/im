@@ -180,7 +180,7 @@ class ReportControllerTest {
         assertThat(zip.getStatusCode()).isEqualTo(HttpStatus.SEE_OTHER);
         assertThat(zip.getHeaders().getLocation()).hasToString("/reports?year=2027");
         assertThat(zip.getBody()).isNull();
-        assertThat(flash.get("error")).isEqualTo( "Das Archiv bleibt aus, denn "
+        assertThat((Map<String, Object>) flash).containsEntry("error", "Das Archiv bleibt aus, denn "
                 + "diese Dateien sind beschädigt oder wurden außerhalb der App geändert: Rechnung 2027-02, Dokument "
                 + "b.pdf. Bitte die Seiten dieser Rechnungen und Dokumente ansehen.");
         assertThat(flash.getTargetRequestPath()).isEqualTo("/reports");

@@ -18,7 +18,8 @@ class SealTest {
     @Test
     void needsAKeyOfAtLeast32Characters() {
         assertThatThrownBy(() -> new Seal(null)).hasMessage("IM_INTEGRITY_KEY must have at least 32 characters");
-        assertThatThrownBy(() -> new Seal("a".repeat(31))).isInstanceOf(IllegalStateException.class);
+        String short31 = "a".repeat(31);
+        assertThatThrownBy(() -> new Seal(short31)).isInstanceOf(IllegalStateException.class);
         assertThat(new Seal("a".repeat(32)).businessDocument(1, ABC_SHA256)).hasSize(64);
     }
 
@@ -54,7 +55,8 @@ class SealTest {
         assertThat(Seal.sha256("abc".getBytes(StandardCharsets.US_ASCII))).isEqualTo(ABC_SHA256);
         assertThatThrownBy(() -> Seal.digest("SHA-0", new byte[0])).isInstanceOf(IllegalStateException.class)
                 .hasMessage("Java lacks SHA-0").hasCauseInstanceOf(NoSuchAlgorithmException.class);
-        assertThatThrownBy(() -> Seal.mac("HmacNope", new SecretKeySpec(new byte[] {1}, "HmacNope"), "x"))
+        SecretKeySpec nope = new SecretKeySpec(new byte[] {1}, "HmacNope");
+        assertThatThrownBy(() -> Seal.mac("HmacNope", nope, "x"))
                 .isInstanceOf(IllegalStateException.class).hasMessage("Java cannot compute HmacNope")
                 .hasCauseInstanceOf(NoSuchAlgorithmException.class);
     }
