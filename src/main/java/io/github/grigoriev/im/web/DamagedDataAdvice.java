@@ -17,7 +17,7 @@ import tools.jackson.core.JacksonException;
 @ControllerAdvice
 public class DamagedDataAdvice {
 
-    static final String VIEW = "damaged";
+    static final String VIEW = "damaged-data";
 
     private static final Logger LOG = LoggerFactory.getLogger(DamagedDataAdvice.class);
 
