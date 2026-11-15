@@ -1045,7 +1045,8 @@ class SecurityWebTest {
                 .andExpect(redirectedUrl("/settings/mail"));
         verify(mailTexts).saveReminder("Von ihr", "Text");
         mvc.perform(post("/settings/mail").param("subject", "x").with(user("elena").roles("USER")))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(redirectedUrl("/login?expired"));
+        verify(mailTexts, never()).save(eq("x"), any());
     }
 
     @Test
