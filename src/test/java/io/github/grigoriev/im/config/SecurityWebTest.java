@@ -154,6 +154,7 @@ import org.springframework.security.web.authentication.rememberme.PersistentToke
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import tools.jackson.core.exc.StreamReadException;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
@@ -1590,6 +1591,22 @@ class SecurityWebTest {
         when(documents.find(6, DocumentKind.PDF)).thenThrow(new InvoiceException(List.of("kaputt")));
         mvc.perform(get("/invoices/6/documents/pdf").with(user("elena").roles("USER")))
                 .andExpect(status().isSeeOther()).andExpect(redirectedUrl("/invoices/6"));
+    }
+
+    @Test
+    void anUnreadableSnapshotShowsTheDamageInsteadOfAnError() throws Exception {
+        when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.ISSUED)));
+        when(documents.restore("{snapshot}")).thenThrow(new StreamReadException(null, "kaputt"));
+        when(monitor.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of(new Damage(6L,
+                "Rechnung 2027-10", "/invoices/6", List.of("Der Stand der Ausstellung lässt sich nicht lesen.")))));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string(Matchers.containsString("Gespeicherte Daten lassen sich nicht lesen")))
+                .andExpect(content().string(Matchers.containsString("Rechnung 2027-10")))
+                .andExpect(content().string(Matchers.containsString("Der Stand der Ausstellung lässt sich nicht lesen.")));
+        when(monitor.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of()));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Die Prüfung der Dokumente fand nichts.")));
     }
 
     @Test

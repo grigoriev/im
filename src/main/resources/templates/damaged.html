@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Daten beschädigt · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+  <main class="px-4 py-12 grid place-items-center">
+    <div class="bg-base-100 rounded-box border border-base-300 shadow-xs p-6 sm:p-8 w-full max-w-lg grid gap-3" id="damaged-data">
+      <h1 class="font-semibold text-xl tracking-tight flex items-center gap-2">
+        <i data-lucide="shield-alert" class="size-5 text-error" aria-hidden="true"></i>Gespeicherte Daten lassen sich nicht lesen</h1>
+      <p class="text-sm text-base-content/75">Diese Seite braucht Daten, die außerhalb der App geändert wurden oder
+        beschädigt sind. Die Prüfung hat das gefunden:</p>
+      <ul class="list-disc ps-5 grid gap-2 text-sm" th:unless="${damaged.isEmpty()}">
+        <li th:each="damage : ${damaged}" class="[overflow-wrap:anywhere]">
+          <span class="font-medium" th:text="${damage.what()}">Rechnung 2027-01</span>:
+          <span th:text="${#strings.listJoin(damage.problems(), ' ')}">Der Stand der Ausstellung lässt sich nicht lesen.</span>
+        </li>
+      </ul>
+      <p class="text-sm" th:if="${damaged.isEmpty()}">Die Prüfung der Dokumente fand nichts. Bitte das Protokoll des Servers ansehen.</p>
+      <p class="text-sm">Bitte die betroffenen Daten aus einer Datensicherung von vor der Änderung wiederherstellen.</p>
+      <p><a class="btn" th:href="@{/admin/backup}" href="/admin/backup"><i data-lucide="database-backup" class="size-4"></i>Zur Datensicherung</a></p>
+    </div>
+  </main>
+</body>
+</html>
