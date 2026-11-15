@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-15
+
 ### Added
 
 - "Ausgaben": business expenses with their receipts, by day of payment, with the amount paid, a kind after the Anlage EÜR, the vendor, a description and the mark "Anlagegut". The receipt is written once and sealed. A wrong expense is cancelled with a reason and stays.
