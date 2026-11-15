@@ -86,7 +86,8 @@ class BackupArchiveTest {
                 assertThatThrownBy(() -> archive.rows(broken, row -> { })).as(broken).isInstanceOf(BackupException.class)
                         .hasMessage("Die Datensicherung ist beschädigt: " + broken + ".");
             }
-            assertThatThrownBy(() -> archive.value("manifest.json", new TypeReference<Map<String, Object>>() { }))
+            TypeReference<Map<String, Object>> manifest = new TypeReference<>() { };
+            assertThatThrownBy(() -> archive.value("manifest.json", manifest))
                     .isInstanceOf(BackupException.class)
                     .hasMessage("Diese Datei ist keine Datensicherung dieser App: manifest.json fehlt.");
             assertThatThrownBy(() -> archive.file("files/x")).isInstanceOf(BackupException.class)
@@ -181,9 +182,9 @@ class BackupArchiveTest {
                 .hasMessage(BackupArchive.TOO_BIG);
 
         // An end record alone, at the very start of the file, that claims five entries.
-        ByteBuffer record = ByteBuffer.allocate(22).order(ByteOrder.LITTLE_ENDIAN).putInt(0x06054b50).putShort((short) 0)
+        ByteBuffer endRecord = ByteBuffer.allocate(22).order(ByteOrder.LITTLE_ENDIAN).putInt(0x06054b50).putShort((short) 0)
                 .putShort((short) 0).putShort((short) 5).putShort((short) 5);
-        Path claimed = Files.write(folder.resolve("claimed.zip"), record.array());
+        Path claimed = Files.write(folder.resolve("claimed.zip"), endRecord.array());
         assertThatThrownBy(() -> BackupArchive.read(claimed, json, 1000, 100, 3, 1000, opened::add))
                 .hasMessage(BackupArchive.TOO_BIG);
 
@@ -198,6 +199,19 @@ class BackupArchiveTest {
         Path big = Files.write(folder.resolve("big.zip"), large.toByteArray());
         assertThatThrownBy(() -> BackupArchive.read(big, json, 100_000, 100_000, 2, 10, opened::add))
                 .as("the directory size of the end record at the end of a large file").hasMessage(BackupArchive.TOO_BIG);
+        // A fake end record with small counts in the archive comment hides no real one behind it.
+        ByteBuffer fake = ByteBuffer.allocate(22).order(ByteOrder.LITTLE_ENDIAN).putInt(0x06054b50).putShort((short) 0)
+                .putShort((short) 0).putShort((short) 1).putShort((short) 1);
+        ByteArrayOutputStream hidden = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(hidden)) {
+            for (int i = 0; i < 3; i++) {
+                zip.putNextEntry(new ZipEntry("e" + i));
+            }
+            zip.setComment(new String(fake.array(), StandardCharsets.ISO_8859_1));
+        }
+        Path faked = Files.write(folder.resolve("faked.zip"), hidden.toByteArray());
+        assertThatThrownBy(() -> BackupArchive.read(faked, json, 1000, 100, 2, 1000, opened::add))
+                .as("the real record behind a fake one").hasMessage(BackupArchive.TOO_BIG);
         Path tiny = Files.write(folder.resolve("tiny.zip"), utf8("PK"));
         assertThatThrownBy(() -> BackupArchive.read(tiny, json, 1000, 100, 3, 1000, opened::add))
                 .hasMessage("Diese Datei ist kein ZIP.");

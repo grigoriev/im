@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.zip.CRC32;
@@ -78,25 +79,23 @@ final class BackupArchive {
     }
 
     /**
-     * Checks the end record of the ZIP before {@link ZipFile} reads the whole central directory into memory: a crafted
-     * directory, for example with long comments, could fill it first. Without an end record the file is no ZIP, which
-     * {@link ZipFile} then says. A ZIP64 directory marks its counts with all ones, which exceed both limits.
+     * Checks the end records of the ZIP before {@link ZipFile} reads the whole central directory into memory: a crafted
+     * directory, for example with long comments, could fill it first. {@link ZipFile} takes one of the end records in
+     * the tail, not always the last: a fake one may hide in the archive comment. So every record there must keep the
+     * limits. Without one the file is no ZIP, which {@link ZipFile} then says. A ZIP64 directory marks its counts with
+     * all ones, which exceed both limits.
      */
     private static void directory(Path file, int maxEntries, long maxDirectoryBytes) throws IOException {
         try (RandomAccessFile in = new RandomAccessFile(file.toFile(), "r")) {
-            int tail = (int) Math.min(in.length(), END_RECORD + MAX_COMMENT);
+            int tail = (int) Math.min(in.length(), (long) END_RECORD + MAX_COMMENT);
             byte[] bytes = new byte[tail];
             in.seek(in.length() - tail);
             in.readFully(bytes);
             ByteBuffer end = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
             for (int at = tail - END_RECORD; at >= 0; at--) {
-                if (end.getInt(at) == END_SIGNATURE) {
-                    int entries = Short.toUnsignedInt(end.getShort(at + 10));
-                    long size = Integer.toUnsignedLong(end.getInt(at + 12));
-                    if (entries > maxEntries || size > maxDirectoryBytes) {
-                        throw new BackupException(TOO_BIG);
-                    }
-                    return;
+                if (end.getInt(at) == END_SIGNATURE && (Short.toUnsignedInt(end.getShort(at + 10)) > maxEntries
+                        || Integer.toUnsignedLong(end.getInt(at + 12)) > maxDirectoryBytes)) {
+                    throw new BackupException(TOO_BIG);
                 }
             }
         }
@@ -136,8 +135,9 @@ final class BackupArchive {
                 if (token(name, parser) != JsonToken.START_ARRAY) {
                     throw damaged(name);
                 }
-                for (Map<String, Object> row = next(name, parser, reader); row != null; row = next(name, parser, reader)) {
-                    each.accept(row);
+                for (Optional<Map<String, Object>> row = next(name, parser, reader); row.isPresent();
+                        row = next(name, parser, reader)) {
+                    each.accept(row.get());
                 }
                 // A second array after the first would go unread: nothing may follow.
                 if (token(name, parser) != null) {
@@ -149,19 +149,19 @@ final class BackupArchive {
     }
 
     /**
-     * The next row of the array, or {@code null} after the last. Anything else, an empty or cut entry too, is a damaged
+     * The next row of the array, or none after the last. Anything else, an empty or cut entry too, is a damaged
      * export; a parse error is the fault of the file, not of the receiver of the rows.
      */
-    private static Map<String, Object> next(String name, JsonParser parser, ObjectReader reader) {
+    private static Optional<Map<String, Object>> next(String name, JsonParser parser, ObjectReader reader) {
         JsonToken token = token(name, parser);
         if (token == JsonToken.END_ARRAY) {
-            return null;
+            return Optional.empty();
         }
         if (token != JsonToken.START_OBJECT) {
             throw damaged(name);
         }
         try {
-            return reader.readValue(parser);
+            return Optional.of(reader.readValue(parser));
         } catch (JacksonException _) {
             throw damaged(name);
         }
@@ -216,6 +216,11 @@ final class BackupArchive {
 
         KeepOpen(InputStream in) {
             super(in);
+        }
+
+        @Override
+        public int read(byte[] buffer, int offset, int length) throws IOException {
+            return in.read(buffer, offset, length);
         }
 
         @Override

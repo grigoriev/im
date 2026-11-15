@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -38,7 +40,6 @@ import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mockito;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
@@ -108,7 +109,7 @@ class BackupServiceTest {
             writes.add(params);
             return 1L;
         });
-        Mockito.doAnswer(call -> {
+        doAnswer(call -> {
             handle(sql, params, call.getArgument(0));
             return null;
         }).when(spec).query(any(RowCallbackHandler.class));
@@ -154,7 +155,7 @@ class BackupServiceTest {
                 if (present.matches()) {
                     when(rs.getBoolean(i)).thenReturn(value != null);
                 } else if (value instanceof byte[] || value == null) {
-                    Mockito.doReturn(value).when(rs).getBytes(i);
+                    doReturn(value).when(rs).getBytes(i);
                 }
                 if (!(value instanceof byte[])) {
                     when(rs.getString(i)).thenReturn((String) value);
@@ -337,9 +338,11 @@ class BackupServiceTest {
         Map<String, byte[]> entries = unzip(export());
         entries.put("data/customer.json", "[{\"id\":\"8\"}, 7]".getBytes(StandardCharsets.UTF_8));
         writes.clear();
-        assertThatThrownBy(() -> restore(zip(entries))).isInstanceOf(BackupException.class)
+        byte[] damaged = zip(entries);
+        assertThatThrownBy(() -> restore(damaged)).isInstanceOf(BackupException.class)
                 .hasMessage("Die Datensicherung ist beschädigt: data/customer.json.");
-        assertThatThrownBy(() -> service.restore(folder.resolve("missing.zip"))).isInstanceOf(BackupException.class)
+        Path missing = folder.resolve("missing.zip");
+        assertThatThrownBy(() -> service.restore(missing)).isInstanceOf(BackupException.class)
                 .hasMessage("Diese Datei ist kein ZIP.");
         verify(audit, never()).add(AuditAction.DATA_IMPORTED, "");
     }
