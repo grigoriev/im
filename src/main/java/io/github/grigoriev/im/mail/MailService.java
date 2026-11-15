@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.mail;
 
 import io.github.grigoriev.im.invoice.DispatchService;
+import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
@@ -138,7 +139,8 @@ public class MailService {
             throw new InvoiceException(problems);
         }
         try {
-            sender.send(message(to, subject, body, html.render(documents.restore(invoice.snapshot()), subject, body),
+            InvoiceDocument document = documents.restore(invoice.snapshot());
+            sender.send(message(to, subject, MailHtml.plain(document, body), html.render(document, subject, body),
                     attachments));
         } catch (MailException | MessagingException e) {
             LOG.warn("Sending invoice {} to {} failed: {}", invoice.number(), to, e.getMessage());

@@ -62,7 +62,7 @@ class InvoicePdfRendererTest {
                 .doesNotContain("Tel.")
                 .contains("Bitte überweisen Sie den Rechnungsbetrag von 480,00\u00a0€ bis zum 01.04.2027.")
                 .contains("vielen Dank für Ihren Auftrag.")
-                .contains("Mit freundlichen Grüßen")
+                .contains("Mit freundlichen Grüßen\nElena Sommer\n")
                 .doesNotContain("Käuferreferenz")
                 .doesNotContain("USt-IdNr.");
     }
@@ -119,6 +119,23 @@ class InvoicePdfRendererTest {
     }
 
     @Test
+    void signsOnceBelowTheClosing() throws IOException {
+        InvoiceDocument d = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        InvoiceDocument signed = new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(),
+                d.dueDate(), d.seller(), d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(),
+                "Mit freundlichen Grüßen\nElena Sommer ", d.taxNote(), d.format(), d.lines());
+        assertThat(text(renderer.render(signed))).as("a closing that ends with the name gets no second one")
+                .containsPattern("Grüßen\nElena Sommer ?\nElektronische").doesNotContain("Elena Sommer\nElena Sommer");
+        Party company = new Party("Sommer Sprachen GmbH", "Lindenstraße 12", "80331", "München", "DE",
+                "kontakt@sommer.example", null, null, "143/123/45678", null);
+        InvoiceDocument unnamed = new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(),
+                d.dueDate(), company, d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(), d.closing(),
+                d.taxNote(), d.format(), d.lines());
+        assertThat(text(renderer.render(unnamed))).as("without a contact person the name signs")
+                .contains("Grüßen\nSommer Sprachen GmbH\n");
+    }
+
+    @Test
     void namesTheXmlAsTheInvoice() throws IOException {
         String zugferd = "Elektronische Rechnung im Format ZUGFeRD. Diese PDF-Datei enthält die Rechnungsdaten als XML; "
                 + "maßgeblich sind die XML-Daten.";
@@ -149,7 +166,8 @@ class InvoicePdfRendererTest {
                 "BIC", null, null, null, InvoiceFormat.ZUGFERD_EN16931,
                 List.of(SampleInvoices.line("x", "1", "1", TaxCategory.KLEINUNTERNEHMER)));
         String text = text(renderer.render(plain));
-        assertThat(text).doesNotContain("vielen Dank").doesNotContain("Mit freundlichen");
+        assertThat(text).doesNotContain("vielen Dank").doesNotContain("Mit freundlichen")
+                .as("no closing, no signature").doesNotContain("München\nElena Sommer\n");
     }
 
     @Test

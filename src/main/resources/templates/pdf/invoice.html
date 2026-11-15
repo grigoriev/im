@@ -34,6 +34,8 @@
     .total td { border-bottom: 0; font-weight: 600; padding-top: 2.5mm; }
     .note { white-space: pre-line; margin-top: 4mm; }
     .strong { font-weight: 600; }
+    /* The intro and the closing keep the lines the user typed. */
+    .text { white-space: pre-line; }
     .e-invoice { margin-top: 8mm; font-size: 7pt; color: #616e7c; }
   </style>
 </head>
@@ -73,7 +75,7 @@
 
   <h1 th:text="${invoice.cancellation() ? 'Stornorechnung' : 'Rechnung'}">Rechnung</h1>
   <p>Sehr geehrte Damen und Herren,</p>
-  <p th:if="${invoice.intro != null}" th:text="${invoice.intro}">Einleitung</p>
+  <p class="text" th:if="${invoice.intro != null}" th:text="${invoice.intro}">Einleitung</p>
 
   <table class="lines">
     <thead>
@@ -100,7 +102,11 @@
   <div class="note" th:unless="${invoice.effectiveTaxNote().isEmpty()}" th:text="${invoice.effectiveTaxNote()}">Steuerhinweis</div>
   <p th:unless="${invoice.cancellation()}" th:text="'Bitte überweisen Sie den Rechnungsbetrag von ' + ${fmt.money(invoice.total())} + ' bis zum ' + ${fmt.date(invoice.dueDate)} + '.'">Zahlungsziel</p>
   <p th:if="${invoice.cancellation()}" th:text="'Diese Stornorechnung hebt die Rechnung ' + ${invoice.cancels.number} + ' vom ' + ${fmt.date(invoice.cancels.issueDate)} + ' vollständig auf. Bereits gezahlte Beträge werden erstattet.'">Storno</p>
-  <p th:if="${invoice.closing != null}" th:text="${invoice.closing}">Schlusstext</p>
+  <p class="text" th:if="${invoice.closing != null}" th:text="${invoice.closing}">Schlusstext</p>
+  <!-- The name below the closing, unless the closing ends with it already. -->
+  <th:block th:with="signer=${invoice.seller.contactName ?: invoice.seller.name}">
+    <p th:if="${invoice.closing != null and !#strings.endsWith(#strings.trim(invoice.closing), signer)}" th:text="${signer}">Name</p>
+  </th:block>
   <!-- The XML is the invoice (BMF, 15.10.2025): the PDF says so, and an XRechnung copy does not count as a second one. -->
   <p class="e-invoice" th:text="${invoice.format.pdf
       ? 'Elektronische Rechnung im Format ZUGFeRD. Diese PDF-Datei enthält die Rechnungsdaten als XML; maßgeblich sind die XML-Daten.'

@@ -98,6 +98,17 @@ public class MailHtml {
         return facts;
     }
 
+    /**
+     * Returns the text part of the e-mail: the text as typed and below it the same signature as the HTML part.
+     *
+     * @param document the invoice
+     * @param body the text of the e-mail
+     * @return the text with the signature
+     */
+    public static String plain(InvoiceDocument document, String body) {
+        return body + "\n\n" + String.join("\n", signature(document.seller()));
+    }
+
     /** The lines below the text: name, address, e-mail and phone, the empty ones left out. */
     static List<String> signature(Party seller) {
         List<String> lines = new ArrayList<>();

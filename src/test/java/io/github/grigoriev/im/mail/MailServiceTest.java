@@ -128,7 +128,8 @@ class MailServiceTest {
         assertThat(message.getSubject()).isEqualTo("Rechnung 2027-07");
         List<Part> parts = parts(message);
         assertThat(parts).extracting(Part::getFileName).containsExactly(null, "Rechnung_2027-07.pdf", "Rechnung_2027-07.xml");
-        assertThat(text(parts.get(0))).as("the text, stripped").isEqualTo("Hallo,\n\nanbei.");
+        assertThat(text(parts.get(0))).as("the text, stripped, with the signature of the HTML part").isEqualTo(
+                "Hallo,\n\nanbei.\n\nElena Sommer\nLindenstraße 12\n80331 München\nkontakt@sommer.example · +49 89 1234567");
         assertThat((String) text(parts.get(0), "text/html")).as("the same text as HTML, with the facts")
                 .contains("<span>anbei.</span>").contains(">480,00\u00a0€</td>").contains("<title>Rechnung 2027-07</title>");
         ByteArrayOutputStream pdf = new ByteArrayOutputStream();
