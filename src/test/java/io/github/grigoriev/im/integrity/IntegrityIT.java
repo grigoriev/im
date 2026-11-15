@@ -36,6 +36,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
  * The seals against PostgreSQL: the app connects without the right to switch a trigger off, and a change made in the
@@ -94,6 +96,24 @@ class IntegrityIT {
         assertThatThrownBy(() -> jdbc.update("DELETE FROM flyway_schema_history"))
                 .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> new ConnectionGuard(owner.jdbc()).run(null)).isInstanceOf(IllegalStateException.class);
+        new ConnectionGuard(JdbcClient.create(jdbc.getDataSource())).run(null);
+    }
+
+    @Test
+    void aMemberOfTheOwnerWithoutItsPrivilegesIsRefusedToo() {
+        JdbcClient asOwner = owner.jdbc();
+        asOwner.sql("DROP ROLE IF EXISTS guard_probe").update();
+        asOwner.sql("CREATE ROLE guard_probe LOGIN NOINHERIT PASSWORD 'probe'").update();
+        asOwner.sql("GRANT \"" + owner.username() + "\" TO guard_probe").update();
+        try {
+            DriverManagerDataSource probe = owner.dataSource(null);
+            probe.setUsername("guard_probe");
+            probe.setPassword("probe");
+            assertThatThrownBy(() -> new ConnectionGuard(JdbcClient.create(probe)).run(null))
+                    .as("SET ROLE would reach the triggers").isInstanceOf(IllegalStateException.class);
+        } finally {
+            asOwner.sql("DROP ROLE guard_probe").update();
+        }
     }
 
     private Invoice issued(LocalDate date) {

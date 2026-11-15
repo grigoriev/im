@@ -85,7 +85,7 @@ class MailServiceTest {
         when(reminders.remindable(5)).thenReturn(invoice(InvoiceFormat.ZUGFERD_EN16931));
         when(reminders.open(any())).thenReturn(new BigDecimal("80.00"));
         when(documents.find(5, DocumentKind.PDF)).thenReturn(Optional.of(file(DocumentKind.PDF, new byte[] {'%', 'P'})));
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.find(5, DocumentKind.XML)).thenReturn(Optional.of(file(DocumentKind.XML, "<x/>".getBytes())));
     }
 
@@ -170,7 +170,7 @@ class MailServiceTest {
         assertThat(catchThrowableOfType(InvoiceException.class, () -> service(ON).send(5,
                 form(null, "Betreff", null, true, false))).problems())
                 .containsExactly("Bitte eine gültige E-Mail-Adresse angeben.", "Bitte den Text angeben.");
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.find(5, DocumentKind.XML)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service(ON).send(5, form("a@b.example", "Betreff", "Text", false, true)))
                 .hasMessage("Bitte PDF, XML oder beides anhängen.");

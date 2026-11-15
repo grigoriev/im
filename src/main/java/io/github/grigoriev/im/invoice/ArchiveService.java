@@ -100,7 +100,7 @@ public class ArchiveService {
         // Each new entry and the final close end the entry before.
         try (ZipOutputStream zip = new ZipOutputStream(out, StandardCharsets.UTF_8)) {
             for (Invoice invoice : issued) {
-                InvoiceDocument document = documents.restore(invoice.snapshot());
+                InvoiceDocument document = documents.verifiedSnapshot(invoice);
                 for (StoredDocument file : documents.list(invoice.id()).stream().map(documents::verified).toList()) {
                     String name = unique(names, file.filename(), invoice.id());
                     zip.putNextEntry(new ZipEntry(name));

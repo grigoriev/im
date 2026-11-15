@@ -21,6 +21,8 @@ public class DocumentStore {
             + "Rechnung zeigt, was abweicht.";
     static final String WRONG_SHA = "%s: Der Inhalt passt nicht zur gespeicherten Prüfsumme. Gespeichert: %s, "
             + "berechnet: %s.";
+    static final String SNAPSHOT_DAMAGED = "Der Stand der Ausstellung von Rechnung %s wurde außerhalb der App "
+            + "geändert. Die Seite der Rechnung zeigt, was abweicht.";
     static final String WRONG_SEAL = "%s: Das Siegel passt nicht. Prüfsumme oder Zuordnung der Datei wurden außerhalb "
             + "der App geändert.";
 
@@ -109,6 +111,31 @@ public class DocumentStore {
             problems.add(WRONG_SEAL.formatted(document.filename()));
         }
         return problems;
+    }
+
+    /**
+     * Tells whether the snapshot of an issued invoice still matches its seal.
+     *
+     * @param invoice the invoice
+     * @return whether the stored seal is the one of its ID, number and snapshot
+     */
+    public boolean sealed(Invoice invoice) {
+        return Seal.matches(documents.findSnapshotSeal(invoice.id()), seal(invoice.id(), invoice.number(),
+                invoice.snapshot()));
+    }
+
+    /**
+     * Reads the snapshot of an issued invoice back, after it passed the check of its seal.
+     *
+     * @param invoice the invoice
+     * @return the invoice document as it was issued
+     * @throws InvoiceException if the snapshot does not match its seal
+     */
+    public InvoiceDocument verifiedSnapshot(Invoice invoice) {
+        if (!sealed(invoice)) {
+            throw new InvoiceException(List.of(SNAPSHOT_DAMAGED.formatted(invoice.number())));
+        }
+        return restore(invoice.snapshot());
     }
 
     /**

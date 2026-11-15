@@ -2,6 +2,7 @@ package io.github.grigoriev.im.invoice;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.ListCrudRepository;
 
 /** Stores the documents of issued invoices. They are written once. */
@@ -23,4 +24,13 @@ interface StoredDocumentRepository extends ListCrudRepository<StoredDocument, Lo
      * @return the document, if the invoice is issued
      */
     Optional<StoredDocument> findByInvoiceIdAndKind(Long invoiceId, DocumentKind kind);
+
+    /**
+     * Returns the seal of the snapshot of an invoice.
+     *
+     * @param invoiceId the invoice
+     * @return the seal, {@code null} for a draft or no such invoice
+     */
+    @Query("SELECT seal FROM invoice WHERE id = :invoiceId")
+    String findSnapshotSeal(long invoiceId);
 }

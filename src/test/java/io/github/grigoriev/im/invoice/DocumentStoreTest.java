@@ -14,6 +14,7 @@ import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.integrity.Seal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -98,8 +99,23 @@ class DocumentStoreTest {
     }
 
     @Test
-    void sealsTheSnapshot() {
+    void sealsTheSnapshotAndReadsItBackOnlyIfItMatches() {
         assertThat(store.seal(5, "2027-01", "{}")).isEqualTo(seal.snapshot(5, "2027-01", "{}"));
+        InvoiceDocument document = SampleInvoices.sale(InvoiceFormat.XRECHNUNG);
+        String json = store.snapshot(document);
+        LocalDate day = LocalDate.of(2027, 3, 18);
+        Invoice invoice = new Invoice(5L, InvoiceStatus.ISSUED, 2L, "2027-10", InvoiceFormat.XRECHNUNG, day, day, day,
+                14, null, null, null, null, List.of(), NOW, NOW, 1L, NOW, json, null);
+        when(repository.findSnapshotSeal(5L)).thenReturn(seal.snapshot(5, "2027-10", json));
+        assertThat(store.sealed(invoice)).isTrue();
+        assertThat(store.verifiedSnapshot(invoice)).isEqualTo(document);
+        when(repository.findSnapshotSeal(5L)).thenReturn(seal.snapshot(5, "2027-11", json));
+        assertThat(store.sealed(invoice)).isFalse();
+        assertThatThrownBy(() -> store.verifiedSnapshot(invoice)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Der Stand der Ausstellung von Rechnung 2027-10 wurde außerhalb der App geändert. Die Seite "
+                        + "der Rechnung zeigt, was abweicht.");
+        when(repository.findSnapshotSeal(5L)).thenReturn(null);
+        assertThat(store.sealed(invoice)).isFalse();
     }
 
     @ParameterizedTest

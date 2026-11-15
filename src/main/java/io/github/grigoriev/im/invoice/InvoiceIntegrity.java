@@ -7,13 +7,11 @@ import io.github.grigoriev.im.einvoice.EInvoiceWriter;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.IntegrityCheck;
-import io.github.grigoriev.im.integrity.Seal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,7 +21,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class InvoiceIntegrity implements IntegrityCheck {
 
-    static final String SEAL = "SELECT seal FROM invoice WHERE id = :id";
     static final String SNAPSHOT_CHANGED = "Der Stand der Ausstellung passt nicht zu seinem Siegel. Er wurde außerhalb "
             + "der App geändert.";
     static final String SNAPSHOT_UNREADABLE = "Der Stand der Ausstellung lässt sich nicht lesen.";
@@ -36,7 +33,6 @@ public class InvoiceIntegrity implements IntegrityCheck {
     private final InvoiceService invoices;
     private final DocumentStore documents;
     private final EInvoiceWriter writer;
-    private final JdbcClient jdbc;
 
     /**
      * The result of the check of one invoice.
@@ -68,13 +64,11 @@ public class InvoiceIntegrity implements IntegrityCheck {
      * @param invoices the invoices
      * @param documents the documents and snapshots
      * @param writer reads the XML of a ZUGFeRD PDF
-     * @param jdbc reads the seal of a snapshot
      */
-    public InvoiceIntegrity(InvoiceService invoices, DocumentStore documents, EInvoiceWriter writer, JdbcClient jdbc) {
+    public InvoiceIntegrity(InvoiceService invoices, DocumentStore documents, EInvoiceWriter writer) {
         this.invoices = invoices;
         this.documents = documents;
         this.writer = writer;
-        this.jdbc = jdbc;
     }
 
     /**
@@ -85,8 +79,7 @@ public class InvoiceIntegrity implements IntegrityCheck {
      */
     public Report check(Invoice invoice) {
         List<String> problems = new ArrayList<>();
-        String seal = jdbc.sql(SEAL).param("id", invoice.id()).query(rs -> rs.next() ? rs.getString(1) : null);
-        if (!Seal.matches(seal, documents.seal(invoice.id(), invoice.number(), invoice.snapshot()))) {
+        if (!documents.sealed(invoice)) {
             problems.add(SNAPSHOT_CHANGED);
         }
         Map<DocumentKind, StoredDocument> files = new EnumMap<>(DocumentKind.class);

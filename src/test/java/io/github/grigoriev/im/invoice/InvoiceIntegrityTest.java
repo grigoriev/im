@@ -2,8 +2,7 @@ package io.github.grigoriev.im.invoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -17,16 +16,12 @@ import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.Seal;
 import java.nio.charset.StandardCharsets;
-import java.sql.ResultSet;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.ResultSetExtractor;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
 import tools.jackson.databind.json.JsonMapper;
 
 class InvoiceIntegrityTest {
@@ -40,8 +35,7 @@ class InvoiceIntegrityTest {
     private final EInvoiceWriter writer = new EInvoiceWriter(new MustangInvoiceMapper());
     private final InvoicePdfRenderer renderer = new InvoicePdfRenderer(SampleInvoices.templates());
     private final InvoiceService invoices = mock(InvoiceService.class);
-    private final JdbcClient jdbc = mock(JdbcClient.class);
-    private final InvoiceIntegrity integrity = new InvoiceIntegrity(invoices, store, writer, jdbc);
+    private final InvoiceIntegrity integrity = new InvoiceIntegrity(invoices, store, writer);
 
     /** The seal of the snapshot in the database, {@code null} for no row. */
     private String storedSeal;
@@ -49,15 +43,7 @@ class InvoiceIntegrityTest {
 
     @BeforeEach
     void database() {
-        StatementSpec statement = mock(StatementSpec.class);
-        when(jdbc.sql(InvoiceIntegrity.SEAL)).thenReturn(statement);
-        when(statement.param(eq("id"), any())).thenReturn(statement);
-        when(statement.query(any(ResultSetExtractor.class))).thenAnswer(call -> {
-            ResultSet rs = mock(ResultSet.class);
-            when(rs.next()).thenReturn(row);
-            when(rs.getString(1)).thenReturn(storedSeal);
-            return call.<ResultSetExtractor<String>>getArgument(0).extractData(rs);
-        });
+        when(repository.findSnapshotSeal(anyLong())).thenAnswer(call -> row ? storedSeal : null);
     }
 
     private Invoice issued(long id, InvoiceDocument document) {

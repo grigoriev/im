@@ -77,7 +77,7 @@ class ArchiveServiceTest {
         Invoice sameDay = invoice(3, InvoiceStatus.ISSUED, "2027-03", LocalDate.of(2027, 3, 1));
         when(invoices.list()).thenReturn(List.of(sameDay, march, invoice(4, InvoiceStatus.DRAFT, null,
                 LocalDate.of(2027, 5, 1)), january, invoice(5, InvoiceStatus.SENT, "2026-09", LocalDate.of(2026, 12, 31))));
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.list(1)).thenReturn(List.of(file(1, DocumentKind.PDF, "2027-01", "%PDF-1"),
                 file(1, DocumentKind.XML, "2027-01", "<x>1</x>")));
         when(documents.list(2)).thenReturn(List.of(file(2, DocumentKind.PDF, "2027-02", "%PDF-2")));
@@ -104,7 +104,7 @@ class ArchiveServiceTest {
         Invoice slash = invoice(6, InvoiceStatus.ISSUED, "2027/11", LocalDate.of(2027, 2, 1));
         Invoice hyphen = invoice(7, InvoiceStatus.ISSUED, "-2027-11", LocalDate.of(2027, 2, 2));
         when(invoices.list()).thenReturn(List.of(slash, hyphen));
-        when(documents.restore("{}")).thenReturn(ItSamples.withBuyerContact(
+        when(documents.verifiedSnapshot(any())).thenReturn(ItSamples.withBuyerContact(
                 SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(documents.list(6)).thenReturn(List.of(new StoredDocument(60L, 6L, DocumentKind.PDF, "Rechnung_2027-11.pdf",
                 new byte[] {1}, "a", 1, Instant.EPOCH, "seal")));
@@ -140,7 +140,7 @@ class ArchiveServiceTest {
     @Test
     void aBrokenFileStopsTheArchive() {
         when(invoices.list()).thenReturn(List.of(invoice(1, InvoiceStatus.PAID, "2027-01", LocalDate.of(2027, 1, 10))));
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         StoredDocument pdf = file(1, DocumentKind.PDF, "2027-01", "%PDF-1");
         when(documents.list(1)).thenReturn(List.of(pdf));
         when(documents.verified(pdf)).thenThrow(new InvoiceException(List.of("kaputt")));
