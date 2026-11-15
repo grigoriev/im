@@ -22,8 +22,16 @@ class MailHtmlTest {
     @Test
     void writesTheTextTheFactsAndTheAddress() {
         String page = html.render(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Rechnung 2027-10",
-                "Sehr geehrte Damen und Herren,\r\n\r\nanbei die Rechnung <b>2027-10</b>.\nBitte bis Ende März.\n\n\n"
-                        + "Mit freundlichen Grüßen\nElena Sommer\n");
+                """
+                Sehr geehrte Damen und Herren,\r
+                \r
+                anbei die Rechnung <b>2027-10</b>.
+                Bitte bis Ende März.
+
+
+                Mit freundlichen Grüßen
+                Elena Sommer
+                """);
         assertThat(page).contains("<title>Rechnung 2027-10</title>")
                 .contains("<p style=\"margin:0 0 14px 0;\"><span>Sehr geehrte Damen und Herren,</span></p>")
                 .as("the text stays text").contains("<span>anbei die Rechnung &lt;b&gt;2027-10&lt;/b&gt;.</span><br>"
