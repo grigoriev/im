@@ -32,6 +32,7 @@ class MailHtmlTest {
                 Mit freundlichen Grüßen
                 Elena Sommer
                 """);
+        assertThat(page).as("a long word wraps in its cell").contains("color:#1f2937;overflow-wrap:anywhere;\">");
         assertThat(page).contains("<title>Rechnung 2027-10</title>")
                 .contains("<p style=\"margin:0 0 14px 0;\"><span>Sehr geehrte Damen und Herren,</span></p>")
                 .as("the text stays text").contains("<span>anbei die Rechnung &lt;b&gt;2027-10&lt;/b&gt;.</span><br>"

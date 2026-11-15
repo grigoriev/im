@@ -128,7 +128,9 @@ test('issues an invoice with its number and documents', async ({ page }) => {
     return { busy, refused: second.defaultPrevented };
   });
   expect(guard).toEqual({ busy: 'true', refused: true });
-  // The preview opens the e-mail as the customer sees it, in a tab of its own, and blocks nothing.
+  // The preview opens the e-mail as the customer sees it, in a tab of its own, and blocks nothing. It needs no
+  // recipient yet.
+  await page.locator('#mail-to').fill('');
   const [preview] = await Promise.all([
     page.waitForEvent('popup'),
     page.getByRole('button', { name: 'Vorschau' }).click(),
@@ -136,6 +138,7 @@ test('issues an invoice with its number and documents', async ({ page }) => {
   await expect(preview.locator('body')).toContainText(`Rechnung ${number}`);
   await expect(preview.locator('body')).toContainText('Verwendungszweck');
   await preview.close();
+  await page.locator('#mail-to').fill(address);
   await expect(page.locator('#mail-send')).not.toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('button', { name: 'Senden', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(`E-Mail an ${address} gesendet.`);
