@@ -3,10 +3,13 @@ package io.github.grigoriev.im.backup;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
+import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import tools.jackson.core.JacksonException;
@@ -152,10 +155,31 @@ final class BackupArchive {
         if (entry == null) {
             throw new BackupException("Diese Datei ist keine Datensicherung dieser App: " + name + " fehlt.");
         }
-        try (InputStream in = new Limited(zip.getInputStream(entry), maxEntryBytes, this::count)) {
-            return reader.read(in);
+        // ZipFile checks no CRC: the reader does, over the whole entry, so a changed byte is a damaged export too.
+        CRC32 crc = new CRC32();
+        try (InputStream in = new Limited(new CheckedInputStream(zip.getInputStream(entry), crc), maxEntryBytes,
+                this::count)) {
+            T value = reader.read(new KeepOpen(in));
+            in.transferTo(OutputStream.nullOutputStream());
+            if (crc.getValue() != entry.getCrc()) {
+                throw damaged(name);
+            }
+            return value;
         } catch (IOException _) {
             throw damaged(name);
+        }
+    }
+
+    /** Hands an entry to a reader that closes what it reads, as Jackson does, and keeps it open for the CRC. */
+    private static final class KeepOpen extends FilterInputStream {
+
+        KeepOpen(InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public void close() {
+            // The entry closes after its CRC is checked.
         }
     }
 

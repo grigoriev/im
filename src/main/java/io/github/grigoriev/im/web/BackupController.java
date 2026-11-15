@@ -18,6 +18,8 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -44,6 +46,8 @@ public class BackupController {
     static final String VIEW = "settings/backup";
     private static final String BACK = "redirect:/admin/backup";
     private static final String ERROR = "error";
+
+    private static final Logger LOG = LoggerFactory.getLogger(BackupController.class);
 
     /** Only the app may read the upload: it holds every invoice and user. */
     private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY = PosixFilePermissions.asFileAttribute(
@@ -140,7 +144,19 @@ public class BackupController {
             }
             backups.restore(upload);
         } finally {
-            Files.delete(upload);
+            remove(upload);
+        }
+    }
+
+    /**
+     * Removes the upload. A failure here must not turn a committed import into an error: the sessions would then stay
+     * open for users who no longer exist. The file sits in the temporary directory, readable by the app only.
+     */
+    private static void remove(Path upload) {
+        try {
+            Files.deleteIfExists(upload);
+        } catch (IOException e) {
+            LOG.warn("Cannot remove the upload {}: {}", upload, e.getMessage());
         }
     }
 }

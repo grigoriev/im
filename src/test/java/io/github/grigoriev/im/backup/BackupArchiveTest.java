@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
@@ -110,6 +111,38 @@ class BackupArchiveTest {
         }
         Files.write(file, bytes);
         read(file, 10_000, 10_000, 1, archive -> assertThatThrownBy(() -> archive.file("f"))
+                .isInstanceOf(BackupException.class).hasMessage("Die Datensicherung ist beschädigt: f."));
+    }
+
+    @Test
+    void aChangedByteOfAStoredFileIsADamagedExport() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] content = utf8("unverändert");
+        try (ZipOutputStream zip = new ZipOutputStream(out)) {
+            ZipEntry entry = new ZipEntry("f");
+            entry.setMethod(ZipEntry.STORED);
+            entry.setSize(content.length);
+            CRC32 crc = new CRC32();
+            crc.update(content);
+            entry.setCrc(crc.getValue());
+            zip.putNextEntry(entry);
+            zip.write(content);
+            entry = new ZipEntry("data/rows.json");
+            zip.putNextEntry(entry);
+            zip.write(utf8("[{\"id\":\"1\"}]  "));
+        }
+        byte[] bytes = out.toByteArray();
+        Path fine = Files.write(folder.resolve("fine.zip"), bytes);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        read(fine, 1000, 100, 2, archive -> {
+            assertThat(archive.file("f")).isEqualTo(content);
+            archive.rows("data/rows.json", rows::add);
+        });
+        assertThat(rows).as("the rest after the array counts into the CRC, not as a row").hasSize(1);
+        String text = new String(bytes, StandardCharsets.ISO_8859_1);
+        bytes[text.indexOf("unver")] = 'U';
+        Path changed = Files.write(folder.resolve("changed.zip"), bytes);
+        read(changed, 1000, 100, 2, archive -> assertThatThrownBy(() -> archive.file("f"))
                 .isInstanceOf(BackupException.class).hasMessage("Die Datensicherung ist beschädigt: f."));
     }
 

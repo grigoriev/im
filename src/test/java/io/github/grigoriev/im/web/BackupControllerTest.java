@@ -94,6 +94,30 @@ class BackupControllerTest {
     }
 
     @Test
+    void anUploadThatCannotBeRemovedStillEndsTheSessions() {
+        List<Path> seen = new ArrayList<>();
+        doAnswer(call -> {
+            // A directory with content in place of the file: removing it fails.
+            Path upload = call.getArgument(0);
+            Files.delete(upload);
+            Files.createDirectory(upload);
+            Files.writeString(upload.resolve("x"), "x");
+            seen.add(upload);
+            return null;
+        }).when(backups).restore(any(Path.class));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpSession session = new MockHttpSession();
+        request.setSession(session);
+        assertThat(controller.restore(file, request, new RedirectAttributesModelMap())).isEqualTo("redirect:/login?restored");
+        assertThat(session.isInvalid()).isTrue();
+        verify(sessions).renew();
+        seen.forEach(upload -> {
+            upload.resolve("x").toFile().delete();
+            upload.toFile().delete();
+        });
+    }
+
+    @Test
     void aRefusedOrUnreadableImportStays() throws IOException {
         List<Path> seen = new ArrayList<>();
         doAnswer(call -> {
