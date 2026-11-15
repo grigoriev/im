@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-15
+
 ### Fixed
 
 - On an iPhone a field with a long value, such as the customer of a new invoice, pushed out of its card. A field now shrinks with its card, and a select cuts its text with an ellipsis.
