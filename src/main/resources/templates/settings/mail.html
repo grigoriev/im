@@ -13,7 +13,7 @@
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" th:action="@{/admin/mail}" method="post" id="mail-text">
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" th:action="@{/settings/mail}" method="post" id="mail-text">
       <div>
         <h2 class="font-semibold">E-Mail mit der Rechnung</h2>
         <p class="text-sm text-base-content/75">Vorgabe für das Versenden aus der App. Eine Vorlage kann Betreff und Text
@@ -30,7 +30,7 @@
       <div class="form-actions"><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i>Speichern</button></div>
     </form>
 
-    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" th:action="@{/admin/mail/reminder}" method="post" id="reminder-text">
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" th:action="@{/settings/mail/reminder}" method="post" id="reminder-text">
       <div>
         <h2 class="font-semibold">Zahlungserinnerung</h2>
         <p class="text-sm text-base-content/75">Vorgabe für eine Erinnerung an eine offene Rechnung. Ein leeres Feld stellt den

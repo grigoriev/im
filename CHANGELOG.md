@@ -16,6 +16,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
+- The e-mail texts moved from the admin area to "Einstellungen", "E-Mail" (`/settings/mail`): the owner of the business writes them herself.
 - The app connects to the database as `IM_DB_USER`, a role that may only read and write rows, and refuses to start as the owner. Flyway migrates as `IM_DB_OWNER`. Create the role before the update, see the README.
 
 ## [0.1.5] - 2026-11-15

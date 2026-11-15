@@ -1001,45 +1001,52 @@ class SecurityWebTest {
     }
 
     @Test
-    void theAdminEditsTheDefaultMailText() throws Exception {
+    void theOwnerEditsTheDefaultMailText() throws Exception {
         when(mailTexts.defaults()).thenReturn(new MailText("Rechnung {Rechnungsnummer}",
                 "Hallo & Tschüss"));
         when(mailTexts.reminderDefaults()).thenReturn(new MailText("Zahlungserinnerung {Rechnungsnummer}",
                 "Offen: {Offener Betrag}"));
-        mvc.perform(get("/admin/mail").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+        mvc.perform(get("/settings/mail").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("value=\"Zahlungserinnerung {Rechnungsnummer}\"")))
                 .andExpect(content().string(Matchers.containsString("Offen: {Offener Betrag}</textarea>")))
                 .andExpect(content().string(Matchers.containsString("value=\"Rechnung {Rechnungsnummer}\"")))
                 .andExpect(content().string(Matchers.containsString("Hallo &amp; Tschüss</textarea>")))
                 .andExpect(content().string(Matchers.containsString("aria-selected=\"true\">E-Mail")));
-        mvc.perform(get("/admin/mail").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
-        mvc.perform(post("/admin/mail").param("subject", "Neu").param("body", "Text")
+        mvc.perform(get("/settings/mail").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("aria-selected=\"true\">E-Mail")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Steuerhinweise"))));
+        mvc.perform(post("/settings/mail").param("subject", "Neu").param("body", "Text")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
-                .andExpect(redirectedUrl("/admin/mail")).andExpect(flash().attribute("success", "E-Mail-Text gespeichert."));
+                .andExpect(redirectedUrl("/settings/mail")).andExpect(flash().attribute("success", "E-Mail-Text gespeichert."));
         verify(mailTexts).save("Neu", "Text");
         doThrow(new SettingsException(
                 List.of("Der Betreff hat höchstens 200 Zeichen."))).when(mailTexts).save("zu lang", "Text");
-        mvc.perform(post("/admin/mail").param("subject", "zu lang").param("body", "Text")
+        mvc.perform(post("/settings/mail").param("subject", "zu lang").param("body", "Text")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Der Betreff hat höchstens 200 Zeichen.")))
                 .andExpect(content().string(Matchers.containsString("value=\"zu lang\"")))
                 .andExpect(content().string(Matchers.containsString("Offen: {Offener Betrag}</textarea>")));
-        mvc.perform(post("/admin/mail/reminder").param("subject", "Erinnerung").param("body", "Bitte")
+        mvc.perform(post("/settings/mail/reminder").param("subject", "Erinnerung").param("body", "Bitte")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
-                .andExpect(redirectedUrl("/admin/mail"))
+                .andExpect(redirectedUrl("/settings/mail"))
                 .andExpect(flash().attribute("success", "Text der Zahlungserinnerung gespeichert."));
         verify(mailTexts).saveReminder("Erinnerung", "Bitte");
         doThrow(new SettingsException(List.of("Der Text hat höchstens 4000 Zeichen."))).when(mailTexts)
                 .saveReminder("Erinnerung", "zu lang");
-        mvc.perform(post("/admin/mail/reminder").param("subject", "Erinnerung").param("body", "zu lang")
+        mvc.perform(post("/settings/mail/reminder").param("subject", "Erinnerung").param("body", "zu lang")
                         .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Der Text hat höchstens 4000 Zeichen.")))
                 .andExpect(content().string(Matchers.containsString("zu lang</textarea>")))
                 .andExpect(content().string(Matchers.containsString("Hallo &amp; Tschüss</textarea>")));
-        mvc.perform(post("/admin/mail/reminder").param("subject", "x").with(user("elena").roles("USER")).with(csrf()))
-                .andExpect(status().isForbidden());
+        mvc.perform(post("/settings/mail/reminder").param("subject", "Von ihr").param("body", "Text")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/settings/mail"));
+        verify(mailTexts).saveReminder("Von ihr", "Text");
+        mvc.perform(post("/settings/mail").param("subject", "x").with(user("elena").roles("USER")))
+                .andExpect(redirectedUrl("/login?expired"));
+        verify(mailTexts, never()).save(eq("x"), any());
     }
 
     @Test

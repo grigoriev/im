@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/** The admin page "E-Mail" of the settings: the default text of the e-mail with an invoice. */
+/** The page "E-Mail" of the settings, for both roles: the default texts of the invoice e-mail and the reminder. */
 @Controller
-@RequestMapping("/admin/mail")
+@RequestMapping("/settings/mail")
 public class MailTextController {
 
     static final String VIEW = "settings/mail";
@@ -21,7 +21,7 @@ public class MailTextController {
     private static final String BODY = "body";
     private static final String ERROR = "error";
     private static final String SUCCESS = "success";
-    private static final String BACK = "redirect:/admin/mail";
+    private static final String BACK = "redirect:/settings/mail";
 
     private final MailTextService texts;
 
