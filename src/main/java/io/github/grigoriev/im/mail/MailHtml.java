@@ -79,15 +79,15 @@ public class MailHtml {
      * @return the letter
      */
     static Letter letter(Party seller, String body) {
-        List<List<String>> text = new ArrayList<>(paragraphs(body));
         String signer = signer(seller);
+        if (body == null || body.isBlank()) {
+            return new Letter(List.of(), List.of(signer));
+        }
+        List<List<String>> text = paragraphs(InvoicePdfRenderer.signed(body, signer));
         if (text.size() > 1) {
-            return new Letter(text.subList(0, text.size() - 1), signed(text.getLast(), signer));
+            return new Letter(text.subList(0, text.size() - 1), text.getLast());
         }
-        if (text.isEmpty()) {
-            return new Letter(text, List.of(signer));
-        }
-        return new Letter(List.of(signed(text.getFirst(), signer)), List.of());
+        return new Letter(text, List.of());
     }
 
     /** Who signs: the contact person, or the name without one, as on the PDF. */
@@ -95,14 +95,6 @@ public class MailHtml {
         return seller.contactName() == null ? seller.name() : seller.contactName();
     }
 
-    private static List<String> signed(List<String> lines, String signer) {
-        if (lines.getLast().endsWith(signer)) {
-            return lines;
-        }
-        List<String> signed = new ArrayList<>(lines);
-        signed.add(signer);
-        return signed;
-    }
 
     /**
      * Splits the text into paragraphs at blank lines, and each paragraph into its lines.
@@ -152,10 +144,8 @@ public class MailHtml {
      * @return the signed text with the address
      */
     public static String plain(InvoiceDocument document, String body) {
-        String signer = signer(document.seller());
-        String text = body.strip();
-        String signed = text.endsWith(signer) ? text : text + "\n" + signer;
-        return signed + "\n\n" + String.join("\n", contact(document.seller()));
+        return InvoicePdfRenderer.signed(body, signer(document.seller())) + "\n\n"
+                + String.join("\n", contact(document.seller()));
     }
 
     /**

@@ -89,6 +89,22 @@ public class InvoicePdfRenderer {
         }
     }
 
+    /**
+     * Signs a text: the name on the line after its last line. A text that ends with the name already keeps it, on the
+     * line after the greeting, without blank lines between.
+     *
+     * @param text the text, for example the closing
+     * @param signer the name
+     * @return the signed text
+     */
+    public static String signed(String text, String signer) {
+        String body = text.strip();
+        if (body.endsWith(signer)) {
+            body = body.substring(0, body.length() - signer.length()).strip();
+        }
+        return body.isEmpty() ? signer : body + "\n" + signer;
+    }
+
     /** German number and date formats for the template. */
     public static final class Formatter {
 
@@ -169,6 +185,17 @@ public class InvoicePdfRenderer {
          */
         public String period(LocalDate from, LocalDate to) {
             return from.equals(to) ? date(from) : date(from) + " bis " + date(to);
+        }
+
+        /**
+         * Signs a text, see {@link InvoicePdfRenderer#signed(String, String)}.
+         *
+         * @param text the text
+         * @param signer the name
+         * @return the signed text
+         */
+        public String signed(String text, String signer) {
+            return InvoicePdfRenderer.signed(text, signer);
         }
 
         /**

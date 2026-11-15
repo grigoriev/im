@@ -136,6 +136,16 @@ class InvoicePdfRendererTest {
     }
 
     @Test
+    void signsATextOnTheLineAfterItsLast() {
+        assertThat(InvoicePdfRenderer.signed("Mit freundlichen Grüßen", "Elena Sommer"))
+                .isEqualTo("Mit freundlichen Grüßen\nElena Sommer");
+        assertThat(InvoicePdfRenderer.signed(" Mit freundlichen Grüßen\n\n Elena Sommer \n", "Elena Sommer"))
+                .as("a name of its own paragraph moves up").isEqualTo("Mit freundlichen Grüßen\nElena Sommer");
+        assertThat(InvoicePdfRenderer.signed("Elena Sommer", "Elena Sommer")).isEqualTo("Elena Sommer");
+        assertThat(fmt.signed("Gruß", "E")).isEqualTo("Gruß\nE");
+    }
+
+    @Test
     void namesTheXmlAsTheInvoice() throws IOException {
         String zugferd = "Elektronische Rechnung im Format ZUGFeRD. Diese PDF-Datei enthält die Rechnungsdaten als XML; "
                 + "maßgeblich sind die XML-Daten.";

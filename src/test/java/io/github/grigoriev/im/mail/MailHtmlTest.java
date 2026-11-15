@@ -84,6 +84,10 @@ class MailHtmlTest {
         assertThat(MailHtml.letter(seller, "Anbei die Rechnung.")).as("one paragraph, signed above the box")
                 .isEqualTo(new MailHtml.Letter(List.of(List.of("Anbei die Rechnung.", "Elena Sommer")), List.of()));
         assertThat(MailHtml.letter(seller, null)).isEqualTo(new MailHtml.Letter(List.of(), List.of("Elena Sommer")));
+        assertThat(MailHtml.letter(seller, " ")).isEqualTo(new MailHtml.Letter(List.of(), List.of("Elena Sommer")));
+        assertThat(MailHtml.letter(seller, "Hallo,\n\nanbei.\n\nMit freundlichen Grüßen\n\nElena Sommer"))
+                .as("a name in a paragraph of its own joins the greeting").isEqualTo(new MailHtml.Letter(
+                        List.of(List.of("Hallo,"), List.of("anbei.")), List.of("Mit freundlichen Grüßen", "Elena Sommer")));
         Party company = new Party("Sommer Sprachen GmbH", "Lindenstraße 12", "80331", "München", "DE", null, null,
                 "Elena Sommer", null, null);
         Party unnamed = new Party("Sommer Sprachen GmbH", "Lindenstraße 12", "80331", "München", "DE", null, null,
