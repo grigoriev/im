@@ -81,7 +81,7 @@
       <p class="text-sm text-base-content/75">Nach dem Tag der Zahlung, mit Umsatzsteuer. Diese Summen je Art in WISO
         Steuer unter „Betriebsausgaben“ eintragen. Anlagegüter sind darin nicht enthalten: sie stehen darunter und kommen
         in WISO einzeln als Anlagegut mit Kaufdatum und Betrag hinein, WISO berechnet die AfA.</p>
-      <p class="text-sm text-base-content/75" th:if="${expenseTotals.isEmpty()}">Keine Ausgaben in diesem Jahr.</p>
+      <p class="text-sm text-base-content/75" th:if="${expenseTotals.isEmpty() and assets.isEmpty()}">Keine Ausgaben in diesem Jahr.</p>
       <ul class="grid gap-1 text-sm" th:unless="${expenseTotals.isEmpty()}">
         <li th:each="entry : ${expenseTotals}" class="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
           <span class="[overflow-wrap:anywhere]" th:text="${entry.key.label()}">Fachliteratur</span>

@@ -1638,6 +1638,17 @@ class SecurityWebTest {
     }
 
     @Test
+    void theReportListsAssetsAndSaysNothingIsMissing() throws Exception {
+        when(threshold.today()).thenReturn(LocalDate.of(2027, 3, 18));
+        mvc.perform(get("/reports").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Keine Ausgaben in diesem Jahr.")));
+        when(expenses.ofYear(2027)).thenReturn(List.of(expense(2, false)));
+        mvc.perform(get("/reports").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Anlagegüter, nicht in der Summe")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Keine Ausgaben in diesem Jahr."))));
+    }
+
+    @Test
     void showsChangesAndCancelsAnExpense() throws Exception {
         when(expenses.find(1)).thenReturn(Optional.of(expense(1, false)));
         mvc.perform(get("/expenses/1").with(user("elena").roles("USER"))).andExpect(status().isOk())
