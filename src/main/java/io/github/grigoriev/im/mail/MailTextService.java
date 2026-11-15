@@ -126,8 +126,8 @@ public class MailTextService {
         MailText defaults = reminderDefaults();
         Placeholders values = Placeholders.of(invoice, invoice.number());
         String amount = new InvoicePdfRenderer.Formatter().money(open);
-        return new MailText(values.fill(defaults.subject()).replace(OPEN_AMOUNT, amount),
-                values.fill(defaults.body()).replace(OPEN_AMOUNT, amount));
+        return new MailText(values.fill(defaults.subject().replace(OPEN_AMOUNT, amount)),
+                values.fill(defaults.body().replace(OPEN_AMOUNT, amount)));
     }
 
     private void save(String subject, String body, String subjectKey, String bodyKey, MailText builtIn,

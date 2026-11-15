@@ -256,7 +256,7 @@ class MailServiceTest {
         List<Part> parts = parts(message);
         assertThat(parts).extracting(Part::getFileName).containsExactly(null, "Rechnung_2027-07.pdf");
         assertThat((String) text(parts.get(0), "text/html")).contains(">Offener Betrag</td>").contains(">80,00\u00a0€</td>")
-                .contains(">Fällig seit</td>").doesNotContain(">Zahlbar bis</td>");
+                .contains(">Fällig am</td>").doesNotContain(">Zahlbar bis</td>");
         assertThat((String) text(parts.get(0))).startsWith("Bitte zahlen.\nElena Sommer");
         verify(reminders).recordEmail(5, "a@b.example");
         verify(dispatches, never()).recordEmail(anyLong(), anyString(), anyString());

@@ -158,7 +158,7 @@ public class MailHtml {
         InvoicePdfRenderer.Formatter format = new InvoicePdfRenderer.Formatter();
         List<Fact> facts = new ArrayList<>();
         facts.add(new Fact("Rechnungsdatum", DATE.format(document.issueDate())));
-        facts.add(new Fact("Fällig seit", DATE.format(document.dueDate())));
+        facts.add(new Fact("Fällig am", DATE.format(document.dueDate())));
         facts.add(new Fact("Offener Betrag", format.money(open)));
         facts.add(new Fact("IBAN", iban(document.iban())));
         if (!document.bic().isBlank()) {

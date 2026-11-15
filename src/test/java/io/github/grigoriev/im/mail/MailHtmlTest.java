@@ -117,7 +117,7 @@ class MailHtmlTest {
     void aReminderShowsTheDueDateAndTheOpenAmount() {
         InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
         assertThat(MailHtml.reminderFacts(reading, new BigDecimal("80.00"))).containsExactly(
-                new MailHtml.Fact("Rechnungsdatum", "18.03.2027"), new MailHtml.Fact("Fällig seit", "01.04.2027"),
+                new MailHtml.Fact("Rechnungsdatum", "18.03.2027"), new MailHtml.Fact("Fällig am", "01.04.2027"),
                 new MailHtml.Fact("Offener Betrag", "80,00\u00a0€"), new MailHtml.Fact("IBAN", "DE02 1203 0000 0000 2020 51"),
                 new MailHtml.Fact("BIC", "BYLADEM1001"), new MailHtml.Fact("Verwendungszweck", "2027-10"));
         assertThat(MailHtml.reminderFacts(withBank(reading, ""), BigDecimal.ONE)).extracting(MailHtml.Fact::label)
