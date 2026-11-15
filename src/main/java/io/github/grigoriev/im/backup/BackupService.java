@@ -37,7 +37,9 @@ public class BackupService {
 
     /** The most an import expands to and the most entries it has: a crafted ZIP must not fill the disk. */
     static final long MAX_BYTES = 4L * 1024 * 1024 * 1024;
-    static final int MAX_ENTRIES = 100_000;
+    static final int MAX_ENTRIES = 65_000;
+    /** The most bytes of the central directory, about 100 bytes per entry. */
+    static final long MAX_DIRECTORY_BYTES = 16L * 1024 * 1024;
     /** The most one file or the manifest expands to: it comes into memory as a whole, a document has 25 MB. */
     static final long MAX_FILE_BYTES = 64L * 1024 * 1024;
     /** The export reads one row at a time: neither the rows nor the files of a table sit in memory together. */
@@ -131,7 +133,7 @@ public class BackupService {
      */
     @Transactional
     public void restore(Path file) {
-        BackupArchive.read(file, json, MAX_BYTES, MAX_FILE_BYTES, MAX_ENTRIES, this::restore);
+        BackupArchive.read(file, json, MAX_BYTES, MAX_FILE_BYTES, MAX_ENTRIES, MAX_DIRECTORY_BYTES, this::restore);
     }
 
     private void restore(BackupArchive archive) {

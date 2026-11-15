@@ -4,6 +4,9 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -30,6 +33,11 @@ final class BackupArchive {
 
     private static final TypeReference<Map<String, Object>> ROW = new TypeReference<>() { };
 
+    /** The end record of a ZIP: its signature, its size without the comment, and the longest comment. */
+    private static final int END_SIGNATURE = 0x06054b50;
+    private static final int END_RECORD = 22;
+    private static final int MAX_COMMENT = 0xFFFF;
+
     private final ZipFile zip;
     private final JsonMapper json;
     private final long maxBytes;
@@ -50,19 +58,49 @@ final class BackupArchive {
      * @param json reads the manifest and the rows
      * @param maxBytes the most all entries expand to together
      * @param maxFileBytes the most one entry that comes into memory expands to
-     * @param maxEntries the most entries
+     * @param maxEntries the most entries, below 65,535: a ZIP64 directory is refused
+     * @param maxDirectoryBytes the most bytes of the central directory, which {@link ZipFile} reads into memory
      * @param work reads the export
      * @throws BackupException if the file is no ZIP or has too many entries, or from {@code work}
      */
+    @SuppressWarnings("java:S107") // the limits of an import
     static void read(Path file, JsonMapper json, long maxBytes, long maxFileBytes, int maxEntries,
-            Consumer<BackupArchive> work) {
-        try (ZipFile zip = new ZipFile(file.toFile())) {
-            if (zip.size() > maxEntries) {
-                throw new BackupException(TOO_BIG);
+            long maxDirectoryBytes, Consumer<BackupArchive> work) {
+        try {
+            directory(file, maxEntries, maxDirectoryBytes);
+            try (ZipFile zip = new ZipFile(file.toFile())) {
+                if (zip.size() > maxEntries) {
+                    throw new BackupException(TOO_BIG);
+                }
+                work.accept(new BackupArchive(zip, json, maxBytes, maxFileBytes));
             }
-            work.accept(new BackupArchive(zip, json, maxBytes, maxFileBytes));
         } catch (IOException _) {
             throw new BackupException("Diese Datei ist kein ZIP.");
+        }
+    }
+
+    /**
+     * Checks the end record of the ZIP before {@link ZipFile} reads the whole central directory into memory: a crafted
+     * directory, for example with long comments, could fill it first. Without an end record the file is no ZIP, which
+     * {@link ZipFile} then says. A ZIP64 directory marks its counts with all ones, which exceed both limits.
+     */
+    private static void directory(Path file, int maxEntries, long maxDirectoryBytes) throws IOException {
+        try (RandomAccessFile in = new RandomAccessFile(file.toFile(), "r")) {
+            int tail = (int) Math.min(in.length(), END_RECORD + MAX_COMMENT);
+            byte[] bytes = new byte[tail];
+            in.seek(in.length() - tail);
+            in.readFully(bytes);
+            ByteBuffer end = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+            for (int at = tail - END_RECORD; at >= 0; at--) {
+                if (end.getInt(at) == END_SIGNATURE) {
+                    int entries = Short.toUnsignedInt(end.getShort(at + 10));
+                    long size = Integer.toUnsignedLong(end.getInt(at + 12));
+                    if (entries > maxEntries || size > maxDirectoryBytes) {
+                        throw new BackupException(TOO_BIG);
+                    }
+                    return;
+                }
+            }
         }
     }
 
@@ -102,6 +140,10 @@ final class BackupArchive {
                 }
                 for (Map<String, Object> row = next(name, parser, reader); row != null; row = next(name, parser, reader)) {
                     each.accept(row);
+                }
+                // A second array after the first would go unread: nothing may follow.
+                if (token(name, parser) != null) {
+                    throw damaged(name);
                 }
             }
             return null;
@@ -165,7 +207,8 @@ final class BackupArchive {
                 throw damaged(name);
             }
             return value;
-        } catch (IOException _) {
+        } catch (IOException | JacksonException _) {
+            // A broken start of the data fails while the parser detects the encoding, wrapped by Jackson.
             throw damaged(name);
         }
     }

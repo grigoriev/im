@@ -7,6 +7,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,7 +49,7 @@ class BackupArchiveTest {
     }
 
     private void read(Path file, long maxBytes, long maxFileBytes, int maxEntries, Consumer<BackupArchive> work) {
-        BackupArchive.read(file, json, maxBytes, maxFileBytes, maxEntries, work);
+        BackupArchive.read(file, json, maxBytes, maxFileBytes, maxEntries, 10_000, work);
     }
 
     @Test
@@ -76,11 +78,12 @@ class BackupArchiveTest {
         entries.put("data/none.json", new byte[0]);
         entries.put("data/word.json", utf8("kaputt"));
         entries.put("data/object.json", utf8("{\"id\":\"1\"}"));
+        entries.put("data/twice.json", utf8("[{\"id\":\"1\"}][{\"id\":\"2\"}]"));
         List<Map<String, Object>> rows = new ArrayList<>();
         BackupException own = new BackupException("vom Empfänger");
-        read(zip(entries), 1000, 100, 5, archive -> {
-            for (String broken : List.of("data/none.json", "data/word.json", "data/object.json")) {
-                assertThatThrownBy(() -> archive.rows(broken, rows::add)).as(broken).isInstanceOf(BackupException.class)
+        read(zip(entries), 1000, 100, 6, archive -> {
+            for (String broken : List.of("data/none.json", "data/word.json", "data/object.json", "data/twice.json")) {
+                assertThatThrownBy(() -> archive.rows(broken, row -> { })).as(broken).isInstanceOf(BackupException.class)
                         .hasMessage("Die Datensicherung ist beschädigt: " + broken + ".");
             }
             assertThatThrownBy(() -> archive.value("manifest.json", new TypeReference<Map<String, Object>>() { }))
@@ -112,6 +115,9 @@ class BackupArchiveTest {
         Files.write(file, bytes);
         read(file, 10_000, 10_000, 1, archive -> assertThatThrownBy(() -> archive.file("f"))
                 .isInstanceOf(BackupException.class).hasMessage("Die Datensicherung ist beschädigt: f."));
+        read(file, 10_000, 10_000, 1, archive -> assertThatThrownBy(() -> archive.rows("f", row -> { }))
+                .as("while the parser starts").isInstanceOf(BackupException.class)
+                .hasMessage("Die Datensicherung ist beschädigt: f."));
     }
 
     @Test
@@ -144,6 +150,57 @@ class BackupArchiveTest {
         Path changed = Files.write(folder.resolve("changed.zip"), bytes);
         read(changed, 1000, 100, 2, archive -> assertThatThrownBy(() -> archive.file("f"))
                 .isInstanceOf(BackupException.class).hasMessage("Die Datensicherung ist beschädigt: f."));
+    }
+
+    @Test
+    void refusesACentralDirectoryTooBigOrTooLongBeforeOpeningIt() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(out)) {
+            for (int i = 0; i < 3; i++) {
+                ZipEntry entry = new ZipEntry("e" + i);
+                entry.setComment("x".repeat(100));
+                zip.putNextEntry(entry);
+            }
+            zip.setComment("a comment of the archive, which the end record carries");
+        }
+        Path file = Files.write(folder.resolve("comments.zip"), out.toByteArray());
+        List<BackupArchive> opened = new ArrayList<>();
+        BackupArchive.read(file, json, 1000, 100, 3, 1000, opened::add);
+        assertThat(opened).as("within both limits, with an archive comment").hasSize(1);
+        assertThatThrownBy(() -> BackupArchive.read(file, json, 1000, 100, 3, 300, opened::add))
+                .hasMessage(BackupArchive.TOO_BIG);
+        assertThatThrownBy(() -> BackupArchive.read(file, json, 1000, 100, 2, 1000, opened::add))
+                .as("the count of the end record").hasMessage(BackupArchive.TOO_BIG);
+        assertThat(opened).hasSize(1);
+        byte[] bytes = out.toByteArray();
+        int end = new String(bytes, StandardCharsets.ISO_8859_1).lastIndexOf("PK\u0005\u0006");
+        long size = ByteBuffer.wrap(bytes, end + 12, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        BackupArchive.read(file, json, 1000, 100, 3, size, opened::add);
+        assertThat(opened).as("a directory of exactly the limit").hasSize(2);
+        assertThatThrownBy(() -> BackupArchive.read(file, json, 1000, 100, 3, size - 1, opened::add))
+                .hasMessage(BackupArchive.TOO_BIG);
+
+        // An end record alone, at the very start of the file, that claims five entries.
+        ByteBuffer record = ByteBuffer.allocate(22).order(ByteOrder.LITTLE_ENDIAN).putInt(0x06054b50).putShort((short) 0)
+                .putShort((short) 0).putShort((short) 5).putShort((short) 5);
+        Path claimed = Files.write(folder.resolve("claimed.zip"), record.array());
+        assertThatThrownBy(() -> BackupArchive.read(claimed, json, 1000, 100, 3, 1000, opened::add))
+                .hasMessage(BackupArchive.TOO_BIG);
+
+        // More than the longest comment before the end record: the check reads the tail of the file only.
+        ByteArrayOutputStream large = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(large)) {
+            zip.setLevel(0);
+            zip.putNextEntry(new ZipEntry("big"));
+            zip.write(new byte[70_000]);
+            zip.putNextEntry(new ZipEntry("small"));
+        }
+        Path big = Files.write(folder.resolve("big.zip"), large.toByteArray());
+        assertThatThrownBy(() -> BackupArchive.read(big, json, 100_000, 100_000, 2, 10, opened::add))
+                .as("the directory size of the end record at the end of a large file").hasMessage(BackupArchive.TOO_BIG);
+        Path tiny = Files.write(folder.resolve("tiny.zip"), utf8("PK"));
+        assertThatThrownBy(() -> BackupArchive.read(tiny, json, 1000, 100, 3, 1000, opened::add))
+                .hasMessage("Diese Datei ist kein ZIP.");
     }
 
     @Test
