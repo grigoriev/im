@@ -65,6 +65,8 @@ public enum AuditAction {
     INVOICE_SENT("Versand vermerkt"),
     /** A payment or a refund of an invoice was recorded. */
     PAYMENT_RECORDED("Zahlung erfasst"),
+    /** A payment reminder of an invoice was sent or noted. */
+    REMINDER_RECORDED("Zahlungserinnerung vermerkt"),
     /** A business document was stored. */
     DOCUMENT_ADDED("Dokument abgelegt"),
     /** A new version of a business document was stored. */

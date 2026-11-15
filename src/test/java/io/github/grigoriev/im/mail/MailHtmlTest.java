@@ -6,6 +6,7 @@ import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
+import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -110,6 +111,19 @@ class MailHtmlTest {
         assertThat(MailHtml.paragraphs(" \n ")).isEmpty();
         assertThat(MailHtml.paragraphs("  Hallo  \n Welt\n \nTschüss")).containsExactly(List.of("Hallo", "Welt"),
                 List.of("Tschüss"));
+    }
+
+    @Test
+    void aReminderShowsTheDueDateAndTheOpenAmount() {
+        InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        assertThat(MailHtml.reminderFacts(reading, new BigDecimal("80.00"))).containsExactly(
+                new MailHtml.Fact("Rechnungsdatum", "18.03.2027"), new MailHtml.Fact("Fällig seit", "01.04.2027"),
+                new MailHtml.Fact("Offener Betrag", "80,00\u00a0€"), new MailHtml.Fact("IBAN", "DE02 1203 0000 0000 2020 51"),
+                new MailHtml.Fact("BIC", "BYLADEM1001"), new MailHtml.Fact("Verwendungszweck", "2027-10"));
+        assertThat(MailHtml.reminderFacts(withBank(reading, ""), BigDecimal.ONE)).extracting(MailHtml.Fact::label)
+                .doesNotContain("BIC");
+        assertThat(html.renderReminder(reading, "Erinnerung", "Bitte", new BigDecimal("80.00")))
+                .contains(">Offener Betrag</td>").contains("<title>Erinnerung</title>");
     }
 
     @Test

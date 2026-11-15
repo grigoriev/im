@@ -17,6 +17,7 @@ import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.InvoiceTemplate;
 import io.github.grigoriev.im.seller.SettingsException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -122,5 +123,31 @@ class MailTextServiceTest {
         assertThat(service.forInvoice(invoice)).isEqualTo(new MailText("Rechnung 2027-07", "Liebe Frau M., 2027-07"));
         when(invoices.template(invoice)).thenReturn(Optional.of(template(null, " ")));
         assertThat(service.forInvoice(invoice).body()).startsWith("Sehr geehrte Damen und Herren,");
+    }
+
+    @Test
+    void keepsTheReminderTextApartAndFillsTheOpenAmount() {
+        assertThat(service.reminderDefaults()).isEqualTo(new MailText(MailTextService.DEFAULT_REMINDER_SUBJECT,
+                MailTextService.DEFAULT_REMINDER_BODY));
+        MailText filled = service.forReminder(invoice, new BigDecimal("80"));
+        assertThat(filled.subject()).isEqualTo("Zahlungserinnerung zur Rechnung 2027-07");
+        assertThat(filled.body()).contains("meine Rechnung 2027-07 vom 18.03.2027 war am 01.04.2027 fällig. Offen sind "
+                + "noch 80,00\u00a0€.").endsWith("Mit freundlichen Grüßen");
+        settings.put("reminder-subject", "Offen: {Offener Betrag}");
+        settings.put("reminder-body", "Bitte {Offener Betrag} für {Rechnungsnummer}");
+        assertThat(service.forReminder(invoice, new BigDecimal("12.5"))).isEqualTo(new MailText("Offen: 12,50\u00a0€",
+                "Bitte 12,50\u00a0€ für 2027-07"));
+        assertThat(service.defaults()).as("the invoice text stays its own")
+                .isEqualTo(new MailText(MailTextService.DEFAULT_SUBJECT, MailTextService.DEFAULT_BODY));
+
+        service.saveReminder(" Erinnerung {Rechnungsnummer} ", "Bitte zahlen.\r\n");
+        verify(statements.get(MailTextService.WRITE)).param("key", "reminder-subject");
+        verify(statements.get(MailTextService.WRITE)).param("value", "Erinnerung {Rechnungsnummer}");
+        verify(statements.get(MailTextService.WRITE)).param("value", "Bitte zahlen.");
+        verify(audit).add(AuditAction.MAIL_TEXT_SAVED, "Zahlungserinnerung");
+        service.saveReminder(MailTextService.DEFAULT_REMINDER_SUBJECT, " ");
+        verify(statements.get(MailTextService.RESET)).param("key", "reminder-body");
+        assertThat(catchThrowableOfType(SettingsException.class, () -> service.saveReminder("s".repeat(201), null))
+                .problems()).containsExactly("Der Betreff hat höchstens 200 Zeichen.");
     }
 }

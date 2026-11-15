@@ -12,12 +12,14 @@ import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.threshold.Threshold;
 import io.github.grigoriev.im.threshold.ThresholdService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.ExtendedModelMap;
@@ -30,7 +32,8 @@ class HomeControllerTest {
     private final PaymentService payments = mock(PaymentService.class);
     private final DocumentStore documents = mock(DocumentStore.class);
     private final ThresholdService threshold = mock(ThresholdService.class);
-    private final HomeController controller = new HomeController(invoices, payments, documents, threshold);
+    private final ReminderService reminders = mock(ReminderService.class);
+    private final HomeController controller = new HomeController(invoices, payments, documents, threshold, reminders);
 
     /** An issued invoice dated {@code daysAgo} days ago, due after 14 days. */
     private static Invoice invoice(long id, InvoiceStatus status, int daysAgo) {
@@ -63,6 +66,7 @@ class HomeControllerTest {
         when(documents.restore("{}")).thenReturn(ItSamples.withBuyerContact(
                 SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(threshold.today()).thenReturn(TODAY);
+        when(reminders.last()).thenReturn(Map.of(1L, TODAY.minusDays(2)));
         Threshold current = new Threshold(2027, BigDecimal.ONE, true, BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.TEN,
                 BigDecimal.TEN);
         when(threshold.current()).thenReturn(current);
@@ -77,6 +81,7 @@ class HomeControllerTest {
         @SuppressWarnings("unchecked")
         List<HomeController.Open> overdue = (List<HomeController.Open>) model.get("overdue");
         assertThat(overdue).as("due today is not overdue yet").extracting(item -> item.invoice().id()).containsExactly(1L);
+        assertThat(open).extracting(HomeController.Open::reminded).containsExactly(TODAY.minusDays(2), null, null);
         assertThat(model).containsEntry("overdueSum", new BigDecimal("480.00")).containsEntry("threshold", current)
                 .containsEntry("today", TODAY);
     }

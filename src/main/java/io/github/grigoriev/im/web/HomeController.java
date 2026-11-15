@@ -7,11 +7,13 @@ import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.threshold.ThresholdService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,14 +29,16 @@ public class HomeController {
      * @param customer the buyer of the snapshot
      * @param open the amount still open
      * @param overdue whether its due date has passed
+     * @param reminded the day of its last payment reminder, {@code null} without one
      */
-    public record Open(Invoice invoice, String customer, BigDecimal open, boolean overdue) {
+    public record Open(Invoice invoice, String customer, BigDecimal open, boolean overdue, LocalDate reminded) {
     }
 
     private final InvoiceService invoices;
     private final PaymentService payments;
     private final DocumentStore documents;
     private final ThresholdService threshold;
+    private final ReminderService reminders;
 
     /**
      * Creates the controller.
@@ -43,13 +47,15 @@ public class HomeController {
      * @param payments what an invoice still waits for
      * @param documents the buyer of an issued invoice
      * @param threshold the §19 revenue
+     * @param reminders the last payment reminder of each invoice
      */
     public HomeController(InvoiceService invoices, PaymentService payments, DocumentStore documents,
-            ThresholdService threshold) {
+            ThresholdService threshold, ReminderService reminders) {
         this.invoices = invoices;
         this.payments = payments;
         this.documents = documents;
         this.threshold = threshold;
+        this.reminders = reminders;
     }
 
     /**
@@ -62,13 +68,14 @@ public class HomeController {
     public String home(Model model) {
         LocalDate today = threshold.today();
         List<Open> open = new ArrayList<>();
+        Map<Long, LocalDate> reminded = reminders.last();
         for (Invoice invoice : invoices.list()) {
             boolean waiting = invoice.status() == InvoiceStatus.ISSUED || invoice.status() == InvoiceStatus.SENT;
             if (waiting && invoices.cancelled(invoice).isEmpty()) {
                 BigDecimal amount = payments.summary(invoice).open();
                 if (amount.signum() > 0) {
                     open.add(new Open(invoice, label(documents.restore(invoice.snapshot()).buyer()), amount,
-                            invoice.dueDate().isBefore(today)));
+                            invoice.dueDate().isBefore(today), reminded.get(invoice.id())));
                 }
             }
         }

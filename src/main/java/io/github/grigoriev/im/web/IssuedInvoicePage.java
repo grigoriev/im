@@ -7,6 +7,7 @@ import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.mail.MailService;
 import java.util.Arrays;
 import java.util.Map;
@@ -19,10 +20,12 @@ public class IssuedInvoicePage {
 
     /** The Lucide icon of an entry in the history of an invoice, by action. */
     static final Map<String, String> HISTORY_ICONS = Map.of("DRAFT_CREATED", "file-plus", "INVOICE_ISSUED", "stamp",
-            "INVOICE_SENT", "send", "PAYMENT_RECORDED", "banknote", "INVOICE_CANCELLED", "undo-2");
+            "INVOICE_SENT", "send", "PAYMENT_RECORDED", "banknote", "INVOICE_CANCELLED", "undo-2", "REMINDER_RECORDED", "bell");
 
     /** The flash attribute that carries a mail form back after a problem. */
     static final String MAIL_FORM = "mailForm";
+    /** The flash attribute that carries a reminder form back after a problem. */
+    static final String REMINDER_FORM = "reminderForm";
 
     private final DocumentStore documents;
     private final AuditService audit;
@@ -30,6 +33,7 @@ public class IssuedInvoicePage {
     private final PaymentService payments;
     private final MailService mail;
     private final InvoiceService invoices;
+    private final ReminderService reminders;
 
     /**
      * Creates the page.
@@ -40,15 +44,17 @@ public class IssuedInvoicePage {
      * @param payments the payments and the open amount
      * @param mail the e-mail form, if sending is set up
      * @param invoices the Stornorechnung of an invoice
+     * @param reminders the payment reminders
      */
     public IssuedInvoicePage(DocumentStore documents, AuditService audit, DispatchService dispatches,
-            PaymentService payments, MailService mail, InvoiceService invoices) {
+            PaymentService payments, MailService mail, InvoiceService invoices, ReminderService reminders) {
         this.documents = documents;
         this.audit = audit;
         this.dispatches = dispatches;
         this.payments = payments;
         this.mail = mail;
         this.invoices = invoices;
+        this.reminders = reminders;
     }
 
     /**
@@ -66,10 +72,20 @@ public class IssuedInvoicePage {
         model.addAttribute("payments", payments.summary(invoice));
         model.addAttribute("cancellation", invoices.cancellation(invoice).orElse(null));
         model.addAttribute("mailConfigured", mail.configured());
+        String buyerEmail = documents.restore(invoice.snapshot()).buyer().email();
         if (model.containsAttribute(MAIL_FORM)) {
             model.addAttribute("mail", model.getAttribute(MAIL_FORM));
         } else if (mail.configured()) {
-            model.addAttribute("mail", mail.form(invoice, documents.restore(invoice.snapshot()).buyer().email()));
+            model.addAttribute("mail", mail.form(invoice, buyerEmail));
+        }
+        model.addAttribute("reminders", reminders.list(invoice.id()));
+        boolean remindable = reminders.isRemindable(invoice.id());
+        model.addAttribute("remindable", remindable);
+        model.addAttribute("overdue", reminders.overdue(invoice));
+        if (model.containsAttribute(REMINDER_FORM)) {
+            model.addAttribute("reminderMail", model.getAttribute(REMINDER_FORM));
+        } else if (remindable && mail.configured()) {
+            model.addAttribute("reminderMail", mail.reminderForm(invoice, buyerEmail));
         }
     }
 }

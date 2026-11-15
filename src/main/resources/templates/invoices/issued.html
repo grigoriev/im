@@ -111,6 +111,46 @@
       </form>
     </details>
 
+    <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-reminder"
+             th:if="${remindable}" th:open="${reminderForm != null}">
+      <summary class="btn w-fit" th:classappend="${overdue} ? 'btn-warning'"><i data-lucide="bell" class="size-4"></i>Zahlungserinnerung…</summary>
+      <div class="mt-3 grid gap-5">
+        <p class="text-sm text-base-content/75" th:text="${overdue} ? 'Die Rechnung war am ' + ${#temporals.format(document.dueDate(), 'dd.MM.yyyy')} + ' fällig.' : 'Die Rechnung ist am ' + ${#temporals.format(document.dueDate(), 'dd.MM.yyyy')} + ' fällig.'">Die Rechnung war am 01.04.2027 fällig.</p>
+        <form class="grid gap-3" method="post" th:action="@{/invoices/{id}/remind(id=${invoice.id})}" th:if="${reminderMail != null}" data-once>
+          <h3 class="font-medium text-sm">Per E-Mail erinnern</h3>
+          <label class="floating-label"><span>An</span>
+            <input id="reminder-to" name="to" type="email" class="input w-full" required maxlength="254" th:value="${reminderMail.to}">
+          </label>
+          <label class="floating-label"><span>Betreff</span>
+            <input id="reminder-subject" name="subject" class="input w-full" required maxlength="200" th:value="${reminderMail.subject}">
+          </label>
+          <label class="floating-label"><span>Nachricht</span>
+            <textarea id="reminder-body" name="body" class="textarea w-full h-48" required maxlength="4000" th:text="${reminderMail.body}">Text</textarea>
+          </label>
+          <label class="flex items-center gap-2 text-sm"><input id="reminder-pdf" name="pdf" type="checkbox" class="checkbox checkbox-sm"
+              value="true" th:checked="${reminderMail.pdf}">Rechnung als PDF anhängen</label>
+          <div class="form-actions">
+            <button type="submit" class="btn" id="reminder-preview" formtarget="_blank" formnovalidate th:formaction="@{/invoices/{id}/remind/preview(id=${invoice.id})}"
+                    title="Die Erinnerung so, wie der Kunde sie sieht, in einem neuen Tab"><i data-lucide="eye" class="size-4"></i>Vorschau</button>
+            <button type="submit" class="btn btn-primary" id="reminder-send"><i data-lucide="send" class="size-4"></i>Erinnerung senden</button>
+          </div>
+        </form>
+        <form class="grid gap-3 @container" method="post" th:action="@{/invoices/{id}/reminders(id=${invoice.id})}">
+          <h3 class="font-medium text-sm">Erinnerung vermerken</h3>
+          <p class="text-sm text-base-content/75">Für eine Erinnerung per Telefon, Brief oder aus Ihrem Mailprogramm.</p>
+          <div class="grid gap-3 @lg:grid-cols-[12rem_minmax(0,1fr)]">
+            <label class="floating-label"><span>Datum</span>
+              <input id="reminder-date" name="remindedOn" type="date" class="input w-full" required th:value="${today}" th:max="${today}">
+            </label>
+            <label class="floating-label"><span>Notiz (optional)</span>
+              <input id="reminder-note" name="note" class="input w-full" maxlength="500" placeholder="z. B. telefonisch erinnert">
+            </label>
+          </div>
+          <div class="form-actions"><button type="submit" class="btn btn-primary" id="reminder-save"><i data-lucide="check" class="size-4"></i>Vermerken</button></div>
+        </form>
+      </div>
+    </details>
+
     <div class="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_20rem]">
       <div class="grid gap-4 content-start min-w-0">
         <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="invoice-history">
@@ -167,6 +207,18 @@
             <dt class="font-semibold" th:text="${payments.open().signum() < 0 ? 'Überzahlt' : 'Offen'}">Offen</dt>
             <dd class="num text-right font-semibold" id="payments-open" th:text="${#numbers.formatDecimal(payments.open().abs(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd>
           </dl>
+        </section>
+
+        <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-2 text-sm" id="invoice-reminders"
+                 th:unless="${reminders.isEmpty()}">
+          <h2 class="font-semibold">Zahlungserinnerungen</h2>
+          <ul class="grid gap-1">
+            <li th:each="reminder : ${reminders}" class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 items-baseline">
+              <span class="num" th:text="${#temporals.format(reminder.remindedOn(), 'dd.MM.yyyy')}">18.03.2027</span>
+              <span class="text-xs text-base-content/75 [overflow-wrap:anywhere]"
+                    th:text="${reminder.recipient() != null ? reminder.channel().label() + ' an ' + reminder.recipient() : (reminder.note() != null ? reminder.note() : reminder.channel().label())}">E-Mail aus der App</span>
+            </li>
+          </ul>
         </section>
 
         <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-2 text-sm" id="invoice-checks">

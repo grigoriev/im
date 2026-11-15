@@ -68,6 +68,10 @@ import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.Payment;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.ReminderService;
+import io.github.grigoriev.im.invoice.ReminderForm;
+import io.github.grigoriev.im.invoice.ReminderChannel;
+import io.github.grigoriev.im.invoice.Reminder;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.invoice.TemplateForm;
 import io.github.grigoriev.im.invoice.TemplateLine;
@@ -230,6 +234,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private MailService mail;
+
+    @MockitoBean
+    private ReminderService reminders;
 
     @MockitoBean
     private ThresholdService threshold;
@@ -845,6 +852,105 @@ class SecurityWebTest {
     }
 
     @Test
+    void remindsByEmailOrByHand() throws Exception {
+        mvc.perform(post("/invoices/6/remind").param("to", " a@b.example ").param("subject", "Zahlungserinnerung")
+                        .param("body", "Bitte zahlen").param("pdf", "true").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/6"))
+                .andExpect(flash().attribute("success", "Zahlungserinnerung an a@b.example gesendet."));
+        var form = ArgumentCaptor.forClass(SendForm.class);
+        verify(mail).sendReminder(ArgumentMatchers.eq(6L), form.capture());
+        Assertions.assertThat(form.getValue().getBody()).isEqualTo("Bitte zahlen");
+        doThrow(new InvoiceException(List.of("Für diese Rechnung ist nichts offen."))).when(mail)
+                .sendReminder(ArgumentMatchers.eq(7L), any());
+        mvc.perform(post("/invoices/7/remind").param("to", "a@b.example").param("subject", "Mein Betreff")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/7"))
+                .andExpect(flash().attribute("error", "Für diese Rechnung ist nichts offen."))
+                .andExpect(flash().attribute("reminderForm", Matchers.hasProperty("subject", Matchers.is("Mein Betreff"))));
+
+        when(mail.previewReminder(ArgumentMatchers.eq(6L), any())).thenReturn("<p style=\"margin:0\">Bitte</p>");
+        mvc.perform(post("/invoices/6/remind/preview").param("body", "Bitte").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; "
+                        + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"))
+                .andExpect(content().string("<p style=\"margin:0\">Bitte</p>"));
+        when(mail.previewReminder(ArgumentMatchers.eq(7L), any())).thenThrow(new InvoiceException(List.of("Bezahlt.")));
+        mvc.perform(post("/invoices/7/remind/preview").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isNotFound());
+
+        mvc.perform(post("/invoices/6/reminders").param("remindedOn", "2027-04-05").param("note", "telefonisch")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/6")).andExpect(flash().attribute("success", "Erinnerung vermerkt."));
+        var manual = ArgumentCaptor.forClass(ReminderForm.class);
+        verify(reminders).recordManual(ArgumentMatchers.eq(6L), manual.capture());
+        Assertions.assertThat(manual.getValue().getRemindedOn()).isEqualTo(LocalDate.of(2027, 4, 5));
+        Assertions.assertThat(manual.getValue().getNote()).isEqualTo("telefonisch");
+        when(reminders.recordManual(ArgumentMatchers.eq(7L), any())).thenThrow(
+                new InvoiceException(List.of("Für diese Rechnung ist nichts offen.")));
+        mvc.perform(post("/invoices/7/reminders").param("remindedOn", "2027-04-05").with(user("elena").roles("USER"))
+                        .with(csrf()))
+                .andExpect(redirectedUrl("/invoices/7"))
+                .andExpect(flash().attribute("error", "Für diese Rechnung ist nichts offen."));
+        mvc.perform(post("/invoices/6/reminders").param("remindedOn", "kaputt").with(user("elena").roles("USER"))
+                        .with(csrf()))
+                .andExpect(redirectedUrl("/invoices/6"))
+                .andExpect(flash().attribute("error", "Bitte gültige Daten eingeben, zum Beispiel ein Datum."));
+    }
+
+    @Test
+    void showsTheRemindersOfAnOpenInvoice() throws Exception {
+        Invoice issued = invoice(6, InvoiceStatus.SENT);
+        when(invoices.find(6)).thenReturn(Optional.of(issued));
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(payments.summary(any())).thenReturn(new PaymentService.Payments(List.of(), BigDecimal.ZERO,
+                new BigDecimal("480.00")));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Zahlungserinnerung…"))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-reminders\""))));
+        when(reminders.isRemindable(6)).thenReturn(true);
+        when(reminders.overdue(issued)).thenReturn(true);
+        when(reminders.list(6)).thenReturn(List.of(
+                new Reminder(1L, 6L, LocalDate.of(2027, 4, 5), ReminderChannel.EMAIL_APP, "a@b.example", null, "elena",
+                        Instant.EPOCH),
+                new Reminder(2L, 6L, LocalDate.of(2027, 4, 12), ReminderChannel.MANUAL, null, "telefonisch", "elena",
+                        Instant.EPOCH),
+                new Reminder(3L, 6L, LocalDate.of(2027, 4, 13), ReminderChannel.MANUAL, null, null, "elena",
+                        Instant.EPOCH)));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Zahlungserinnerung…")))
+                .andExpect(content().string(Matchers.containsString("btn-warning")))
+                .andExpect(content().string(Matchers.containsString("Die Rechnung war am 01.04.2027 fällig.")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Per E-Mail erinnern"))))
+                .andExpect(content().string(Matchers.containsString("Erinnerung vermerken")))
+                .andExpect(content().string(Matchers.containsString("E-Mail aus der App an a@b.example")))
+                .andExpect(content().string(Matchers.containsString("telefonisch")))
+                .andExpect(content().string(Matchers.containsString("13.04.2027")))
+                .andExpect(content().string(Matchers.containsString("Von Hand vermerkt")));
+        SendForm send = new SendForm();
+        send.setTo("buchhaltung@verlag.example");
+        send.setSubject("Zahlungserinnerung zur Rechnung 2027-01");
+        send.setBody("Bitte zahlen");
+        send.setPdf(true);
+        when(mail.configured()).thenReturn(true);
+        when(mail.form(ArgumentMatchers.eq(issued), any())).thenReturn(send);
+        when(mail.reminderForm(ArgumentMatchers.eq(issued), any())).thenReturn(send);
+        when(reminders.overdue(issued)).thenReturn(false);
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Per E-Mail erinnern")))
+                .andExpect(content().string(Matchers.containsString("Die Rechnung ist am 01.04.2027 fällig.")))
+                .andExpect(content().string(Matchers.containsString("value=\"Zahlungserinnerung zur Rechnung 2027-01\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"invoice-reminder\">")));
+        SendForm typed = new SendForm();
+        typed.setTo("neu@kunde.example");
+        typed.setSubject("Erinnerung");
+        typed.setBody("Mein Text");
+        mvc.perform(get("/invoices/6").flashAttr("reminderForm", typed).with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"invoice-reminder\" open=\"open\"")))
+                .andExpect(content().string(Matchers.containsString("value=\"neu@kunde.example\"")));
+        verify(mail).reminderForm(any(), any());
+    }
+
+    @Test
     void recordsAPayment() throws Exception {
         when(payments.add(ArgumentMatchers.eq(6L), any()))
                 .thenReturn(InvoiceStatus.PAID);
@@ -877,7 +983,11 @@ class SecurityWebTest {
     void theAdminEditsTheDefaultMailText() throws Exception {
         when(mailTexts.defaults()).thenReturn(new MailText("Rechnung {Rechnungsnummer}",
                 "Hallo & Tschüss"));
+        when(mailTexts.reminderDefaults()).thenReturn(new MailText("Zahlungserinnerung {Rechnungsnummer}",
+                "Offen: {Offener Betrag}"));
         mvc.perform(get("/admin/mail").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("value=\"Zahlungserinnerung {Rechnungsnummer}\"")))
+                .andExpect(content().string(Matchers.containsString("Offen: {Offener Betrag}</textarea>")))
                 .andExpect(content().string(Matchers.containsString("value=\"Rechnung {Rechnungsnummer}\"")))
                 .andExpect(content().string(Matchers.containsString("Hallo &amp; Tschüss</textarea>")))
                 .andExpect(content().string(Matchers.containsString("aria-selected=\"true\">E-Mail")));
@@ -892,7 +1002,23 @@ class SecurityWebTest {
                         .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Der Betreff hat höchstens 200 Zeichen.")))
-                .andExpect(content().string(Matchers.containsString("value=\"zu lang\"")));
+                .andExpect(content().string(Matchers.containsString("value=\"zu lang\"")))
+                .andExpect(content().string(Matchers.containsString("Offen: {Offener Betrag}</textarea>")));
+        mvc.perform(post("/admin/mail/reminder").param("subject", "Erinnerung").param("body", "Bitte")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/mail"))
+                .andExpect(flash().attribute("success", "Text der Zahlungserinnerung gespeichert."));
+        verify(mailTexts).saveReminder("Erinnerung", "Bitte");
+        doThrow(new SettingsException(List.of("Der Text hat höchstens 4000 Zeichen."))).when(mailTexts)
+                .saveReminder("Erinnerung", "zu lang");
+        mvc.perform(post("/admin/mail/reminder").param("subject", "Erinnerung").param("body", "zu lang")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Der Text hat höchstens 4000 Zeichen.")))
+                .andExpect(content().string(Matchers.containsString("zu lang</textarea>")))
+                .andExpect(content().string(Matchers.containsString("Hallo &amp; Tschüss</textarea>")));
+        mvc.perform(post("/admin/mail/reminder").param("subject", "x").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
     }
 
     @Test

@@ -4,6 +4,7 @@ import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.Party;
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -53,10 +54,27 @@ public class MailHtml {
      * @return the HTML
      */
     public String render(InvoiceDocument document, String subject, String body) {
+        return render(document, subject, body, facts(document));
+    }
+
+    /**
+     * Writes the HTML of a payment reminder: the box shows the due date and the open amount.
+     *
+     * @param document the issued invoice
+     * @param subject the subject, the title of the HTML
+     * @param body the text as typed, may be {@code null}
+     * @param open what the invoice still waits for
+     * @return the HTML
+     */
+    public String renderReminder(InvoiceDocument document, String subject, String body, BigDecimal open) {
+        return render(document, subject, body, reminderFacts(document, open));
+    }
+
+    private String render(InvoiceDocument document, String subject, String body, List<Fact> facts) {
         Letter letter = letter(document.seller(), body);
         Context context = new Context(GERMAN, Map.of("subject", subject == null ? "" : subject,
                 "paragraphs", letter.text(), "closing", letter.closing(), "heading", heading(document),
-                "facts", facts(document), "contact", contact(document.seller())));
+                "facts", facts, "contact", contact(document.seller())));
         return templates.process("mail/invoice", context);
     }
 
@@ -132,6 +150,21 @@ public class MailHtml {
             }
             facts.add(new Fact("Verwendungszweck", document.number()));
         }
+        return facts;
+    }
+
+    /** The facts of a reminder: date, due date, the open amount and the bank account. */
+    static List<Fact> reminderFacts(InvoiceDocument document, BigDecimal open) {
+        InvoicePdfRenderer.Formatter format = new InvoicePdfRenderer.Formatter();
+        List<Fact> facts = new ArrayList<>();
+        facts.add(new Fact("Rechnungsdatum", DATE.format(document.issueDate())));
+        facts.add(new Fact("Fällig seit", DATE.format(document.dueDate())));
+        facts.add(new Fact("Offener Betrag", format.money(open)));
+        facts.add(new Fact("IBAN", iban(document.iban())));
+        if (!document.bic().isBlank()) {
+            facts.add(new Fact("BIC", document.bic()));
+        }
+        facts.add(new Fact("Verwendungszweck", document.number()));
         return facts;
     }
 

@@ -1,6 +1,7 @@
 package io.github.grigoriev.im;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.icegreen.greenmail.junit5.GreenMailExtension;
 import com.icegreen.greenmail.util.ServerSetupTest;
@@ -10,6 +11,8 @@ import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchService;
+import io.github.grigoriev.im.invoice.ReminderChannel;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
@@ -31,6 +34,7 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
@@ -54,6 +58,12 @@ class MailIT {
 
     @Autowired
     private DispatchService dispatches;
+
+    @Autowired
+    private ReminderService reminders;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Autowired
     private DocumentStore documents;
@@ -92,7 +102,7 @@ class MailIT {
         Invoice invoice = issued();
         assertThat(mail.configured()).isTrue();
         SendForm form = mail.form(invoice, "buchhaltung@verlag.example");
-        assertThat(form.getSubject()).isEqualTo("Rechnung 2039-01");
+        assertThat(form.getSubject()).isEqualTo("Rechnung " + invoice.number());
         form.setXml(true);
         mail.send(invoice.id(), form);
 
@@ -100,21 +110,21 @@ class MailIT {
         assertThat(received).as("the buyer and the blind copy").hasSize(2);
         MimeMessage message = received[0];
         assertThat(message.getFrom()[0]).hasToString("rechnung@elena.example");
-        assertThat(message.getSubject()).isEqualTo("Rechnung 2039-01");
+        assertThat(message.getSubject()).isEqualTo("Rechnung " + invoice.number());
         Multipart parts = (Multipart) message.getContent();
         assertThat(parts.getCount()).isEqualTo(3);
         Part pdf = parts.getBodyPart(1);
-        assertThat(pdf.getFileName()).isEqualTo("Rechnung_2039-01.pdf");
+        assertThat(pdf.getFileName()).isEqualTo("Rechnung_" + invoice.number() + ".pdf");
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         pdf.getDataHandler().writeTo(bytes);
         assertThat(bytes.toByteArray()).as("the stored PDF, byte for byte")
                 .isEqualTo(documents.find(invoice.id(), DocumentKind.PDF).orElseThrow().content());
-        assertThat(parts.getBodyPart(2).getFileName()).isEqualTo("Rechnung_2039-01.xml");
+        assertThat(parts.getBodyPart(2).getFileName()).isEqualTo("Rechnung_" + invoice.number() + ".xml");
         Multipart related = (Multipart) parts.getBodyPart(0).getContent();
         Multipart alternative = (Multipart) related.getBodyPart(0).getContent();
         assertThat(alternative.getBodyPart(0).isMimeType("text/plain")).as("text first, for old programs").isTrue();
         assertThat(alternative.getBodyPart(1).isMimeType("text/html")).isTrue();
-        assertThat((String) alternative.getBodyPart(1).getContent()).contains(">Rechnung 2039-01</td>");
+        assertThat((String) alternative.getBodyPart(1).getContent()).contains(">Rechnung " + invoice.number() + "</td>");
 
         assertThat(invoices.find(invoice.id()).orElseThrow().status()).isEqualTo(InvoiceStatus.SENT);
         assertThat(dispatches.list(invoice.id())).singleElement().satisfies(dispatch -> {
@@ -122,5 +132,28 @@ class MailIT {
             assertThat(dispatch.recipient()).isEqualTo("buchhaltung@verlag.example");
             assertThat(dispatch.note()).isEqualTo("PDF, XML");
         });
+    }
+
+    @Test
+    void sendsAReminderAndKeepsItInTheHistory() throws Exception {
+        Invoice invoice = issued();
+        SendForm form = mail.reminderForm(invoice, "buchhaltung@verlag.example");
+        assertThat(form.getSubject()).isEqualTo("Zahlungserinnerung zur Rechnung " + invoice.number());
+        assertThat(form.getBody()).contains("Offen sind noch 400,00\u00a0€.");
+        mail.sendReminder(invoice.id(), form);
+
+        MimeMessage message = SMTP.getReceivedMessages()[0];
+        assertThat(message.getSubject()).isEqualTo("Zahlungserinnerung zur Rechnung " + invoice.number());
+        Multipart parts = (Multipart) message.getContent();
+        assertThat(parts.getCount()).as("the text and the PDF").isEqualTo(2);
+        assertThat(reminders.list(invoice.id())).singleElement().satisfies(reminder -> {
+            assertThat(reminder.channel()).isEqualTo(ReminderChannel.EMAIL_APP);
+            assertThat(reminder.recipient()).isEqualTo("buchhaltung@verlag.example");
+        });
+        assertThat(reminders.last()).containsKey(invoice.id());
+        assertThat(invoices.find(invoice.id()).orElseThrow().status()).as("a reminder is no dispatch")
+                .isEqualTo(InvoiceStatus.ISSUED);
+        assertThatThrownBy(() -> jdbc.update("UPDATE reminder SET note = 'x'")).hasMessageContaining("immutable");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM reminder")).hasMessageContaining("immutable");
     }
 }
