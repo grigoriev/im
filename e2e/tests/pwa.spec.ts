@@ -66,13 +66,17 @@ test.describe('on a phone', () => {
     const camera = page.locator('#expense-camera');
     await expect(camera).toBeVisible();
     await expect(upload).not.toHaveAttribute('capture');
+    const accept = await upload.getAttribute('accept');
+    expect(accept).toContain('application/pdf');
 
     const chooser = page.waitForEvent('filechooser');
     await camera.tap();
     const files = await chooser;
     await expect(upload).toHaveAttribute('capture', 'environment');
+    await expect(upload, 'Android opens the camera only for images').toHaveAttribute('accept', 'image/jpeg,image/png');
     await files.setFiles({ name: 'Foto.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) });
     await expect(upload).not.toHaveAttribute('capture');
+    await expect(upload, 'the field takes PDFs again').toHaveAttribute('accept', accept!);
     expect(await upload.evaluate((input: HTMLInputElement) => input.files?.[0]?.name)).toBe('Foto.jpg');
   });
 });

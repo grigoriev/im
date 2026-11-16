@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- "Foto aufnehmen" opened a file chooser instead of the camera on Android. The receipt field takes only images while the camera is open.
+
 ### Changed
 
 - A new expense shows no made-up examples in its fields, such as a bookshop as the vendor. Only the amount keeps its format hint.
