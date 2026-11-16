@@ -11,6 +11,7 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(customer);
   await expect(page.locator('#invoice-checks')).toContainText('Position 1: Bitte die Leistung beschreiben.');
+  await expect(page.locator('[placeholder]:not(.listbox-search)'), 'no example in the editor').toHaveCount(0);
 
   await page.locator('#line-0-text').fill('Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.');
   await page.locator('#line-0-amount').fill('400');
@@ -225,6 +226,7 @@ test('reminds of an open invoice by hand and by e-mail and keeps the history', a
   await expect(page.locator('#invoice-reminders'), 'no reminder yet').toHaveCount(0);
 
   await page.getByText('Zahlungserinnerung…').click();
+  await expect(page.locator('[placeholder]:not(.listbox-search)'), 'no example on the invoice').toHaveCount(0);
   await page.locator('#reminder-note').fill('telefonisch erinnert');
   await page.locator('#invoice-reminder').getByRole('button', { name: 'Vermerken' }).click();
   await expect(page.getByRole('status')).toHaveText('Erinnerung vermerkt.');

@@ -12,7 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
-- A new expense shows no made-up examples in its fields, such as a bookshop as the vendor. Only the amount keeps its format hint.
+- No field shows a made-up example any more, such as a bookshop as the vendor of an expense or a device name for a passkey. The label says what goes in.
 
 ## [0.1.8] - 2026-11-16
 

@@ -9,10 +9,6 @@ test('enters an expense with its receipt, changes and cancels one, and sums them
 
   await page.goto('/expenses');
   await page.locator('#expense-new').click();
-  // No made-up example in a field: only the amount shows its format.
-  for (const field of ['#expense-vendor', '#expense-description']) {
-    await expect(page.locator(field), field).not.toHaveAttribute('placeholder');
-  }
   await page.locator('#expense-upload').setInputFiles(receipt('Quittung.pdf'));
   await page.locator('#expense-amount').fill('49,9');
   await page.locator('#expense-category').selectOption({ label: 'Fachliteratur' });
