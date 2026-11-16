@@ -31,3 +31,26 @@ for (const route of ROUTES.filter((item) => item.screenshot !== false)) {
     }
   }
 }
+
+// A touch screen shows what a mouse never does, such as the camera button for a receipt. The viewports above keep a
+// mouse, so this one emulates a phone with touch.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`expense-new touch ${scheme}`, async ({ browser, adminState }) => {
+    const context = await browser.newContext({
+      colorScheme: scheme,
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      storageState: adminState,
+    });
+    const page = await context.newPage();
+    await page.goto('/expenses/new');
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.locator('#expense-camera')).toBeVisible();
+    await expect(page).toHaveScreenshot(`expense-new-touch-${scheme}.png`, {
+      fullPage: true,
+      mask: [page.locator('[data-volatile]')],
+    });
+    await context.close();
+  });
+}
