@@ -112,7 +112,7 @@ class ArchiveIT {
     }
 
     @Test
-    void aReceiptChangedInTheDatabaseStopsTheArchiveBeforeAByte() {
+    void aReceiptChangedInTheDatabaseStopsTheArchiveBeforeAByte() throws IOException {
         Expense receipt = receipt(LocalDate.of(2012, 4, 1));
         letter(LocalDate.of(2012, 3, 1));
         JdbcTemplate asOwner = new JdbcTemplate(owner.dataSource(null));
@@ -124,8 +124,7 @@ class ArchiveIT {
         } finally {
             asOwner.execute("ALTER TABLE expense ENABLE TRIGGER expense_frozen");
         }
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             ArchiveService archive = archive();
             assertThat(archive.damaged(2012)).containsExactly("Beleg Quittung.pdf");
             assertThatThrownBy(() -> archive.write(2012, out)).isInstanceOf(InvoiceException.class)

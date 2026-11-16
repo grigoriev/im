@@ -232,7 +232,9 @@ class BackupIT {
 
     /** Expects the import to fail on its check and to leave the copy as it was, with its identities unmoved. */
     private static void refused(Copy copy, Path upload, String damaged) {
-        assertThatThrownBy(() -> copy.transaction().executeWithoutResult(status -> copy.backups().restore(upload)))
+        TransactionTemplate transaction = copy.transaction();
+        BackupService into = copy.backups();
+        assertThatThrownBy(() -> transaction.executeWithoutResult(status -> into.restore(upload)))
                 .isInstanceOf(BackupException.class).hasMessageContaining("nicht zu Prüfsumme oder Siegel passen")
                 .hasMessageContaining(damaged);
         for (String table : List.of("customer", "invoice", "business_document", "expense")) {
