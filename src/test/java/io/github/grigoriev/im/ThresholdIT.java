@@ -146,4 +146,45 @@ class ThresholdIT {
         threshold.saveBaseline(lastYearNumber, "");
         assertThat(threshold.baselines()).as("removing works in a year with payments").doesNotContainKey(lastYearNumber);
     }
+
+    @Test
+    void aPaymentCountsInTheYearItArrivesInNotInTheYearOfTheInvoice() {
+        SellerTestData.save(sellers, SellerTestData.profile());
+        numbers.savePattern("{YYYY}-{NN}");
+        Customer customer = customers.create(CustomerTestData.verlag());
+        Invoice draft = invoices.createDraft(customer.id(), null);
+        DraftForm form = DraftForm.of(draft);
+        LocalDate newYearsEve = LocalDate.of(2008, 12, 31);
+        form.setIssueDate(newYearsEve);
+        form.setServiceFrom(newYearsEve);
+        form.setServiceTo(newYearsEve);
+        form.setBuyerReference(customer.buyerReference());
+        form.getLines().clear();
+        form.getLines().add(line("Lesung", "400", TaxCategory.KLEINUNTERNEHMER));
+        Invoice saved = invoices.saveDraft(draft.id(), form);
+        issues.issue(saved.id(), saved.version());
+        Invoice invoice = invoices.find(saved.id()).orElseThrow();
+
+        payments.add(invoice.id(), payment(newYearsEve, "100,00"));
+        payments.add(invoice.id(), payment(LocalDate.of(2009, 1, 1), "300,00"));
+        payments.add(invoice.id(), payment(LocalDate.of(2010, 1, 4), "-50,00"));
+
+        assertThat(counted(2008, invoice)).as("the last day of the year").containsExactly(new BigDecimal("100.00"));
+        assertThat(counted(2009, invoice)).as("the first day of the next one")
+                .containsExactly(new BigDecimal("300.00"));
+        assertThat(counted(2010, invoice)).as("a refund counts against the year it goes out")
+                .containsExactly(new BigDecimal("-50.00"));
+        assertThat(threshold.years()).contains(2008, 2009, 2010);
+        assertThatThrownBy(() -> threshold.saveBaseline(2009, "1.000,00"))
+                .as("a year with nothing but payments of an invoice of the year before")
+                .hasMessage("Für dieses Jahr zählt die App die Zahlungen selbst.");
+    }
+
+    /** The §19 part of each payment of the invoice in a year; all of an invoice with §19 lines only. */
+    private List<BigDecimal> counted(int year, Invoice invoice) {
+        List<RevenueRow> rows = threshold.rows(year).stream().filter(row -> row.number().equals(invoice.number()))
+                .toList();
+        assertThat(rows).allSatisfy(row -> assertThat(row.counted()).isEqualByComparingTo(row.amount()));
+        return rows.stream().map(RevenueRow::counted).toList();
+    }
 }

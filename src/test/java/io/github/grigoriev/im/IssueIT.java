@@ -388,6 +388,29 @@ class IssueIT {
     }
 
     @Test
+    void parallelPaymentsAndRefundsKeepTheSumAndTheStatus() throws Exception {
+        Invoice draft = draft(verlag, LocalDate.of(2014, 6, 2));
+        long id = draft.id();
+        issues.issue(id, draft.version());
+        LocalDate day = LocalDate.of(2014, 6, 20);
+
+        List<Object> parts = Parallel.run(8, () -> payments.add(id, payment(day, "50,00")));
+        assertThat(parts).as("each part sees the ones before, so only the last pays the invoice")
+                .containsOnlyOnce(InvoiceStatus.PAID).hasOnlyElementsOfType(InvoiceStatus.class);
+        assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.PAID);
+
+        List<Object> refunds = Parallel.run(8, () -> payments.add(id, payment(day, "-300,00")));
+        assertThat(refunds).as("400 paid allows one refund of 300").containsOnlyOnce(InvoiceStatus.ISSUED);
+        assertThat(refunds).filteredOn(InvoiceException.class::isInstance).hasSize(7)
+                .allSatisfy(refused -> assertThat((Throwable) refused)
+                        .hasMessage("Die Rückzahlung ist höher als die Zahlungen bisher (100,00 €)."));
+        Invoice after = invoices.find(id).orElseThrow();
+        assertThat(after.status()).isEqualTo(InvoiceStatus.ISSUED);
+        assertThat(payments.summary(after).paid()).isEqualByComparingTo("100.00");
+        assertThat(payments.summary(after).open()).isEqualByComparingTo("300.00");
+    }
+
+    @Test
     void aStornorechnungCancelsItsInvoiceInTheSameTransaction() {
         Invoice paid = draft(verlag, LocalDate.of(2017, 3, 1));
         long id = paid.id();

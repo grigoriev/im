@@ -30,7 +30,10 @@ import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.List;
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,6 +42,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The seals against PostgreSQL: the app connects without the right to switch a trigger off, and a change made in the
@@ -47,6 +52,9 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 @SpringBootTest
 @Import(TestDatabase.class)
 class IntegrityIT {
+
+    /** The SQLSTATE of PostgreSQL for a missing privilege or ownership. */
+    private static final String INSUFFICIENT_PRIVILEGE = "42501";
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -87,6 +95,9 @@ class IntegrityIT {
     @Autowired
     private SealMigration sealMigration;
 
+    @Autowired
+    private PlatformTransactionManager transactions;
+
     @Test
     void theAppCannotSwitchATriggerOffAndRefusesToRunAsTheOwner() {
         assertThatThrownBy(() -> jdbc.execute("ALTER TABLE invoice_document DISABLE TRIGGER invoice_document_frozen"))
@@ -99,6 +110,40 @@ class IntegrityIT {
         ConnectionGuard asOwner = new ConnectionGuard(owner.jdbc());
         assertThatThrownBy(() -> asOwner.run(null)).isInstanceOf(IllegalStateException.class);
         new ConnectionGuard(JdbcClient.create(jdbc.getDataSource())).run(null);
+    }
+
+    @Test
+    void theAppMayOnlyReadAndWriteTheRowsOfEveryTable() {
+        List<String> tables = jdbc.queryForList("SELECT tablename FROM pg_tables WHERE schemaname = 'public' "
+                + "ORDER BY tablename", String.class);
+        assertThat(tables).as("every table of the migrations").contains("invoice", "invoice_document", "expense",
+                "business_document", "audit_event", "payment", "reminder", "flyway_schema_history");
+        SoftAssertions softly = new SoftAssertions();
+        for (String table : tables) {
+            // TRUNCATE skips the row triggers that keep issued invoices and documents, so it must fail on its own.
+            for (String sql : List.of("TRUNCATE " + table, "ALTER TABLE " + table + " DISABLE TRIGGER ALL",
+                    "ALTER TABLE " + table + " ADD COLUMN probe text", "DROP TABLE " + table)) {
+                refused(softly, sql);
+            }
+        }
+        refused(softly, "CREATE TABLE probe (id int)");
+        refused(softly, "CREATE FUNCTION probe() RETURNS int AS 'SELECT 1' LANGUAGE sql");
+        softly.assertAll();
+    }
+
+    /**
+     * Expects the statement to fail for want of a privilege, not for another reason: a TRUNCATE fails on a table that a
+     * foreign key references, privilege or not. It runs in a transaction rolled back anyway, so a success harms no
+     * other test.
+     */
+    private void refused(SoftAssertions softly, String sql) {
+        TransactionTemplate transaction = new TransactionTemplate(transactions);
+        softly.assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
+            status.setRollbackOnly();
+            jdbc.execute(sql);
+        })).as(sql).isInstanceOf(DataAccessException.class).rootCause().isInstanceOf(SQLException.class)
+                .extracting(cause -> ((SQLException) cause).getSQLState()).as(sql + ": insufficient privilege")
+                .isEqualTo(INSUFFICIENT_PRIVILEGE);
     }
 
     @Test
@@ -200,6 +245,37 @@ class IntegrityIT {
                             + "AND kind = 'XML'", original, original, invoice.id());
         }
         assertThat(integrity.check(invoice).intact()).as("the original bytes match again").isTrue();
+    }
+
+    @Test
+    void aFindingGoesIntoTheLogOnceAndAgainAfterARepair() {
+        Invoice invoice = issued(LocalDate.of(2064, 3, 18));
+        monitor.check();
+        byte[] original = documents.find(invoice.id(), DocumentKind.XML).orElseThrow().content();
+        byte[] changed = new String(original, StandardCharsets.UTF_8).replace(">400.00<", ">4000.00<")
+                .getBytes(StandardCharsets.UTF_8);
+        String update = "UPDATE invoice_document SET content = ?, sha256 = encode(sha256(?), 'hex') "
+                + "WHERE invoice_id = ? AND kind = 'XML'";
+        try {
+            asOwner("invoice_document", "invoice_document_frozen", update, changed, changed, invoice.id());
+            monitor.check();
+            monitor.check();
+            assertThat(failures(invoice)).as("the second check finds nothing new").isEqualTo(1);
+
+            asOwner("invoice_document", "invoice_document_frozen", update, original, original, invoice.id());
+            assertThat(monitor.check().damaged()).extracting(Damage::invoiceId).doesNotContain(invoice.id());
+            asOwner("invoice_document", "invoice_document_frozen", update, changed, changed, invoice.id());
+            assertThat(monitor.check().damaged()).extracting(Damage::invoiceId).contains(invoice.id());
+            assertThat(failures(invoice)).as("changed again after the repair").isEqualTo(2);
+        } finally {
+            asOwner("invoice_document", "invoice_document_frozen", update, original, original, invoice.id());
+        }
+        assertThat(monitor.check().damaged()).extracting(Damage::invoiceId).doesNotContain(invoice.id());
+    }
+
+    private long failures(Invoice invoice) {
+        return audit.history(invoice.id()).stream().filter(event -> event.action() == AuditAction.INTEGRITY_FAILED)
+                .count();
     }
 
     @Test
