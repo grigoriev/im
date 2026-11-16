@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -181,27 +182,104 @@ class BackupIT {
         expenses.cancel(twice.id(), "doppelt");
     }
 
+    /**
+     * A second database on the same server, freshly migrated, with the first admin of a new installation.
+     *
+     * @param backups the import into it, which checks the files with the seal given
+     * @param transaction a transaction on it
+     * @param jdbc it, as the app
+     */
+    private record Copy(BackupService backups, TransactionTemplate transaction, JdbcTemplate jdbc) {
+    }
+
+    private Copy copy(String database, Seal sealOfCopy) {
+        owner.jdbc().sql("DROP DATABASE IF EXISTS " + database).update();
+        owner.jdbc().sql("CREATE DATABASE " + database).update();
+        Flyway.configure().dataSource(owner.dataSource(database)).locations("classpath:db/migration")
+                .placeholders(Map.of("appuser", "im_app")).javaMigrations(sealMigration).load().migrate();
+        DataSource copy = owner.appDataSource(database);
+        DocumentService copyDocuments = new DocumentService(JdbcClient.create(copy), mock(AuditService.class),
+                sealOfCopy, Clock.systemDefaultZone());
+        ExpenseService copyExpenses = new ExpenseService(JdbcClient.create(copy), mock(AuditService.class),
+                sealOfCopy, Clock.systemDefaultZone());
+        BackupService into = new BackupService(JdbcClient.create(copy), json, mock(AuditService.class),
+                List.of(copyDocuments, copyExpenses), Clock.systemDefaultZone());
+        JdbcTemplate copyJdbc = new JdbcTemplate(copy);
+        copyJdbc.update("INSERT INTO app_user (username, display_name, password_hash, role, enabled) "
+                + "VALUES ('erster', 'Erster Admin', 'x', 'ADMIN', TRUE)");
+        return new Copy(into, new TransactionTemplate(new DataSourceTransactionManager(copy)), copyJdbc);
+    }
+
+    /** The export with other bytes in the first file under the prefix. */
+    private static byte[] changed(byte[] zip, String prefix) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        boolean done = false;
+        try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip));
+                ZipOutputStream changed = new ZipOutputStream(out)) {
+            for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+                byte[] content = in.readAllBytes();
+                changed.putNextEntry(new ZipEntry(entry.getName()));
+                if (!done && entry.getName().startsWith(prefix)) {
+                    content = "%PDF-1.4 falsch".getBytes(StandardCharsets.US_ASCII);
+                    done = true;
+                }
+                changed.write(content);
+            }
+        }
+        assertThat(done).as("the export has a file under " + prefix).isTrue();
+        return out.toByteArray();
+    }
+
+    /** Expects the import to fail on its check and to leave the copy as it was, with its identities unmoved. */
+    private static void refused(Copy copy, Path upload, String damaged) {
+        assertThatThrownBy(() -> copy.transaction().executeWithoutResult(status -> copy.backups().restore(upload)))
+                .isInstanceOf(BackupException.class).hasMessageContaining("nicht zu Prüfsumme oder Siegel passen")
+                .hasMessageContaining(damaged);
+        for (String table : List.of("customer", "invoice", "business_document", "expense")) {
+            assertThat(copy.jdbc().queryForObject("SELECT count(*) FROM " + table, Integer.class)).as(table).isZero();
+            assertThat(copy.jdbc().queryForObject("SELECT pg_sequence_last_value(pg_get_serial_sequence(?, 'id')"
+                    + "::regclass)", Long.class, table)).as("the identity of " + table + " never moved").isNull();
+        }
+        assertThat(copy.jdbc().queryForList("SELECT username FROM app_user", String.class))
+                .as("the first admin stays").containsExactly("erster");
+    }
+
+    @Test
+    void aChangedFileOrAnotherKeyStopsTheImportAndLeavesTheInstallationEmpty(@TempDir Path folder)
+            throws IOException {
+        ExpenseForm book = new ExpenseForm();
+        book.setPaidOn(LocalDate.of(2013, 5, 2));
+        book.setAmount("12,00");
+        book.setCategory(ExpenseCategory.LITERATURE);
+        book.setVendor("Buchhandlung");
+        book.setDescription("Duden");
+        expenses.add(book, "Duden.pdf", "%PDF-1.4 Duden".getBytes(StandardCharsets.US_ASCII));
+        ByteArrayOutputStream original = new ByteArrayOutputStream();
+        backups.export(original);
+        Path intact = Files.write(folder.resolve("export.zip"), original.toByteArray());
+        Path changed = Files.write(folder.resolve("changed.zip"), changed(original.toByteArray(), "files/expense/"));
+
+        Copy copy = copy("im_refused", seal);
+        refused(copy, changed, "Beleg ");
+        Copy otherKey = copy("im_other_key", new Seal("another-key-than-the-one-of-the-export-0123"));
+        refused(otherKey, intact, "Beleg Duden.pdf");
+
+        copy.transaction().executeWithoutResult(status -> copy.backups().restore(intact));
+        assertThat(copy.jdbc().queryForObject("SELECT count(*) FROM expense WHERE description = 'Duden'",
+                Integer.class)).as("the intact export goes into the installation the refused one left empty")
+                .isEqualTo(1);
+    }
+
     @Test
     void anExportReadsBackIntoAnEmptyDatabaseExactly(@TempDir Path folder) throws IOException {
         someOfEverything();
         ByteArrayOutputStream original = new ByteArrayOutputStream();
         backups.export(original);
 
-        owner.jdbc().sql("DROP DATABASE IF EXISTS im_copy").update();
-        owner.jdbc().sql("CREATE DATABASE im_copy").update();
-        Flyway.configure().dataSource(owner.dataSource("im_copy")).locations("classpath:db/migration")
-                .placeholders(Map.of("appuser", "im_app")).javaMigrations(sealMigration).load().migrate();
-        DataSource copy = owner.appDataSource("im_copy");
-        DocumentService copyDocuments = new DocumentService(JdbcClient.create(copy), mock(AuditService.class), seal,
-                Clock.systemDefaultZone());
-        ExpenseService copyExpenses = new ExpenseService(JdbcClient.create(copy), mock(AuditService.class), seal,
-                Clock.systemDefaultZone());
-        BackupService into = new BackupService(JdbcClient.create(copy), json, mock(AuditService.class),
-                List.of(copyDocuments, copyExpenses), Clock.systemDefaultZone());
-        TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(copy));
-        JdbcTemplate copyJdbc = new JdbcTemplate(copy);
-        copyJdbc.update("INSERT INTO app_user (username, display_name, password_hash, role, enabled) "
-                + "VALUES ('erster', 'Erster Admin', 'x', 'ADMIN', TRUE)");
+        Copy copy = copy("im_copy", seal);
+        BackupService into = copy.backups();
+        TransactionTemplate transaction = copy.transaction();
+        JdbcTemplate copyJdbc = copy.jdbc();
 
         Path upload = Files.write(folder.resolve("export.zip"), original.toByteArray());
         transaction.executeWithoutResult(status -> into.restore(upload));
