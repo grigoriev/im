@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-16
+
 ### Fixed
 
 - A line of an invoice or template named its service field only for screen readers. It shows the label "Leistung" now, like every other field.
