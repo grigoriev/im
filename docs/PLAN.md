@@ -124,7 +124,9 @@ Currency: EUR only.
    The admin can delete a user with its passkeys and "Angemeldet bleiben"; its open sessions end. Nobody deletes the
    own account, and the last admin stays.
 9. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
-10. nginx additionally allows only the home LAN (10.10.10.0/24).
+10. nginx additionally allows only the own network: the home LAN (10.10.10.0/24) and the VPN, that is the hub
+    (10.255.0.0/24), the office LAN (172.20.20.0/24) and the travel LANs (decision 2026-11-16). The intranet
+    repository keeps the list (`lemming/docker/nginx/conf.d/im.conf`).
 
 Not chosen:
 
@@ -319,7 +321,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.
 2. The compose file lives in the intranet repository: `lemming/docker/im`.
 3. Services: `im` (app) and `im-db` (PostgreSQL). The app listens on `127.0.0.1` only.
-4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN only. It sends `X-Forwarded-Proto`,
+4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN and the VPN only. It sends `X-Forwarded-Proto`,
    so the app marks its cookies `Secure` (`server.forward-headers-strategy=native`).
    Passkeys are bound to that host: `IM_WEBAUTHN_RP_ID=im.h.g7v.io`, `IM_WEBAUTHN_ALLOWED_ORIGINS=https://im.h.g7v.io`.
 5. The certificate comes from acme.sh, as for the other sites.

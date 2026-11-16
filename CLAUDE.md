@@ -6,7 +6,7 @@ This file guides Claude Code when it works on or reviews this repository.
 
 Invoice Manager (`im`) creates German e-invoices for one freelancer, a Kleinunternehmerin under
 §19 UStG with VAT-exempt teaching under §4 Nr. 21 UStG. It runs as a container on a home NAS,
-reachable from the home network only. The plan with all decisions is in `docs/PLAN.md`.
+reachable from the home network and the own VPN only. The plan with all decisions is in `docs/PLAN.md`.
 The UI mockup is in `docs/mockup`.
 
 The repository is public. It must never contain real customer, invoice or personal data.

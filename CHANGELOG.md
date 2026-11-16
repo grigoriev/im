@@ -8,10 +8,12 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Fixed
 
+- A line of an invoice or template named its service field only for screen readers. It shows the label "Leistung" now, like every other field.
 - "Foto aufnehmen" opened a file chooser instead of the camera on Android. The receipt field takes only images while the camera is open.
 
 ### Changed
 
+- The app is reachable from the own VPN too, not only from the home LAN: the hub, the office LAN and the travel LANs. The intranet repository keeps the list of the reverse proxy.
 - No field shows a made-up example any more, such as a bookshop as the vendor of an expense or a device name for a passkey. The label says what goes in.
 
 ## [0.1.8] - 2026-11-16
