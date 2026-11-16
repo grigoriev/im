@@ -9,11 +9,12 @@
         <h2 class="font-semibold">Positionen</h2>
         <p class="text-sm text-base-content/75" th:if="*{lines.isEmpty()}">Noch keine Position.</p>
         <div th:each="line, row : *{lines}" class="invoice-line border border-base-300 rounded-field p-3 grid gap-3" th:id="'line-' + ${row.index}">
-          <label class="grid gap-1.5"><span class="text-sm font-medium" th:text="'Position ' + ${row.count}">Position 1</span>
-            <input type="hidden" th:field="*{lines[__${row.index}__].shownAsLumpSum}">
-            <input type="hidden" th:field="*{lines[__${row.index}__].shownAmount}">
+          <span class="text-sm font-medium" th:text="'Position ' + ${row.count}">Position 1</span>
+          <input type="hidden" th:field="*{lines[__${row.index}__].shownAsLumpSum}">
+          <input type="hidden" th:field="*{lines[__${row.index}__].shownAmount}">
+          <label class="floating-label"><span>Leistung</span>
             <input th:id="'line-' + ${row.index} + '-text'" th:field="*{lines[__${row.index}__].text}" class="input w-full"
-                   maxlength="500" aria-label="Leistung">
+                   maxlength="500">
           </label>
           <div class="grid gap-3 grid-cols-2 @xl:flex @xl:flex-wrap">
             <label class="floating-label @xl:w-40"><span>Art</span>
