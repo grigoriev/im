@@ -189,15 +189,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // A button with data-capture="<id>" opens the camera for the file field with that ID, and the photo becomes its file.
 // Only a phone or tablet shows the button. The field itself still offers the photo library and the files: the camera
-// mode ends once a photo is taken or the camera is closed.
+// mode ends once a photo is taken or the camera is closed. Android opens the camera only for a field that takes images
+// alone, so the field drops its other types meanwhile.
 document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-capture]');
   const input = button && document.getElementById(button.dataset.capture);
   if (!input) return;
-  const done = () => input.removeAttribute('capture');
-  input.addEventListener('change', done, { once: true });
-  input.addEventListener('cancel', done, { once: true });
-  input.setAttribute('capture', 'environment');
+  // A second tap while the camera mode is on only opens the camera again: it must not take the images-only types for
+  // the ones to restore.
+  if (!input.hasAttribute('capture')) {
+    const accept = input.getAttribute('accept');
+    const done = () => {
+      input.removeEventListener('change', done);
+      input.removeEventListener('cancel', done);
+      input.removeAttribute('capture');
+      if (accept === null) input.removeAttribute('accept');
+      else input.setAttribute('accept', accept);
+    };
+    input.addEventListener('change', done);
+    input.addEventListener('cancel', done);
+    input.setAttribute('accept', 'image/jpeg,image/png');
+    input.setAttribute('capture', 'environment');
+  }
   input.click();
 });
 

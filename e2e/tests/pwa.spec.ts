@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { FileChooser } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { ANONYMOUS } from './accounts';
 import { newCustomer } from './seller';
@@ -66,13 +67,31 @@ test.describe('on a phone', () => {
     const camera = page.locator('#expense-camera');
     await expect(camera).toBeVisible();
     await expect(upload).not.toHaveAttribute('capture');
+    const accept = await upload.getAttribute('accept');
+    expect(accept).toContain('application/pdf');
 
     const chooser = page.waitForEvent('filechooser');
     await camera.tap();
     const files = await chooser;
     await expect(upload).toHaveAttribute('capture', 'environment');
+    await expect(upload, 'Android opens the camera only for images').toHaveAttribute('accept', 'image/jpeg,image/png');
     await files.setFiles({ name: 'Foto.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) });
     await expect(upload).not.toHaveAttribute('capture');
+    await expect(upload, 'the field takes PDFs again').toHaveAttribute('accept', accept!);
     expect(await upload.evaluate((input: HTMLInputElement) => input.files?.[0]?.name)).toBe('Foto.jpg');
+  });
+
+  test('a second tap on the camera button keeps the types of the field', async ({ page }) => {
+    await page.goto('/expenses/new');
+    const upload = page.locator('#expense-upload');
+    const accept = await upload.getAttribute('accept');
+    const choosers: FileChooser[] = [];
+    page.on('filechooser', (chooser) => choosers.push(chooser));
+    await page.locator('#expense-camera').tap();
+    await page.locator('#expense-camera').tap();
+    await expect.poll(() => choosers.length).toBe(2);
+    await choosers[1].setFiles({ name: 'Foto.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]) });
+    await expect(upload, 'the field takes PDFs again').toHaveAttribute('accept', accept!);
+    await expect(upload).not.toHaveAttribute('capture');
   });
 });

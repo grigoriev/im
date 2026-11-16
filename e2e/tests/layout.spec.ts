@@ -36,6 +36,19 @@ for (const route of ROUTES) {
   }
 }
 
+// No field shows a made-up example: the label says what goes in. Only the search of a long list prompts its typing.
+for (const route of ROUTES) {
+  test(`${route.name} shows no examples in its fields`, async ({ page, browser, adminState }) => {
+    const context = route.anonymous ? await browser.newContext({ storageState: ANONYMOUS }) : null;
+    const view = context ? await context.newPage() : page;
+    await view.goto(route.path);
+    const examples = await view.locator('input[placeholder]:not(.listbox-search), textarea[placeholder]')
+      .evaluateAll((fields) => fields.map((field) => `${field.id}: ${field.getAttribute('placeholder')}`));
+    expect(examples).toEqual([]);
+    await context?.close();
+  });
+}
+
 // A label stays gray on focus and on a wrong value: only the frame changes color.
 test('a field label keeps its gray on focus and on error', async ({ page }) => {
   await page.goto('/settings');
