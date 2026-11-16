@@ -12,6 +12,8 @@ test('creates a draft invoice, edits its lines and deletes it', async ({ page })
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(customer);
   await expect(page.locator('#invoice-checks')).toContainText('Position 1: Bitte die Leistung beschreiben.');
   await expect(page.locator('[placeholder]:not(.listbox-search)'), 'no example in the editor').toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Position 1' }).getByLabel('Leistung'), 'each line names its fields')
+    .toHaveCount(1);
 
   await page.locator('#line-0-text').fill('Lesung aus „Der stille Hafen“ am 16.03.2027, 90 Min.');
   await page.locator('#line-0-amount').fill('400');
