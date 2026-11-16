@@ -2,6 +2,12 @@ package io.github.grigoriev.im.integrity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.github.grigoriev.im.TestDatabase;
 import io.github.grigoriev.im.audit.AuditAction;
@@ -26,6 +32,8 @@ import io.github.grigoriev.im.invoice.InvoiceIntegrity;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.PaymentForm;
+import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
@@ -42,8 +50,11 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.context.WebApplicationContext;
 
 /**
  * The seals against PostgreSQL: the app connects without the right to switch a trigger off, and a change made in the
@@ -97,6 +108,12 @@ class IntegrityIT {
 
     @Autowired
     private PlatformTransactionManager transactions;
+
+    @Autowired
+    private PaymentService payments;
+
+    @Autowired
+    private WebApplicationContext context;
 
     @Test
     void theAppCannotSwitchATriggerOffAndRefusesToRunAsTheOwner() {
@@ -276,6 +293,31 @@ class IntegrityIT {
     private long failures(Invoice invoice) {
         return audit.history(invoice.id()).stream().filter(event -> event.action() == AuditAction.INTEGRITY_FAILED)
                 .count();
+    }
+
+    @Test
+    void anUnreadableSnapshotShowsWhatIsBrokenOnEveryPageThatReadsIt() throws Exception {
+        Invoice invoice = issued(LocalDate.of(2005, 3, 18));
+        PaymentForm paid = new PaymentForm();
+        paid.setPaidOn(LocalDate.of(2005, 3, 20));
+        paid.setAmount("400,00");
+        payments.add(invoice.id(), paid);
+        MockMvc mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+        asOwner("invoice", "invoice_frozen", "UPDATE invoice SET snapshot = '{kaputt' WHERE id = ?", invoice.id());
+        try {
+            for (String page : List.of("/invoices/" + invoice.id(), "/reports?year=2005")) {
+                mvc.perform(get(page).with(user("elena").roles("USER")))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(content().string(containsString("Gespeicherte Daten lassen sich nicht lesen")))
+                        .andExpect(content().string(containsString("Rechnung " + invoice.number())))
+                        .andExpect(content().string(containsString("Der Stand der Ausstellung lässt sich nicht "
+                                + "lesen.")));
+            }
+        } finally {
+            asOwner("invoice", "invoice_frozen", "UPDATE invoice SET snapshot = ? WHERE id = ?", invoice.snapshot(),
+                    invoice.id());
+        }
+        mvc.perform(get("/invoices/" + invoice.id()).with(user("elena").roles("USER"))).andExpect(status().isOk());
     }
 
     @Test

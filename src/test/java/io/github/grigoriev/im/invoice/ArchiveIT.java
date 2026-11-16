@@ -4,14 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.grigoriev.im.TestDatabase;
+import io.github.grigoriev.im.customer.Customer;
+import io.github.grigoriev.im.customer.CustomerService;
+import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.document.BusinessDocument;
 import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
+import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseCategory;
 import io.github.grigoriev.im.expense.ExpenseForm;
 import io.github.grigoriev.im.expense.ExpenseService;
+import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.seller.SellerService;
+import io.github.grigoriev.im.seller.SellerTestData;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -58,6 +65,18 @@ class ArchiveIT {
     @Autowired
     private TestDatabase.Owner owner;
 
+    @Autowired
+    private SellerService sellers;
+
+    @Autowired
+    private CustomerService customers;
+
+    @Autowired
+    private NumberService numbers;
+
+    @Autowired
+    private IssueService issues;
+
     @TempDir
     private Path workFolder;
 
@@ -81,6 +100,25 @@ class ArchiveIT {
         form.setVendor("Buchhandlung");
         form.setDescription("Wörterbuch");
         return expenses.add(form, "Quittung.pdf", RECEIPT);
+    }
+
+    private Invoice issued(LocalDate date) {
+        SellerTestData.save(sellers, SellerTestData.profile());
+        numbers.savePattern("{YYYY}-{NN}");
+        Customer customer = customers.create(CustomerTestData.verlag());
+        Invoice draft = invoices.createDraft(customer.id(), null);
+        DraftForm form = DraftForm.of(draft);
+        form.setIssueDate(date);
+        form.setServiceFrom(date);
+        form.setServiceTo(date);
+        form.setBuyerReference(customer.buyerReference());
+        LineForm line = form.getLines().getFirst();
+        line.setText("Lesung");
+        line.setAmount("400");
+        line.setCategory(TaxCategory.KLEINUNTERNEHMER);
+        Invoice saved = invoices.saveDraft(draft.id(), form);
+        issues.issue(saved.id(), saved.version());
+        return invoices.find(saved.id()).orElseThrow();
     }
 
     private static Map<String, byte[]> unzip(byte[] zip) throws IOException {
@@ -137,5 +175,31 @@ class ArchiveIT {
             asOwner.execute("ALTER TABLE expense ENABLE TRIGGER expense_frozen");
         }
         assertThat(archive().damaged(2012)).isEmpty();
+    }
+
+    @Test
+    void aChangedInvoiceDocumentStopsTheArchiveToo() {
+        Invoice invoice = issued(LocalDate.of(2004, 5, 3));
+        byte[] pdf = documents.find(invoice.id(), DocumentKind.PDF).orElseThrow().content();
+        byte[] changed = pdf.clone();
+        changed[changed.length / 2] ^= 1;
+        JdbcTemplate asOwner = new JdbcTemplate(owner.dataSource(null));
+        String update = "UPDATE invoice_document SET content = ?, sha256 = encode(sha256(?), 'hex') "
+                + "WHERE invoice_id = ? AND kind = 'PDF'";
+        asOwner.execute("ALTER TABLE invoice_document DISABLE TRIGGER invoice_document_frozen");
+        try {
+            asOwner.update(update, changed, changed, invoice.id());
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ArchiveService archive = archive();
+            assertThat(archive.damaged(2004)).containsExactly("Rechnung " + invoice.number());
+            assertThatThrownBy(() -> archive.write(2004, out)).isInstanceOf(InvoiceException.class)
+                    .hasMessageContaining("Rechnung " + invoice.number());
+            assertThat(out.size()).as("nothing went out").isZero();
+            assertThat(workFolder).isEmptyDirectory();
+        } finally {
+            asOwner.update(update, pdf, pdf, invoice.id());
+            asOwner.execute("ALTER TABLE invoice_document ENABLE TRIGGER invoice_document_frozen");
+        }
+        assertThat(archive().damaged(2004)).isEmpty();
     }
 }
