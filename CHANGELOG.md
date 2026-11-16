@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- A new expense shows no made-up examples in its fields, such as a bookshop as the vendor. Only the amount keeps its format hint.
+
 ## [0.1.8] - 2026-11-16
 
 ### Added
