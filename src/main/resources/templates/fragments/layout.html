@@ -2,9 +2,17 @@
 <html lang="de" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
   <title>Layout</title>
-  <!-- Viewport, styles and scripts of every page. Each page writes its own title. -->
+  <!-- Viewport, icons, styles and scripts of every page. Each page writes its own title. -->
   <th:block th:fragment="assets">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="manifest" th:href="@{/manifest.webmanifest}" href="/manifest.webmanifest">
+    <link rel="icon" th:href="@{/favicon.ico}" href="/favicon.ico" sizes="32x32">
+    <link rel="icon" th:href="@{/favicon.svg}" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" th:href="@{/icons/apple-touch-icon.png}" href="/icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="Rechnungen">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#262626" media="(prefers-color-scheme: dark)">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
     <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css">

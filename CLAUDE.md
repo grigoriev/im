@@ -67,7 +67,8 @@ Package `io.github.grigoriev.im`:
   `DocumentService` check on every read; `IntegrityMonitor` checks all at startup, nightly and on request.
   `ConnectionGuard` refuses to start while the app connects as the owner of the tables (`IM_DB_USER` vs `IM_DB_OWNER`)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
-- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog` and gives every `select.select` a styled list).
+- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog`, gives every `select.select` a styled list and opens the camera
+  for a file field from `data-capture`). The web app manifest and the icons live in `static` (`manifest.webmanifest`, `favicon.*`, `icons/`), open without login.
   Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
 
 Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers (Flyway as the owner, the app as

@@ -273,7 +273,9 @@ class AccessRulesIT {
 
     @Test
     void theAssetsAreOpenAndNothingElse() throws Exception {
-        for (String asset : List.of("/css/app.css", "/js/passkeys.js", "/vendor/lucide.min.js")) {
+        for (String asset : List.of("/css/app.css", "/js/passkeys.js", "/vendor/lucide.min.js", "/manifest.webmanifest",
+                "/favicon.ico", "/favicon.svg", "/icons/icon-192.png", "/icons/icon-512.png",
+                "/icons/icon-maskable-512.png", "/icons/apple-touch-icon.png")) {
             assertThat(send("GET " + asset, null).getStatus()).as(asset).isEqualTo(200);
         }
         assertThat(send("GET /unknown", null).getHeader("Location")).endsWith("/login");

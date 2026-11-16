@@ -186,3 +186,24 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!globalThis.matchMedia('(pointer: fine)').matches) return;
   document.querySelectorAll('select.select').forEach(enhanceSelect);
 });
+
+// A button with data-capture="<id>" opens the camera for the file field with that ID, and the photo becomes its file.
+// Only a phone or tablet shows the button. The field itself still offers the photo library and the files: the camera
+// mode ends once a photo is taken or the camera is closed.
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-capture]');
+  const input = button && document.getElementById(button.dataset.capture);
+  if (!input) return;
+  const done = () => input.removeAttribute('capture');
+  input.addEventListener('change', done, { once: true });
+  input.addEventListener('cancel', done, { once: true });
+  input.setAttribute('capture', 'environment');
+  input.click();
+});
+
+// The shortcut "Neue Rechnung" of the installed app opens the invoices with the customer of a new one focused. A query,
+// not a fragment: Chrome drops the focus when it scrolls to a fragment after the load.
+document.addEventListener('DOMContentLoaded', () => {
+  if (!new URLSearchParams(location.search).has('new')) return;
+  document.querySelector('#new-invoice select')?.focus();
+});
