@@ -13,7 +13,7 @@
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
     <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/invoices}" method="post"
-          th:unless="${customers.isEmpty()}">
+          id="new-invoice" th:unless="${customers.isEmpty()}">
       <label class="floating-label grow"><span>Kunde der neuen Rechnung</span>
         <select id="new-invoice-customer" name="customerId" class="select w-full">
           <option th:each="customer : ${customers}" th:value="${customer.id}" th:text="${customer.label()}">Kunde</option>

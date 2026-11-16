@@ -6,6 +6,11 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- The app installs on a phone as a web app: a manifest, an icon for the home screen and a favicon. Android and desktop Chrome also offer the shortcuts "Neue Rechnung" and "Neue Ausgabe".
+- On a phone, a new expense offers "Foto aufnehmen": the camera takes the receipt. The field still offers the photo library and the files.
+
 ## [0.1.7] - 2026-11-15
 
 ### Fixed

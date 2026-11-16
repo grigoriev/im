@@ -53,7 +53,8 @@ public class SecurityConfig {
                 .addFilterBefore(epoch.filter(), SecurityContextHolderFilter.class)
                 .userDetailsService(users)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/css/**", "/js/**", "/vendor/**", "/fonts/**", "/error",
+                        .requestMatchers("/login", "/css/**", "/js/**", "/vendor/**", "/fonts/**", "/icons/**",
+                                "/favicon.ico", "/favicon.svg", "/manifest.webmanifest", "/error",
                                 "/actuator/health", "/actuator/health/**", "/webauthn/authenticate/options",
                                 "/login/webauthn").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")

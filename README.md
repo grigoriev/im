@@ -79,6 +79,11 @@ dispatch by hand. Both roles set the default e-mail text and the text of a payme
 The app takes uploads up to 4 GB for the backup import. A reverse proxy should allow that size for
 `/admin/backup/import` only and about 32 MB for the rest: the largest document has 25 MB.
 
+The app installs on a phone as a web app. On an iPhone, open it in Safari and choose "Zum Home-Bildschirm". It
+then opens without the browser bar, with its own icon. On a phone, "Ausgaben" offers the camera for the receipt.
+Android and desktop Chrome also offer the shortcuts "Neue Rechnung" and "Neue Ausgabe" on the icon. The app keeps
+no data offline: it needs the connection to the server.
+
 Verify an image: `gh attestation verify oci://ghcr.io/grigoriev/im:<version> --owner grigoriev`.
 
 ## Build

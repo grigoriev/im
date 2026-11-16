@@ -56,6 +56,8 @@
             <input id="expense-upload" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" class="file-input w-full" required aria-describedby="expense-upload-hint">
           </label>
           <span id="expense-upload-hint" class="text-xs text-base-content/75 -mt-2" th:if="${expense == null}">Rechnung oder Quittung als PDF, JPG oder PNG, höchstens 25 MB.</span>
+          <button type="button" id="expense-camera" class="btn justify-self-start pointer-fine:hidden" data-capture="expense-upload"
+                  th:if="${expense == null}"><i data-lucide="camera" class="size-4"></i>Foto aufnehmen</button>
           <div class="grid gap-4 @lg:grid-cols-2">
             <label class="floating-label"><span>Tag der Zahlung</span>
               <input id="expense-paid-on" th:field="*{paidOn}" type="date" class="input w-full" required data-volatile>
