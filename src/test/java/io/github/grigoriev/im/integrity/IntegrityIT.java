@@ -30,6 +30,7 @@ import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 import org.assertj.core.api.SoftAssertions;
@@ -51,6 +52,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest
 @Import(TestDatabase.class)
 class IntegrityIT {
+
+    /** The SQLSTATE of PostgreSQL for a missing privilege or ownership. */
+    private static final String INSUFFICIENT_PRIVILEGE = "42501";
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -127,13 +131,19 @@ class IntegrityIT {
         softly.assertAll();
     }
 
-    /** Expects the statement to fail. It runs in a transaction rolled back anyway, so a success harms no other test. */
+    /**
+     * Expects the statement to fail for want of a privilege, not for another reason: a TRUNCATE fails on a table that a
+     * foreign key references, privilege or not. It runs in a transaction rolled back anyway, so a success harms no
+     * other test.
+     */
     private void refused(SoftAssertions softly, String sql) {
         TransactionTemplate transaction = new TransactionTemplate(transactions);
         softly.assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
             status.setRollbackOnly();
             jdbc.execute(sql);
-        })).as(sql).isInstanceOf(DataAccessException.class);
+        })).as(sql).isInstanceOf(DataAccessException.class).rootCause().isInstanceOf(SQLException.class)
+                .extracting(cause -> ((SQLException) cause).getSQLState()).as(sql + ": insufficient privilege")
+                .isEqualTo(INSUFFICIENT_PRIVILEGE);
     }
 
     @Test
