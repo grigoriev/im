@@ -178,7 +178,7 @@ class ArchiveIT {
     }
 
     @Test
-    void aChangedInvoiceDocumentStopsTheArchiveToo() {
+    void aChangedInvoiceDocumentStopsTheArchiveToo() throws IOException {
         Invoice invoice = issued(LocalDate.of(2004, 5, 3));
         byte[] pdf = documents.find(invoice.id(), DocumentKind.PDF).orElseThrow().content();
         byte[] changed = pdf.clone();
@@ -187,9 +187,8 @@ class ArchiveIT {
         String update = "UPDATE invoice_document SET content = ?, sha256 = encode(sha256(?), 'hex') "
                 + "WHERE invoice_id = ? AND kind = 'PDF'";
         asOwner.execute("ALTER TABLE invoice_document DISABLE TRIGGER invoice_document_frozen");
-        try {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             asOwner.update(update, changed, changed, invoice.id());
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
             ArchiveService archive = archive();
             assertThat(archive.damaged(2004)).containsExactly("Rechnung " + invoice.number());
             assertThatThrownBy(() -> archive.write(2004, out)).isInstanceOf(InvoiceException.class)

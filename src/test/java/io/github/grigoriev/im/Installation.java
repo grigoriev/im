@@ -31,7 +31,7 @@ public final class Installation implements AutoCloseable {
     public static Installation start(TestDatabase.Owner owner, String database, String key) {
         // Arguments, since they win over the files of the classpath; default properties would lose to them.
         return new Installation(new SpringApplicationBuilder(ImApplication.class)
-                .initializers(context -> context.getBeanFactory().registerSingleton("skipTestDatabase",
+                .initializers(starting -> starting.getBeanFactory().registerSingleton("skipTestDatabase",
                         new SkipTestDatabase()))
                 .run("--spring.datasource.url=" + owner.dataSource(database).getUrl(),
                         "--spring.datasource.username=" + TestDatabase.APP_USER,

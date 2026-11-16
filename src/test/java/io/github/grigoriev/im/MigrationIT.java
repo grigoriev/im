@@ -22,6 +22,8 @@ import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 import org.flywaydb.core.Flyway;
@@ -103,7 +105,7 @@ class MigrationIT {
     }
 
     @Test
-    void sealsWhatAnOlderVersionWroteAndChecksItAtStartup() {
+    void sealsWhatAnOlderVersionWroteAndChecksItAtStartup() throws SQLException {
         Invoice invoice = issued(LocalDate.of(2067, 3, 18));
         DocumentForm letter = new DocumentForm();
         letter.setCategory(DocumentCategory.TAX_OFFICE);
@@ -116,10 +118,8 @@ class MigrationIT {
         owner.jdbc().sql("CREATE DATABASE " + DATABASE).update();
         DriverManagerDataSource oldOwner = owner.dataSource(DATABASE);
         Flyway.configure().dataSource(oldOwner).locations("classpath:db/migration").target("27").load().migrate();
-        SingleConnectionDataSource connection = new SingleConnectionDataSource(oldOwner.getUrl(), owner.username(),
-                owner.password(), true);
-        try {
-            JdbcTemplate old = new JdbcTemplate(connection);
+        try (Connection connection = oldOwner.getConnection()) {
+            JdbcTemplate old = new JdbcTemplate(new SingleConnectionDataSource(connection, true));
             assertThat(old.queryForList("SELECT column_name FROM information_schema.columns WHERE table_name = "
                     + "'invoice'", String.class)).as("a database before the seals").doesNotContain("seal");
             old.execute("SET session_replication_role = replica");
@@ -128,8 +128,6 @@ class MigrationIT {
             copy(old, "invoice_line", "invoice_id = ?", invoice.id());
             copy(old, "invoice_document", "invoice_id = ?", invoice.id());
             copy(old, "business_document", "id = ?", document.id());
-        } finally {
-            connection.destroy();
         }
 
         try (Installation app = Installation.start(owner, DATABASE, KEY)) {
