@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-11-16
+
 ### Added
 
 - The app installs on a phone as a web app: a manifest, an icon for the home screen and a favicon. Android and desktop Chrome also offer the shortcuts "Neue Rechnung" and "Neue Ausgabe".
