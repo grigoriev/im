@@ -8,10 +8,11 @@
 <th:block th:fragment="lines(totals)">
         <h2 class="font-semibold">Positionen</h2>
         <p class="text-sm text-base-content/75" th:if="*{lines.isEmpty()}">Noch keine Position.</p>
-        <!-- Each line is a group named after its position: a screen reader tells the fields of two lines apart. -->
-        <div th:each="line, row : *{lines}" class="invoice-line border border-base-300 rounded-field p-3 grid gap-3" th:id="'line-' + ${row.index}"
-             role="group" th:attr="aria-labelledby='line-' + ${row.index} + '-title'">
-          <span class="text-sm font-medium" th:id="'line-' + ${row.index} + '-title'" th:text="'Position ' + ${row.count}">Position 1</span>
+        <!-- Each line is a fieldset named after its position: a screen reader tells the fields of two lines apart. The
+             legend is for the screen reader; the title shows it, since a legend sits on the border of its fieldset. -->
+        <fieldset th:each="line, row : *{lines}" class="invoice-line border border-base-300 rounded-field p-3 grid gap-3 min-w-0" th:id="'line-' + ${row.index}">
+          <legend class="sr-only" th:text="'Position ' + ${row.count}">Position 1</legend>
+          <span class="text-sm font-medium" aria-hidden="true" th:text="'Position ' + ${row.count}">Position 1</span>
           <input type="hidden" th:field="*{lines[__${row.index}__].shownAsLumpSum}">
           <input type="hidden" th:field="*{lines[__${row.index}__].shownAmount}">
           <label class="floating-label"><span>Leistung</span>
@@ -47,7 +48,7 @@
             <button type="submit" name="remove" th:value="${row.index}" class="btn btn-sm btn-danger" formnovalidate
                     th:attr="aria-label='Position ' + ${row.count} + ' entfernen'"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>
           </div>
-        </div>
+        </fieldset>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <button type="submit" name="action" value="add-line" class="btn btn-sm" formnovalidate>
             <i data-lucide="plus" class="size-4"></i>Position hinzufügen
