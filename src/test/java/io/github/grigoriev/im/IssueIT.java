@@ -31,6 +31,9 @@ import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.ReminderChannel;
+import io.github.grigoriev.im.invoice.ReminderForm;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.Activity;
@@ -108,6 +111,9 @@ class IssueIT {
 
     @Autowired
     private ThresholdService threshold;
+
+    @Autowired
+    private ReminderService reminders;
 
     @MockitoSpyBean
     private EInvoiceService einvoices;
@@ -408,6 +414,38 @@ class IssueIT {
         assertThat(after.status()).isEqualTo(InvoiceStatus.ISSUED);
         assertThat(payments.summary(after).paid()).isEqualByComparingTo("100.00");
         assertThat(payments.summary(after).open()).isEqualByComparingTo("300.00");
+    }
+
+    @Test
+    void aManualReminderNeedsMoneyOpenAndStays() {
+        Invoice draft = draft(verlag, LocalDate.of(2006, 2, 1));
+        long id = draft.id();
+        issues.issue(id, draft.version());
+        ReminderForm early = new ReminderForm();
+        early.setRemindedOn(LocalDate.of(2006, 1, 31));
+        assertThatThrownBy(() -> reminders.recordManual(id, early)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Das Datum der Erinnerung liegt vor dem Rechnungsdatum.");
+
+        ReminderForm call = new ReminderForm();
+        call.setRemindedOn(LocalDate.of(2006, 3, 1));
+        call.setNote("am Telefon");
+        reminders.recordManual(id, call);
+        assertThat(reminders.list(id)).singleElement().satisfies(reminder -> {
+            assertThat(reminder.channel()).isEqualTo(ReminderChannel.MANUAL);
+            assertThat(reminder.remindedOn()).isEqualTo(LocalDate.of(2006, 3, 1));
+            assertThat(reminder.recipient()).isNull();
+            assertThat(reminder.note()).isEqualTo("am Telefon");
+        });
+        assertThat(reminders.last()).containsEntry(id, LocalDate.of(2006, 3, 1));
+        assertThat(audit.history(id)).extracting(AuditEvent::action).contains(AuditAction.REMINDER_RECORDED);
+        assertThat(invoices.find(id).orElseThrow().status()).as("a reminder is no dispatch")
+                .isEqualTo(InvoiceStatus.ISSUED);
+
+        payments.add(id, payment(LocalDate.of(2006, 3, 5), "400,00"));
+        assertThat(reminders.isRemindable(id)).isFalse();
+        assertThatThrownBy(() -> reminders.recordManual(id, call)).as("nothing open")
+                .isInstanceOf(InvoiceException.class);
+        assertThat(reminders.list(id)).hasSize(1);
     }
 
     @Test

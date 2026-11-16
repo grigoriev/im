@@ -2,9 +2,7 @@ package io.github.grigoriev.im;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
 
-import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.backup.BackupException;
 import io.github.grigoriev.im.backup.BackupService;
 import io.github.grigoriev.im.customer.Customer;
@@ -19,8 +17,6 @@ import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseCategory;
 import io.github.grigoriev.im.expense.ExpenseForm;
 import io.github.grigoriev.im.expense.ExpenseService;
-import io.github.grigoriev.im.integrity.Seal;
-import io.github.grigoriev.im.integrity.SealMigration;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
 import io.github.grigoriev.im.invoice.DispatchService;
@@ -42,7 +38,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
@@ -51,18 +46,14 @@ import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
-import javax.sql.DataSource;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The full export against PostgreSQL: it reads the shared test database into a second, freshly migrated database on
@@ -73,20 +64,16 @@ import tools.jackson.databind.json.JsonMapper;
 @Import(TestDatabase.class)
 class BackupIT {
 
+    /** The integrity key of the tests, the one of the export. */
+    private static final String KEY = "test-only-integrity-key-0123456789abcdef";
+
+    private static final String AUDIT = "data/audit_event.json";
+
     @Autowired
     private BackupService backups;
 
     @Autowired
-    private JsonMapper json;
-
-    @Autowired
     private TestDatabase.Owner owner;
-
-    @Autowired
-    private SealMigration sealMigration;
-
-    @Autowired
-    private Seal seal;
 
     @Autowired
     private ExpenseService expenses;
@@ -183,31 +170,32 @@ class BackupIT {
     }
 
     /**
-     * A second database on the same server, freshly migrated, with the first admin of a new installation.
+     * A second installation on the same server, freshly migrated, with the first admin of a new installation. Its
+     * import is the one of production, with every check of the app.
      *
-     * @param backups the import into it, which checks the files with the seal given
+     * @param app the running app
+     * @param backups the import into it
      * @param transaction a transaction on it
-     * @param jdbc it, as the app
+     * @param jdbc its database, as the app
      */
-    private record Copy(BackupService backups, TransactionTemplate transaction, JdbcTemplate jdbc) {
+    private record Copy(Installation app, BackupService backups, TransactionTemplate transaction, JdbcTemplate jdbc)
+            implements AutoCloseable {
+
+        @Override
+        public void close() {
+            app.close();
+        }
     }
 
-    private Copy copy(String database, Seal sealOfCopy) {
+    private Copy copy(String database, String key) {
         owner.jdbc().sql("DROP DATABASE IF EXISTS " + database).update();
         owner.jdbc().sql("CREATE DATABASE " + database).update();
-        Flyway.configure().dataSource(owner.dataSource(database)).locations("classpath:db/migration")
-                .placeholders(Map.of("appuser", "im_app")).javaMigrations(sealMigration).load().migrate();
-        DataSource copy = owner.appDataSource(database);
-        DocumentService copyDocuments = new DocumentService(JdbcClient.create(copy), mock(AuditService.class),
-                sealOfCopy, Clock.systemDefaultZone());
-        ExpenseService copyExpenses = new ExpenseService(JdbcClient.create(copy), mock(AuditService.class),
-                sealOfCopy, Clock.systemDefaultZone());
-        BackupService into = new BackupService(JdbcClient.create(copy), json, mock(AuditService.class),
-                List.of(copyDocuments, copyExpenses), Clock.systemDefaultZone());
-        JdbcTemplate copyJdbc = new JdbcTemplate(copy);
+        Installation app = Installation.start(owner, database, key);
+        JdbcTemplate copyJdbc = app.bean(JdbcTemplate.class);
         copyJdbc.update("INSERT INTO app_user (username, display_name, password_hash, role, enabled) "
                 + "VALUES ('erster', 'Erster Admin', 'x', 'ADMIN', TRUE)");
-        return new Copy(into, new TransactionTemplate(new DataSourceTransactionManager(copy)), copyJdbc);
+        return new Copy(app, app.bean(BackupService.class),
+                new TransactionTemplate(app.bean(PlatformTransactionManager.class)), copyJdbc);
     }
 
     /** The export with other bytes in the first file under the prefix. */
@@ -261,15 +249,28 @@ class BackupIT {
         Path intact = Files.write(folder.resolve("export.zip"), original.toByteArray());
         Path changed = Files.write(folder.resolve("changed.zip"), changed(original.toByteArray(), "files/expense/"));
 
-        Copy copy = copy("im_refused", seal);
-        refused(copy, changed, "Beleg ");
-        Copy otherKey = copy("im_other_key", new Seal("another-key-than-the-one-of-the-export-0123"));
-        refused(otherKey, intact, "Beleg Duden.pdf");
+        try (Copy otherKey = copy("im_other_key", "another-key-than-the-one-of-the-export-0123")) {
+            refused(otherKey, intact, "Beleg Duden.pdf");
+        }
+        try (Copy copy = copy("im_refused", KEY)) {
+            refused(copy, changed, "Beleg ");
+            copy.transaction().executeWithoutResult(status -> copy.backups().restore(intact));
+            assertThat(copy.jdbc().queryForObject("SELECT count(*) FROM expense WHERE description = 'Duden'",
+                    Integer.class)).as("the intact export goes into the installation the refused one left empty")
+                    .isEqualTo(1);
+        }
+    }
 
-        copy.transaction().executeWithoutResult(status -> copy.backups().restore(intact));
-        assertThat(copy.jdbc().queryForObject("SELECT count(*) FROM expense WHERE description = 'Duden'",
-                Integer.class)).as("the intact export goes into the installation the refused one left empty")
-                .isEqualTo(1);
+    @Test
+    void aChangedInvoiceDocumentStopsTheImport(@TempDir Path folder) throws IOException {
+        someOfEverything();
+        ByteArrayOutputStream original = new ByteArrayOutputStream();
+        backups.export(original);
+        Path changed = Files.write(folder.resolve("changed.zip"),
+                changed(original.toByteArray(), "files/invoice_document/"));
+        try (Copy copy = copy("im_changed_invoice", KEY)) {
+            refused(copy, changed, "Rechnung ");
+        }
     }
 
     @Test
@@ -278,7 +279,12 @@ class BackupIT {
         ByteArrayOutputStream original = new ByteArrayOutputStream();
         backups.export(original);
 
-        Copy copy = copy("im_copy", seal);
+        try (Copy copy = copy("im_copy", KEY)) {
+            roundTrip(copy, folder, original);
+        }
+    }
+
+    private static void roundTrip(Copy copy, Path folder, ByteArrayOutputStream original) throws IOException {
         BackupService into = copy.backups();
         TransactionTemplate transaction = copy.transaction();
         JdbcTemplate copyJdbc = copy.jdbc();
@@ -292,10 +298,13 @@ class BackupIT {
         Map<String, byte[]> after = unzip(again.toByteArray());
         assertThat(after.keySet()).isEqualTo(before.keySet());
         for (String name : before.keySet()) {
-            if (!name.equals("manifest.json")) {
+            if (!name.equals("manifest.json") && !name.equals(AUDIT)) {
                 assertThat(after).as(name).containsEntry(name, before.get(name));
             }
         }
+        String auditBefore = new String(before.get(AUDIT), StandardCharsets.UTF_8);
+        assertThat(new String(after.get(AUDIT), StandardCharsets.UTF_8)).as("the log of the export, then the import")
+                .startsWith(auditBefore.substring(0, auditBefore.length() - 1)).contains("DATA_IMPORTED");
         assertThat(copyJdbc.queryForObject("SELECT count(*) FROM app_user WHERE username = 'erster'", Integer.class))
                 .as("the users of the export replace the first admin").isZero();
 
