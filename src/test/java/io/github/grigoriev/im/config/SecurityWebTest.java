@@ -133,6 +133,7 @@ import io.github.grigoriev.im.web.TaxNoteController;
 import io.github.grigoriev.im.web.TemplateController;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -156,9 +157,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import tools.jackson.core.exc.StreamReadException;
 
@@ -170,7 +174,7 @@ import tools.jackson.core.exc.StreamReadException;
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class,
         DocumentController.class, ExpenseController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
-        SessionEpoch.class})
+        SessionEpoch.class, RecentLogin.class, UploadLimit.class})
 @EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 
@@ -448,6 +452,33 @@ class SecurityWebTest {
     }
 
     @Test
+    void aNewPasskeyNeedsARecentLoginOrTheConfirmedPassword() throws Exception {
+        knownUsers();
+        when(passkeys.list("elena")).thenReturn(List.of());
+        mvc.perform(get("/account").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("id=\"passkey-confirm\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("data-passkey-register"))));
+        mvc.perform(post("/webauthn/register/options").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(URI.create("/webauthn/%72egister/options")).with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/account").with(user("elena").authorities(new SimpleGrantedAuthority("ROLE_USER"),
+                        FactorGrantedAuthority.withAuthority(FactorGrantedAuthority.PASSWORD_AUTHORITY)
+                                .issuedAt(Instant.now()).build())))
+                .andExpect(content().string(Matchers.containsString("data-passkey-register")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"passkey-confirm\""))));
+
+        doThrow(new UserException("Das Passwort stimmt nicht.")).when(users).confirmPassword("elena", "falsch");
+        mvc.perform(post("/account/confirm").param("password", "falsch").with(user("elena")).with(csrf()))
+                .andExpect(redirectedUrl("/account")).andExpect(flash().attribute("error", "Das Passwort stimmt nicht."))
+                .andExpect(request().sessionAttribute(RecentLogin.CONFIRMED, Matchers.nullValue()));
+        mvc.perform(post("/account/confirm").param("password", "richtig").with(user("elena")).with(csrf()))
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(request().sessionAttribute(RecentLogin.CONFIRMED, Matchers.notNullValue()));
+        verify(users).confirmPassword("elena", "richtig");
+    }
+
+    @Test
     void renamesAndRemovesOwnPasskeysAndReportsProblems() throws Exception {
         mvc.perform(post("/account/passkeys/id1/rename").param("label", "Neu").with(user("elena")).with(csrf()))
                 .andExpect(redirectedUrl("/account")).andExpect(flash().attribute("success", "Passkey umbenannt."));
@@ -465,18 +496,20 @@ class SecurityWebTest {
 
     @Test
     void changesTheOwnPasswordAndReportsAProblem() throws Exception {
-        mvc.perform(post("/account/password").param("current", "alt").param("password", PASSWORD).param("confirm", PASSWORD)
-                        .with(user("elena")).with(csrf()))
-                .andExpect(flash().attribute("success", "Passwort geändert."));
-        verify(users).changePassword("elena", "alt", PASSWORD);
-        doThrow(new UserException("Falsch.")).when(users).changePassword("elena", "x", PASSWORD);
+        doThrow(new UserException("Falsch.")).when(users).changePassword("paula", "x", PASSWORD);
         mvc.perform(post("/account/password").param("current", "x").param("password", PASSWORD).param("confirm", PASSWORD)
-                        .with(user("elena")).with(csrf()))
+                        .with(user("paula")).with(csrf()))
                 .andExpect(flash().attribute("error", "Falsch."));
         mvc.perform(post("/account/password").param("current", "alt").param("password", PASSWORD).param("confirm", "anders")
-                        .with(user("elena")).with(csrf()))
+                        .with(user("paula")).with(csrf()))
                 .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."));
-        verify(users, times(1)).changePassword("elena", "alt", PASSWORD);
+        Assertions.assertThat(sessionEpoch.ended("paula", 0)).as("a failed change ends no session").isFalse();
+        mvc.perform(post("/account/password").param("current", "alt").param("password", PASSWORD).param("confirm", PASSWORD)
+                        .with(user("paula")).with(csrf()))
+                .andExpect(flash().attribute("success", "Passwort geändert."))
+                .andExpect(request().sessionAttribute(SessionEpoch.KEPT, Matchers.notNullValue()));
+        verify(users, times(1)).changePassword("paula", "alt", PASSWORD);
+        Assertions.assertThat(sessionEpoch.ended("paula", 0)).as("the other sessions of paula end").isTrue();
     }
 
     @Test
@@ -1226,12 +1259,12 @@ class SecurityWebTest {
         verify(backups).export(any());
         MockMultipartFile file = new MockMultipartFile("file",
                 "export.zip", "application/zip", new byte[] {1});
-        mvc.perform(MockMvcRequestBuilders.multipart("/admin/backup/import")
+        mvc.perform(upload("/admin/backup/import")
                         .file(file).with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/login?restored"));
         mvc.perform(get("/login").param("restored", ""))
                 .andExpect(content().string(Matchers.containsString("Datensicherung eingespielt.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/admin/backup/import")
+        mvc.perform(upload("/admin/backup/import")
                         .file(file).with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
     }
@@ -1631,15 +1664,15 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("enctype=\"multipart/form-data\"")));
         when(expenses.add(any(), eq("Quittung.pdf"), any())).thenReturn(expense(7, false));
         MockMultipartFile receipt = new MockMultipartFile("file", "Quittung.pdf", "application/pdf", new byte[] {'%'});
-        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").file(receipt).param("amount", "49,90")
+        mvc.perform(upload("/expenses").file(receipt).param("amount", "49,90")
                 .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/expenses/7")).andExpect(flash().attribute("success", "Ausgabe erfasst."));
         when(expenses.add(any(), any(), eq(new byte[0]))).thenThrow(new ExpenseException(List.of("Bitte eine Datei wählen.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").with(user("elena").roles("USER")).with(csrf()))
+        mvc.perform(upload("/expenses").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")));
         MockMultipartFile huge = new MockMultipartFile("file", "x.pdf", "application/pdf",
                 new byte[DocumentService.MAX_BYTES + 1]);
-        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").file(huge).with(user("elena").roles("USER")).with(csrf()))
+        mvc.perform(upload("/expenses").file(huge).with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString(DocumentService.TOO_LARGE)));
         mvc.perform(get("/expenses")).andExpect(status().is3xxRedirection());
     }
@@ -1839,17 +1872,36 @@ class SecurityWebTest {
 
     @Test
     void resetsAPasswordAndReportsAProblem() throws Exception {
-        when(users.resetPassword(2, PASSWORD)).thenReturn(UserTestData.user(2, "elena", Role.USER));
-        mvc.perform(post("/admin/users/2/password").with(user("admin").roles("ADMIN")).with(csrf())
-                        .param("password", PASSWORD).param("confirm", PASSWORD))
-                .andExpect(flash().attribute("success", "Neues Passwort für „elena“ gesetzt."));
         when(users.resetPassword(anyLong(), eq("kurz"))).thenThrow(new UserException("Zu kurz."));
-        mvc.perform(post("/admin/users/2/password").with(user("admin").roles("ADMIN")).with(csrf())
+        mvc.perform(post("/admin/users/3/password").with(user("admin").roles("ADMIN")).with(csrf())
                         .param("password", "kurz").param("confirm", "kurz"))
                 .andExpect(flash().attribute("error", "Zu kurz."));
-        mvc.perform(post("/admin/users/2/password").with(user("admin").roles("ADMIN")).with(csrf())
+        mvc.perform(post("/admin/users/3/password").with(user("admin").roles("ADMIN")).with(csrf())
                         .param("password", PASSWORD).param("confirm", "anders"))
                 .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."));
+        Assertions.assertThat(sessionEpoch.ended("otto", 0)).as("a failed reset ends no session").isFalse();
+        when(users.resetPassword(3, PASSWORD)).thenReturn(UserTestData.user(3, "otto", Role.USER));
+        mvc.perform(post("/admin/users/3/password").with(user("admin").roles("ADMIN")).with(csrf())
+                        .param("password", PASSWORD).param("confirm", PASSWORD))
+                .andExpect(flash().attribute("success", "Neues Passwort für „otto“ gesetzt."))
+                .andExpect(request().sessionAttribute(SessionEpoch.KEPT, Matchers.nullValue()));
+        Assertions.assertThat(sessionEpoch.ended("otto", 0)).as("every session of otto ends").isTrue();
+        Assertions.assertThat(sessionEpoch.ended("admin", 0)).isFalse();
+        when(users.resetPassword(1, PASSWORD)).thenReturn(UserTestData.user(1, "admin", Role.ADMIN));
+        mvc.perform(post("/admin/users/1/password").with(user("admin").roles("ADMIN")).with(csrf())
+                        .param("password", PASSWORD).param("confirm", PASSWORD))
+                .andExpect(request().sessionAttribute(SessionEpoch.KEPT, Matchers.notNullValue()));
+        Assertions.assertThat(sessionEpoch.ended("admin", 0)).as("the other sessions of the admin end").isTrue();
+    }
+
+    /** A multipart request as a browser sends it, with its length: the upload limit refuses one without. */
+    private static MockMultipartHttpServletRequestBuilder upload(String path) {
+        MockMultipartHttpServletRequestBuilder builder = MockMvcRequestBuilders.multipart(path);
+        builder.with(request -> {
+            request.setContent(new byte[1]);
+            return request;
+        });
+        return builder;
     }
 
     private static BusinessDocument businessDocument(long id, Long replacesId, Long replacedBy) {
@@ -1884,7 +1936,7 @@ class SecurityWebTest {
         MockMultipartFile file = new MockMultipartFile("file", "Bescheid.pdf", "application/pdf", new byte[] {'%'});
         when(businessDocuments.add(any(), eq("Bescheid.pdf"), eq(new byte[] {'%'})))
                 .thenReturn(businessDocument(1, null, null));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents").file(file).param("category", "TAX_ASSESSMENT")
+        mvc.perform(upload("/documents").file(file).param("category", "TAX_ASSESSMENT")
                         .param("title", "Einkommensteuerbescheid 2026").param("documentDate", "2027-05-10")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/documents/1"))
@@ -1894,12 +1946,12 @@ class SecurityWebTest {
         Assertions.assertThat(form.getValue().getDocumentDate()).isEqualTo(LocalDate.of(2027, 5, 10));
         when(businessDocuments.add(any(), ArgumentMatchers.isNull(), eq(new byte[0])))
                 .thenThrow(new DocumentException(List.of("Bitte eine Datei wählen.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents").param("title", "Ohne Datei")
+        mvc.perform(upload("/documents").param("title", "Ohne Datei")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")))
                 .andExpect(content().string(Matchers.containsString("value=\"Ohne Datei\"")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents").file(new MockMultipartFile("file", "Riesig.pdf",
+        mvc.perform(upload("/documents").file(new MockMultipartFile("file", "Riesig.pdf",
                         "application/pdf", new byte[DocumentService.MAX_BYTES + 1])).param("title", "Riesig")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
@@ -1951,12 +2003,12 @@ class SecurityWebTest {
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte Titel angeben.")));
         MockMultipartFile file = new MockMultipartFile("file", "Neu.pdf", "application/pdf", new byte[] {'%'});
         when(businessDocuments.replace(eq(2L), any(), eq("Neu.pdf"), any())).thenReturn(businessDocument(3, 2L, null));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents/2/versions").file(file)
+        mvc.perform(upload("/documents/2/versions").file(file)
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/documents/3")).andExpect(flash().attribute("success", "Neue Fassung abgelegt."));
         when(businessDocuments.replace(eq(2L), any(), ArgumentMatchers.isNull(), any()))
                 .thenThrow(new DocumentException(List.of("Bitte eine Datei wählen.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents/2/versions").with(user("elena").roles("USER")).with(csrf()))
+        mvc.perform(upload("/documents/2/versions").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")));
         mvc.perform(post("/documents/9").param("title", "x").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/documents/9"));

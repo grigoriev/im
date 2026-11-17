@@ -35,21 +35,27 @@ the plan and [docs/mockup](docs/mockup) for the UI mockup.
 
 ## Run
 
-The image is `ghcr.io/grigoriev/im`. It needs PostgreSQL:
+The image is `ghcr.io/grigoriev/im`. It needs PostgreSQL. Each start of a new version runs two steps: first the
+migration of the database, then the app:
 
 ```sh
-docker run -p 8080:8080 \
-  -e IM_DB_URL=jdbc:postgresql://db:5432/im -e IM_DB_USER=im_app -e IM_DB_PASSWORD=... \
+docker run --rm \
+  -e IM_DB_URL=jdbc:postgresql://db:5432/im -e IM_DB_USER=im_app \
   -e IM_DB_OWNER=im -e IM_DB_OWNER_PASSWORD=... -e IM_INTEGRITY_KEY=... \
+  ghcr.io/grigoriev/im:latest migrate
+docker run -p 8080:8080 \
+  -e IM_DB_URL=jdbc:postgresql://db:5432/im -e IM_DB_USER=im_app -e IM_DB_PASSWORD=... -e IM_INTEGRITY_KEY=... \
   -e IM_ADMIN_USERNAME=admin -e IM_ADMIN_PASSWORD=... -e IM_REMEMBER_ME_KEY=... \
   -e IM_WEBAUTHN_RP_ID=rechnungen.example -e IM_WEBAUTHN_ALLOWED_ORIGINS=https://rechnungen.example \
   ghcr.io/grigoriev/im:latest
 ```
 
-The app uses two database roles. Flyway migrates as the owner of the tables, `IM_DB_OWNER`. The app connects as
-`IM_DB_USER`, which may only read and write rows: only the owner can switch off the triggers that keep issued invoices
-and documents unchanged. The app refuses to start as the owner or as a superuser. Create the role once, before the
-first start:
+The app uses two database roles. The migration runs as the owner of the tables, `IM_DB_OWNER`, and ends. The app
+connects as `IM_DB_USER`, which may only read and write rows: only the owner can switch off the triggers that keep
+issued invoices and documents unchanged. The app never gets the owner's password, so who gets into the app cannot
+change an issued invoice. It refuses to start as the owner or as a superuser, and on a schema older than its version.
+In Docker Compose the app waits for the migration with `condition: service_completed_successfully`. Create the role
+once, before the first start:
 
 ```sh
 psql -U im -d im -c "CREATE ROLE im_app LOGIN PASSWORD '...'"
@@ -65,7 +71,7 @@ changed file back from download, e-mail and the yearly archive.
 `IM_ADMIN_USERNAME` and `IM_ADMIN_PASSWORD` create the first admin at startup while no admin exists. The
 admin creates the other users on the page "Benutzer" and deletes them there. Once a second admin exists, the first
 one can go: it does not come back at the next start. `IM_REMEMBER_ME_KEY` signs the "Angemeldet bleiben"
-cookie: set a long random value.
+cookie: set a random value of at least 32 characters. The app does not start without it.
 
 Passkeys need HTTPS, or `http://localhost`. `IM_WEBAUTHN_RP_ID` is the host name of the app, and
 `IM_WEBAUTHN_ALLOWED_ORIGINS` lists its origins, comma separated. A passkey works only on the host it

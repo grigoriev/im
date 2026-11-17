@@ -1,5 +1,8 @@
 package io.github.grigoriev.im;
 
+import io.github.grigoriev.im.migration.Migration;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -8,8 +11,8 @@ import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * PostgreSQL for the integration tests, the same major version as in production. As in production, Flyway migrates as
- * the owner of the tables and the app connects as {@code im_app}, which may only read and write rows.
+ * PostgreSQL for the integration tests, the same major version as in production. As in production, the migration runs
+ * first as the owner of the tables, then the app connects as {@code im_app}, which may only read and write rows.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestDatabase {
@@ -26,6 +29,8 @@ public class TestDatabase {
     PostgreSQLContainer postgres() {
         PostgreSQLContainer postgres = new PostgreSQLContainer(IMAGE).withInitScript("db/app-role.sql");
         postgres.start();
+        Owner owner = new Owner(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+        owner.migrate(null, null);
         return postgres;
     }
 
@@ -35,8 +40,6 @@ public class TestDatabase {
             registry.add("spring.datasource.url", postgres::getJdbcUrl);
             registry.add("spring.datasource.username", () -> APP_USER);
             registry.add("spring.datasource.password", () -> APP_PASSWORD);
-            registry.add("spring.flyway.user", postgres::getUsername);
-            registry.add("spring.flyway.password", postgres::getPassword);
         };
     }
 
@@ -52,7 +55,7 @@ public class TestDatabase {
     }
 
     /**
-     * The owner of the tables, who also runs Flyway.
+     * The owner of the tables, who also runs the migration.
      *
      * @param url the database of the tests
      * @param username the owner
@@ -78,6 +81,22 @@ public class TestDatabase {
         public DriverManagerDataSource dataSource(String database) {
             return new DriverManagerDataSource(database == null ? url
                     : url.replaceFirst("/[^/?]+(\\?|$)", "/" + database + "$1"), username, password);
+        }
+
+        /**
+         * Runs the migration of the app ({@code java -jar im.jar migrate}) on a database of the server.
+         *
+         * @param database its name, {@code null} for the database of the tests
+         * @param key the integrity key of the seals it writes, {@code null} for the key of the tests
+         */
+        public void migrate(String database, String key) {
+            List<String> args = new ArrayList<>(List.of("--spring.datasource.url=" + dataSource(database).getUrl(),
+                    "--spring.datasource.username=" + APP_USER, "--spring.flyway.user=" + username,
+                    "--spring.flyway.password=" + password, "--spring.jmx.enabled=false"));
+            if (key != null) {
+                args.add("--im.integrity.key=" + key);
+            }
+            Migration.run(args.toArray(String[]::new));
         }
 
         /**

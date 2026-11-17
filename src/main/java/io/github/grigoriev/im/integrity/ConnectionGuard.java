@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 /**
  * Refuses to start while the app connects to the database as a role that could switch the triggers off: a superuser,
  * the owner of a table, or a member of either, even one without their privileges, who could still {@code SET ROLE}.
- * Flyway migrates as the owner ({@code IM_DB_OWNER}); the app connects as a role that may only read and write rows
- * ({@code IM_DB_USER}).
+ * Only the migration ({@code java -jar im.jar migrate}) connects as the owner ({@code IM_DB_OWNER}); the app connects as
+ * a role that may only read and write rows ({@code IM_DB_USER}).
  */
 @Component
 public class ConnectionGuard implements ApplicationRunner {
@@ -20,7 +20,7 @@ public class ConnectionGuard implements ApplicationRunner {
                             WHERE schemaname = ANY (current_schemas(false))
                               AND pg_has_role(current_user, tableowner, 'MEMBER'))""";
     static final String REFUSED = "The app connects to the database as a superuser or as the owner of its tables. "
-            + "Set IM_DB_USER to a role that may only read and write rows, and IM_DB_OWNER to the owner for Flyway.";
+            + "Set IM_DB_USER to a role that may only read and write rows. Only the migration connects as IM_DB_OWNER.";
 
     private final JdbcClient jdbc;
 

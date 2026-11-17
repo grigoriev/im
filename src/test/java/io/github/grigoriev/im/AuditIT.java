@@ -118,4 +118,21 @@ class AuditIT {
         })).isInstanceOf(IllegalStateException.class);
         assertThat(events(AuditAction.CUSTOMER_CREATED)).hasSize(before);
     }
+
+    @Test
+    void theAppNeitherChangesNorDeletesAnEntryOnceBusinessDataExists() {
+        SecurityContextHolder.getContext().setAuthentication(new TestingAuthenticationToken("elena", null));
+        transactions.executeWithoutResult(status -> {
+            customers.create(CustomerTestData.verlag());
+            audit.add(AuditAction.LOGIN, "Spur");
+            status.setRollbackOnly();
+            assertThatThrownBy(() -> jdbc.update("UPDATE audit_event SET detail = 'nichts' WHERE detail = 'Spur'"))
+                    .hasMessageContaining("written once");
+        });
+        transactions.executeWithoutResult(status -> {
+            customers.create(CustomerTestData.verlag());
+            status.setRollbackOnly();
+            assertThatThrownBy(() -> jdbc.update("DELETE FROM audit_event")).hasMessageContaining("is kept");
+        });
+    }
 }

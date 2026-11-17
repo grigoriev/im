@@ -8,8 +8,8 @@ import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 
 /**
- * The whole app on a database of its own on the test server, wired as in production: Flyway migrates as the owner,
- * the app connects as {@code im_app}. For a test that needs a second installation, such as the target of an import or a
+ * The whole app on a database of its own on the test server, wired as in production: the migration runs as the owner,
+ * then the app connects as {@code im_app}. For a test that needs a second installation, such as the target of an import or a
  * database migrated from an older version.
  */
 public final class Installation implements AutoCloseable {
@@ -21,7 +21,7 @@ public final class Installation implements AutoCloseable {
     }
 
     /**
-     * Starts the app on an existing database. Flyway migrates it to the latest version first.
+     * Starts the app on an existing database. The migration brings it to the latest version first.
      *
      * @param owner the owner of the tables on the test server
      * @param database the name of the database
@@ -29,6 +29,7 @@ public final class Installation implements AutoCloseable {
      * @return the running app
      */
     public static Installation start(TestDatabase.Owner owner, String database, String key) {
+        owner.migrate(database, key);
         // Arguments, since they win over the files of the classpath; default properties would lose to them.
         return new Installation(new SpringApplicationBuilder(ImApplication.class)
                 .initializers(starting -> starting.getBeanFactory().registerSingleton("skipTestDatabase",
@@ -36,7 +37,6 @@ public final class Installation implements AutoCloseable {
                 .run("--spring.datasource.url=" + owner.dataSource(database).getUrl(),
                         "--spring.datasource.username=" + TestDatabase.APP_USER,
                         "--spring.datasource.password=" + TestDatabase.APP_PASSWORD,
-                        "--spring.flyway.user=" + owner.username(), "--spring.flyway.password=" + owner.password(),
                         "--im.integrity.key=" + key, "--server.port=0", "--spring.jmx.enabled=false"));
     }
 

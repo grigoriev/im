@@ -166,7 +166,8 @@ DRAFT -> ISSUED -> SENT -> PAID
 2. `ISSUED` gets the next number, the snapshots and the frozen documents. One transaction does all of it, the
    validation included: a failure rolls back the number too, so no gap remains. Database triggers refuse any later
    change of the content, the lines and the documents. Only the status moves on. The app connects as a role that may
-   read and write rows only, so it cannot switch a trigger off; Flyway migrates as the owner. Each document, the
+   read and write rows only, so it cannot switch a trigger off. The migration runs as the owner in a step of its own
+   (`java -jar im.jar migrate`), and only that step gets the owner's password. Each document, the
    snapshot and each business document carry a seal (HMAC-SHA256, key `IM_INTEGRITY_KEY`) over what they belong to and
    their SHA-256. Every read checks the SHA-256 and the seal: the page of the invoice names the problem and compares
    number, dates, amount, IBAN and parties of the XML with the snapshot. A changed file stays out of download, e-mail
@@ -320,13 +321,16 @@ The admin edits the default tax notes. A template and an invoice can override th
 
 1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.
 2. The compose file lives in the intranet repository: `lemming/docker/im`.
-3. Services: `im` (app) and `im-db` (PostgreSQL). The app listens on `127.0.0.1` only.
+3. Services: `im-migrate` (the migration, runs once per start and ends), `im` (app) and `im-db` (PostgreSQL). The app
+   listens on `127.0.0.1` only. Each service gets only its own secrets: the owner's password goes to the migration, not
+   to the app. The app runs on a read-only file system, without capabilities.
 4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN and the VPN only. It sends `X-Forwarded-Proto`,
    so the app marks its cookies `Secure` (`server.forward-headers-strategy=native`).
    Passkeys are bound to that host: `IM_WEBAUTHN_RP_ID=im.h.g7v.io`, `IM_WEBAUTHN_ALLOWED_ORIGINS=https://im.h.g7v.io`.
 5. The certificate comes from acme.sh, as for the other sites.
 6. Data lives under `/volume1/docker/im`: the database files. The documents live in the database too.
-7. Renovate and the nightly `update.sh` update the image. Flyway migrates the schema at start.
+7. Renovate and the nightly `update.sh` update the image, pinned by digest. The migration brings the schema up to date
+   before the app starts.
 8. Secrets (database password, SMTP password, first admin) stay outside git, in files with mode 600.
 
 ## 9. Backups

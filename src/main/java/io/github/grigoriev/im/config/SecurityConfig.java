@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
@@ -30,6 +31,9 @@ public class SecurityConfig {
             + "form-action 'self'; frame-ancestors 'none'";
 
     static final Duration REMEMBER_ME = Duration.ofDays(30);
+    static final int MIN_REMEMBER_ME_KEY = 32;
+    static final String REMEMBER_ME_KEY_MISSING = "Set IM_REMEMBER_ME_KEY to a random secret of at least "
+            + MIN_REMEMBER_ME_KEY + " characters.";
 
     /**
      * Returns the access rules.
@@ -40,17 +44,23 @@ public class SecurityConfig {
      * @param rememberMeKey key that signs the remember-me cookie
      * @param staleForms handles forms that outlived their session
      * @param passkeys the relying party of the passkeys
+     * @param epoch drops the sessions that ended
+     * @param recentLogin guards the registration of a new passkey
+     * @param uploads refuses a large upload before it is read
      * @return the filter chain
      * @throws Exception if the configuration is invalid
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, PersistentTokenRepository tokens,
-            AppUserDetailsService users, @Value("${im.remember-me.key:im-remember-me}") String rememberMeKey,
-            StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch) throws Exception {
+            AppUserDetailsService users, @Value("${im.remember-me.key}") String rememberMeKey,
+            StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch, RecentLogin recentLogin,
+            UploadLimit uploads) throws Exception {
         // The passkey login looks the users up here, even if the context holds another user store.
         http.setSharedObject(UserDetailsService.class, users);
         return http
                 .addFilterBefore(epoch.filter(), SecurityContextHolderFilter.class)
+                .addFilterBefore(uploads.filter(), CsrfFilter.class)
+                .addFilterAfter(recentLogin.filter(), CsrfFilter.class)
                 .userDetailsService(users)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/css/**", "/js/**", "/vendor/**", "/fonts/**", "/icons/**",
@@ -67,7 +77,7 @@ public class SecurityConfig {
                         .disableDefaultRegistrationPage(true))
                 .logout(logout -> logout.logoutSuccessUrl("/login?logout").deleteCookies("JSESSIONID"))
                 .rememberMe(remember -> remember
-                        .key(rememberMeKey)
+                        .key(rememberMeKey(rememberMeKey))
                         .tokenRepository(tokens)
                         .userDetailsService(users)
                         .rememberMeParameter("remember-me")
@@ -76,6 +86,20 @@ public class SecurityConfig {
                 .exceptionHandling(errors -> errors.accessDeniedHandler(staleForms))
                 .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(CSP)))
                 .build();
+    }
+
+    /**
+     * Checks the key of the remember-me cookie. The repository is public: a default would be known to everyone.
+     *
+     * @param key the configured key
+     * @return the key
+     * @throws IllegalStateException if the key is missing or shorter than 32 characters
+     */
+    static String rememberMeKey(String key) {
+        if (key == null || key.length() < MIN_REMEMBER_ME_KEY) {
+            throw new IllegalStateException(REMEMBER_ME_KEY_MISSING);
+        }
+        return key;
     }
 
     /**

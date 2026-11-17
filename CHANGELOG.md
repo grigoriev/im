@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- The migration of the database is a step of its own: `java -jar im.jar migrate`, before the app starts. Only this step gets the password of the owner of the tables. The app connects without it and starts only on the current schema. Docker Compose runs the step as a service that the app waits for.
+- A new passkey needs a login of the last 15 minutes, with the password or a passkey. After a login by "Angemeldet bleiben", "Mein Konto" asks for the password first.
+- The app does not start without `IM_REMEMBER_ME_KEY` of at least 32 characters.
+
+### Security
+
+- A new password ends the sessions of the user in the other browsers. A reset by the admin ends all of them.
+- The audit log is written once: not even the app changes or deletes an entry. Only the import into an empty installation replaces it.
+- An upload over 32 MB ends before the server reads it, unless an admin imports a full export.
+
 ## [0.1.9] - 2026-11-16
 
 ### Fixed
