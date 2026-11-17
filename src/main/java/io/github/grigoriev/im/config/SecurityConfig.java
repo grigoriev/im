@@ -30,6 +30,9 @@ public class SecurityConfig {
             + "form-action 'self'; frame-ancestors 'none'";
 
     static final Duration REMEMBER_ME = Duration.ofDays(30);
+    static final int MIN_REMEMBER_ME_KEY = 32;
+    static final String REMEMBER_ME_KEY_MISSING = "Set IM_REMEMBER_ME_KEY to a random secret of at least "
+            + MIN_REMEMBER_ME_KEY + " characters.";
 
     /**
      * Returns the access rules.
@@ -45,7 +48,7 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, PersistentTokenRepository tokens,
-            AppUserDetailsService users, @Value("${im.remember-me.key:im-remember-me}") String rememberMeKey,
+            AppUserDetailsService users, @Value("${im.remember-me.key}") String rememberMeKey,
             StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch) throws Exception {
         // The passkey login looks the users up here, even if the context holds another user store.
         http.setSharedObject(UserDetailsService.class, users);
@@ -67,7 +70,7 @@ public class SecurityConfig {
                         .disableDefaultRegistrationPage(true))
                 .logout(logout -> logout.logoutSuccessUrl("/login?logout").deleteCookies("JSESSIONID"))
                 .rememberMe(remember -> remember
-                        .key(rememberMeKey)
+                        .key(rememberMeKey(rememberMeKey))
                         .tokenRepository(tokens)
                         .userDetailsService(users)
                         .rememberMeParameter("remember-me")
@@ -76,6 +79,20 @@ public class SecurityConfig {
                 .exceptionHandling(errors -> errors.accessDeniedHandler(staleForms))
                 .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(CSP)))
                 .build();
+    }
+
+    /**
+     * Checks the key of the remember-me cookie. The repository is public: a default would be known to everyone.
+     *
+     * @param key the configured key
+     * @return the key
+     * @throws IllegalStateException if the key is missing or shorter than 32 characters
+     */
+    static String rememberMeKey(String key) {
+        if (key == null || key.length() < MIN_REMEMBER_ME_KEY) {
+            throw new IllegalStateException(REMEMBER_ME_KEY_MISSING);
+        }
+        return key;
     }
 
     /**

@@ -65,7 +65,7 @@ changed file back from download, e-mail and the yearly archive.
 `IM_ADMIN_USERNAME` and `IM_ADMIN_PASSWORD` create the first admin at startup while no admin exists. The
 admin creates the other users on the page "Benutzer" and deletes them there. Once a second admin exists, the first
 one can go: it does not come back at the next start. `IM_REMEMBER_ME_KEY` signs the "Angemeldet bleiben"
-cookie: set a long random value.
+cookie: set a random value of at least 32 characters. The app does not start without it.
 
 Passkeys need HTTPS, or `http://localhost`. `IM_WEBAUTHN_RP_ID` is the host name of the app, and
 `IM_WEBAUTHN_ALLOWED_ORIGINS` lists its origins, comma separated. A passkey works only on the host it

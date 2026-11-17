@@ -34,7 +34,7 @@ services:
       IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef
       IM_ADMIN_USERNAME: admin
       IM_ADMIN_PASSWORD: e2e-admin-passwort
-      IM_REMEMBER_ME_KEY: e2e-only
+      IM_REMEMBER_ME_KEY: e2e-only-remember-me-key-0123456789
       IM_SMTP_HOST: mail
       IM_SMTP_PORT: "3025"
       IM_SMTP_STARTTLS: "false"
