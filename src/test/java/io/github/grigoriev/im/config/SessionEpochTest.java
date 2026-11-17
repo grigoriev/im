@@ -83,4 +83,28 @@ class SessionEpochTest {
         empty.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, new SecurityContextImpl());
         assertThat(filter(empty).isInvalid()).as("a context without a login").isFalse();
     }
+
+    @Test
+    void aNewPasswordEndsTheOtherSessionsOfItsUser() throws Exception {
+        long before = NOW.toEpochMilli() - 1;
+        MockHttpSession current = sessionOf("elena", before);
+        epoch.endOthers("elena", current);
+        assertThat(filter(current).isInvalid()).as("the session of the change stays").isFalse();
+        assertThat(filter(sessionOf("elena", before)).isInvalid()).as("another device").isTrue();
+        assertThat(filter(sessionOf("elena", NOW.toEpochMilli())).isInvalid()).isTrue();
+        assertThat(filter(sessionOf("elena", NOW.toEpochMilli() + 1)).isInvalid()).as("a later login").isFalse();
+        assertThat(filter(sessionOf("admin", before)).isInvalid()).isFalse();
+    }
+
+    @Test
+    void aLaterEndTakesTheKeptSessionToo() throws Exception {
+        MockHttpSession current = sessionOf("elena", NOW.toEpochMilli() - 1);
+        epoch.endOthers("elena", current);
+        SessionEpoch later = new SessionEpoch(Clock.fixed(NOW.plusSeconds(60), ZoneOffset.UTC));
+        later.endOthers("elena", sessionOf("elena", NOW.toEpochMilli()));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setSession(current);
+        later.filter().doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+        assertThat(current.isInvalid()).as("the session kept by an earlier change").isTrue();
+    }
 }

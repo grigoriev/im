@@ -6,6 +6,8 @@ import io.github.grigoriev.im.user.PasskeyService;
 import io.github.grigoriev.im.user.Role;
 import io.github.grigoriev.im.user.UserException;
 import io.github.grigoriev.im.user.UserService;
+import jakarta.servlet.http.HttpSession;
+import java.security.Principal;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -140,8 +142,11 @@ public class AdminUserController {
     }
 
     /**
-     * Sets a new password.
+     * Sets a new password. The sessions of the user end in every browser, except this one if the admin resets the own
+     * password.
      *
+     * @param principal the logged-in admin
+     * @param session the session of the admin
      * @param id the user
      * @param password the new password
      * @param confirm the new password once more
@@ -149,13 +154,18 @@ public class AdminUserController {
      * @return a redirect to the list
      */
     @PostMapping("/{id}/password")
-    public String resetPassword(@PathVariable long id, @RequestParam String password, @RequestParam String confirm,
-            RedirectAttributes flash) {
+    public String resetPassword(Principal principal, HttpSession session, @PathVariable long id,
+            @RequestParam String password, @RequestParam String confirm, RedirectAttributes flash) {
         if (!password.equals(confirm)) {
             flash.addFlashAttribute(ERROR, MISMATCH);
         } else {
             try {
                 String username = users.resetPassword(id, password).username();
+                if (username.equals(principal.getName())) {
+                    sessions.endOthers(username, session);
+                } else {
+                    sessions.end(username);
+                }
                 flash.addFlashAttribute(SUCCESS, "Neues Passwort für „" + username + "“ gesetzt.");
             } catch (UserException e) {
                 flash.addFlashAttribute(ERROR, e.getMessage());

@@ -18,10 +18,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * The moment from which a session counts. An import replaces the users, so it ends every session that started before
  * it, in every browser: the filter ahead of Spring Security drops such a session, and its user logs in anew. A deleted
- * user loses the sessions of that user only.
+ * user, or one with a new password, loses the sessions of that user only. Who changes the own password keeps the
+ * session of the change.
  */
 @Component
 public class SessionEpoch {
+
+    /** Marks the session that survives the end of the other sessions of its user, with the moment of that end. */
+    static final String KEPT = SessionEpoch.class.getName() + ".KEPT";
 
     private final AtomicLong since = new AtomicLong();
     /** The users whose sessions end, with the moment: a deleted user loses every session that started before. */
@@ -52,6 +56,19 @@ public class SessionEpoch {
     }
 
     /**
+     * Ends every other session of a user that exists now, for example after the user changed the own password. The
+     * given session stays, also when a new login gives it another ID.
+     *
+     * @param username the login name
+     * @param kept the session that stays
+     */
+    public void endOthers(String username, HttpSession kept) {
+        long at = clock.millis();
+        kept.setAttribute(KEPT, at);
+        ended.put(username, at);
+    }
+
+    /**
      * Tells whether a session of a user started before the user's sessions ended, or in the same millisecond.
      *
      * @param username the login name of the session
@@ -74,9 +91,13 @@ public class SessionEpoch {
     }
 
     private boolean endedUser(HttpSession session) {
-        return session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)
-                instanceof SecurityContext context && context.getAuthentication() != null
-                && ended(context.getAuthentication().getName(), session.getCreationTime());
+        if (session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)
+                instanceof SecurityContext context && context.getAuthentication() != null) {
+            String username = context.getAuthentication().getName();
+            return ended(username, session.getCreationTime())
+                    && !ended.get(username).equals(session.getAttribute(KEPT));
+        }
+        return false;
     }
 
     /**

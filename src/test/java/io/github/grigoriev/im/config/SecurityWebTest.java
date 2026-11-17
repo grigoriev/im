@@ -465,18 +465,20 @@ class SecurityWebTest {
 
     @Test
     void changesTheOwnPasswordAndReportsAProblem() throws Exception {
-        mvc.perform(post("/account/password").param("current", "alt").param("password", PASSWORD).param("confirm", PASSWORD)
-                        .with(user("elena")).with(csrf()))
-                .andExpect(flash().attribute("success", "Passwort geändert."));
-        verify(users).changePassword("elena", "alt", PASSWORD);
-        doThrow(new UserException("Falsch.")).when(users).changePassword("elena", "x", PASSWORD);
+        doThrow(new UserException("Falsch.")).when(users).changePassword("paula", "x", PASSWORD);
         mvc.perform(post("/account/password").param("current", "x").param("password", PASSWORD).param("confirm", PASSWORD)
-                        .with(user("elena")).with(csrf()))
+                        .with(user("paula")).with(csrf()))
                 .andExpect(flash().attribute("error", "Falsch."));
         mvc.perform(post("/account/password").param("current", "alt").param("password", PASSWORD).param("confirm", "anders")
-                        .with(user("elena")).with(csrf()))
+                        .with(user("paula")).with(csrf()))
                 .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."));
-        verify(users, times(1)).changePassword("elena", "alt", PASSWORD);
+        Assertions.assertThat(sessionEpoch.ended("paula", 0)).as("a failed change ends no session").isFalse();
+        mvc.perform(post("/account/password").param("current", "alt").param("password", PASSWORD).param("confirm", PASSWORD)
+                        .with(user("paula")).with(csrf()))
+                .andExpect(flash().attribute("success", "Passwort geändert."))
+                .andExpect(request().sessionAttribute(SessionEpoch.KEPT, Matchers.notNullValue()));
+        verify(users, times(1)).changePassword("paula", "alt", PASSWORD);
+        Assertions.assertThat(sessionEpoch.ended("paula", 0)).as("the other sessions of paula end").isTrue();
     }
 
     @Test
@@ -1839,17 +1841,26 @@ class SecurityWebTest {
 
     @Test
     void resetsAPasswordAndReportsAProblem() throws Exception {
-        when(users.resetPassword(2, PASSWORD)).thenReturn(UserTestData.user(2, "elena", Role.USER));
-        mvc.perform(post("/admin/users/2/password").with(user("admin").roles("ADMIN")).with(csrf())
-                        .param("password", PASSWORD).param("confirm", PASSWORD))
-                .andExpect(flash().attribute("success", "Neues Passwort für „elena“ gesetzt."));
         when(users.resetPassword(anyLong(), eq("kurz"))).thenThrow(new UserException("Zu kurz."));
-        mvc.perform(post("/admin/users/2/password").with(user("admin").roles("ADMIN")).with(csrf())
+        mvc.perform(post("/admin/users/3/password").with(user("admin").roles("ADMIN")).with(csrf())
                         .param("password", "kurz").param("confirm", "kurz"))
                 .andExpect(flash().attribute("error", "Zu kurz."));
-        mvc.perform(post("/admin/users/2/password").with(user("admin").roles("ADMIN")).with(csrf())
+        mvc.perform(post("/admin/users/3/password").with(user("admin").roles("ADMIN")).with(csrf())
                         .param("password", PASSWORD).param("confirm", "anders"))
                 .andExpect(flash().attribute("error", "Die beiden Passwörter stimmen nicht überein."));
+        Assertions.assertThat(sessionEpoch.ended("otto", 0)).as("a failed reset ends no session").isFalse();
+        when(users.resetPassword(3, PASSWORD)).thenReturn(UserTestData.user(3, "otto", Role.USER));
+        mvc.perform(post("/admin/users/3/password").with(user("admin").roles("ADMIN")).with(csrf())
+                        .param("password", PASSWORD).param("confirm", PASSWORD))
+                .andExpect(flash().attribute("success", "Neues Passwort für „otto“ gesetzt."))
+                .andExpect(request().sessionAttribute(SessionEpoch.KEPT, Matchers.nullValue()));
+        Assertions.assertThat(sessionEpoch.ended("otto", 0)).as("every session of otto ends").isTrue();
+        Assertions.assertThat(sessionEpoch.ended("admin", 0)).isFalse();
+        when(users.resetPassword(1, PASSWORD)).thenReturn(UserTestData.user(1, "admin", Role.ADMIN));
+        mvc.perform(post("/admin/users/1/password").with(user("admin").roles("ADMIN")).with(csrf())
+                        .param("password", PASSWORD).param("confirm", PASSWORD))
+                .andExpect(request().sessionAttribute(SessionEpoch.KEPT, Matchers.notNullValue()));
+        Assertions.assertThat(sessionEpoch.ended("admin", 0)).as("the other sessions of the admin end").isTrue();
     }
 
     private static BusinessDocument businessDocument(long id, Long replacesId, Long replacedBy) {
