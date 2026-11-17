@@ -46,18 +46,20 @@ public class SecurityConfig {
      * @param passkeys the relying party of the passkeys
      * @param epoch drops the sessions that ended
      * @param recentLogin guards the registration of a new passkey
+     * @param uploads refuses a large upload before it is read
      * @return the filter chain
      * @throws Exception if the configuration is invalid
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, PersistentTokenRepository tokens,
             AppUserDetailsService users, @Value("${im.remember-me.key}") String rememberMeKey,
-            StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch, RecentLogin recentLogin)
-            throws Exception {
+            StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch, RecentLogin recentLogin,
+            UploadLimit uploads) throws Exception {
         // The passkey login looks the users up here, even if the context holds another user store.
         http.setSharedObject(UserDetailsService.class, users);
         return http
                 .addFilterBefore(epoch.filter(), SecurityContextHolderFilter.class)
+                .addFilterBefore(uploads.filter(), CsrfFilter.class)
                 .addFilterAfter(recentLogin.filter(), CsrfFilter.class)
                 .userDetailsService(users)
                 .authorizeHttpRequests(auth -> auth

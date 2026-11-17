@@ -161,6 +161,7 @@ import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import tools.jackson.core.exc.StreamReadException;
 
@@ -172,7 +173,7 @@ import tools.jackson.core.exc.StreamReadException;
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class,
         DocumentController.class, ExpenseController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
-        SessionEpoch.class, RecentLogin.class})
+        SessionEpoch.class, RecentLogin.class, UploadLimit.class})
 @EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 
@@ -1255,12 +1256,12 @@ class SecurityWebTest {
         verify(backups).export(any());
         MockMultipartFile file = new MockMultipartFile("file",
                 "export.zip", "application/zip", new byte[] {1});
-        mvc.perform(MockMvcRequestBuilders.multipart("/admin/backup/import")
+        mvc.perform(upload("/admin/backup/import")
                         .file(file).with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(redirectedUrl("/login?restored"));
         mvc.perform(get("/login").param("restored", ""))
                 .andExpect(content().string(Matchers.containsString("Datensicherung eingespielt.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/admin/backup/import")
+        mvc.perform(upload("/admin/backup/import")
                         .file(file).with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
     }
@@ -1660,15 +1661,15 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("enctype=\"multipart/form-data\"")));
         when(expenses.add(any(), eq("Quittung.pdf"), any())).thenReturn(expense(7, false));
         MockMultipartFile receipt = new MockMultipartFile("file", "Quittung.pdf", "application/pdf", new byte[] {'%'});
-        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").file(receipt).param("amount", "49,90")
+        mvc.perform(upload("/expenses").file(receipt).param("amount", "49,90")
                 .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/expenses/7")).andExpect(flash().attribute("success", "Ausgabe erfasst."));
         when(expenses.add(any(), any(), eq(new byte[0]))).thenThrow(new ExpenseException(List.of("Bitte eine Datei wählen.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").with(user("elena").roles("USER")).with(csrf()))
+        mvc.perform(upload("/expenses").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")));
         MockMultipartFile huge = new MockMultipartFile("file", "x.pdf", "application/pdf",
                 new byte[DocumentService.MAX_BYTES + 1]);
-        mvc.perform(MockMvcRequestBuilders.multipart("/expenses").file(huge).with(user("elena").roles("USER")).with(csrf()))
+        mvc.perform(upload("/expenses").file(huge).with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString(DocumentService.TOO_LARGE)));
         mvc.perform(get("/expenses")).andExpect(status().is3xxRedirection());
     }
@@ -1890,6 +1891,16 @@ class SecurityWebTest {
         Assertions.assertThat(sessionEpoch.ended("admin", 0)).as("the other sessions of the admin end").isTrue();
     }
 
+    /** A multipart request as a browser sends it, with its length: the upload limit refuses one without. */
+    private static MockMultipartHttpServletRequestBuilder upload(String path) {
+        MockMultipartHttpServletRequestBuilder builder = MockMvcRequestBuilders.multipart(path);
+        builder.with(request -> {
+            request.setContent(new byte[1]);
+            return request;
+        });
+        return builder;
+    }
+
     private static BusinessDocument businessDocument(long id, Long replacesId, Long replacedBy) {
         return new BusinessDocument(id, DocumentCategory.TAX_ASSESSMENT, "Einkommensteuerbescheid 2026",
                 LocalDate.of(2027, 5, 10), 2026, "Ohne Nachzahlung", replacesId, replacedBy, "Bescheid-" + id + ".pdf",
@@ -1922,7 +1933,7 @@ class SecurityWebTest {
         MockMultipartFile file = new MockMultipartFile("file", "Bescheid.pdf", "application/pdf", new byte[] {'%'});
         when(businessDocuments.add(any(), eq("Bescheid.pdf"), eq(new byte[] {'%'})))
                 .thenReturn(businessDocument(1, null, null));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents").file(file).param("category", "TAX_ASSESSMENT")
+        mvc.perform(upload("/documents").file(file).param("category", "TAX_ASSESSMENT")
                         .param("title", "Einkommensteuerbescheid 2026").param("documentDate", "2027-05-10")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/documents/1"))
@@ -1932,12 +1943,12 @@ class SecurityWebTest {
         Assertions.assertThat(form.getValue().getDocumentDate()).isEqualTo(LocalDate.of(2027, 5, 10));
         when(businessDocuments.add(any(), ArgumentMatchers.isNull(), eq(new byte[0])))
                 .thenThrow(new DocumentException(List.of("Bitte eine Datei wählen.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents").param("title", "Ohne Datei")
+        mvc.perform(upload("/documents").param("title", "Ohne Datei")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")))
                 .andExpect(content().string(Matchers.containsString("value=\"Ohne Datei\"")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents").file(new MockMultipartFile("file", "Riesig.pdf",
+        mvc.perform(upload("/documents").file(new MockMultipartFile("file", "Riesig.pdf",
                         "application/pdf", new byte[DocumentService.MAX_BYTES + 1])).param("title", "Riesig")
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk())
@@ -1989,12 +2000,12 @@ class SecurityWebTest {
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte Titel angeben.")));
         MockMultipartFile file = new MockMultipartFile("file", "Neu.pdf", "application/pdf", new byte[] {'%'});
         when(businessDocuments.replace(eq(2L), any(), eq("Neu.pdf"), any())).thenReturn(businessDocument(3, 2L, null));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents/2/versions").file(file)
+        mvc.perform(upload("/documents/2/versions").file(file)
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/documents/3")).andExpect(flash().attribute("success", "Neue Fassung abgelegt."));
         when(businessDocuments.replace(eq(2L), any(), ArgumentMatchers.isNull(), any()))
                 .thenThrow(new DocumentException(List.of("Bitte eine Datei wählen.")));
-        mvc.perform(MockMvcRequestBuilders.multipart("/documents/2/versions").with(user("elena").roles("USER")).with(csrf()))
+        mvc.perform(upload("/documents/2/versions").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(content().string(Matchers.containsString("Bitte eine Datei wählen.")));
         mvc.perform(post("/documents/9").param("title", "x").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/documents/9"));
