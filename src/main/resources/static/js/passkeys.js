@@ -115,7 +115,10 @@
           show('Dieser Browser unterstützt keine Passkeys.');
           return;
         }
-        register(new FormData(form).get('label')).catch((error) => show(explain(error)));
+        // A refusal means the confirmation of the password expired: the reloaded page asks for it again.
+        register(new FormData(form).get('label')).catch((error) =>
+          error.message === 'HTTP 403' ? globalThis.location.reload() : show(explain(error)),
+        );
       });
     });
   });

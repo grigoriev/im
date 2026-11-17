@@ -131,14 +131,30 @@ public class UserService {
      */
     @Transactional
     public void changePassword(String username, String current, String password) {
-        AppUser user = users.findByUsername(username).orElseThrow(() -> new UserException("Diesen Benutzer gibt es nicht."));
-        if (current == null || !encoder.matches(current, user.passwordHash())) {
-            throw new UserException("Das aktuelle Passwort stimmt nicht.");
-        }
+        AppUser user = confirmed(username, current, "Das aktuelle Passwort stimmt nicht.");
         checkPassword(password);
         users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(username);
         audit.add(username, AuditAction.PASSWORD_CHANGED, "");
+    }
+
+    /**
+     * Checks the password of the logged-in user, for example before a new passkey.
+     *
+     * @param username the login name
+     * @param password the password
+     * @throws UserException if the password is wrong
+     */
+    public void confirmPassword(String username, String password) {
+        confirmed(username, password, "Das Passwort stimmt nicht.");
+    }
+
+    private AppUser confirmed(String username, String password, String wrong) {
+        AppUser user = users.findByUsername(username).orElseThrow(() -> new UserException("Diesen Benutzer gibt es nicht."));
+        if (password == null || !encoder.matches(password, user.passwordHash())) {
+            throw new UserException(wrong);
+        }
+        return user;
     }
 
     /**

@@ -132,6 +132,22 @@ class UserServiceTest {
     }
 
     @Test
+    void confirmsThePasswordOfTheLoggedInUser() {
+        when(repository.findByUsername("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
+        when(encoder.matches("richtig", "{noop}x")).thenReturn(true);
+        service.confirmPassword("elena", "richtig");
+        assertThatThrownBy(() -> service.confirmPassword("elena", "falsch")).isInstanceOf(UserException.class)
+                .hasMessage("Das Passwort stimmt nicht.");
+        assertThatThrownBy(() -> service.confirmPassword("elena", null)).isInstanceOf(UserException.class)
+                .hasMessage("Das Passwort stimmt nicht.");
+        when(repository.findByUsername("niemand")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.confirmPassword("niemand", "richtig")).isInstanceOf(UserException.class)
+                .hasMessage("Diesen Benutzer gibt es nicht.");
+        verify(repository, never()).save(any());
+        Mockito.verifyNoInteractions(audit);
+    }
+
+    @Test
     void refusesAWrongCurrentPasswordAShortNewOneAndAnUnknownUser() {
         when(repository.findByUsername("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
         assertThatThrownBy(() -> service.changePassword("elena", "falsch", PASSWORD)).isInstanceOf(UserException.class)

@@ -53,11 +53,20 @@
           </dialog>
         </div>
       </div>
-      <form class="flex flex-wrap gap-2 items-end" data-passkey-register>
+      <form class="flex flex-wrap gap-2 items-end" data-passkey-register th:if="${recentLogin}">
         <label class="floating-label grow"><span>Name des Geräts</span>
           <input id="new-passkey-label" name="label" class="input w-full" maxlength="64" required>
         </label>
         <button type="submit" class="btn btn-primary"><i data-lucide="fingerprint" class="size-4"></i>Passkey hinzufügen</button>
+      </form>
+      <form id="passkey-confirm" class="grid gap-2" th:action="@{/account/confirm}" method="post" th:unless="${recentLogin}">
+        <p class="text-sm text-base-content/75">Bestätigen Sie für einen neuen Passkey zuerst Ihr Passwort.</p>
+        <div class="flex flex-wrap gap-2 items-end">
+          <label class="floating-label grow"><span>Passwort</span>
+            <input id="confirm-password" name="password" type="password" class="input w-full" autocomplete="current-password" required>
+          </label>
+          <button type="submit" class="btn"><i data-lucide="lock-open" class="size-4"></i>Bestätigen</button>
+        </div>
       </form>
       <p role="alert" class="alert alert-error text-sm" data-passkey-message hidden></p>
     </section>

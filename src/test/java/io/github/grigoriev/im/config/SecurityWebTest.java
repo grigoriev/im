@@ -156,6 +156,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -170,7 +172,7 @@ import tools.jackson.core.exc.StreamReadException;
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class,
         DocumentController.class, ExpenseController.class})
 @Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
-        SessionEpoch.class})
+        SessionEpoch.class, RecentLogin.class})
 @EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
 
@@ -445,6 +447,31 @@ class SecurityWebTest {
         when(passkeys.list("admin")).thenReturn(List.of());
         mvc.perform(get("/account").with(user("admin").roles("ADMIN")))
                 .andExpect(content().string(Matchers.containsString("Noch kein Passkey.")));
+    }
+
+    @Test
+    void aNewPasskeyNeedsARecentLoginOrTheConfirmedPassword() throws Exception {
+        knownUsers();
+        when(passkeys.list("elena")).thenReturn(List.of());
+        mvc.perform(get("/account").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("id=\"passkey-confirm\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("data-passkey-register"))));
+        mvc.perform(post("/webauthn/register/options").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/account").with(user("elena").authorities(new SimpleGrantedAuthority("ROLE_USER"),
+                        FactorGrantedAuthority.withAuthority(FactorGrantedAuthority.PASSWORD_AUTHORITY)
+                                .issuedAt(Instant.now()).build())))
+                .andExpect(content().string(Matchers.containsString("data-passkey-register")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"passkey-confirm\""))));
+
+        doThrow(new UserException("Das Passwort stimmt nicht.")).when(users).confirmPassword("elena", "falsch");
+        mvc.perform(post("/account/confirm").param("password", "falsch").with(user("elena")).with(csrf()))
+                .andExpect(redirectedUrl("/account")).andExpect(flash().attribute("error", "Das Passwort stimmt nicht."))
+                .andExpect(request().sessionAttribute(RecentLogin.CONFIRMED, Matchers.nullValue()));
+        mvc.perform(post("/account/confirm").param("password", "richtig").with(user("elena")).with(csrf()))
+                .andExpect(redirectedUrl("/account"))
+                .andExpect(request().sessionAttribute(RecentLogin.CONFIRMED, Matchers.notNullValue()));
+        verify(users).confirmPassword("elena", "richtig");
     }
 
     @Test

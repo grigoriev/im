@@ -103,3 +103,65 @@ test('changes the own password', async ({ page, browser }) => {
   await expect(user.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Neues Passwort');
   await user.context().close();
 });
+
+// A second browser of the user, logged in with "Angemeldet bleiben" and without the session of that login.
+async function rememberedLogin(browser: Browser, username: string): Promise<Page> {
+  const context = await browser.newContext({ storageState: ANONYMOUS });
+  const page = await context.newPage();
+  await page.goto('/login');
+  await page.getByLabel('Benutzername').fill(username);
+  await page.getByLabel('Passwort').fill(PASSWORD);
+  await page.getByLabel('Angemeldet bleiben').check();
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Guten Tag');
+  await context.clearCookies({ name: 'JSESSIONID' });
+  return page;
+}
+
+test('a login by "Angemeldet bleiben" confirms the password before a new passkey', async ({ page, browser }) => {
+  const { user, username } = await newUser(page, browser, 'Bestätigung');
+  await user.context().close();
+  const remembered = await rememberedLogin(browser, username);
+  await addVirtualAuthenticator(remembered);
+
+  await remembered.goto('/account');
+  await expect(remembered.getByText('Bestätigen Sie für einen neuen Passkey zuerst Ihr Passwort.')).toBeVisible();
+  await expect(remembered.getByRole('button', { name: 'Passkey hinzufügen' })).toHaveCount(0);
+  const confirm = remembered.locator('#passkey-confirm');
+  await confirm.getByLabel('Passwort').fill('falsch-falsch-falsch');
+  await confirm.getByRole('button', { name: 'Bestätigen' }).click();
+  await expect(remembered.getByRole('alert')).toHaveText('Das Passwort stimmt nicht.');
+  await confirm.getByLabel('Passwort').fill(PASSWORD);
+  await confirm.getByRole('button', { name: 'Bestätigen' }).click();
+  await remembered.getByLabel('Name des Geräts').fill('MacBook Air');
+  await remembered.getByRole('button', { name: 'Passkey hinzufügen' }).click();
+  await expect(remembered.getByRole('status')).toHaveText('Passkey hinzugefügt.');
+  await remembered.context().close();
+});
+
+test('a new password ends the sessions of the other browsers', async ({ page, browser }) => {
+  const { user, username } = await newUser(page, browser, 'Zwei Browser');
+  const other = await browser.newContext({ storageState: ANONYMOUS });
+  const second = await other.newPage();
+  await second.goto('/login');
+  await second.getByLabel('Benutzername').fill(username);
+  await second.getByLabel('Passwort').fill(PASSWORD);
+  await second.getByRole('button', { name: 'Anmelden', exact: true }).click();
+  await expect(second.getByRole('heading', { level: 1 })).toHaveText('Guten Tag, Zwei Browser');
+  await second.goto('/account');
+  await expect(second.getByRole('heading', { level: 1 })).toHaveText('Mein Konto');
+
+  await user.goto('/account');
+  await user.getByLabel('Aktuelles Passwort').fill(PASSWORD);
+  await user.getByLabel('Neues Passwort', { exact: true }).fill('ganz-neues-passwort');
+  await user.getByLabel('Neues Passwort wiederholen').fill('ganz-neues-passwort');
+  await user.getByRole('button', { name: 'Passwort ändern' }).click();
+  await expect(user.getByRole('status')).toHaveText('Passwort geändert.');
+  await user.goto('/account');
+  await expect(user.getByRole('heading', { level: 1 })).toHaveText('Mein Konto');
+
+  await second.goto('/account');
+  await expect(second).toHaveURL(/\/login$/);
+  await other.close();
+  await user.context().close();
+});

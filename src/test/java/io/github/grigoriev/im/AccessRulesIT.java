@@ -25,6 +25,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
+import java.time.Instant;
 
 /**
  * The access rule of every URL of the app, for an anonymous visitor, a user and the admin. The rule table
@@ -54,6 +57,7 @@ class AccessRulesIT {
             Map.entry("POST /account/passkeys/{id}/rename", Access.USER),
             Map.entry("POST /account/passkeys/{id}/delete", Access.USER),
             Map.entry("POST /account/password", Access.USER),
+            Map.entry("POST /account/confirm", Access.USER),
             Map.entry("GET /customers", Access.USER),
             Map.entry("GET /customers/new", Access.USER),
             Map.entry("GET /customers/{id}", Access.USER),
@@ -250,7 +254,12 @@ class AccessRulesIT {
                 .isEqualTo(401);
         assertThat(send("POST /webauthn/register/options", null).getStatus()).as("no registration without login")
                 .isNotEqualTo(200);
-        assertThat(send("POST /webauthn/register/options", ACTORS.get("user")).getStatus()).isEqualTo(200);
+        assertThat(send("POST /webauthn/register/options", ACTORS.get("user")).getStatus())
+                .as("no registration without a recent login").isEqualTo(403);
+        assertThat(send("POST /webauthn/register/options", user("zugriff-user").authorities(
+                new SimpleGrantedAuthority("ROLE_USER"), FactorGrantedAuthority.withAuthority(
+                        FactorGrantedAuthority.PASSWORD_AUTHORITY).issuedAt(Instant.now()).build())).getStatus())
+                .as("a login with the password a moment ago").isEqualTo(200);
         assertThat(send("POST /login", null).getHeader("Location")).as("an empty password login fails, not blocked")
                 .endsWith("/login?error");
     }

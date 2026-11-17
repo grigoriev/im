@@ -1,11 +1,13 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.config.RecentLogin;
 import io.github.grigoriev.im.config.SessionEpoch;
 import io.github.grigoriev.im.user.PasskeyService;
 import io.github.grigoriev.im.user.UserException;
 import io.github.grigoriev.im.user.UserService;
 import jakarta.servlet.http.HttpSession;
 import java.security.Principal;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +34,7 @@ public class AccountController {
     private final PasskeyService passkeys;
     private final UserService users;
     private final SessionEpoch sessions;
+    private final RecentLogin recentLogin;
 
     /**
      * Creates the controller.
@@ -39,24 +42,50 @@ public class AccountController {
      * @param passkeys the passkey service
      * @param users the user service
      * @param sessions ends the other sessions after a new password
+     * @param recentLogin tells whether a new passkey may be added now
      */
-    public AccountController(PasskeyService passkeys, UserService users, SessionEpoch sessions) {
+    public AccountController(PasskeyService passkeys, UserService users, SessionEpoch sessions,
+            RecentLogin recentLogin) {
         this.passkeys = passkeys;
         this.users = users;
         this.sessions = sessions;
+        this.recentLogin = recentLogin;
     }
 
     /**
-     * Shows the account page.
+     * Shows the account page. A new passkey needs a recent login or the password confirmed first.
      *
-     * @param principal the logged-in user
+     * @param authentication the logged-in user
+     * @param session the session
      * @param model the page model
      * @return the template name
      */
     @GetMapping
-    public String show(Principal principal, Model model) {
-        model.addAttribute("passkeys", passkeys.list(principal.getName()));
+    public String show(Authentication authentication, HttpSession session, Model model) {
+        model.addAttribute("passkeys", passkeys.list(authentication.getName()));
+        model.addAttribute("recentLogin", recentLogin.holds(authentication, session));
         return VIEW;
+    }
+
+    /**
+     * Confirms the password before a new passkey. It counts for 15 minutes in this session.
+     *
+     * @param principal the logged-in user
+     * @param session the session
+     * @param password the password
+     * @param flash messages for the next page
+     * @return a redirect to the account page
+     */
+    @PostMapping("/confirm")
+    public String confirm(Principal principal, HttpSession session, @RequestParam String password,
+            RedirectAttributes flash) {
+        try {
+            users.confirmPassword(principal.getName(), password);
+            recentLogin.confirm(session);
+        } catch (UserException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+        }
+        return BACK;
     }
 
     /**

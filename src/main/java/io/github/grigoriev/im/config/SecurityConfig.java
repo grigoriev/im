@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
@@ -43,17 +44,21 @@ public class SecurityConfig {
      * @param rememberMeKey key that signs the remember-me cookie
      * @param staleForms handles forms that outlived their session
      * @param passkeys the relying party of the passkeys
+     * @param epoch drops the sessions that ended
+     * @param recentLogin guards the registration of a new passkey
      * @return the filter chain
      * @throws Exception if the configuration is invalid
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, PersistentTokenRepository tokens,
             AppUserDetailsService users, @Value("${im.remember-me.key}") String rememberMeKey,
-            StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch) throws Exception {
+            StaleFormHandler staleForms, PasskeyProperties passkeys, SessionEpoch epoch, RecentLogin recentLogin)
+            throws Exception {
         // The passkey login looks the users up here, even if the context holds another user store.
         http.setSharedObject(UserDetailsService.class, users);
         return http
                 .addFilterBefore(epoch.filter(), SecurityContextHolderFilter.class)
+                .addFilterAfter(recentLogin.filter(), CsrfFilter.class)
                 .userDetailsService(users)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/css/**", "/js/**", "/vendor/**", "/fonts/**", "/icons/**",
