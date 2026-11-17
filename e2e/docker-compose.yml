@@ -23,14 +23,35 @@ services:
       GREENMAIL_OPTS: >-
         -Dgreenmail.setup.test.smtp -Dgreenmail.setup.test.api -Dgreenmail.hostname=0.0.0.0 -Dgreenmail.auth.disabled
 
+  # The migration as the owner of the tables, a step of its own: only it gets the owner's password.
+  migrate:
+    image: ${IM_IMAGE:-im:test}
+    command: ["migrate"]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      IM_DB_URL: jdbc:postgresql://db:5432/im
+      IM_DB_USER: im_app
+      IM_DB_OWNER: im
+      IM_DB_OWNER_PASSWORD: e2e-only
+      IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Hardened as on lemming: a read-only file system, no capabilities. Uploads and Tomcat use /tmp.
   web:
     image: ${IM_IMAGE:-im:test}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     environment:
       IM_DB_URL: jdbc:postgresql://db:5432/im
       IM_DB_USER: im_app
       IM_DB_PASSWORD: e2e-app-only
-      IM_DB_OWNER: im
-      IM_DB_OWNER_PASSWORD: e2e-only
       IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef
       IM_ADMIN_USERNAME: admin
       IM_ADMIN_PASSWORD: e2e-admin-passwort
@@ -41,8 +62,8 @@ services:
       IM_MAIL_FROM: rechnung@e2e.example
       TZ: Europe/Berlin
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       mail:
         condition: service_started
 

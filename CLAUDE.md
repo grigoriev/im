@@ -65,13 +65,18 @@ Package `io.github.grigoriev.im`:
   belongs to and its SHA-256; `SealMigration` (Flyway V29) sealed what existed. `DocumentStore`, `InvoiceIntegrity`
   (snapshot, documents, ZUGFeRD XML against the XML file, `EInvoiceFacts` of the XML against the snapshot) and
   `DocumentService` check on every read; `IntegrityMonitor` checks all at startup, nightly and on request.
-  `ConnectionGuard` refuses to start while the app connects as the owner of the tables (`IM_DB_USER` vs `IM_DB_OWNER`)
-- `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`
+  `ConnectionGuard` refuses to start while the app connects as the owner of the tables (`IM_DB_USER` vs `IM_DB_OWNER`).
+  The audit log is written once too (trigger `audit_event_kept`)
+- `migration`: `Migration` runs Flyway as the owner in a step of its own (`java -jar im.jar migrate`, profile
+  `migrate`), the only one with `IM_DB_OWNER_PASSWORD`; `SchemaCheck` lets the app start only on the current schema
+- `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`, `SessionEpoch` (ends
+  sessions after an import, a deletion or a new password), `RecentLogin` (a new passkey needs a login of the last
+  15 minutes or the password confirmed), `UploadLimit` (refuses a large upload before the CSRF check reads it)
 - `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog`, gives every `select.select` a styled list and opens the camera
   for a file field from `data-capture`). The web app manifest and the icons live in `static` (`manifest.webmanifest`, `favicon.*`, `icons/`), open without login.
   Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
 
-Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers (Flyway as the owner, the app as
+Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers (the migration as the owner, the app as
 `im_app`; `TestDatabase.Owner` plays whoever edits the database), PDF baselines in
 `src/test/resources/visual/pdf`, Playwright tests and screenshot baselines in `e2e/tests`.
 `AccessRulesIT` holds the access rule of every URL: a new controller URL needs an entry there, or it fails.
