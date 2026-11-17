@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Component;
@@ -92,10 +93,10 @@ public class SessionEpoch {
 
     private boolean endedUser(HttpSession session) {
         if (session.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY)
-                instanceof SecurityContext context && context.getAuthentication() != null) {
-            String username = context.getAuthentication().getName();
-            return ended(username, session.getCreationTime())
-                    && !ended.get(username).equals(session.getAttribute(KEPT));
+                        instanceof SecurityContext context
+                && context.getAuthentication() instanceof Authentication authentication) {
+            Long at = ended.get(authentication.getName());
+            return at != null && session.getCreationTime() <= at && !at.equals(session.getAttribute(KEPT));
         }
         return false;
     }
