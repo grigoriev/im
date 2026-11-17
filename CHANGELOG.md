@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-17
+
 ### Changed
 
 - The migration of the database is a step of its own: `java -jar im.jar migrate`, before the app starts. Only this step gets the password of the owner of the tables. The app connects without it and starts only on the current schema. Docker Compose runs the step as a service that the app waits for.
