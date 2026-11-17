@@ -133,6 +133,7 @@ import io.github.grigoriev.im.web.TaxNoteController;
 import io.github.grigoriev.im.web.TemplateController;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -458,6 +459,8 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("id=\"passkey-confirm\"")))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("data-passkey-register"))));
         mvc.perform(post("/webauthn/register/options").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(URI.create("/webauthn/%72egister/options")).with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
         mvc.perform(get("/account").with(user("elena").authorities(new SimpleGrantedAuthority("ROLE_USER"),
                         FactorGrantedAuthority.withAuthority(FactorGrantedAuthority.PASSWORD_AUTHORITY)

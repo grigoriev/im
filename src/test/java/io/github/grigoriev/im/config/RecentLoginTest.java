@@ -87,6 +87,9 @@ class RecentLoginTest {
         Authentication remembered = new TestingAuthenticationToken("elena", null, "ROLE_USER");
         assertThat(register("/webauthn/register/options", remembered, null).getStatus()).isEqualTo(403);
         assertThat(register("/webauthn/register", remembered, new MockHttpSession()).getStatus()).isEqualTo(403);
+        assertThat(register("/webauthn/%72egister/options", remembered, null).getStatus()).as("an encoded letter")
+                .isEqualTo(403);
+        assertThat(register("/webauthn/%72egister", remembered, null).getStatus()).isEqualTo(403);
         assertThat(register("/webauthn/registered", remembered, null).getStatus()).as("another path").isEqualTo(200);
         assertThat(register("/account", remembered, null).getStatus()).isEqualTo(200);
         assertThat(register("/webauthn/register/options",

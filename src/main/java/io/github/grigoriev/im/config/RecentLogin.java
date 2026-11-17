@@ -12,6 +12,8 @@ import java.time.Instant;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -25,8 +27,12 @@ public class RecentLogin {
 
     /** How long a login or a confirmation counts. */
     static final Duration VALID = Duration.ofMinutes(15);
-    /** The registration endpoints of Spring Security: they answer before the access rules apply. */
-    static final String REGISTRATION = "/webauthn/register";
+    /**
+     * The registration endpoints of Spring Security: they answer before the access rules apply. The pattern matches the
+     * decoded path, as the WebAuthn filters do: {@code /webauthn/%72egister} is the same endpoint.
+     */
+    private static final RequestMatcher REGISTRATION =
+            PathPatternRequestMatcher.withDefaults().matcher("/webauthn/register/**");
     /** The moment the user confirmed the password in this session. */
     static final String CONFIRMED = RecentLogin.class.getName() + ".CONFIRMED";
 
@@ -77,9 +83,7 @@ public class RecentLogin {
             @Override
             protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                     FilterChain chain) throws ServletException, IOException {
-                String path = request.getRequestURI().substring(request.getContextPath().length());
-                boolean registration = path.equals(REGISTRATION) || path.startsWith(REGISTRATION + "/");
-                if (registration && !holds(SecurityContextHolder.getContext().getAuthentication(),
+                if (REGISTRATION.matches(request) && !holds(SecurityContextHolder.getContext().getAuthentication(),
                         request.getSession(false))) {
                     response.sendError(HttpServletResponse.SC_FORBIDDEN);
                     return;
