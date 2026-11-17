@@ -31,7 +31,7 @@ class ImApplicationTest {
             ImApplication.main(new String[] {"migrate", "--spring.datasource.url=jdbc:postgresql://db/im"});
             migration.verify(() -> Migration.run("--spring.datasource.url=jdbc:postgresql://db/im"));
             ImApplication.main(new String[] {"migrate"});
-            migration.verify(() -> Migration.run());
+            migration.verify(Migration::run);
             spring.verifyNoInteractions();
         }
     }

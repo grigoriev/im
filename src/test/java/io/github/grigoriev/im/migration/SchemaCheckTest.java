@@ -32,7 +32,8 @@ class SchemaCheckTest {
         when(flyway.validateWithResult()).thenReturn(new ValidateResult("12", "im",
                 new ErrorDetails(CoreErrorCode.VALIDATE_ERROR, "Migrations have failed validation"), false, 32,
                 List.of(new ValidateOutput("33", "audit kept", "V33__audit_kept.sql", pending)), List.of()));
-        assertThatThrownBy(() -> new SchemaCheck().migrate(flyway)).isInstanceOf(IllegalStateException.class)
+        SchemaCheck check = new SchemaCheck();
+        assertThatThrownBy(() -> check.migrate(flyway)).isInstanceOf(IllegalStateException.class)
                 .hasMessage("The database is not on the schema of this version. Run the migration first: "
                         + "java -jar im.jar migrate. Detected resolved migration not applied: 33");
         verify(flyway, never()).migrate();

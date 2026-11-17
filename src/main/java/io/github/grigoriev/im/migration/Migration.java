@@ -25,6 +25,9 @@ public class Migration {
     /** The profile of the migration: {@code application-migrate.properties} connects Flyway as the owner. */
     static final String PROFILE = "migrate";
 
+    private Migration() {
+    }
+
     /**
      * Migrates the database to the schema of this version, then ends.
      *

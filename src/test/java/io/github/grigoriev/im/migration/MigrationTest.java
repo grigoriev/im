@@ -12,6 +12,7 @@ import static org.mockito.Mockito.withSettings;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
+import org.springframework.beans.BeanUtils;
 import org.springframework.boot.Banner;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -42,6 +43,6 @@ class MigrationTest {
 
     @Test
     void isASourceSpringCanInstantiate() {
-        assertThat(new Migration()).isInstanceOf(Migration.class);
+        assertThat(BeanUtils.instantiateClass(Migration.class)).isInstanceOf(Migration.class);
     }
 }
