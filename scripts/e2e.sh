@@ -21,4 +21,15 @@ fi
 
 compose=(docker compose --file e2e/docker-compose.yml --project-name im-e2e)
 trap '"${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1' EXIT
-"${compose[@]}" up --abort-on-container-exit --exit-code-from playwright
+# "up --abort-on-container-exit" would stop the stack as soon as the migration ends. Start the app first,
+# then run the tests on their own; their exit code is the result. Show the logs of the app on a failure.
+if ! "${compose[@]}" up --detach --wait web; then
+    "${compose[@]}" logs
+    exit 1
+fi
+status=0
+"${compose[@]}" run --rm playwright || status=$?
+if ((status != 0)); then
+    "${compose[@]}" logs migrate web
+fi
+exit "$status"
