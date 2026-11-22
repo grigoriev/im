@@ -36,3 +36,9 @@ Pull requests are squash-merged once all required checks are green.
 A maintainer runs the Bump Version workflow. It moves the Unreleased entries into a versioned
 section, tags the release, and the release workflow publishes the image with signed build
 provenance.
+
+Bump Version scans the image with Trivy before it commits and tags, so a fixable HIGH or CRITICAL
+vulnerability stops the release while the version is still free. The release workflow scans again
+before it pushes. If that second scan fails (a finding published in between), the tag stays without
+an image or release: fix it on main with the update from Renovate, or with an entry in
+`.trivyignore` and a reason, then run Bump Version again for the next version.

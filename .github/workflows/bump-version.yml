@@ -25,7 +25,7 @@ concurrency:
 jobs:
   bump-and-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: write
 
@@ -41,11 +41,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # No Maven cache: this job builds the image it scans, and nothing in a
+      # release comes from a cache.
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '25'
-          cache: maven
 
       - name: Get current version
         id: current
@@ -81,6 +82,30 @@ jobs:
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "next=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
           echo "New version: $NEW_VERSION, next development version: $NEXT_VERSION"
+
+      # The same image scan as the release workflow, before anything is
+      # committed or tagged. A fixable HIGH or CRITICAL finding stops the
+      # release here, while the version is still free.
+      - name: Build the jar for the scan
+        run: mvn -B -q -ntp -DskipTests package
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the image for the scan
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: im:release-check
+
+      - name: Scan the image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: im:release-check
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          cache: false
 
       - name: Write the release version
         env:
