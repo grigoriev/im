@@ -57,6 +57,12 @@
         <label class="floating-label" th:unless="${invoice.format.isExternal()}"><span>Käuferreferenz (Leitweg-ID)</span>
           <input id="invoice-reference" th:field="*{buyerReference}" class="input w-full" maxlength="200">
         </label>
+        <!-- The file of an external invoice has its texts: they stay hidden, and kept for a switch back to an e-invoice. -->
+        <th:block th:if="${invoice.format.isExternal()}">
+          <input type="hidden" th:field="*{buyerReference}">
+          <input type="hidden" th:field="*{intro}">
+          <input type="hidden" th:field="*{closing}">
+        </th:block>
         <p class="text-sm text-base-content/75" id="external-hint" th:if="${invoice.format.isExternal()}">Die Rechnung
           entsteht außerhalb der App. Tragen Sie hier die Angaben aus der Datei ein: Daten, Beträge je Steuerart und den
           Steuerhinweis. Beim Erfassen kommen Nummer und Datei dazu.</p>

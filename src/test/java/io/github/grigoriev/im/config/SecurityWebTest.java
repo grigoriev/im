@@ -1599,7 +1599,7 @@ class SecurityWebTest {
     private static Invoice external(long id, InvoiceStatus status) {
         Invoice app = invoice(id, status);
         return new Invoice(id, status, 3L, app.number(), InvoiceFormat.EXTERNAL, app.issueDate(), app.serviceFrom(),
-                app.serviceTo(), 14, null, null, null, null, app.lines(), Instant.EPOCH, Instant.EPOCH, 3L,
+                app.serviceTo(), 14, "04011000-1", "Hallo", "Danke", null, app.lines(), Instant.EPOCH, Instant.EPOCH, 3L,
                 app.issuedAt(), app.snapshot(), null);
     }
 
@@ -1614,7 +1614,11 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("id=\"external-hint\"")))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-preview\""))))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-intro\""))))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-issue\""))));
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-issue\""))))
+                .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"intro\" name=\"intro\"")))
+                .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"closing\" name=\"closing\"")))
+                .andExpect(content().string(Matchers.containsString(
+                        "type=\"hidden\" id=\"buyerReference\" name=\"buyerReference\"")));
         mvc.perform(get("/invoices/8/preview").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
                 .andExpect(redirectedUrl("/invoices/8"))
                 .andExpect(flash().attribute("error", "Eine externe Rechnung hat keine Vorschau. Ihre Datei ist die Rechnung."));
