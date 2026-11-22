@@ -279,6 +279,33 @@ class ThresholdServiceTest {
     }
 
     @Test
+    void anExternalInvoiceWithMixedCategoriesCountsItsKleinunternehmerShare() {
+        InvoiceDocument external = SampleInvoices.mixed(InvoiceFormat.EXTERNAL);
+        assertThat(external.format()).isEqualTo(InvoiceFormat.EXTERNAL);
+        assertThat(ThresholdService.gross(external)).containsExactly(
+                Map.entry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("400.00")),
+                Map.entry(TaxCategory.EXEMPT_4_21, new BigDecimal("720.00")));
+        assertThat(ThresholdService.split(new BigDecimal("560.00"), ThresholdService.gross(external), external.total()))
+                .containsExactly(Map.entry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("200.00")),
+                        Map.entry(TaxCategory.EXEMPT_4_21, new BigDecimal("360.00")));
+
+        RevenueRow paid = ThresholdService.row(LocalDate.of(2026, 4, 1), new BigDecimal("1120.00"), null, "2026-03",
+                external, "OTHER");
+        assertThat(paid.counted()).as("the §19 lines").isEqualByComparingTo("400.00");
+        assertThat(paid.excluded()).as("the teaching lines").isEqualByComparingTo("720.00");
+        assertThat(paid.activity()).isEqualTo(Activity.OTHER);
+        RevenueRow refund = ThresholdService.row(LocalDate.of(2026, 5, 1), new BigDecimal("-112.00"), null, "2026-03",
+                external, "OTHER");
+        assertThat(refund.byCategory()).containsEntry(TaxCategory.KLEINUNTERNEHMER, new BigDecimal("-40.00"))
+                .containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("-72.00"));
+
+        RevenueRow four = split("105.96", SampleInvoices.fourWays(InvoiceFormat.EXTERNAL));
+        assertThat(four.byCategory()).as("an external invoice splits as one of the app")
+                .isEqualTo(split("105.96", SampleInvoices.fourWays(InvoiceFormat.ZUGFERD_EN16931)).byCategory());
+        assertThat(four.counted()).isEqualByComparingTo("0.00");
+    }
+
+    @Test
     void namesTheContactPersonOfTheBuyerInARow() {
         paid(2028, "1.00", "contact");
         assertThat(service.rows(2028)).extracting(RevenueRow::customer).containsExactly("Verlag am Fluss GmbH · Frau Berg");

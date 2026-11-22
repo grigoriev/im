@@ -20,10 +20,16 @@ All notable changes to this project are documented in this file. The format foll
 
 - Alpine.js: no page used it. The app no longer ships `vendor/alpine.min.js`.
 
+### Fixed
+
+- An issue or a registration while the admin marks the year for numbers by hand no longer ends in an error page. The counter gives no number to such a year, and the form says that its invoices come as external invoices.
+- An explained gap in the numbers of a year by hand keeps the audit log, as the other business data do.
+
 ### Security
 
 - The reports, the §19 threshold, the payments, the open amounts and the Stornorechnung now check the seal of an invoice's snapshot before they compute with it. Until now they read it without the check. If someone changed the snapshot outside the app, the page shows what the check found and computes nothing. The payment and the issue are refused.
 - CI scans the libraries of `pom.xml` and `package-lock.json` and the built image with Trivy. A HIGH or CRITICAL vulnerability with a fix fails the build, and a release stops before its tag with one; the release workflow checks again before it pushes the image. A nightly scan of main reports to the Security tab.
+- The database lets the status of an invoice move only along its graph: nothing leaves "storniert", and nothing goes back to a draft. The ID and the creation time of an issued invoice never change either. The import of a backup takes the same path.
 
 ## [0.1.11] - 2026-11-22
 

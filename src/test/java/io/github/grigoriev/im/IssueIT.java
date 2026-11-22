@@ -3,6 +3,7 @@ package io.github.grigoriev.im;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import io.github.grigoriev.im.audit.AuditAction;
@@ -35,6 +36,7 @@ import io.github.grigoriev.im.invoice.ReminderChannel;
 import io.github.grigoriev.im.invoice.ReminderForm;
 import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.StoredDocument;
+import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
@@ -117,6 +119,9 @@ class IssueIT {
 
     @MockitoSpyBean
     private EInvoiceService einvoices;
+
+    @MockitoSpyBean
+    private ManualNumbers manual;
 
     private Customer verlag;
 
@@ -277,6 +282,20 @@ class IssueIT {
         assertThat(jdbc.update("UPDATE invoice SET status = 'SENT', version = version + 1 WHERE id = ?", id))
                 .as("the status moves on").isEqualTo(1);
         assertThat(invoices.find(id).orElseThrow().number()).isEqualTo("2044-01");
+    }
+
+    @Test
+    void aYearThatTurnsToNumbersByHandDuringTheIssueStopsItWithAMessage() {
+        Invoice draft = draft(verlag, LocalDate.of(2063, 4, 1));
+        // The check before the lock still sees the counter; the admin switched the year meanwhile.
+        doReturn(false).when(manual).isManual(2063);
+        manual.setManual(2063, true);
+        long id = draft.id();
+        Long version = draft.version();
+        assertThatThrownBy(() -> issues.issue(id, version)).isInstanceOf(InvoiceException.class)
+                .hasMessageStartingWith("Für 2063 werden die Nummern von Hand erfasst.");
+        assertThat(invoices.find(id).orElseThrow().isDraft()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT used FROM number_sequence WHERE year = 2063", Boolean.class)).isFalse();
     }
 
     @Test

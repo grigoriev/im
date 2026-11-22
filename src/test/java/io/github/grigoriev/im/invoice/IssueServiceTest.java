@@ -61,7 +61,7 @@ class IssueServiceTest {
     void complete() {
         when(invoices.draft(5)).thenReturn(draft);
         when(invoices.problems(draft)).thenReturn(List.of());
-        when(numbers.assign(TODAY)).thenReturn("2027-10");
+        when(numbers.assign(TODAY)).thenReturn(Optional.of("2027-10"));
         when(invoices.document(draft, "2027-10")).thenReturn(Optional.of(document));
         when(einvoices.issue(document)).thenReturn(files);
         when(store.snapshot(document)).thenReturn("{}");
@@ -129,6 +129,14 @@ class IssueServiceTest {
                 .hasMessage("Für 2027 werden die Nummern von Hand erfasst. Eine Rechnung dieses Jahres kommt als externe "
                         + "Rechnung mit ihrer Datei.");
         verifyNoInteractions(numbers, einvoices, store, audit);
+    }
+
+    @Test
+    void issuesNoInvoiceOfAYearThatTurnedToNumbersByHandMeanwhile() {
+        when(numbers.assign(TODAY)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.issue(5, 3L)).isInstanceOf(InvoiceException.class)
+                .hasMessage(IssueService.BY_HAND.formatted(2027));
+        verifyNoInteractions(einvoices, store, audit);
     }
 
     @Test

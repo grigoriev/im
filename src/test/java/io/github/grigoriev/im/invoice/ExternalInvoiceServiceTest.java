@@ -58,7 +58,7 @@ class ExternalInvoiceServiceTest {
     void complete() {
         when(invoices.draft(5)).thenReturn(draft);
         when(invoices.problems(draft)).thenReturn(List.of());
-        when(numbers.assign(DAY)).thenReturn("2027-10");
+        when(numbers.assign(DAY)).thenReturn(Optional.of("2027-10"));
         when(invoices.document(draft, "2027-10")).thenReturn(Optional.of(document));
         when(originals.store(5, "2027-10", "Rechnung März.xlsx", XLSX, OriginalStore.XLSX, NOW)).thenReturn(stored);
         when(manual.claim(any(), any())).thenReturn(Optional.empty());
@@ -76,6 +76,14 @@ class ExternalInvoiceServiceTest {
         when(manual.claim(DAY, "2026-01")).thenThrow(new SettingsException(List.of("Die Nummer 2026-01 gibt es schon.")));
         assertThatThrownBy(() -> service.register(5, 3L, "2026-01", "Rechnung März.xlsx", XLSX))
                 .isInstanceOf(InvoiceException.class).hasMessage("Die Nummer 2026-01 gibt es schon.");
+    }
+
+    @Test
+    void refusesAYearThatTurnedToNumbersByHandMeanwhile() {
+        when(numbers.assign(DAY)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.register(5, 3L, "2027-10", "Rechnung März.xlsx", XLSX))
+                .isInstanceOf(InvoiceException.class).hasMessage(IssueService.BY_HAND.formatted(2026));
+        verifyNoInteractions(issues, originals, audit);
     }
 
     @Test

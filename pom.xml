@@ -403,6 +403,7 @@
                         <param>io.github.grigoriev.im.seller.TaxNoteService</param>
                         <param>io.github.grigoriev.im.numbering.NumberPattern</param>
                         <param>io.github.grigoriev.im.numbering.NumberService</param>
+                        <param>io.github.grigoriev.im.numbering.ManualNumbers*</param>
                         <param>io.github.grigoriev.im.validation.Fields</param>
                         <param>io.github.grigoriev.im.customer.CustomerService</param>
                         <param>io.github.grigoriev.im.country.CountryService</param>
@@ -421,6 +422,9 @@
                         <param>io.github.grigoriev.im.invoice.DispatchChannel</param>
                         <param>io.github.grigoriev.im.invoice.PaymentService</param>
                         <param>io.github.grigoriev.im.invoice.ArchiveService</param>
+                        <param>io.github.grigoriev.im.invoice.ExternalInvoiceService</param>
+                        <param>io.github.grigoriev.im.invoice.OriginalStore*</param>
+                        <param>io.github.grigoriev.im.invoice.ReminderService</param>
                         <param>io.github.grigoriev.im.mail.MailTextService</param>
                         <param>io.github.grigoriev.im.mail.MailService</param>
                         <param>io.github.grigoriev.im.mail.MailHtml</param>

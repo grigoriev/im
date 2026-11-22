@@ -173,6 +173,42 @@ class OriginalStoreTest {
                 : Optional.empty());
     }
 
+    /** A central directory header that names {@code xl/workbook.xml}, with a length of the name of 15 + 256 × high. */
+    private static byte[] central(int high, int tail) {
+        byte[] name = "xl/workbook.xml".getBytes(StandardCharsets.UTF_8);
+        byte[] header = new byte[46 + name.length + tail];
+        header[0] = 'P';
+        header[1] = 'K';
+        header[2] = 1;
+        header[3] = 2;
+        header[28] = (byte) name.length;
+        header[29] = (byte) high;
+        System.arraycopy(name, 0, header, 46, name.length);
+        return header;
+    }
+
+    @Test
+    void readsTheLengthOfANameFromBothBytes() {
+        assertThat(OriginalStore.office(central(0, 0))).as("a name up to the last byte").contains(OriginalStore.XLSX);
+        assertThat(OriginalStore.office(central(0, 1))).contains(OriginalStore.XLSX);
+        assertThat(OriginalStore.office(central(1, 0))).as("the name is 271 bytes long, beyond the end").isEmpty();
+        byte[] late = Arrays.copyOf(new byte[] {'P', 'K', 3, 4}, 40);
+        late[30] = 'P';
+        late[31] = 'K';
+        late[32] = 1;
+        late[33] = 2;
+        assertThat(OriginalStore.office(late)).as("a header too close to the end").isEmpty();
+    }
+
+    @Test
+    void tellsTheTypeOfTheShortestFileAndTheLargestOne() {
+        List<String> problems = new ArrayList<>();
+        assertThat(type("%PDF-".getBytes(StandardCharsets.US_ASCII), problems)).contains(OriginalStore.PDF);
+        assertThat(type("%P".getBytes(StandardCharsets.US_ASCII), problems)).isEmpty();
+        assertThat(type(new byte[DocumentService.MAX_BYTES], problems)).as("25 MB still fit").isEmpty();
+        assertThat(problems).containsExactly(OriginalStore.WRONG_TYPE, OriginalStore.WRONG_TYPE);
+    }
+
     private static int indexOf(byte[] content, byte[] part, int from) {
         int last = -1;
         for (int at = from; at <= content.length - part.length; at++) {
@@ -199,6 +235,7 @@ class OriginalStoreTest {
         assertThat(store.find(5, 3)).as("a file of another invoice").isEmpty();
         assertThat(store.list(6).getFirst().filename()).isEqualTo("Rechnung_2026-08.xml");
         assertThat(store.problems(stored)).isEmpty();
+        assertThat(store.verified(stored)).isSameAs(stored);
     }
 
     @Test

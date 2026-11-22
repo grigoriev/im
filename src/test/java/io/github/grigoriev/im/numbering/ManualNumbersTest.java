@@ -251,6 +251,29 @@ class ManualNumbersTest {
     }
 
     @Test
+    void takesTheFirstAndTheLastYearAndAReasonOfTheLongestLength() {
+        numbers.setManual(ManualNumbers.FIRST_YEAR, true);
+        numbers.setManual(ManualNumbers.LAST_YEAR, true);
+        assertThat(numbers.isManual(ManualNumbers.FIRST_YEAR)).isTrue();
+        assertThat(numbers.isManual(ManualNumbers.LAST_YEAR)).isTrue();
+
+        invoice(1, "2000-02", LocalDate.of(2000, 2, 1));
+        String longest = "x".repeat(ManualNumbers.MAX_REASON);
+        numbers.explainGap(2000, 1, longest);
+        assertThat(gaps).containsEntry("2000-1", longest);
+    }
+
+    @Test
+    void anInvoiceIsOutOfOrderAgainstTheLatestDateBeforeIt() {
+        years.put(2026, new boolean[] {true, false, false});
+        invoice(1, "2026-01", LocalDate.of(2026, 1, 10));
+        invoice(2, "2026-02", LocalDate.of(2026, 3, 1));
+        invoice(3, "2026-03", LocalDate.of(2026, 2, 1));
+        assertThat(numbers.book(2026).entries()).extracting(ManualNumbers.Entry::outOfOrder)
+                .as("2026-03 comes after the March invoice").containsExactly(false, false, true);
+    }
+
+    @Test
     void writesNothingForAWrongYear() {
         assertThatThrownBy(() -> numbers.setManual(1999, true)).isInstanceOf(SettingsException.class);
         verifyNoInteractions(audit);

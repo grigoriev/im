@@ -255,6 +255,22 @@ class ExternalInvoiceIT {
         assertThatThrownBy(() -> manual.setManual(2052, true)).isInstanceOf(SettingsException.class);
     }
 
+    @Test
+    void twoRegistrationsOfOneNumberInTwoFormsAtOnceTakeItOnce() throws InterruptedException {
+        manual.setManual(2074, true);
+        Invoice one = draft(LocalDate.of(2074, 3, 1));
+        Invoice other = draft(LocalDate.of(2074, 3, 2));
+        List<Object> outcomes = Parallel.run(List.of(
+                () -> externals.register(one.id(), one.version(), "2074-3", "a.xlsx", XLSX),
+                () -> externals.register(other.id(), other.version(), "2074-03", "b.xlsx", XLSX)));
+        assertThat(outcomes).filteredOn(String.class::isInstance).as("one registration wins").hasSize(1);
+        assertThat(outcomes).filteredOn(InvoiceException.class::isInstance).singleElement()
+                .satisfies(refused -> assertThat(((InvoiceException) refused).getMessage())
+                        .matches("Die Nummer 2074-0?3 gibt es schon: Rechnung 2074-0?3\\."));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM invoice WHERE status <> 'DRAFT' AND issue_date "
+                + "BETWEEN '2074-01-01' AND '2074-12-31'", Integer.class)).isEqualTo(1);
+    }
+
     private static List<String> entries(byte[] zip) throws IOException {
         List<String> names = new ArrayList<>();
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip), StandardCharsets.UTF_8)) {

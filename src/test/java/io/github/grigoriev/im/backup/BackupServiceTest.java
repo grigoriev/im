@@ -293,6 +293,33 @@ class BackupServiceTest {
     }
 
     @Test
+    void aSentPaidOrCancelledInvoiceGoesInAsIssuedAndThenMovesOn() {
+        tables.remove("invoice");
+        row("invoice", "bigint", "id", "3", "character varying(16)", "status", "CANCELLED", "character varying(32)",
+                "number", "2027-01");
+        restore(export());
+
+        List<Map<String, Object>> updates = writes.stream()
+                .filter(write -> ((String) write.get("sql")).startsWith("UPDATE invoice SET ")).toList();
+        assertThat(updates).hasSize(2);
+        assertThat(updates.getFirst()).as("the triggers let a draft become issued only").containsEntry("status", "ISSUED")
+                .containsEntry("number", "2027-01");
+        assertThat(updates.getLast()).containsEntry("sql", BackupService.MOVE).containsEntry("status", "CANCELLED")
+                .containsEntry("id", "3");
+    }
+
+    @Test
+    void aDraftStaysADraft() {
+        tables.remove("invoice");
+        row("invoice", "bigint", "id", "4", "character varying(16)", "status", "DRAFT", "character varying(32)",
+                "number", null);
+        restore(export());
+
+        assertThat(writes.stream().filter(write -> ((String) write.get("sql")).startsWith("UPDATE invoice SET ")))
+                .singleElement().satisfies(update -> assertThat(update).containsEntry("status", "DRAFT"));
+    }
+
+    @Test
     void importsIntoAnEmptyInstallationWithTheInvoiceAsDraftFirst() {
         restore(export());
 

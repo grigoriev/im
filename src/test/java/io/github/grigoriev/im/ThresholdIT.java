@@ -6,14 +6,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.invoice.ExternalInvoiceService;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.SampleOffice;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
@@ -21,7 +24,9 @@ import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.threshold.RevenueRow;
 import io.github.grigoriev.im.threshold.Threshold;
 import io.github.grigoriev.im.threshold.ThresholdService;
+import io.github.grigoriev.im.web.ReportController;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -57,6 +62,12 @@ class ThresholdIT {
 
     @Autowired
     private NumberService numbers;
+
+    @Autowired
+    private ExternalInvoiceService externals;
+
+    @Autowired
+    private ReportController reports;
 
     private static LineForm line(String text, String amount, TaxCategory category) {
         LineForm line = new LineForm();
@@ -178,6 +189,37 @@ class ThresholdIT {
         assertThatThrownBy(() -> threshold.saveBaseline(2009, "1.000,00"))
                 .as("a year with nothing but payments of an invoice of the year before")
                 .hasMessage("Für dieses Jahr zählt die App die Zahlungen selbst.");
+    }
+
+    @Test
+    void aPaidExternalInvoiceCountsForTheLimitAndInTheCsv() {
+        SellerTestData.save(sellers, SellerTestData.profile());
+        numbers.savePattern("{YYYY}-{NN}");
+        Customer v = CustomerTestData.verlag();
+        Customer customer = customers.create(new Customer(null, v.name(), v.street(), v.postcode(), v.city(),
+                v.countryCode(), null, v.email(), null, null, InvoiceFormat.EXTERNAL, null));
+        LocalDate day = LocalDate.of(2022, 3, 18);
+        Invoice draft = invoices.createDraft(customer.id(), null);
+        DraftForm form = DraftForm.of(draft);
+        form.setIssueDate(day);
+        form.setServiceFrom(day);
+        form.setServiceTo(day);
+        form.getLines().clear();
+        form.getLines().add(line("Lesung", "400", TaxCategory.KLEINUNTERNEHMER));
+        form.getLines().add(line("Kurs", "720", TaxCategory.EXEMPT_4_21));
+        Invoice saved = invoices.saveDraft(draft.id(), form);
+        String number = externals.register(saved.id(), saved.version(), "2022-01", "Rechnung.xlsx",
+                SampleOffice.workbook());
+        payments.add(saved.id(), payment(LocalDate.of(2022, 4, 1), "1.120,00"));
+
+        assertThat(threshold.rows(2022)).filteredOn(row -> row.number().equals(number)).singleElement()
+                .satisfies(row -> {
+                    assertThat(row.counted()).as("the §19 line").isEqualByComparingTo("400.00");
+                    assertThat(row.excluded()).as("the teaching line").isEqualByComparingTo("720.00");
+                    assertThat(row.byCategory()).containsEntry(TaxCategory.EXEMPT_4_21, new BigDecimal("720.00"));
+                });
+        String csv = new String(reports.csv(2022).getBody(), StandardCharsets.UTF_8);
+        assertThat(csv).contains("01.04.2022;\"2022-01\";\"Verlag am Fluss GmbH\";1120,00;400,00;720,00;720,00;");
     }
 
     /** The §19 part of each payment of the invoice in a year; all of an invoice with §19 lines only. */

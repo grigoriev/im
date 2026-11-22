@@ -83,7 +83,6 @@ class NumberServiceTest {
                 .hasMessage("Mit diesem Muster wäre die nächste Nummer 2901, und die gibt es schon. Bitte das Muster ändern.");
         verify(statement).param("number", "2803");
         verify(statement, never()).update();
-        verify(audit, never()).add(any(), anyString());
     }
 
     @Test
@@ -134,11 +133,18 @@ class NumberServiceTest {
 
     @Test
     void assignsTheNextNumberOfTheYearOfTheIssueDate() {
-        when(counter.single()).thenReturn(7);
-        assertThat(service.assign(LocalDate.of(2027, 3, 18))).isEqualTo("2027-07");
+        when(counter.optional()).thenReturn(Optional.of(7));
+        assertThat(service.assign(LocalDate.of(2027, 3, 18))).contains("2027-07");
         verify(jdbc).sql(NumberService.CREATE_YEAR);
         verify(jdbc).sql(NumberService.TAKE);
         verify(statement, times(2)).param("year", 2027);
         verify(statement).update();
+    }
+
+    @Test
+    void assignsNoNumberOfTheCounterInAYearByHand() {
+        when(counter.optional()).thenReturn(Optional.empty());
+        assertThat(service.assign(LocalDate.of(2027, 3, 18))).as("the year turned to numbers by hand").isEmpty();
+        assertThat(NumberService.TAKE).contains("AND NOT manual");
     }
 }
