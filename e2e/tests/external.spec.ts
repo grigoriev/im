@@ -130,3 +130,63 @@ test('external invoice screenshots', async ({ page, browser, adminState }) => {
     }
   }
 });
+
+test('takes the numbers of a year before the app by hand, explains its gaps and closes it', async ({ page, browser, adminState }) => {
+  test.slow();
+  await ensureProfile(page);
+  await page.goto('/admin/numbers');
+  await page.locator('#manual-year').fill('2004');
+  await page.locator('#manual-on').click();
+  await expect(page.getByRole('status')).toHaveText('Die Nummern für 2004 kommen von Hand.');
+  await expect(page.locator('#manual-years')).toContainText('Nummernkreis 2004');
+
+  const customer = 'Altkunde aus dem Jahr vor der App';
+  await externalCustomer(page, customer);
+  for (const [date, number] of [['2004-05-02', '2004-04'], ['2004-01-20', '2004-02']]) {
+    await externalDraft(page, customer, date);
+    await page.getByRole('button', { name: 'Rechnung erfassen…' }).click();
+    await expect(page.locator('#register-by-hand')).toContainText('von Hand erfasst');
+    await page.locator('#register-number').fill(number);
+    await page.locator('#register-file').setInputFiles({ name: `${number}.xlsx`, mimeType: 'application/octet-stream', buffer: XLSX });
+    await page.locator('#invoice-register-confirm').click();
+    await expect(page.getByRole('status')).toHaveText(`Externe Rechnung ${number} erfasst.`);
+  }
+  const byHand = await externalDraft(page, customer, '2004-06-01');
+
+  await page.goto('/numbers/2004');
+  await expect(page.locator('#book-summary')).toHaveText('2 Rechnungen · 2 Lücken, davon 2 ohne Grund');
+  await page.locator('#gap-reason-1').fill('Nummer verschrieben, Rechnung nie versandt');
+  await page.locator('#gap-save-1').click();
+  await expect(page.getByRole('status')).toHaveText('Lücke 2004-01 begründet.');
+  await expect(page.locator('#book-close')).toHaveCount(0);
+
+  for (const viewport of VIEWPORTS) {
+    for (const scheme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({
+        colorScheme: scheme,
+        viewport: { width: viewport.width, height: viewport.height },
+        storageState: adminState,
+      });
+      const view = await context.newPage();
+      await view.goto('/numbers/2004');
+      await view.evaluate(() => document.fonts.ready);
+      await expect(view.locator('#book-entries')).toHaveScreenshot(`book-entries-${viewport.name}-${scheme}.png`);
+      await view.goto(byHand);
+      await view.getByRole('button', { name: 'Rechnung erfassen…' }).click();
+      await expect(view.locator('#invoice-register .modal-box'))
+        .toHaveScreenshot(`external-register-by-hand-${viewport.name}-${scheme}.png`);
+      await context.close();
+    }
+  }
+
+  await page.locator('#gap-reason-3').fill('Storniert vor dem Versand');
+  await page.locator('#gap-save-3').click();
+  await page.getByRole('button', { name: 'Jahr abschließen…' }).click();
+  await page.locator('#book-close-confirm').click();
+  await expect(page.getByRole('status')).toHaveText('Das Jahr 2004 ist abgeschlossen. Der Zähler macht mit 5 weiter.');
+  await expect(page.locator('#book-state')).toHaveText('Abgeschlossen');
+
+  await page.goto(byHand);
+  await page.getByRole('button', { name: 'Rechnung erfassen…' }).click();
+  await expect(page.locator('#register-next'), 'the counter continues after the year').toHaveText('2004-05');
+});

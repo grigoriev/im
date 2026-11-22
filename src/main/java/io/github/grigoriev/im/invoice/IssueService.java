@@ -6,6 +6,7 @@ import io.github.grigoriev.im.einvoice.EInvoiceException;
 import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
+import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.customer.Customer;
 import java.sql.Timestamp;
@@ -42,11 +43,14 @@ public class IssueService {
     static final String NUMBER_TAKEN = "Die Rechnungsnummer %s gibt es schon. Bitte das Nummernmuster oder die "
             + "Startnummer in den Einstellungen prüfen.";
     static final String EXTERNAL = "Eine externe Rechnung wird mit ihrer Datei erfasst, nicht ausgestellt.";
+    static final String BY_HAND = "Für %d werden die Nummern von Hand erfasst. Eine Rechnung dieses Jahres kommt als "
+            + "externe Rechnung mit ihrer Datei.";
 
     private static final Logger LOG = LoggerFactory.getLogger(IssueService.class);
 
     private final InvoiceService invoices;
     private final NumberService numbers;
+    private final ManualNumbers manual;
     private final EInvoiceService einvoices;
     private final DocumentStore store;
     private final JdbcClient jdbc;
@@ -58,16 +62,19 @@ public class IssueService {
      *
      * @param invoices the drafts
      * @param numbers assigns the number
+     * @param manual tells a year before the app, whose numbers come by hand
      * @param einvoices produces and validates the e-invoice
      * @param store keeps the documents and the snapshot
      * @param jdbc writes the issue
      * @param audit the audit log
      * @param clock source of the time of the issue
      */
-    public IssueService(InvoiceService invoices, NumberService numbers, EInvoiceService einvoices, DocumentStore store,
-            JdbcClient jdbc, AuditService audit, Clock clock) {
+    @SuppressWarnings("java:S107") // the steps of the issue
+    public IssueService(InvoiceService invoices, NumberService numbers, ManualNumbers manual, EInvoiceService einvoices,
+            DocumentStore store, JdbcClient jdbc, AuditService audit, Clock clock) {
         this.invoices = invoices;
         this.numbers = numbers;
+        this.manual = manual;
         this.einvoices = einvoices;
         this.store = store;
         this.jdbc = jdbc;
@@ -91,6 +98,9 @@ public class IssueService {
         }
         if (draft.format().isExternal()) {
             throw new InvoiceException(List.of(EXTERNAL));
+        }
+        if (manual.isManual(draft.issueDate().getYear())) {
+            throw new InvoiceException(List.of(BY_HAND.formatted(draft.issueDate().getYear())));
         }
         List<String> problems = invoices.problems(draft);
         if (!problems.isEmpty()) {

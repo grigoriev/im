@@ -24,7 +24,9 @@ import io.github.grigoriev.im.invoice.OriginalStore;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.invoice.SampleOffice;
+import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.seller.SettingsException;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
 import java.io.ByteArrayInputStream;
@@ -90,6 +92,9 @@ class ExternalInvoiceIT {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private ManualNumbers manual;
+
     private Customer customer;
 
     @BeforeEach
@@ -126,7 +131,7 @@ class ExternalInvoiceIT {
         Invoice draft = draft(LocalDate.of(2002, 3, 18));
         assertThat(draft.format()).as("the customer names the format").isEqualTo(InvoiceFormat.EXTERNAL);
         assertThat(invoices.problems(draft)).isEmpty();
-        assertThat(externals.nextNumber(draft)).isEqualTo("2002-01");
+        assertThat(externals.nextNumber(draft)).contains("2002-01");
 
         long draftId = draft.id();
         Long draftVersion = draft.version();
@@ -168,7 +173,7 @@ class ExternalInvoiceIT {
         assertThatThrownBy(() -> externals.register(firstId, firstVersion, "2053-07", "a.xlsx", XLSX))
                 .isInstanceOf(InvoiceException.class).hasMessageStartingWith("Die nächste Rechnungsnummer ist 2053-01");
         assertThat(invoices.find(first.id()).orElseThrow().isDraft()).isTrue();
-        assertThat(externals.nextNumber(first)).as("the counter went back").isEqualTo("2053-01");
+        assertThat(externals.nextNumber(first)).as("the counter went back").contains("2053-01");
         assertThat(originals.list(first.id())).isEmpty();
         assertThat(externals.register(first.id(), first.version(), "2053-01", "a.xlsx", XLSX)).isEqualTo("2053-01");
         long stillDraft = draft(LocalDate.of(2053, 2, 2)).id();
@@ -200,13 +205,54 @@ class ExternalInvoiceIT {
         assertThat(storno.format()).isEqualTo(InvoiceFormat.EXTERNAL);
         LocalDate today = storno.issueDate();
         Invoice stornoDraft = invoices.find(storno.id()).orElseThrow();
-        String number = externals.nextNumber(stornoDraft);
+        String number = externals.nextNumber(stornoDraft).orElseThrow();
         assertThat(number).startsWith(today.getYear() + "-");
         externals.register(stornoDraft.id(), stornoDraft.version(), number, "Storno.pdf",
                 "%PDF-1.7 Storno".getBytes(StandardCharsets.US_ASCII));
         assertThat(invoices.find(draft.id()).orElseThrow().status()).isEqualTo(InvoiceStatus.CANCELLED);
         assertThat(documents.restore(invoices.find(storno.id()).orElseThrow().snapshot()).cancels().number())
                 .isEqualTo("2055-01");
+    }
+
+    @Test
+    void aYearBeforeTheAppTakesTheNumbersOfItsFilesAndCloses() {
+        manual.setManual(2052, true);
+        Invoice third = draft(LocalDate.of(2052, 3, 1));
+        Invoice first = draft(LocalDate.of(2052, 1, 10));
+        assertThat(externals.nextNumber(third)).as("the file names the number").isEmpty();
+        assertThat(externals.register(third.id(), third.version(), "2052-03", "c.xlsx", XLSX)).isEqualTo("2052-03");
+        assertThat(externals.register(first.id(), first.version(), "2052-01", "a.xlsx", XLSX)).isEqualTo("2052-01");
+        Invoice again = draft(LocalDate.of(2052, 4, 1));
+        long againId = again.id();
+        Long againVersion = again.version();
+        assertThatThrownBy(() -> externals.register(againId, againVersion, "2052-3", "d.xlsx", XLSX))
+                .isInstanceOf(InvoiceException.class).hasMessage("Die Nummer 2052-3 gibt es schon: Rechnung 2052-03.");
+
+        Invoice ofTheApp = invoices.createDraft(customers.create(CustomerTestData.verlag()).id(), null);
+        DraftForm form = DraftForm.of(ofTheApp);
+        form.setIssueDate(LocalDate.of(2052, 5, 1));
+        form.setServiceFrom(LocalDate.of(2052, 5, 1));
+        form.setServiceTo(LocalDate.of(2052, 5, 1));
+        form.getLines().getFirst().setText("Lesung");
+        form.getLines().getFirst().setAmount("100");
+        Invoice appDraft = invoices.saveDraft(ofTheApp.id(), form);
+        long appId = appDraft.id();
+        Long appVersion = appDraft.version();
+        assertThatThrownBy(() -> issues.issue(appId, appVersion)).isInstanceOf(InvoiceException.class)
+                .hasMessageStartingWith("Für 2052 werden die Nummern von Hand erfasst.");
+
+        assertThatThrownBy(() -> manual.close(2052)).isInstanceOf(SettingsException.class)
+                .hasMessage("Diese Nummern fehlen noch, ohne Grund: 2052-02.");
+        manual.explainGap(2052, 2, "Nummer verschrieben");
+        assertThatThrownBy(() -> jdbc.update("UPDATE number_gap SET reason = 'x' WHERE year = 2052"))
+                .as("a reason stays").isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM number_gap WHERE year = 2052"))
+                .isInstanceOf(DataAccessException.class);
+        assertThat(manual.close(2052)).isEqualTo(4);
+        assertThat(externals.nextNumber(again)).as("the counter continues").contains("2052-04");
+        assertThat(externals.register(againId, againVersion, "2052-04", "d.xlsx", XLSX)).isEqualTo("2052-04");
+        assertThat(manual.book(2052).closed()).isTrue();
+        assertThatThrownBy(() -> manual.setManual(2052, true)).isInstanceOf(SettingsException.class);
     }
 
     private static List<String> entries(byte[] zip) throws IOException {

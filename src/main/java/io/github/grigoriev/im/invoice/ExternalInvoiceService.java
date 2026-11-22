@@ -4,7 +4,9 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
+import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberService;
+import io.github.grigoriev.im.seller.SettingsException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -16,7 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Registers external invoices (docs/PLAN.md, section 7, "External invoices"). A draft of format {@code EXTERNAL} holds
  * the facts typed in by hand. Its registration takes the next number under the row lock of the issue, compares it with
- * the number of the file, freezes the snapshot and keeps the original file, all in one transaction.
+ * the number of the file, freezes the snapshot and keeps the original file, all in one transaction. In a year before
+ * the app ({@link ManualNumbers}) the number of the file is checked instead: its form, year and that it is free.
  */
 @Service
 public class ExternalInvoiceService {
@@ -30,6 +33,7 @@ public class ExternalInvoiceService {
     private final InvoiceService invoices;
     private final IssueService issues;
     private final NumberService numbers;
+    private final ManualNumbers manual;
     private final OriginalStore originals;
     private final AuditService audit;
     private final Clock clock;
@@ -40,15 +44,17 @@ public class ExternalInvoiceService {
      * @param invoices the drafts
      * @param issues freezes the draft as the issue does
      * @param numbers assigns the number
+     * @param manual checks a number by hand in a year before the app
      * @param originals keeps the original files
      * @param audit the audit log
      * @param clock source of the time of the registration
      */
     public ExternalInvoiceService(InvoiceService invoices, IssueService issues, NumberService numbers,
-            OriginalStore originals, AuditService audit, Clock clock) {
+            ManualNumbers manual, OriginalStore originals, AuditService audit, Clock clock) {
         this.invoices = invoices;
         this.issues = issues;
         this.numbers = numbers;
+        this.manual = manual;
         this.originals = originals;
         this.audit = audit;
         this.clock = clock;
@@ -58,10 +64,11 @@ public class ExternalInvoiceService {
      * Returns the number the registration of a draft would take now.
      *
      * @param draft the draft
-     * @return the next number of the year of its invoice date
+     * @return the next number of the year of its invoice date, empty in a year by hand: the file names it
      */
-    public String nextNumber(Invoice draft) {
-        return numbers.next(draft.issueDate().getYear());
+    public Optional<String> nextNumber(Invoice draft) {
+        int year = draft.issueDate().getYear();
+        return manual.isManual(year) ? Optional.empty() : Optional.of(numbers.next(year));
     }
 
     /**
@@ -94,11 +101,7 @@ public class ExternalInvoiceService {
         if (!problems.isEmpty()) {
             throw new InvoiceException(problems);
         }
-        // The exception rolls the transaction back, and with it the counter: no gap remains.
-        String number = numbers.assign(draft.issueDate());
-        if (!number.equals(entered)) {
-            throw new InvoiceException(List.of(NUMBER_DIFFERS.formatted(number, entered)));
-        }
+        String number = number(draft, entered);
         InvoiceDocument document = invoices.document(draft, number).orElseThrow();
         Instant at = clock.instant();
         issues.freeze(draft, document, at);
@@ -106,6 +109,25 @@ public class ExternalInvoiceService {
         audit.add(id, AuditAction.INVOICE_REGISTERED, number + ", "
                 + Customer.label(document.buyer().name(), document.buyer().contactName()) + ", " + original.filename()
                 + " (SHA-256 " + original.sha256() + ")");
+        return number;
+    }
+
+    /** The number of the file, checked by hand in a year before the app, else against the counter. */
+    private String number(Invoice draft, String entered) {
+        Optional<String> byHand;
+        try {
+            byHand = manual.claim(draft.issueDate(), entered);
+        } catch (SettingsException e) {
+            throw new InvoiceException(e.problems());
+        }
+        if (byHand.isPresent()) {
+            return byHand.get();
+        }
+        // The exception rolls the transaction back, and with it the counter: no gap remains.
+        String number = numbers.assign(draft.issueDate());
+        if (!number.equals(entered)) {
+            throw new InvoiceException(List.of(NUMBER_DIFFERS.formatted(number, entered)));
+        }
         return number;
     }
 

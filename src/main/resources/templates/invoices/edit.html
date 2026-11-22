@@ -139,8 +139,13 @@
         <form method="post" enctype="multipart/form-data" th:action="@{/invoices/{id}/register(id=${invoice.id})}">
           <input type="hidden" name="version" th:value="${invoice.version}">
           <div class="modal-body grid gap-3">
-            <p class="text-sm">Die nächste Rechnungsnummer ist <strong class="num" id="register-next" th:text="${nextNumber}">2027-01</strong>.
+            <p class="text-sm" th:if="${nextNumber != null}">Die nächste Rechnungsnummer ist <strong class="num" id="register-next" th:text="${nextNumber}">2027-01</strong>.
               Die Datei muss diese Nummer tragen. Danach ändert sich die Rechnung nicht mehr.</p>
+            <p class="text-sm" id="register-by-hand" th:if="${nextNumber == null}" th:with="year=${invoice.issueDate.year}">Für
+              <span th:text="${year}" class="num">2026</span> werden die Nummern von Hand erfasst: die Nummer der Datei, in
+              beliebiger Reihenfolge. Der <a class="link" th:href="@{/numbers/{year}(year=${year})}">Nummernkreis
+              <span th:text="${year}" class="num">2026</span></a> zeigt freie Nummern und Lücken. Danach ändert sich die
+              Rechnung nicht mehr.</p>
             <label class="floating-label"><span>Rechnungsnummer in der Datei</span>
               <input id="register-number" name="number" class="input w-full num" required maxlength="40">
             </label>

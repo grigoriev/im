@@ -55,7 +55,7 @@ public class BackupService {
     static final String MANIFEST = "manifest.json";
 
     /** The tables in the order their keys need. Remember-me logins and the Flyway history stay out. */
-    static final List<String> TABLES = List.of("country", "app_setting", "tax_note", "number_sequence",
+    static final List<String> TABLES = List.of("country", "app_setting", "tax_note", "number_sequence", "number_gap",
             "threshold_baseline", "seller_profile", "app_user", "user_entities", "user_credentials", "customer",
             "invoice_template", "invoice_template_line", INVOICE, "invoice_line", "invoice_document", "invoice_original", "dispatch",
             "payment", "reminder", "audit_event", "business_document", "expense");
@@ -65,7 +65,7 @@ public class BackupService {
             "app_user", "threshold_baseline", "number_sequence", "tax_note", "app_setting", "country");
 
     /** The data a user enters: the import needs it empty. */
-    static final List<String> BUSINESS = List.of("seller_profile", "customer", "invoice_template", INVOICE,
+    static final List<String> BUSINESS = List.of("seller_profile", "customer", "invoice_template", INVOICE, "number_gap",
             "business_document", "expense");
 
     /** The columns of an invoice that the import sets after its lines, so the triggers see a draft until then. */

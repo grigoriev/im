@@ -111,7 +111,7 @@ class NumberServiceTest {
     void refusesTheStartOfAUsedYear() {
         when(statement.update()).thenReturn(1, 0);
         assertThatThrownBy(() -> service.setStart(2027, 10)).isInstanceOf(SettingsException.class)
-                .hasMessage("Für 2027 sind schon Nummern vergeben. Der Zähler ist gesperrt.");
+                .hasMessage("Für 2027 sind schon Nummern vergeben, oder sie kommen von Hand. Der Zähler ist gesperrt.");
         Mockito.verifyNoInteractions(audit);
     }
 

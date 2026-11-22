@@ -39,6 +39,12 @@ public enum AuditAction {
     NUMBER_PATTERN_SAVED("Nummernmuster gespeichert"),
     /** The start value of a year changed. */
     NUMBER_START_SET("Startnummer gesetzt"),
+    /** The numbers of a year were switched to by hand, or back to the counter. */
+    NUMBERS_BY_HAND("Nummern von Hand umgestellt"),
+    /** The reason of a gap in the numbers of a year by hand was written. */
+    NUMBER_GAP_EXPLAINED("Lücke begründet"),
+    /** A year by hand was closed: the counter continues after its highest number. */
+    NUMBER_YEAR_CLOSED("Jahr abgeschlossen"),
     /** A country joined the list of the forms. */
     COUNTRY_ADDED("Land hinzugefügt"),
     /** A country left the list of the forms. */

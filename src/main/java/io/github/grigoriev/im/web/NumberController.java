@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.web;
 
+import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberSequence;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SettingsException;
@@ -13,7 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-/** The page "Einstellungen", tab "Nummernkreis": the pattern and the start values, for the admin only. */
+/**
+ * The page "Einstellungen", tab "Nummernkreis": the pattern, the start values and the years before the app, whose
+ * numbers come by hand. For the admin only.
+ */
 @Controller
 @RequestMapping("/admin/numbers")
 public class NumberController {
@@ -25,14 +29,17 @@ public class NumberController {
     private static final String ERROR = "error";
 
     private final NumberService numbers;
+    private final ManualNumbers manual;
 
     /**
      * Creates the controller.
      *
      * @param numbers the number service
+     * @param manual the years before the app
      */
-    public NumberController(NumberService numbers) {
+    public NumberController(NumberService numbers, ManualNumbers manual) {
         this.numbers = numbers;
+        this.manual = manual;
     }
 
     /**
@@ -47,6 +54,7 @@ public class NumberController {
         numbers.years().forEach(sequence -> years.put(sequence, numbers.preview(sequence)));
         model.addAttribute("pattern", numbers.pattern().value());
         model.addAttribute("years", years);
+        model.addAttribute("manualYears", manual.years());
         return VIEW;
     }
 
@@ -81,6 +89,26 @@ public class NumberController {
         try {
             numbers.setStart(year, start);
             flash.addFlashAttribute(SUCCESS, "Startnummer für " + year + " gespeichert.");
+        } catch (SettingsException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+        }
+        return BACK;
+    }
+
+    /**
+     * Switches the numbers of a year to by hand, or back to the counter.
+     *
+     * @param year the year
+     * @param byHand whether its invoices come in by hand
+     * @param flash messages for the next page
+     * @return a redirect to the page
+     */
+    @PostMapping("/manual")
+    public String setManual(@RequestParam int year, @RequestParam boolean byHand, RedirectAttributes flash) {
+        try {
+            manual.setManual(year, byHand);
+            flash.addFlashAttribute(SUCCESS, byHand ? "Die Nummern für " + year + " kommen von Hand."
+                    : "Die Nummern für " + year + " kommen vom Zähler.");
         } catch (SettingsException e) {
             flash.addFlashAttribute(ERROR, e.getMessage());
         }

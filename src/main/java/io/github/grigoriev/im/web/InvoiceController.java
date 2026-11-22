@@ -448,7 +448,7 @@ public class InvoiceController {
         model.addAttribute("form", form);
         model.addAttribute("problems", invoices.problems(invoice));
         if (invoice.format().isExternal()) {
-            model.addAttribute("nextNumber", externals.nextNumber(invoice));
+            model.addAttribute("nextNumber", externals.nextNumber(invoice).orElse(null));
         }
         // A Stornorechnung adds no revenue: it takes no payments.
         model.addAttribute("overLimit", cancelled.isEmpty() && document.isPresent()

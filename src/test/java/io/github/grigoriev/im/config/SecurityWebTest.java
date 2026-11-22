@@ -91,6 +91,7 @@ import io.github.grigoriev.im.mail.MailService;
 import io.github.grigoriev.im.mail.MailText;
 import io.github.grigoriev.im.mail.MailTextService;
 import io.github.grigoriev.im.mail.SendForm;
+import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberPattern;
 import io.github.grigoriev.im.numbering.NumberSequence;
 import io.github.grigoriev.im.numbering.NumberService;
@@ -129,6 +130,7 @@ import io.github.grigoriev.im.web.InvoiceRecordsController;
 import io.github.grigoriev.im.web.IssuedInvoicePage;
 import io.github.grigoriev.im.web.LoginController;
 import io.github.grigoriev.im.web.MailTextController;
+import io.github.grigoriev.im.web.NumberBookController;
 import io.github.grigoriev.im.web.NumberController;
 import io.github.grigoriev.im.web.ReportController;
 import io.github.grigoriev.im.web.SettingsController;
@@ -171,7 +173,7 @@ import tools.jackson.core.exc.StreamReadException;
 
 /** The access rules of {@link SecurityConfig} with the real controllers and templates. */
 @WebMvcTest(controllers = {HomeController.class, LoginController.class, AdminUserController.class, AccountController.class,
-        SettingsController.class, TaxNoteController.class, NumberController.class,
+        SettingsController.class, TaxNoteController.class, NumberController.class, NumberBookController.class,
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class,
@@ -243,6 +245,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private OriginalStore originals;
+
+    @MockitoBean
+    private ManualNumbers manualNumbers;
 
     @MockitoBean
     private DocumentStore documents;
@@ -642,6 +647,82 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("id=\"start-2028\"")))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"start-2027\""))));
         mvc.perform(get("/admin/numbers").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void theAdminSwitchesAYearToNumbersByHand() throws Exception {
+        when(numbers.pattern()).thenReturn(NumberPattern.DEFAULT);
+        when(manualNumbers.years()).thenReturn(List.of(new ManualNumbers.YearState(2026, true, false),
+                new ManualNumbers.YearState(2025, false, true)));
+        mvc.perform(get("/admin/numbers").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("href=\"/numbers/2026\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"manual-off-2026\"")))
+                .andExpect(content().string(Matchers.containsString("abgeschlossen")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"manual-off-2025\""))));
+        mvc.perform(post("/admin/numbers/manual").param("year", "2026").param("byHand", "true")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(redirectedUrl("/admin/numbers"))
+                .andExpect(flash().attribute("success", "Die Nummern für 2026 kommen von Hand."));
+        verify(manualNumbers).setManual(2026, true);
+        mvc.perform(post("/admin/numbers/manual").param("year", "2026").param("byHand", "false")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("success", "Die Nummern für 2026 kommen vom Zähler."));
+        doThrow(new SettingsException(List.of("Gesperrt."))).when(manualNumbers).setManual(2027, true);
+        mvc.perform(post("/admin/numbers/manual").param("year", "2027").param("byHand", "true")
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
+                .andExpect(flash().attribute("error", "Gesperrt."));
+        mvc.perform(post("/admin/numbers/manual").param("year", "2026").param("byHand", "true")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void showsTheNumbersOfAYearByHandWithItsGaps() throws Exception {
+        ManualNumbers.Book book = new ManualNumbers.Book(2026, true, false, List.of(
+                new ManualNumbers.Entry(1, "2026-01", 7L, LocalDate.of(2026, 2, 1), null, false),
+                new ManualNumbers.Entry(2, null, null, null, null, false),
+                new ManualNumbers.Entry(3, null, null, null, "Nummer verschrieben", false),
+                new ManualNumbers.Entry(4, "2026-04", 8L, LocalDate.of(2026, 1, 20), null, true)));
+        when(manualNumbers.book(2026)).thenReturn(book);
+        mvc.perform(get("/numbers/2026").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Nummernkreis 2026")))
+                .andExpect(content().string(Matchers.containsString("2 Rechnungen · 2 Lücken, davon 1 ohne Grund")))
+                .andExpect(content().string(Matchers.containsString("href=\"/invoices/7\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"gap-reason-2\"")))
+                .andExpect(content().string(Matchers.containsString("Nummer verschrieben")))
+                .andExpect(content().string(Matchers.containsString("Datum vor einer kleineren Nummer")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"book-close\""))));
+        when(manualNumbers.book(2025)).thenReturn(new ManualNumbers.Book(2025, true, false, List.of(
+                new ManualNumbers.Entry(1, "2025-01", 9L, LocalDate.of(2025, 2, 1), null, false))));
+        mvc.perform(get("/numbers/2025").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"book-close\"")));
+        when(manualNumbers.book(2024)).thenReturn(new ManualNumbers.Book(2024, false, true, List.of()));
+        mvc.perform(get("/numbers/2024").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Abgeschlossen")))
+                .andExpect(content().string(Matchers.containsString("Noch keine Rechnung erfasst.")));
+        when(manualNumbers.book(2023)).thenReturn(new ManualNumbers.Book(2023, false, false, List.of()));
+        mvc.perform(get("/numbers/2023").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("Die Nummern dieses Jahres kommen vom Zähler.")));
+        mvc.perform(get("/numbers/1999").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+        mvc.perform(get("/numbers/10000").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void explainsAGapAndClosesTheYear() throws Exception {
+        mvc.perform(post("/numbers/2026/gaps").param("counter", "2").param("reason", "verschrieben")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/numbers/2026")).andExpect(flash().attribute("success", "Lücke 2026-02 begründet."));
+        verify(manualNumbers).explainGap(2026, 2, "verschrieben");
+        doThrow(new SettingsException(List.of("Schon begründet."))).when(manualNumbers).explainGap(2026, 3, null);
+        mvc.perform(post("/numbers/2026/gaps").param("counter", "3").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("error", "Schon begründet."));
+        when(manualNumbers.close(2026)).thenReturn(43);
+        mvc.perform(post("/numbers/2026/close").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/numbers/2026"))
+                .andExpect(flash().attribute("success", "Das Jahr 2026 ist abgeschlossen. Der Zähler macht mit 43 weiter."));
+        when(manualNumbers.close(2025)).thenThrow(new SettingsException(List.of("Lücken offen.")));
+        mvc.perform(post("/numbers/2025/close").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("error", "Lücken offen."));
     }
 
     @Test
@@ -1607,7 +1688,7 @@ class SecurityWebTest {
     void registersAnExternalInvoiceWithItsFile() throws Exception {
         when(invoices.find(8)).thenReturn(Optional.of(external(8, InvoiceStatus.DRAFT)));
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
-        when(externals.nextNumber(any())).thenReturn("2026-04");
+        when(externals.nextNumber(any())).thenReturn(Optional.of("2026-04"));
         mvc.perform(get("/invoices/8").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("id=\"invoice-register\"")))
                 .andExpect(content().string(Matchers.containsString("id=\"register-next\">2026-04<")))
@@ -1619,6 +1700,11 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"closing\" name=\"closing\"")))
                 .andExpect(content().string(Matchers.containsString(
                         "type=\"hidden\" id=\"buyerReference\" name=\"buyerReference\"")));
+        when(externals.nextNumber(any())).thenReturn(Optional.empty());
+        mvc.perform(get("/invoices/8").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"register-by-hand\"")))
+                .andExpect(content().string(Matchers.containsString("href=\"/numbers/2027\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"register-next\""))));
         mvc.perform(get("/invoices/8/preview").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
                 .andExpect(redirectedUrl("/invoices/8"))
                 .andExpect(flash().attribute("error", "Eine externe Rechnung hat keine Vorschau. Ihre Datei ist die Rechnung."));
