@@ -160,7 +160,7 @@ class IssueIT {
             teaching = invoices.saveDraft(teaching.id(), form);
             assertThat(issues.issue(teaching.id(), teaching.version())).isEqualTo("2049-01");
             Invoice issued = invoices.find(teaching.id()).orElseThrow();
-            assertThat(documents.restore(issued.snapshot()).seller().taxNumber()).isEqualTo("98/765/43210");
+            assertThat(documents.verifiedSnapshot(issued).seller().taxNumber()).isEqualTo("98/765/43210");
             assertThat(new String(documents.list(teaching.id()).get(1).content(), StandardCharsets.UTF_8))
                     .as("the XML names it").contains("98/765/43210").doesNotContain("12/345/67890");
 
@@ -175,13 +175,13 @@ class IssueIT {
             abroadForm.setActivity(Activity.TEACHING);
             abroad = invoices.saveDraft(abroad.id(), abroadForm);
             issues.issue(abroad.id(), abroad.version());
-            assertThat(documents.restore(invoices.find(abroad.id()).orElseThrow().snapshot()).seller().taxNumber())
+            assertThat(documents.verifiedSnapshot(invoices.find(abroad.id()).orElseThrow()).seller().taxNumber())
                     .as("teaching abroad").isEqualTo("98/765/43210");
 
             Invoice reading = draft(verlag, LocalDate.of(2049, 4, 18));
             issues.issue(reading.id(), reading.version());
             assertThat(invoices.find(reading.id()).orElseThrow().activity()).isEqualTo(Activity.OTHER);
-            assertThat(documents.restore(invoices.find(reading.id()).orElseThrow().snapshot()).seller().taxNumber())
+            assertThat(documents.verifiedSnapshot(invoices.find(reading.id()).orElseThrow()).seller().taxNumber())
                     .isEqualTo("12/345/67890");
         } finally {
             SellerTestData.save(sellers, SellerTestData.profile());
@@ -197,7 +197,7 @@ class IssueIT {
         assertThat(issued.status()).isEqualTo(InvoiceStatus.ISSUED);
         assertThat(issued.number()).isEqualTo("2043-01");
         assertThat(issued.issuedAt()).isNotNull();
-        InvoiceDocument snapshot = documents.restore(issued.snapshot());
+        InvoiceDocument snapshot = documents.verifiedSnapshot(issued);
         assertThat(snapshot.number()).isEqualTo("2043-01");
         assertThat(snapshot.buyer().name()).isEqualTo("Verlag am Fluss GmbH");
         assertThat(snapshot.total()).isEqualByComparingTo("400.00");
@@ -237,7 +237,7 @@ class IssueIT {
         SellerTestData.save(sellers, new SellerProfile("Anderer Name", original.street(), original.postcode(), original.city(),
                 original.countryCode(), original.contactName(), original.email(), original.phone(), original.taxNumber(),
                 original.vatId(), original.iban(), original.bic(), original.taxStatus(), null, null, null, null, null, false));
-        assertThat(documents.restore(invoices.find(draft.id()).orElseThrow().snapshot()).seller().name())
+        assertThat(documents.verifiedSnapshot(invoices.find(draft.id()).orElseThrow()).seller().name())
                 .as("the snapshot keeps the seller of the issue").isEqualTo(original.name());
     }
 
@@ -471,7 +471,7 @@ class IssueIT {
         String number = issues.issue(saved.id(), saved.version());
         assertThat(number).isEqualTo("2017-02");
         assertThat(invoices.find(id).orElseThrow().status()).isEqualTo(InvoiceStatus.CANCELLED);
-        InvoiceDocument snapshot = documents.restore(invoices.find(storno.id()).orElseThrow().snapshot());
+        InvoiceDocument snapshot = documents.verifiedSnapshot(invoices.find(storno.id()).orElseThrow());
         assertThat(snapshot.cancels()).isEqualTo(new InvoiceReference("2017-01",
                 LocalDate.of(2017, 3, 1)));
         assertThat(snapshot.total()).isEqualByComparingTo("400.00");

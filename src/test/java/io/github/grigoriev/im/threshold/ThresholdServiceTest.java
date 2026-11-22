@@ -3,7 +3,9 @@ package io.github.grigoriev.im.threshold;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -16,6 +18,7 @@ import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.invoice.DamagedSnapshotException;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SettingsException;
@@ -119,6 +122,8 @@ class ThresholdServiceTest {
                 when(rs.getString(4)).thenReturn(year + "-0" + (result.size() + 1));
                 when(rs.getString(5)).thenReturn((String) row[1]);
                 when(rs.getString(6)).thenReturn("OTHER");
+                when(rs.getLong(7)).thenReturn(result.size() + 1L);
+                when(rs.getString(8)).thenReturn("seal of " + row[1]);
             } else {
                 when(rs.getInt(1)).thenReturn((Integer) row[0]);
                 when(rs.getBigDecimal(2)).thenReturn((BigDecimal) row[1]);
@@ -131,11 +136,26 @@ class ThresholdServiceTest {
     @BeforeEach
     void database() {
         when(jdbc.sql(anyString())).thenAnswer(call -> statement(call.getArgument(0)));
-        when(documents.restore("reading")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
-        when(documents.restore("school")).thenReturn(SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931));
-        when(documents.restore("mixed")).thenReturn(SampleInvoices.mixed(InvoiceFormat.ZUGFERD_EN16931));
-        when(documents.restore("contact")).thenReturn(ItSamples.withBuyerContact(
-                SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
+        snapshot("reading", SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        snapshot("school", SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931));
+        snapshot("mixed", SampleInvoices.mixed(InvoiceFormat.ZUGFERD_EN16931));
+        snapshot("contact", ItSamples.withBuyerContact(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),
+                "Frau Berg"));
+    }
+
+    /** The store reads a snapshot only with its own seal. */
+    private void snapshot(String key, InvoiceDocument document) {
+        when(documents.verifiedSnapshot(anyLong(), anyString(), eq(key), eq("seal of " + key))).thenReturn(document);
+    }
+
+    @Test
+    void aChangedSnapshotStopsTheCountInsteadOfCountingWrong() {
+        paid(2027, "480.00", "reading");
+        paid(2027, "984.00", "changed");
+        DamagedSnapshotException damaged = new DamagedSnapshotException("2027-02");
+        when(documents.verifiedSnapshot(2L, "2027-02", "changed", "seal of changed")).thenThrow(damaged);
+        assertThatThrownBy(() -> service.rows(2027)).isSameAs(damaged);
+        assertThatThrownBy(service::current).isSameAs(damaged);
     }
 
     @Test

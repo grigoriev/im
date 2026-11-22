@@ -37,6 +37,7 @@ import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import io.github.grigoriev.im.threshold.ThresholdService;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -114,6 +115,9 @@ class IntegrityIT {
 
     @Autowired
     private WebApplicationContext context;
+
+    @Autowired
+    private ThresholdService threshold;
 
     @Test
     void theAppCannotSwitchATriggerOffAndRefusesToRunAsTheOwner() {
@@ -318,6 +322,57 @@ class IntegrityIT {
                     invoice.id());
         }
         mvc.perform(get("/invoices/" + invoice.id()).with(user("elena").roles("USER"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void aChangedSnapshotStopsReportsPaymentsAndTheCancellationInsteadOfComputingWithIt() throws Exception {
+        Invoice invoice = issued(LocalDate.of(2003, 3, 18));
+        payments.add(invoice.id(), payment(LocalDate.of(2003, 3, 20), "100,00"));
+        Invoice storno = invoices.createCancellation(invoice.id());
+        MockMvc mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+        String refused = "Der Stand der Ausstellung von Rechnung " + invoice.number() + " wurde außerhalb der App "
+                + "geändert.";
+        // Still JSON that parses, with a total ten times as high: without the seal the app would count it.
+        asOwner("invoice", "invoice_frozen", "UPDATE invoice SET snapshot = replace(snapshot, '400', '4000') "
+                + "WHERE id = ?", invoice.id());
+        try {
+            Invoice changed = invoices.find(invoice.id()).orElseThrow();
+            assertThatThrownBy(() -> threshold.rows(2003)).isInstanceOf(InvoiceException.class)
+                    .hasMessageContaining(refused);
+            assertThatThrownBy(() -> payments.summary(changed)).isInstanceOf(InvoiceException.class)
+                    .hasMessageContaining(refused);
+            long id = invoice.id();
+            PaymentForm more = payment(LocalDate.of(2003, 3, 21), "50,00");
+            assertThatThrownBy(() -> payments.add(id, more)).isInstanceOf(InvoiceException.class)
+                    .hasMessageContaining(refused);
+            long stornoId = storno.id();
+            long version = storno.version();
+            assertThatThrownBy(() -> issues.issue(stornoId, version)).isInstanceOf(InvoiceException.class)
+                    .hasMessageContaining(refused);
+            assertThat(invoices.find(storno.id()).orElseThrow().isDraft()).as("no number, no issue").isTrue();
+            for (String page : List.of("/invoices/" + invoice.id(), "/reports?year=2003")) {
+                mvc.perform(get(page).with(user("elena").roles("USER")))
+                        .andExpect(status().isInternalServerError())
+                        .andExpect(content().string(containsString("Gespeicherte Daten lassen sich nicht lesen")))
+                        .andExpect(content().string(containsString("Rechnung " + invoice.number())))
+                        .andExpect(content().string(containsString("Der Stand der Ausstellung passt nicht zu seinem "
+                                + "Siegel.")));
+            }
+        } finally {
+            asOwner("invoice", "invoice_frozen", "UPDATE invoice SET snapshot = ? WHERE id = ?", invoice.snapshot(),
+                    invoice.id());
+        }
+        assertThat(threshold.rows(2003)).singleElement()
+                .satisfies(row -> assertThat(row.counted()).isEqualByComparingTo("100.00"));
+        assertThat(payments.summary(invoice).open()).isEqualByComparingTo("300.00");
+        invoices.deleteDraft(storno.id());
+    }
+
+    private static PaymentForm payment(LocalDate paidOn, String amount) {
+        PaymentForm form = new PaymentForm();
+        form.setPaidOn(paidOn);
+        form.setAmount(amount);
+        return form;
     }
 
     @Test

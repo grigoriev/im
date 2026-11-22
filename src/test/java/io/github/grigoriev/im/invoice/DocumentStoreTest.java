@@ -111,11 +111,27 @@ class DocumentStoreTest {
         assertThat(store.verifiedSnapshot(invoice)).isEqualTo(document);
         when(repository.findSnapshotSeal(5L)).thenReturn(seal.snapshot(5, "2027-11", json));
         assertThat(store.sealed(invoice)).isFalse();
-        assertThatThrownBy(() -> store.verifiedSnapshot(invoice)).isInstanceOf(InvoiceException.class)
+        assertThatThrownBy(() -> store.verifiedSnapshot(invoice)).isInstanceOf(DamagedSnapshotException.class)
                 .hasMessage("Der Stand der Ausstellung von Rechnung 2027-10 wurde außerhalb der App geändert. Die Seite "
                         + "der Rechnung zeigt, was abweicht.");
         when(repository.findSnapshotSeal(5L)).thenReturn(null);
         assertThat(store.sealed(invoice)).isFalse();
+    }
+
+    @Test
+    void readsASnapshotFetchedWithItsSealOnlyIfTheSealMatches() {
+        InvoiceDocument document = SampleInvoices.sale(InvoiceFormat.XRECHNUNG);
+        String json = store.snapshot(document);
+        String stored = seal.snapshot(5, "2027-10", json);
+        assertThat(store.verifiedSnapshot(5, "2027-10", json, stored)).isEqualTo(document);
+        assertThatThrownBy(() -> store.verifiedSnapshot(6, "2027-10", json, stored))
+                .isInstanceOf(DamagedSnapshotException.class).isInstanceOf(InvoiceException.class)
+                .hasMessageContaining("Rechnung 2027-10 wurde außerhalb der App geändert");
+        String changed = json.replace("2027-10", "2027-11");
+        assertThatThrownBy(() -> store.verifiedSnapshot(5, "2027-10", changed, stored))
+                .isInstanceOf(DamagedSnapshotException.class);
+        assertThatThrownBy(() -> store.verifiedSnapshot(5, "2027-10", json, null))
+                .isInstanceOf(DamagedSnapshotException.class);
     }
 
     @ParameterizedTest

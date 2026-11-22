@@ -160,7 +160,7 @@ public class PaymentService {
     public Payments summary(Invoice invoice) {
         List<Payment> entries = payments.findByInvoiceIdOrderByPaidOnAscIdAsc(invoice.id());
         BigDecimal paid = entries.stream().map(Payment::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new Payments(entries, paid, documents.restore(invoice.snapshot()).total().subtract(paid));
+        return new Payments(entries, paid, documents.verifiedSnapshot(invoice).total().subtract(paid));
     }
 
     /**

@@ -58,6 +58,7 @@ import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.IntegrityMonitor;
 import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.invoice.DamagedSnapshotException;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
 import io.github.grigoriev.im.invoice.DispatchService;
@@ -912,7 +913,7 @@ class SecurityWebTest {
         when(invoices.list()).thenReturn(List.of(issued, draft));
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
         when(invoices.document(draft)).thenReturn(Optional.empty());
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
         when(customers.list()).thenReturn(List.of(CustomerTestData.verlag().withId(3L)));
         mvc.perform(get("/invoices").with(user("elena").roles("USER")))
@@ -1045,7 +1046,7 @@ class SecurityWebTest {
     void showsTheRemindersOfAnOpenInvoice() throws Exception {
         Invoice issued = invoice(6, InvoiceStatus.SENT);
         when(invoices.find(6)).thenReturn(Optional.of(issued));
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(payments.summary(any())).thenReturn(new PaymentService.Payments(List.of(), BigDecimal.ZERO,
                 new BigDecimal("480.00")));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
@@ -1188,7 +1189,7 @@ class SecurityWebTest {
         when(invoices.find(6)).thenReturn(Optional.of(original));
         when(invoices.find(9)).thenReturn(Optional.of(storno));
         when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("Stornieren…")))
@@ -1390,7 +1391,7 @@ class SecurityWebTest {
         when(invoices.list()).thenReturn(List.of(issued, draft));
         when(invoices.customerName(any())).thenReturn("Volkshochschule Musterstadt");
         when(invoices.document(draft)).thenReturn(Optional.empty());
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
         when(customers.list()).thenReturn(List.of());
         String issuedRow = "2027-01 · 18.03.2027";
@@ -1452,7 +1453,7 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("über 100.000 €")));
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
         when(invoices.find(6)).thenReturn(Optional.of(issued));
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.ZUGFERD_EN16931));
         when(documents.list(6)).thenReturn(List.of(new StoredDocument(1L, 6L,
                 DocumentKind.PDF, "Rechnung_2027-10.pdf", new byte[] {1}, "ab12", 12345,
@@ -1540,7 +1541,7 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.not(Matchers.containsString("Als versendet markieren"))))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("nicht eingerichtet"))));
         when(invoices.find(6)).thenReturn(Optional.of(issued));
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(
                 InvoiceFormat.XRECHNUNG));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("XRechnung geprüft (KoSIT)")))
@@ -1730,7 +1731,7 @@ class SecurityWebTest {
     void showsAnExternalInvoiceWithItsOriginalFiles() throws Exception {
         Invoice registered = external(9, InvoiceStatus.ISSUED);
         when(invoices.find(9)).thenReturn(Optional.of(registered));
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(InvoiceFormat.EXTERNAL));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.EXTERNAL));
         InvoiceOriginal original = new InvoiceOriginal(1, 9, "Rechnung März.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "PK".getBytes(StandardCharsets.US_ASCII), "ab12", 2, "seal", Instant.EPOCH, "elena");
@@ -1807,7 +1808,7 @@ class SecurityWebTest {
     void showsAChangedInvoiceAndKeepsItsFilesBack() throws Exception {
         Invoice issued = invoice(6, InvoiceStatus.ISSUED);
         when(invoices.find(6)).thenReturn(Optional.of(issued));
-        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("invoice-integrity"))));
         when(integrity.check(issued)).thenReturn(new InvoiceIntegrity.Report(
@@ -1922,7 +1923,7 @@ class SecurityWebTest {
     @Test
     void anUnreadableSnapshotShowsTheDamageInsteadOfAnError() throws Exception {
         when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.ISSUED)));
-        when(documents.restore("{snapshot}")).thenThrow(new StreamReadException(null, "kaputt"));
+        when(documents.verifiedSnapshot(any())).thenThrow(new StreamReadException(null, "kaputt"));
         when(monitor.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of(new Damage(6L,
                 "Rechnung 2027-10", "/invoices/6", List.of("Der Stand der Ausstellung lässt sich nicht lesen.")))));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
@@ -1933,6 +1934,21 @@ class SecurityWebTest {
         when(monitor.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of()));
         mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("Die Prüfung der Dokumente fand nichts.")));
+    }
+
+    @Test
+    void aChangedSnapshotShowsTheDamageOnEveryPageThatReadsIt() throws Exception {
+        when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.ISSUED)));
+        when(documents.verifiedSnapshot(any())).thenThrow(new DamagedSnapshotException("2027-10"));
+        when(threshold.rows(2027)).thenThrow(new DamagedSnapshotException("2027-10"));
+        when(monitor.check()).thenReturn(new IntegrityMonitor.Result(Instant.EPOCH, List.of(new Damage(6L,
+                "Rechnung 2027-10", "/invoices/6", List.of("Der Stand der Ausstellung passt nicht zu seinem Siegel.")))));
+        for (String page : List.of("/invoices/6", "/reports?year=2027")) {
+            mvc.perform(get(page).with(user("elena").roles("USER")))
+                    .andExpect(status().isInternalServerError())
+                    .andExpect(content().string(Matchers.containsString("Gespeicherte Daten lassen sich nicht lesen")))
+                    .andExpect(content().string(Matchers.containsString("passt nicht zu seinem Siegel.")));
+        }
     }
 
     @Test

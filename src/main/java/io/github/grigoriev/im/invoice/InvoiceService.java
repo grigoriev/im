@@ -408,7 +408,7 @@ public class InvoiceService {
         // A Stornorechnung names the tax number and VAT ID of the invoice it cancels, even if the profile changed since.
         Party sellerParty = seller.toParty(activity(invoice) == Activity.TEACHING);
         if (original.isPresent()) {
-            sellerParty = withTaxIds(sellerParty, documents.restore(original.get().snapshot()).seller());
+            sellerParty = withTaxIds(sellerParty, documents.verifiedSnapshot(original.get()).seller());
         }
         return Optional.of(new InvoiceDocument(number, invoice.issueDate(), invoice.serviceFrom(),
                 invoice.serviceTo(), invoice.dueDate(), sellerParty, customer.toParty(),
