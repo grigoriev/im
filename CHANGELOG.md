@@ -10,9 +10,14 @@ All notable changes to this project are documented in this file. The format foll
 
 - The docs, comments and tests name neutral examples (`im.example.org`, documentation address ranges, `/volume/example`) instead of the hosts, addresses and paths of the own network.
 
+### Removed
+
+- Alpine.js: no page used it. The app no longer ships `vendor/alpine.min.js`.
+
 ### Security
 
 - The reports, the §19 threshold, the payments, the open amounts and the Stornorechnung now check the seal of an invoice's snapshot before they compute with it. Until now they read it without the check. If someone changed the snapshot outside the app, the page shows what the check found and computes nothing. The payment and the issue are refused.
+- CI scans the libraries of `pom.xml` and `package-lock.json` and the built image with Trivy. A HIGH or CRITICAL vulnerability with a fix fails the build, and the release workflow pushes no image with one. A nightly scan of main reports to the Security tab.
 
 ## [0.1.11] - 2026-11-22
 

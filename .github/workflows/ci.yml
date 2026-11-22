@@ -55,6 +55,18 @@ jobs:
           exit-code: '1'
           severity: HIGH,CRITICAL
 
+      # The libraries of pom.xml and package-lock.json. Only a vulnerability
+      # with a fix fails: without one there is nothing to update to.
+      - name: Trivy dependency scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
       - name: No em-dash
         run: |
           if git grep -n -I $'\u2014' -- . ':!LICENSE' ':!*.png' ':!*.ttf' ':!*-lock.json'; then
@@ -143,14 +155,15 @@ jobs:
       - name: Build the image
         run: docker build --tag im:test .
 
-      # Reported, not blocking: a pull request must not turn red because the
-      # base image or a library released a fix. Renovate brings the updates.
+      # The base image and the jar in it. A vulnerability with a fix fails the
+      # build: Renovate brings the update, the nightly scan finds it on main.
       - name: Scan the image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: im:test
-          exit-code: '0'
-          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
 
       - name: Run the E2E and visual tests
         env:

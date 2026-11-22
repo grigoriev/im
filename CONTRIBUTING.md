@@ -14,7 +14,8 @@ mvn test -Dtest=PdfVisualTest -Dvisual.update=true   # write new PDF baselines
 ```
 
 CI runs the lint job, the build with SonarCloud, the E2E tests and the Claude Code review for every
-pull request.
+pull request. Trivy scans the dependencies and the built image: a HIGH or CRITICAL vulnerability
+with a fix fails the build. A nightly scan of main reports to the Security tab.
 
 ## Pull requests
 
