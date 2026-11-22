@@ -19,6 +19,7 @@ All notable changes to this project are documented in this file. The format foll
 ### Removed
 
 - Alpine.js: no page used it. The app no longer ships `vendor/alpine.min.js`.
+- htmx: no page used it. The app no longer ships `vendor/htmx.min.js`.
 
 ### Fixed
 

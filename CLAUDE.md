@@ -17,7 +17,7 @@ The repository is public. It must never contain real customer, invoice or person
 - **E-invoice**: Mustang Project (ZUGFeRD, XRechnung). Validation: Mustang validator with veraPDF for ZUGFeRD, KoSIT for XRechnung
 - **PDF**: Thymeleaf HTML rendered by Flying Saucer as PDF/A-3B
 - **Database**: PostgreSQL with Flyway
-- **UI**: Thymeleaf, htmx, Tailwind CSS 4, daisyUI 5, Lucide icons. German only
+- **UI**: Thymeleaf, Tailwind CSS 4, daisyUI 5, Lucide icons. German only
 - **Security**: Spring Security with passkeys (WebAuthn) and password login, roles `USER` and `ADMIN`
 - **Tests**: JUnit 5, PIT, Testcontainers, GreenMail (also in the E2E stack), Playwright Test (TypeScript) in `e2e/`
 
