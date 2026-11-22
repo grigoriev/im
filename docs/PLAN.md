@@ -351,9 +351,8 @@ Payments before the app:
 1. The user records every payment of 2026 with day and amount, as for any invoice (decision 2026-11-22).
    They close the invoice: status, open invoices and reminders follow them.
 2. The app counts 2026 by itself: §19 revenue and Anlage EÜR, per business. The report feeds WISO Steuer in January 2027.
-3. A 2025 invoice paid in 2026 is registered as an external invoice too. Its payment belongs to 2026 (Zuflussprinzip).
-4. Such a year holds only some invoices: the number and its year are checked, the gaps are not. The year never closes.
-5. The 2025 revenue goes into the baseline. It is the previous year of the §19 check for 2026.
+3. No 2025 invoice was paid in 2026, so the 2026 income is complete (Zuflussprinzip).
+4. The 2025 revenue goes into the baseline. It is the previous year of the §19 check for 2026.
 
 ## 8. Deployment on lemming
 
