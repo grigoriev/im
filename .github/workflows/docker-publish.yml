@@ -90,6 +90,17 @@ jobs:
           tags: im:test
           labels: ${{ steps.meta.outputs.labels }}
 
+      # No image with a fixable HIGH or CRITICAL vulnerability is pushed. No
+      # cache in a release job: the database comes fresh, nothing from a cache.
+      - name: Scan the image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: im:test
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          cache: false
+
       # The full E2E suite runs against the image that is pushed next.
       - name: Run the E2E tests on the image
         env:

@@ -2,13 +2,14 @@
 # Playwright shares the network of "web" and calls http://localhost:8080: WebAuthn (passkeys) runs only
 # in a secure context, and the browser treats localhost as one.
 # Start it through scripts/e2e.sh.
+# The passwords and keys below exist for this throwaway stack only. NOSONAR marks them for SonarCloud.
 services:
   db:
     image: postgres:18.7-alpine@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
     environment:
       POSTGRES_DB: im
       POSTGRES_USER: im
-      POSTGRES_PASSWORD: e2e-only
+      POSTGRES_PASSWORD: e2e-only # test only, never reuse NOSONAR
     volumes:
       - ./db/app-role.sql:/docker-entrypoint-initdb.d/app-role.sql:ro
     healthcheck:
@@ -35,8 +36,8 @@ services:
       IM_DB_URL: jdbc:postgresql://db:5432/im
       IM_DB_USER: im_app
       IM_DB_OWNER: im
-      IM_DB_OWNER_PASSWORD: e2e-only
-      IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef
+      IM_DB_OWNER_PASSWORD: e2e-only # test only, never reuse NOSONAR
+      IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef # test only, never reuse NOSONAR
     depends_on:
       db:
         condition: service_healthy
@@ -51,11 +52,11 @@ services:
     environment:
       IM_DB_URL: jdbc:postgresql://db:5432/im
       IM_DB_USER: im_app
-      IM_DB_PASSWORD: e2e-app-only
-      IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef
+      IM_DB_PASSWORD: e2e-app-only # test only, never reuse NOSONAR
+      IM_INTEGRITY_KEY: e2e-only-integrity-key-0123456789abcdef # test only, never reuse NOSONAR
       IM_ADMIN_USERNAME: admin
-      IM_ADMIN_PASSWORD: e2e-admin-passwort
-      IM_REMEMBER_ME_KEY: e2e-only-remember-me-key-0123456789
+      IM_ADMIN_PASSWORD: e2e-admin-passwort # test only, never reuse NOSONAR
+      IM_REMEMBER_ME_KEY: e2e-only-remember-me-key-0123456789 # test only, never reuse NOSONAR
       IM_SMTP_HOST: mail
       IM_SMTP_PORT: "3025"
       IM_SMTP_STARTTLS: "false"
@@ -74,7 +75,7 @@ services:
     environment:
       BASE_URL: http://localhost:8080
       # The integrity test plays someone with the password of the owner: it changes a document in the database.
-      E2E_DB_URL: postgres://im:e2e-only@db:5432/im
+      E2E_DB_URL: postgres://im:e2e-only@db:5432/im # test only, never reuse NOSONAR
       CI: ${CI:-}
       PLAYWRIGHT_ARGS: ${PLAYWRIGHT_ARGS:-}
     volumes:
