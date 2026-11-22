@@ -1675,10 +1675,10 @@ class SecurityWebTest {
         mvc.perform(get("/invoices/9/originals/3").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
                 .andExpect(redirectedUrl("/invoices/9"));
 
-        byte[] pdf = "%PDF-1.7".getBytes(StandardCharsets.US_ASCII);
-        when(externals.addOriginal(9, "März.pdf", pdf)).thenReturn(new InvoiceOriginal(2, 9, "März.pdf",
-                "application/pdf", pdf, "cd", 8, "seal", Instant.EPOCH, "elena"));
-        mvc.perform(upload("/invoices/9/originals").file(new MockMultipartFile("file", "März.pdf", "application/pdf", pdf))
+        byte[] copy = "%PDF-1.7".getBytes(StandardCharsets.US_ASCII);
+        when(externals.addOriginal(9, "März.pdf", copy)).thenReturn(new InvoiceOriginal(2, 9, "März.pdf",
+                "application/pdf", copy, "cd", 8, "seal", Instant.EPOCH, "elena"));
+        mvc.perform(upload("/invoices/9/originals").file(new MockMultipartFile("file", "März.pdf", "application/pdf", copy))
                         .with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/invoices/9")).andExpect(flash().attribute("success", "Datei „März.pdf“ hinzugefügt."));
         when(externals.addOriginal(9, null, new byte[0])).thenThrow(new InvoiceException(List.of("Bitte eine Datei wählen.")));

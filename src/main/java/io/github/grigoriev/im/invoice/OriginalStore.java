@@ -106,7 +106,7 @@ public class OriginalStore {
         if (startsWith(content, 0, ZIP_MAGIC)) {
             return office(content);
         }
-        return xml(content) ? Optional.of(XML) : Optional.empty();
+        return startsWithTag(content) ? Optional.of(XML) : Optional.empty();
     }
 
     /**
@@ -128,7 +128,7 @@ public class OriginalStore {
     }
 
     /** An XML file starts with a tag, after a byte order mark and white space. */
-    static boolean xml(byte[] content) {
+    static boolean startsWithTag(byte[] content) {
         int at = startsWith(content, 0, BOM) ? BOM.length : 0;
         while (at < content.length && Character.isWhitespace(content[at])) {
             at++;

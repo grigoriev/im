@@ -128,7 +128,9 @@ class ExternalInvoiceIT {
         assertThat(invoices.problems(draft)).isEmpty();
         assertThat(externals.nextNumber(draft)).isEqualTo("2002-01");
 
-        assertThatThrownBy(() -> issues.issue(draft.id(), draft.version())).isInstanceOf(InvoiceException.class)
+        long draftId = draft.id();
+        Long draftVersion = draft.version();
+        assertThatThrownBy(() -> issues.issue(draftId, draftVersion)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Eine externe Rechnung wird mit ihrer Datei erfasst, nicht ausgestellt.");
         assertThat(externals.register(draft.id(), draft.version(), "2002-01", "März.xlsx", XLSX))
                 .isEqualTo("2002-01");
@@ -161,13 +163,16 @@ class ExternalInvoiceIT {
     @Test
     void refusesAnotherNumberWithoutAGap() {
         Invoice first = draft(LocalDate.of(2053, 2, 1));
-        assertThatThrownBy(() -> externals.register(first.id(), first.version(), "2053-07", "a.xlsx", XLSX))
+        long firstId = first.id();
+        Long firstVersion = first.version();
+        assertThatThrownBy(() -> externals.register(firstId, firstVersion, "2053-07", "a.xlsx", XLSX))
                 .isInstanceOf(InvoiceException.class).hasMessageStartingWith("Die nächste Rechnungsnummer ist 2053-01");
         assertThat(invoices.find(first.id()).orElseThrow().isDraft()).isTrue();
         assertThat(externals.nextNumber(first)).as("the counter went back").isEqualTo("2053-01");
         assertThat(originals.list(first.id())).isEmpty();
         assertThat(externals.register(first.id(), first.version(), "2053-01", "a.xlsx", XLSX)).isEqualTo("2053-01");
-        assertThatThrownBy(() -> externals.addOriginal(draft(LocalDate.of(2053, 2, 2)).id(), "b.pdf", XLSX))
+        long stillDraft = draft(LocalDate.of(2053, 2, 2)).id();
+        assertThatThrownBy(() -> externals.addOriginal(stillDraft, "b.pdf", XLSX))
                 .isInstanceOf(InvoiceException.class).hasMessage("Dateien gehören nur zu einer erfassten externen Rechnung.");
     }
 
@@ -180,9 +185,10 @@ class ExternalInvoiceIT {
                 .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> jdbc.update("DELETE FROM invoice_original WHERE invoice_id = ?", id))
                 .isInstanceOf(DataAccessException.class);
+        String hash = "a".repeat(64);
         assertThatThrownBy(() -> jdbc.update("INSERT INTO invoice_original (invoice_id, filename, media_type, content, "
                 + "sha256, size, seal, created_at, created_by) VALUES (?, 'a.txt', 'text/plain', '\\x00', ?, 1, ?, now(), "
-                + "'x')", id, "a".repeat(64), "a".repeat(64))).as("only the four types").isInstanceOf(DataAccessException.class);
+                + "'x')", id, hash, hash)).as("only the four types").isInstanceOf(DataAccessException.class);
         assertThat(jdbc.queryForObject("SELECT format FROM invoice WHERE id = ?", String.class, id)).isEqualTo("EXTERNAL");
     }
 

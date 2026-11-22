@@ -106,7 +106,7 @@ public class IssueService {
             throw new InvoiceException(List.of(NOT_VALID));
         }
         Instant at = clock.instant();
-        freeze(draft, document, at);
+        frozen(draft, document, at);
         store.store(id, number, files, at);
         audit.add(id, AuditAction.INVOICE_ISSUED, number + ", "
                 + Customer.label(document.buyer().name(), document.buyer().contactName()));
@@ -125,6 +125,11 @@ public class IssueService {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void freeze(Invoice draft, InvoiceDocument document, Instant at) {
+        frozen(draft, document, at);
+    }
+
+    /** Freezes a draft in the running transaction: the body of {@link #freeze}, which the issue calls directly. */
+    private void frozen(Invoice draft, InvoiceDocument document, Instant at) {
         long id = draft.id();
         String number = document.number();
         int updated;

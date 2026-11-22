@@ -181,11 +181,11 @@ public class ArchiveService {
             for (Invoice invoice : issued) {
                 InvoiceDocument document = documents.verifiedSnapshot(invoice);
                 for (ArchivedFile file : files(invoice)) {
-                    String name = unique(names, file.filename(), invoice.id());
+                    String name = unique(names, file.filename, invoice.id());
                     zip.putNextEntry(new ZipEntry(name));
-                    zip.write(file.content());
+                    zip.write(file.content);
                     contents.append(String.join(";", quoted(invoice.number()), GERMAN.format(invoice.issueDate()),
-                            quoted(Customer.label(document.buyer().name(), document.buyer().contactName())), name, Integer.toString(file.size()), file.sha256()))
+                            quoted(Customer.label(document.buyer().name(), document.buyer().contactName())), name, Integer.toString(file.size), file.sha256))
                             .append("\r\n");
                 }
             }
@@ -197,7 +197,19 @@ public class ArchiveService {
     }
 
     /** A file of an invoice in the archive: a document of the app or an original file. */
-    private record ArchivedFile(String filename, byte[] content, int size, String sha256) {
+    private static final class ArchivedFile {
+
+        private final String filename;
+        private final byte[] content;
+        private final int size;
+        private final String sha256;
+
+        ArchivedFile(String filename, byte[] content, int size, String sha256) {
+            this.filename = filename;
+            this.content = content;
+            this.size = size;
+            this.sha256 = sha256;
+        }
     }
 
     /** The checked files of an invoice: its PDF and XML, or the original files of an external one. */

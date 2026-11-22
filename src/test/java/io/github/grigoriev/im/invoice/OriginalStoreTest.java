@@ -231,7 +231,6 @@ class OriginalStoreTest {
                 .isNotEqualTo(new InvoiceOriginal(2, 5, "a.pdf", OriginalStore.PDF, PDF, "abc", 3, "s", NOW, "elena"))
                 .isNotEqualTo(new InvoiceOriginal(1, 6, "a.pdf", OriginalStore.PDF, PDF, "abc", 3, "s", NOW, "elena"))
                 .isNotEqualTo(new InvoiceOriginal(1, 5, "a.pdf", OriginalStore.PDF, PDF, "abd", 3, "s", NOW, "elena"))
-                .isNotEqualTo("a.pdf");
-        assertThat(original).hasToString("InvoiceOriginal[a.pdf, 3 bytes, sha256=abc]");
+                .isNotEqualTo("a.pdf").hasToString("InvoiceOriginal[a.pdf, 3 bytes, sha256=abc]");
     }
 }

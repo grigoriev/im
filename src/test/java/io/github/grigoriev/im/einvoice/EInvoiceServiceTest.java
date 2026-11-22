@@ -87,6 +87,7 @@ class EInvoiceServiceTest {
             case ZUGFERD_EN16931 -> assertThat(validators).containsExactly("Mustang");
             case ZUGFERD_XRECHNUNG -> assertThat(validators).containsExactly("Mustang", "KoSIT");
             case XRECHNUNG -> assertThat(validators).containsExactly("KoSIT");
+            case EXTERNAL -> throw new AssertionError("the app issues no external invoice");
         }
     }
 
