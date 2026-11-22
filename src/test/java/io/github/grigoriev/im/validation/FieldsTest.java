@@ -98,7 +98,7 @@ class FieldsTest {
     void matchesAPattern() {
         List<String> problems = new ArrayList<>();
         Fields.matches(problems, "a@b", Fields.EMAIL, "falsch");
-        Fields.matches(problems, "a@b.de", Fields.EMAIL, "falsch");
+        Fields.matches(problems, "a@b.example", Fields.EMAIL, "falsch");
         assertThat(problems).containsExactly("falsch");
     }
 

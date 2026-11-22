@@ -22,8 +22,8 @@ class PasskeyConfigTest {
 
     @Test
     void holdsTheRelyingParty() {
-        PasskeyProperties properties = new PasskeyProperties("im.h.g7v.io", "Rechnungen", List.of("https://im.h.g7v.io"));
-        assertThat(properties.rpId()).isEqualTo("im.h.g7v.io");
-        assertThat(properties.allowedOrigins()).containsExactly("https://im.h.g7v.io");
+        PasskeyProperties properties = new PasskeyProperties("im.example.org", "Rechnungen", List.of("https://im.example.org"));
+        assertThat(properties.rpId()).isEqualTo("im.example.org");
+        assertThat(properties.allowedOrigins()).containsExactly("https://im.example.org");
     }
 }
