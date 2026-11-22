@@ -142,7 +142,7 @@ Not chosen:
 | `SellerProfile` | Name, a line below it (for example the profession), address, contact data, website, tax status, tax number or VAT ID, IBAN, BIC, bank name, account holder (the form fills in the name). No logo. Four tabs (Anschrift, Kontakt, Steuer, Bankverbindung) save on their own; an incomplete profile saves, and the issue names what is missing. E-mail and phone are needed for XRechnung only (BR-DE-6, BR-DE-7). The PDF shows the phone only if the profile asks (off by default); the XML always carries it |
 | `Customer` | Address, country, e-mail, USt-IdNr, buyer reference (the Leitweg-ID for a public buyer), format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
 | `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), e-mail text |
-| `Invoice` | Origin (app or external, an external one has no format), number, status, format, title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |
+| `Invoice` | Number, status, format (`EXTERNAL` for an external invoice), title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, file name, content (in the database), SHA-256, size. Written once |
 | `InvoiceOriginal` | Original file of an external invoice: file name, type, content, SHA-256, seal. Written once |
@@ -324,6 +324,8 @@ The admin edits the default tax notes. A template and an invoice can override th
 
 1. Some customers demand their own invoice form (decision 2026-11-22). The invoices of 2026 exist outside the app too.
 2. The app registers such an invoice as an external invoice ("Externe Rechnung"). It generates no PDF and no XML.
+   Its format is `EXTERNAL`. A customer and a template may name it, so a new draft of that customer is external.
+   The draft editor takes its facts. "Rechnung erfassen" adds the number and the file.
 3. It keeps the original files: PDF, XLSX, DOCX or XML, at most 25 MB each, one or more per invoice.
    The registration takes one file. Further files go in one per request on the invoice page, each written once.
    The 32 MB limit of a form thus holds. The integrity check reads the originals instead of the PDF and XML.
@@ -332,9 +334,10 @@ The admin edits the default tax notes. A template and an invoice can override th
    A tax note is optional. The total follows from the amounts.
 6. The facts form the snapshot, one line per tax category. Reports and the §19 threshold read it like any snapshot.
 7. Number, snapshot and files carry a seal and never change, as for an issued invoice.
-8. The rules of the tax categories only warn: the invoice exists already.
+8. The rule "teaching stands alone" does not apply: the invoice exists already. The rules of EN 16931 and of the two
+   tax numbers still hold, so the report keeps each business apart.
 9. Dispatch, payments, reminders, archive, export and the integrity check treat it like an issued invoice.
-   An e-mail from the app sends its original files.
+   For now the user sends its files by hand and notes the dispatch. An e-mail from the app follows later.
 10. The Stornorechnung of an external invoice is external too. It names the invoice it cancels.
 
 Numbers of an external invoice:

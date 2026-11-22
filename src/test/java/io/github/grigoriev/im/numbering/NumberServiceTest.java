@@ -92,6 +92,8 @@ class NumberServiceTest {
         when(sequences.findById(2029)).thenReturn(Optional.empty());
         assertThat(service.years()).containsExactly(new NumberSequence(2028, 5, true), new NumberSequence(2029, 1, false));
         assertThat(service.preview(new NumberSequence(2028, 5, true))).isEqualTo("2028-05");
+        assertThat(service.next(2028)).isEqualTo("2028-05");
+        assertThat(service.next(2029)).as("an unused year starts at 1").isEqualTo("2029-01");
     }
 
     @Test

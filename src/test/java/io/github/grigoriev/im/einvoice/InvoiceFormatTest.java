@@ -9,12 +9,14 @@ class InvoiceFormatTest {
 
     @ParameterizedTest
     @CsvSource({
-        "ZUGFERD_EN16931, true, false",
-        "ZUGFERD_XRECHNUNG, true, true",
-        "XRECHNUNG, false, true"
+        "ZUGFERD_EN16931, true, false, false",
+        "ZUGFERD_XRECHNUNG, true, true, false",
+        "XRECHNUNG, false, true, false",
+        "EXTERNAL, false, false, true"
     })
-    void describesPdfAndXRechnungRules(InvoiceFormat format, boolean pdf, boolean xrechnung) {
+    void describesPdfAndXRechnungRules(InvoiceFormat format, boolean pdf, boolean xrechnung, boolean external) {
         assertThat(format.isPdf()).isEqualTo(pdf);
         assertThat(format.followsXRechnung()).isEqualTo(xrechnung);
+        assertThat(format.isExternal()).isEqualTo(external);
     }
 }

@@ -54,13 +54,16 @@
             <input id="invoice-to" th:field="*{serviceTo}" type="date" class="input w-full" required>
           </label>
         </div>
-        <label class="floating-label"><span>Käuferreferenz (Leitweg-ID)</span>
+        <label class="floating-label" th:unless="${invoice.format.isExternal()}"><span>Käuferreferenz (Leitweg-ID)</span>
           <input id="invoice-reference" th:field="*{buyerReference}" class="input w-full" maxlength="200">
         </label>
+        <p class="text-sm text-base-content/75" id="external-hint" th:if="${invoice.format.isExternal()}">Die Rechnung
+          entsteht außerhalb der App. Tragen Sie hier die Angaben aus der Datei ein: Daten, Beträge je Steuerart und den
+          Steuerhinweis. Beim Erfassen kommen Nummer und Datei dazu.</p>
       </section>
 
       <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container" id="lines">
-        <label class="floating-label"><span>Einleitung</span>
+        <label class="floating-label" th:unless="${invoice.format.isExternal()}"><span>Einleitung</span>
           <textarea id="invoice-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
 
@@ -93,7 +96,7 @@
         <label class="floating-label"><span>Steuerhinweis</span>
           <textarea id="invoice-tax-note" th:field="*{taxNote}" class="textarea w-full h-16" maxlength="1000"></textarea>
         </label>
-        <label class="floating-label"><span>Schlusstext</span>
+        <label class="floating-label" th:unless="${invoice.format.isExternal()}"><span>Schlusstext</span>
           <textarea id="invoice-closing" th:field="*{closing}" class="textarea w-full h-16" maxlength="2000"></textarea>
         </label>
       </section>
@@ -106,9 +109,10 @@
           <p class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>
             Vollständig.</p>
           <a th:href="@{/invoices/{id}/preview(id=${invoice.id})}" target="_blank" rel="noopener" class="btn btn-sm"
-             id="invoice-preview"><i data-lucide="file-search" class="size-4"></i>Vorschau (PDF)</a>
+             id="invoice-preview" th:unless="${invoice.format.isExternal()}"><i data-lucide="file-search" class="size-4"></i>Vorschau (PDF)</a>
         </div>
-        <p th:if="${problems.isEmpty()}" class="text-xs text-base-content/75">Vorschau und Ausstellen nehmen den gespeicherten Stand.</p>
+        <p th:if="${problems.isEmpty()}" class="text-xs text-base-content/75"
+           th:text="${invoice.format.isExternal()} ? 'Das Erfassen nimmt den gespeicherten Stand.' : 'Vorschau und Ausstellen nehmen den gespeicherten Stand.'">Vorschau und Ausstellen nehmen den gespeicherten Stand.</p>
         <ul th:unless="${problems.isEmpty()}" class="grid gap-1">
           <li th:each="problem : ${problems}" class="flex items-start gap-2"><i data-lucide="circle-alert" class="size-4 text-warning shrink-0 mt-0.5"></i>
             <span th:text="${problem}">Problem</span></li>
@@ -120,9 +124,35 @@
 
     <div class="form-actions">
       <button type="button" class="btn btn-danger" data-dialog="invoice-delete"><i data-lucide="trash-2" class="size-4"></i>Entwurf löschen</button>
-      <button type="button" class="btn btn-primary" data-dialog="invoice-issue" th:if="${problems.isEmpty()}"><i data-lucide="stamp" class="size-4"></i>Rechnung ausstellen…</button>
+      <button type="button" class="btn btn-primary" data-dialog="invoice-issue" th:if="${problems.isEmpty() and !invoice.format.isExternal()}"><i data-lucide="stamp" class="size-4"></i>Rechnung ausstellen…</button>
+      <button type="button" class="btn btn-primary" data-dialog="invoice-register" th:if="${problems.isEmpty() and invoice.format.isExternal()}"><i data-lucide="file-input" class="size-4"></i>Rechnung erfassen…</button>
     </div>
-    <dialog class="modal" id="invoice-issue" aria-labelledby="invoice-issue-title" th:if="${problems.isEmpty()}">
+    <dialog class="modal" id="invoice-register" aria-labelledby="invoice-register-title" th:if="${problems.isEmpty() and invoice.format.isExternal()}">
+      <div class="modal-box">
+        <div th:replace="~{fragments/dialog :: dialogTitle('invoice-register', 'Externe Rechnung erfassen?')}"></div>
+        <form method="post" enctype="multipart/form-data" th:action="@{/invoices/{id}/register(id=${invoice.id})}">
+          <input type="hidden" name="version" th:value="${invoice.version}">
+          <div class="modal-body grid gap-3">
+            <p class="text-sm">Die nächste Rechnungsnummer ist <strong class="num" id="register-next" th:text="${nextNumber}">2027-01</strong>.
+              Die Datei muss diese Nummer tragen. Danach ändert sich die Rechnung nicht mehr.</p>
+            <label class="floating-label"><span>Rechnungsnummer in der Datei</span>
+              <input id="register-number" name="number" class="input w-full num" required maxlength="40">
+            </label>
+            <label class="floating-label"><span>Datei</span>
+              <input id="register-file" name="file" type="file" class="file-input w-full" required aria-describedby="register-file-hint"
+                     accept=".pdf,.xlsx,.docx,.xml,application/pdf,application/xml,text/xml">
+            </label>
+            <p class="text-xs text-base-content/75" id="register-file-hint">PDF, XLSX, DOCX oder XML, bis 25 MB.</p>
+          </div>
+          <div class="modal-foot">
+            <button type="button" class="btn" data-close>Abbrechen</button>
+            <button type="submit" class="btn btn-primary" id="invoice-register-confirm"><i data-lucide="file-input" class="size-4"></i>Jetzt erfassen</button>
+          </div>
+        </form>
+      </div>
+      <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+    </dialog>
+    <dialog class="modal" id="invoice-issue" aria-labelledby="invoice-issue-title" th:if="${problems.isEmpty() and !invoice.format.isExternal()}">
       <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('invoice-issue', 'Rechnung ausstellen?')}"></div>
         <form method="post" th:action="@{/invoices/{id}/issue(id=${invoice.id})}">

@@ -122,8 +122,9 @@ public class InvoiceService {
 
     /**
      * Creates a draft for a customer, today's dates and the customer's buyer reference. Without a template it takes the
-     * customer's format, one empty line and the tax note of the seller's tax status. With a template it copies the
-     * template's format, texts, payment days and lines; a later change of the template leaves the draft as it is.
+     * customer's format, one empty line and the tax note of the seller's tax status; an external invoice gets no intro
+     * and closing, its file has them. With a template it copies the template's format, texts, payment days and lines; a
+     * later change of the template leaves the draft as it is.
      *
      * @param customerId the customer
      * @param templateId the template, {@code null} for none
@@ -141,8 +142,10 @@ public class InvoiceService {
         Invoice draft;
         if (templateId == null) {
             TaxCategory category = defaultCategory();
+            boolean external = customer.format().isExternal();
             draft = new Invoice(null, InvoiceStatus.DRAFT, customerId, null, customer.format(), today, today, today,
-                    DEFAULT_PAYMENT_DAYS, customer.buyerReference(), DEFAULT_INTRO, DEFAULT_CLOSING,
+                    DEFAULT_PAYMENT_DAYS, customer.buyerReference(), external ? null : DEFAULT_INTRO,
+                    external ? null : DEFAULT_CLOSING,
                     notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null, null, null,
                     customer.activity());
         } else {
@@ -354,8 +357,8 @@ public class InvoiceService {
             problems.add("„Nicht steuerbar“ steht allein auf einer Rechnung (EN 16931, BR-O-12).");
         }
         TaxStatus status = cancellation ? null : seller.map(SellerProfile::taxStatus).orElse(null);
-        // Teaching stands alone (decision 2026-11-14).
-        if (used.contains(TaxCategory.EXEMPT_4_21) && used.size() > 1) {
+        // Teaching stands alone (decision 2026-11-14). An external invoice exists already: the rule of the app is late.
+        if (used.contains(TaxCategory.EXEMPT_4_21) && used.size() > 1 && !invoice.format().isExternal()) {
             problems.add(TEACHING_ALONE);
         }
         if (seller.map(SellerProfile::twoTaxNumbers).orElse(false)) {

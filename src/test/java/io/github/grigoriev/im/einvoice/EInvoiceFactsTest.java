@@ -22,7 +22,7 @@ class EInvoiceFactsTest {
     }
 
     @ParameterizedTest
-    @EnumSource(InvoiceFormat.class)
+    @EnumSource(value = InvoiceFormat.class, names = "EXTERNAL", mode = EnumSource.Mode.EXCLUDE)
     void readsFromTheXmlWhatTheSnapshotSays(InvoiceFormat format) {
         InvoiceDocument sale = SampleInvoices.sale(format);
         EInvoiceFacts issued = EInvoiceFacts.of(sale);

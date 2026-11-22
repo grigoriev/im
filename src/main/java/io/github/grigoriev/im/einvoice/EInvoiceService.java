@@ -43,9 +43,12 @@ public class EInvoiceService {
      *
      * @param document the invoice
      * @return the files and the validation results
-     * @throws EInvoiceException if a validation fails
+     * @throws EInvoiceException if a validation fails, or for an external invoice, which has no e-invoice of the app
      */
     public IssuedEInvoice issue(InvoiceDocument document) {
+        if (document.format().isExternal()) {
+            throw new EInvoiceException("Invoice " + document.number() + " is external: the app issues no e-invoice");
+        }
         byte[] pdfA = renderer.render(document);
         List<ValidationResult> results = new ArrayList<>();
         byte[] pdf;

@@ -12,6 +12,7 @@ import io.github.grigoriev.im.document.BusinessDocument;
 import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
+import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseCategory;
@@ -21,11 +22,13 @@ import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
 import io.github.grigoriev.im.invoice.DispatchService;
 import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.invoice.ExternalInvoiceService;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.PaymentForm;
+import io.github.grigoriev.im.invoice.SampleOffice;
 import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.numbering.NumberService;
@@ -97,6 +100,9 @@ class BackupIT {
     private IssueService issues;
 
     @Autowired
+    private ExternalInvoiceService externals;
+
+    @Autowired
     private PaymentService payments;
 
     @Autowired
@@ -151,6 +157,17 @@ class BackupIT {
         Invoice storno = invoices.createCancellation(saved.id());
         Invoice stornoDraft = invoices.find(storno.id()).orElseThrow();
         issues.issue(stornoDraft.id(), stornoDraft.version());
+        Invoice outside = invoices.createDraft(customer.id(), null);
+        DraftForm external = DraftForm.of(outside);
+        external.setFormat(InvoiceFormat.EXTERNAL);
+        external.setIssueDate(day);
+        external.setServiceFrom(day);
+        external.setServiceTo(day);
+        external.getLines().getFirst().setText("Lesung im Auftrag");
+        external.getLines().getFirst().setAmount("300");
+        Invoice externalDraft = invoices.saveDraft(outside.id(), external);
+        externals.register(externalDraft.id(), externalDraft.version(), externals.nextNumber(externalDraft),
+                "Lesung.xlsx", SampleOffice.workbook());
         threshold.saveBaseline(2012, "1.000,00");
         DocumentForm letter = new DocumentForm();
         letter.setCategory(DocumentCategory.TAX_OFFICE);
@@ -269,6 +286,18 @@ class BackupIT {
         Path changed = Files.write(folder.resolve("changed.zip"),
                 changed(original.toByteArray(), "files/invoice_document/"));
         try (Copy copy = copy("im_changed_invoice", KEY)) {
+            refused(copy, changed, "Rechnung ");
+        }
+    }
+
+    @Test
+    void aChangedOriginalFileStopsTheImport(@TempDir Path folder) throws IOException {
+        someOfEverything();
+        ByteArrayOutputStream original = new ByteArrayOutputStream();
+        backups.export(original);
+        Path changed = Files.write(folder.resolve("changed.zip"),
+                changed(original.toByteArray(), "files/invoice_original/"));
+        try (Copy copy = copy("im_changed_original", KEY)) {
             refused(copy, changed, "Rechnung ");
         }
     }

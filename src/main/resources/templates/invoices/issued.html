@@ -57,7 +57,7 @@
     </div>
 
     <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-mail"
-             th:if="${mailConfigured and invoice.status.name() != 'CANCELLED'}" th:open="${mailForm != null}">
+             th:if="${mailConfigured and !external and invoice.status.name() != 'CANCELLED'}" th:open="${mailForm != null}">
       <summary class="btn btn-primary w-fit"><i data-lucide="send" class="size-4"></i>Per E-Mail senden…</summary>
       <form class="mt-3 grid gap-3" method="post" th:action="@{/invoices/{id}/send(id=${invoice.id})}" data-once>
         <label class="floating-label"><span>An</span>
@@ -83,8 +83,10 @@
         </div>
       </form>
     </details>
-    <p class="text-sm text-base-content/75" id="mail-off" th:if="${!mailConfigured and invoice.status.name() != 'CANCELLED'}">Das Versenden per E-Mail ist nicht eingerichtet.
+    <p class="text-sm text-base-content/75" id="mail-off" th:if="${!mailConfigured and !external and invoice.status.name() != 'CANCELLED'}">Das Versenden per E-Mail ist nicht eingerichtet.
       Vermerken Sie den Versand von Hand.</p>
+    <p class="text-sm text-base-content/75" id="mail-external" th:if="${external and invoice.status.name() != 'CANCELLED'}">Eine externe Rechnung
+      versenden Sie selbst. Vermerken Sie den Versand von Hand.</p>
 
     <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-dispatch"
              th:if="${invoice.status.name() != 'CANCELLED'}">
@@ -194,7 +196,32 @@
           </ol>
         </section>
 
-        <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="invoice-documents">
+        <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="invoice-originals" th:if="${external}">
+          <h2 class="font-semibold">Originaldateien</h2>
+          <ul class="grid gap-3">
+            <li th:each="file : ${originals}" class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
+              <i data-lucide="file-text" class="size-5 text-primary"></i>
+              <span class="min-w-0 flex-1 basis-52 grid text-sm">
+                <span class="font-medium [overflow-wrap:anywhere]" th:text="${file.filename()}">Rechnung_2026-01.xlsx</span>
+                <span class="text-xs text-base-content/75 num" data-volatile th:text="${#numbers.formatInteger(file.size(), 1, 'POINT') + ' Byte'}">1.000 Byte</span>
+                <span class="text-xs text-base-content/75 num [overflow-wrap:anywhere]" data-volatile th:text="${'SHA-256 ' + file.sha256()}">SHA-256</span>
+              </span>
+              <a class="btn btn-sm" th:href="@{/invoices/{id}/originals/{original}(id=${invoice.id},original=${file.id()})}"
+                 th:id="${'download-original-' + fileStat.count}"><i data-lucide="download" class="size-4"></i>Herunterladen</a>
+            </li>
+          </ul>
+          <form class="grid gap-3" method="post" enctype="multipart/form-data" th:action="@{/invoices/{id}/originals(id=${invoice.id})}">
+            <label class="floating-label"><span>Weitere Datei</span>
+              <input id="original-file" name="file" type="file" class="file-input w-full" required aria-describedby="original-file-hint"
+                     accept=".pdf,.xlsx,.docx,.xml,application/pdf,application/xml,text/xml">
+            </label>
+            <p class="text-xs text-base-content/75" id="original-file-hint">PDF, XLSX, DOCX oder XML, bis 25 MB. Eine Datei bleibt, wie sie ist.
+              Eine weitere kommt hinzu, zum Beispiel das PDF zu einer Excel-Rechnung.</p>
+            <div class="form-actions"><button type="submit" class="btn" id="original-add"><i data-lucide="file-plus-2" class="size-4"></i>Hinzufügen</button></div>
+          </form>
+        </section>
+
+        <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="invoice-documents" th:unless="${external}">
           <h2 class="font-semibold">Dokumente</h2>
           <ul class="grid gap-3">
             <li th:each="file : ${documents}" class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
@@ -248,6 +275,8 @@
             ZUGFeRD und PDF/A-3 geprüft (Mustang, veraPDF)</p>
           <p class="flex items-start gap-2" th:if="${document.format().followsXRechnung()}"><i data-lucide="circle-check" class="size-4 text-success shrink-0 mt-0.5"></i>
             XRechnung geprüft (KoSIT)</p>
+          <p class="flex items-start gap-2" th:if="${external}"><i data-lucide="file-input" class="size-4 shrink-0 mt-0.5"></i>
+            Externe Rechnung: Angaben von Hand erfasst, Nummer gegen den Nummernkreis geprüft</p>
           <p class="flex items-start gap-2"><i data-lucide="lock" class="size-4 shrink-0 mt-0.5"></i>
             <span>Unveränderbar seit <span class="num" data-volatile
                 th:text="${#temporals.format(invoice.issuedAt, 'dd.MM.yyyy HH:mm', 'Europe/Berlin')}">18.03.2027 10:00</span></span></p>

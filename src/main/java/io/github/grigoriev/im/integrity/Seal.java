@@ -52,6 +52,18 @@ public class Seal {
     }
 
     /**
+     * Returns the seal of an original file of an external invoice.
+     *
+     * @param invoiceId the invoice
+     * @param id the file
+     * @param sha256 the SHA-256 of the file
+     * @return the seal, 64 hexadecimal characters
+     */
+    public String invoiceOriginal(long invoiceId, long id, String sha256) {
+        return seal("invoice_original", Long.toString(invoiceId), Long.toString(id), sha256);
+    }
+
+    /**
      * Returns the seal of the snapshot of an issued invoice.
      *
      * @param invoiceId the invoice

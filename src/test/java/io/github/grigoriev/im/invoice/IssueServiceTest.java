@@ -112,6 +112,16 @@ class IssueServiceTest {
     }
 
     @Test
+    void issuesNoExternalInvoice() {
+        Invoice external = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.EXTERNAL, TODAY, TODAY, TODAY,
+                14, null, null, null, null, List.of(), NOW, NOW, 3L, null, null, null);
+        when(invoices.draft(5)).thenReturn(external);
+        assertThatThrownBy(() -> service.issue(5, 3L)).isInstanceOf(InvoiceException.class)
+                .hasMessage(IssueService.EXTERNAL);
+        verifyNoInteractions(numbers, einvoices, store, audit);
+    }
+
+    @Test
     void refusesAnIncompleteDraftBeforeItTakesANumber() {
         when(invoices.problems(draft)).thenReturn(List.of("Eins.", "Zwei."));
         assertThatThrownBy(() -> service.issue(5, 3L)).isInstanceOf(InvoiceException.class)

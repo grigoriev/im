@@ -31,7 +31,8 @@ public class CustomerController {
     static final Map<InvoiceFormat, String> FORMATS = Map.of(
             InvoiceFormat.ZUGFERD_EN16931, "ZUGFeRD EN16931: PDF mit XML",
             InvoiceFormat.ZUGFERD_XRECHNUNG, "ZUGFeRD XRECHNUNG: PDF mit XML",
-            InvoiceFormat.XRECHNUNG, "XRechnung: nur XML");
+            InvoiceFormat.XRECHNUNG, "XRechnung: nur XML",
+            InvoiceFormat.EXTERNAL, "Externe Rechnung: eigene Datei, von Hand erfasst");
 
     private static final String SUCCESS = "success";
 

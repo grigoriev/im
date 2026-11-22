@@ -112,6 +112,16 @@ public class NumberService {
     }
 
     /**
+     * Returns the number that the next invoice of a year gets, for the registration of an external invoice.
+     *
+     * @param year the year of the invoice date
+     * @return the number in the current pattern
+     */
+    public String next(int year) {
+        return preview(sequence(year));
+    }
+
+    /**
      * Sets the counter of a year without issued numbers.
      *
      * @param year the year
