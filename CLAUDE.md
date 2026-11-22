@@ -48,7 +48,10 @@ Package `io.github.grigoriev.im`:
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
   validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `ReminderService` records the payment reminders of an invoice with money open (table `reminder`, written once), sent by `MailService.sendReminder` or noted by hand; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `ArchiveService` zips the documents of a year, with the business documents of that year in "Dokumente"; `TemplateService` keeps the templates
-  per customer. `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
+  per customer. `ExternalInvoiceService` registers an external invoice (format `EXTERNAL`: facts by hand, the number
+  under the lock of the issue or, in a year by hand, the number of its file, all in one transaction); `OriginalStore`
+  keeps its original files (`InvoiceOriginal`, PDF, XLSX, DOCX or XML, table `invoice_original`, written once, sealed,
+  checked on every read). `LineForm.toLine` reads and checks a line of both editors (fragment `fragments/lines.html`)
 - `threshold`: the §19 limit and the reports (`ThresholdService`: one `RevenueRow` per payment, rounded once, with the §19 part; baselines, forecast; `ReportController` shows Anlage EÜR Zeilen 12 and 13, one per tax number, and the CSV)
 - `backup`: the full export and import (`BackupService`: every table as PostgreSQL text, binaries as files, one transaction into an empty installation; issued invoices go in as drafts, get lines and documents, then their status; both stream, the import reads the upload from disk through `BackupArchive`, one row and one file at a time); `BackupRunService` reads the last nightly backup and restore test that the host scripts write into `backup_run`
 - `mail`: the e-mail text (`MailTextService`: the default of "Einstellungen", "E-Mail" for both roles, the template of an invoice, the placeholders) and the
@@ -57,10 +60,12 @@ Package `io.github.grigoriev.im`:
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file; `ProcedureService` writes the Verfahrensdokumentation from template `templates/pdf/procedure.html`)
 - `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
-- `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock)
+- `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock);
+  `ManualNumbers` keeps a year before the app: the numbers of the files in any order, a reason written once per gap
+  (table `number_gap`), "Jahr abschließen" continues the counter after the highest number
 - `expense`: the business expenses with their receipts (`ExpenseService`: amount with VAT, day of payment, kind
   `ExpenseCategory` after the Anlage EÜR, mark "Anlagegut"; the receipt is written once and sealed; a wrong expense is
-  cancelled, never deleted; table `expense` with a trigger). The report sums them by kind for WISO Steuer
+  canceled, never deleted; table `expense` with a trigger). The report sums them by kind for WISO Steuer
 - `integrity`: the seals and their check. `Seal` computes the HMAC-SHA256 with `IM_INTEGRITY_KEY` over what a file
   belongs to and its SHA-256; `SealMigration` (Flyway V29) sealed what existed. `DocumentStore`, `InvoiceIntegrity`
   (snapshot, documents, ZUGFeRD XML against the XML file, `EInvoiceFacts` of the XML against the snapshot) and
@@ -71,8 +76,12 @@ Package `io.github.grigoriev.im`:
   `migrate`), the only one with `IM_DB_OWNER_PASSWORD`; `SchemaCheck` lets the app start only on the current schema
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`, `SessionEpoch` (ends
   sessions after an import, a deletion or a new password), `RecentLogin` (a new passkey needs a login of the last
-  15 minutes or the password confirmed), `UploadLimit` (refuses a large upload before the CSRF check reads it)
-- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog`, gives every `select.select` a styled list and opens the camera
+  15 minutes or the password confirmed), `UploadLimit` (refuses a large upload before the CSRF check reads it), `StaleFormHandler` (a form
+  with the CSRF token of an expired session leads to the login page; a stale logout from the app still logs out),
+  `PasskeyConfig` (the passkey stores of Spring Security on JDBC)
+- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments, `NumberBookController` the page
+  "Nummernkreis" of a year by hand under `/numbers/{year}`, `DamagedDataAdvice` checks everything and names the damage
+  when stored JSON no longer parses), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog`, gives every `select.select` a styled list and opens the camera
   for a file field from `data-capture`). The web app manifest and the icons live in `static` (`manifest.webmanifest`, `favicon.*`, `icons/`), open without login.
   Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
 

@@ -48,7 +48,7 @@ test('enters an expense with its receipt, changes and cancels one, and sums them
   await page.locator('#expense-cancel-confirm').click();
   await expect(page.getByRole('status')).toHaveText('Ausgabe storniert. Sie zählt nicht mehr.');
   await expect(page.locator('#expense-cancelled')).toContainText('Doppelt erfasst');
-  await expect(page.locator('#expense-save'), 'a cancelled expense never changes').toHaveCount(0);
+  await expect(page.locator('#expense-save'), 'a canceled expense never changes').toHaveCount(0);
 
   await page.goto('/expenses');
   const mine = page.locator('#expense-list li').filter({ hasText: vendor });
@@ -62,7 +62,7 @@ test('enters an expense with its receipt, changes and cancels one, and sums them
   const csv = await page.request.get(`/reports/expenses.csv?year=${year}`);
   expect(csv.headers()['content-type']).toBe('text/csv;charset=UTF-8');
   const lines = (await csv.text()).split('\r\n').filter((line) => line.includes(vendor));
-  expect(lines.map((line) => line.split(';')[1]).sort(), 'the cancelled expense stays out').toEqual(['1299,00', '49,90']);
+  expect(lines.map((line) => line.split(';')[1]).sort(), 'the canceled expense stays out').toEqual(['1299,00', '49,90']);
   const zip = await (await page.request.get(`/reports/archive.zip?year=${year}`)).body();
   expect(zip.includes('Ausgaben/Inhalt.csv'), 'the archive holds the receipts').toBe(true);
   await page.setViewportSize({ width: 375, height: 800 });

@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Keeps the business expenses with their receipts (docs/PLAN.md, section 7, "Expenses"). An expense counts in the year
- * of its payment. Its receipt is written once and sealed; every read checks it. A wrong expense is cancelled with a
+ * of its payment. Its receipt is written once and sealed; every read checks it. A wrong expense is canceled with a
  * reason, never deleted. Every entry, change and cancellation goes into the audit log.
  */
 @Service
@@ -111,7 +111,7 @@ public class ExpenseService implements IntegrityCheck {
     }
 
     /**
-     * Lists the expenses paid in a year, the cancelled ones included.
+     * Lists the expenses paid in a year, the canceled ones included.
      *
      * @param year the year of the payment
      * @return the expenses, by day of payment
@@ -148,7 +148,7 @@ public class ExpenseService implements IntegrityCheck {
      * Returns the valid assets among the expenses of a year: they go into WISO one by one, as Anlagegut.
      *
      * @param expenses the expenses of the year
-     * @return the assets that are not cancelled
+     * @return the assets that are not canceled
      */
     public static List<Expense> assets(List<Expense> expenses) {
         return expenses.stream().filter(expense -> expense.asset() && !expense.cancelled()).toList();
@@ -196,7 +196,7 @@ public class ExpenseService implements IntegrityCheck {
      * @param id the expense
      * @param form the entered values
      * @return the changed expense
-     * @throws ExpenseException if it is unknown or cancelled, or a value is not valid
+     * @throws ExpenseException if it is unknown or canceled, or a value is not valid
      */
     @Transactional
     public Expense change(long id, ExpenseForm form) {
@@ -213,8 +213,8 @@ public class ExpenseService implements IntegrityCheck {
      *
      * @param id the expense
      * @param reason why
-     * @return the cancelled expense
-     * @throws ExpenseException if it is unknown or cancelled already, or the reason is missing or too long
+     * @return the canceled expense
+     * @throws ExpenseException if it is unknown or canceled already, or the reason is missing or too long
      */
     @Transactional
     public Expense cancel(long id, String reason) {

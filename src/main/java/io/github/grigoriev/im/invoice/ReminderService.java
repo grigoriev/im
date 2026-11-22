@@ -59,7 +59,7 @@ public class ReminderService {
     }
 
     /**
-     * Returns an invoice that a reminder may concern: issued, not cancelled, no Stornorechnung, with money open.
+     * Returns an invoice that a reminder may concern: issued, not canceled, no Stornorechnung, with money open.
      *
      * @param invoiceId the invoice
      * @return the invoice

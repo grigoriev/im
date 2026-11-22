@@ -249,7 +249,7 @@ public class ArchiveService {
         zip.write(contents.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    /** Writes the receipts of the year into their folder, the cancelled ones too, marked; none, no folder. */
+    /** Writes the receipts of the year into their folder, the canceled ones too, marked; none, no folder. */
     private void writeExpenses(int year, ZipOutputStream zip) throws IOException {
         List<Expense> ofYear = expenses.ofYear(year);
         if (ofYear.isEmpty()) {

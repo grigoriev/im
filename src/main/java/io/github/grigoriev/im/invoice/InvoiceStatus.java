@@ -11,7 +11,7 @@ public enum InvoiceStatus {
     SENT("Versendet"),
     /** The payments cover the total. */
     PAID("Bezahlt"),
-    /** Cancelled by a Stornorechnung. */
+    /** Canceled by a Stornorechnung. */
     CANCELLED("Storniert");
 
     private final String label;

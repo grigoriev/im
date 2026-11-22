@@ -23,7 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The expenses against PostgreSQL: the receipt is written once and sealed, an expense never goes away, a cancelled one
+ * The expenses against PostgreSQL: the receipt is written once and sealed, an expense never goes away, a canceled one
  * stays as it is, and a receipt changed by the owner shows. Each test uses its own year.
  */
 @SpringBootTest

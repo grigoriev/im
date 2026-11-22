@@ -130,7 +130,7 @@ public class IssueService {
      * @param draft the draft as the transaction read it
      * @param document the invoice document with its number
      * @param at time of the issue
-     * @throws InvoiceException if the number exists, the draft changed meanwhile or its invoice is cancelled
+     * @throws InvoiceException if the number exists, the draft changed meanwhile or its invoice is canceled
      * @throws org.springframework.transaction.IllegalTransactionStateException without a transaction
      */
     @Transactional(propagation = Propagation.MANDATORY)

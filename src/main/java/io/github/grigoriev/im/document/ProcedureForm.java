@@ -42,7 +42,7 @@ public class ProcedureForm {
     /**
      * Sets the program for receipts and expenses.
      *
-     * @param expenses the program, for example "WISO Steuern"
+     * @param expenses the program, for example "WISO Steuer"
      */
     public void setExpenses(String expenses) {
         this.expenses = expenses;

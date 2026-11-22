@@ -14,8 +14,8 @@ import java.time.LocalDate;
  * @param vendor who was paid
  * @param description what was bought
  * @param asset whether it is an asset written off over years (Anlagegut); WISO computes the AfA
- * @param cancelledAt when it was cancelled, {@code null} for a valid expense
- * @param cancelReason why it was cancelled, {@code null} for a valid expense
+ * @param cancelledAt when it was canceled, {@code null} for a valid expense
+ * @param cancelReason why it was canceled, {@code null} for a valid expense
  * @param filename the file name of the receipt
  * @param mediaType PDF, JPEG or PNG
  * @param sha256 the SHA-256 of the receipt, hexadecimal
@@ -28,9 +28,9 @@ public record Expense(long id, LocalDate paidOn, BigDecimal amount, ExpenseCateg
         String sha256, int size, Instant createdAt, String createdBy) {
 
     /**
-     * Tells whether it was cancelled. A cancelled expense stays, but counts no more.
+     * Tells whether it was canceled. A canceled expense stays, but counts no more.
      *
-     * @return {@code true} if cancelled
+     * @return {@code true} if canceled
      */
     public boolean cancelled() {
         return cancelledAt != null;

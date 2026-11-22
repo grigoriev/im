@@ -682,7 +682,7 @@ class InvoiceServiceTest {
         assertThatThrownBy(() -> service.createCancellation(7)).hasMessage(InvoiceService.CANCEL_WHAT);
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
         when(repository.cancelsId(7L)).thenReturn(Optional.of(3L));
-        assertThatThrownBy(() -> service.createCancellation(7)).as("a Stornorechnung is not cancelled")
+        assertThatThrownBy(() -> service.createCancellation(7)).as("a Stornorechnung is not canceled")
                 .hasMessage(InvoiceService.CANCEL_WHAT);
         when(repository.cancelsId(7L)).thenReturn(Optional.empty());
         when(repository.cancellationId(7L)).thenReturn(Optional.of(8L));
@@ -728,7 +728,7 @@ class InvoiceServiceTest {
         form.getLines().clear();
         form.getLines().add(row("Anders", true, "1", "1", TaxCategory.KLEINUNTERNEHMER));
         Invoice saved = service.saveDraft(5, form);
-        assertThat(saved.lines()).as("the lines of the cancelled invoice stay").isEqualTo(storno.lines());
+        assertThat(saved.lines()).as("the lines of the canceled invoice stay").isEqualTo(storno.lines());
         assertThat(saved.format()).isEqualTo(InvoiceFormat.ZUGFERD_EN16931);
         form.setIssueDate(null);
         assertThatThrownBy(() -> service.saveDraft(5, form))
@@ -747,12 +747,12 @@ class InvoiceServiceTest {
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
         when(documents.verifiedSnapshot(any())).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
-        assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice, "
+        assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the canceled invoice, "
                 + "even after the profile changed")
                 .isEqualTo("143/123/45678");
         InvoiceDocument withVatId = ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
         when(documents.verifiedSnapshot(any())).thenReturn(withVatId);
-        assertThat(service.document(storno).orElseThrow().seller()).as("both tax IDs of the cancelled invoice")
+        assertThat(service.document(storno).orElseThrow().seller()).as("both tax IDs of the canceled invoice")
                 .extracting(Party::taxNumber, Party::vatId)
                 .containsExactly(withVatId.seller().taxNumber(), withVatId.seller().vatId());
     }
