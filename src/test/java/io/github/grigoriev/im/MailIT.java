@@ -8,6 +8,7 @@ import com.icegreen.greenmail.util.ServerSetupTest;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchService;
@@ -16,11 +17,13 @@ import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.invoice.ExternalInvoiceService;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.SampleOffice;
 import io.github.grigoriev.im.mail.MailService;
 import io.github.grigoriev.im.mail.SendForm;
 import io.github.grigoriev.im.numbering.NumberService;
@@ -77,6 +80,9 @@ class MailIT {
     @Autowired
     private NumberService numbers;
 
+    @Autowired
+    private ExternalInvoiceService externals;
+
     private Invoice issued() {
         SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
@@ -132,6 +138,40 @@ class MailIT {
             assertThat(dispatch.recipient()).isEqualTo("buchhaltung@verlag.example");
             assertThat(dispatch.note()).isEqualTo("PDF, XML");
         });
+    }
+
+    @Test
+    void sendsTheOriginalFilesOfAnExternalInvoice() throws Exception {
+        SellerTestData.save(sellers, SellerTestData.profile());
+        Customer customer = customers.create(CustomerTestData.verlag());
+        Invoice draft = invoices.createDraft(customer.id(), null);
+        DraftForm form = DraftForm.of(draft);
+        LocalDate day = LocalDate.of(2001, 2, 1);
+        form.setFormat(InvoiceFormat.EXTERNAL);
+        form.setIssueDate(day);
+        form.setServiceFrom(day);
+        form.setServiceTo(day);
+        form.getLines().getFirst().setText("Lesung");
+        form.getLines().getFirst().setAmount("400");
+        Invoice saved = invoices.saveDraft(draft.id(), form);
+        byte[] xlsx = SampleOffice.workbook();
+        String number = externals.register(saved.id(), saved.version(), externals.nextNumber(saved).orElseThrow(),
+                "Rechnung Februar.xlsx", xlsx);
+        Invoice external = invoices.find(saved.id()).orElseThrow();
+
+        SendForm send = mail.form(external, "buchhaltung@verlag.example");
+        mail.send(external.id(), send);
+        MimeMessage message = SMTP.getReceivedMessages()[0];
+        Multipart parts = (Multipart) message.getContent();
+        assertThat(parts.getCount()).isEqualTo(2);
+        Part file = parts.getBodyPart(1);
+        assertThat(file.getFileName()).isEqualTo("Rechnung Februar.xlsx");
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        file.getDataHandler().writeTo(bytes);
+        assertThat(bytes.toByteArray()).as("the original file, byte for byte").isEqualTo(xlsx);
+        assertThat(dispatches.list(external.id())).singleElement()
+                .satisfies(dispatch -> assertThat(dispatch.note()).isEqualTo("Rechnung Februar.xlsx"));
+        assertThat(number).startsWith("2001-");
     }
 
     @Test

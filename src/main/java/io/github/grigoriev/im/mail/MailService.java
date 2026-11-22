@@ -7,6 +7,8 @@ import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.ReminderService;
+import io.github.grigoriev.im.invoice.InvoiceOriginal;
+import io.github.grigoriev.im.invoice.OriginalStore;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.validation.Fields;
 import jakarta.mail.MessagingException;
@@ -22,7 +24,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 /**
- * Sends an issued invoice by e-mail over SMTP, with its stored PDF and XML byte for byte, and records the dispatch.
+ * Sends an issued invoice by e-mail over SMTP, with its stored PDF and XML byte for byte, and records the dispatch. An
+ * external invoice goes out with its original files.
  * The e-mail has the text as typed and the same text as HTML with the facts of the invoice. A failed send records
  * nothing.
  */
@@ -45,6 +48,7 @@ public class MailService {
     private final JavaMailSender sender;
     private final DispatchService dispatches;
     private final DocumentStore documents;
+    private final OriginalStore originals;
     private final MailTextService texts;
     private final MailHtml html;
     private final ReminderService reminders;
@@ -56,16 +60,20 @@ public class MailService {
      * @param sender sends the message
      * @param dispatches checks the invoice and records the dispatch
      * @param documents the stored PDF and XML
+     * @param originals the original files of an external invoice
      * @param texts the text of the e-mail
      * @param html writes the HTML of the e-mail
      * @param reminders checks and records a payment reminder
      */
+    @SuppressWarnings("java:S107") // the parts of an e-mail
     public MailService(MailProperties properties, JavaMailSender sender, DispatchService dispatches,
-            DocumentStore documents, MailTextService texts, MailHtml html, ReminderService reminders) {
+            DocumentStore documents, OriginalStore originals, MailTextService texts, MailHtml html,
+            ReminderService reminders) {
         this.properties = properties;
         this.sender = sender;
         this.dispatches = dispatches;
         this.documents = documents;
+        this.originals = originals;
         this.texts = texts;
         this.html = html;
         this.reminders = reminders;
@@ -95,7 +103,8 @@ public class MailService {
 
     /**
      * Returns the form for an issued invoice: the buyer's address, the text of the e-mail, and the attachments of its
-     * format. ZUGFeRD sends the PDF, which carries the XML; XRechnung sends the XML and the PDF as a readable copy.
+     * format. ZUGFeRD sends the PDF, which carries the XML; XRechnung sends the XML and the PDF as a readable copy; an
+     * external invoice sends its original files, which "pdf" stands for.
      *
      * @param invoice the issued invoice
      * @param buyerEmail the buyer's address from the snapshot, may be {@code null}
@@ -108,7 +117,7 @@ public class MailService {
         form.setSubject(text.subject());
         form.setBody(text.body());
         form.setPdf(true);
-        form.setXml(!invoice.format().isPdf());
+        form.setXml(!invoice.format().isPdf() && !invoice.format().isExternal());
         return form;
     }
 
@@ -191,11 +200,36 @@ public class MailService {
         }
     }
 
-    /** A checked e-mail: address, subject, text and the stored documents to attach. */
-    private record Outgoing(String to, String subject, String body, List<StoredDocument> attachments) {
+    /** A file to attach: a stored document of the app or an original file. */
+    private static final class Attachment {
+
+        private final String filename;
+        private final String mediaType;
+        private final byte[] content;
+        private final String label;
+
+        Attachment(String filename, String mediaType, byte[] content, String label) {
+            this.filename = filename;
+            this.mediaType = mediaType;
+            this.content = content;
+            this.label = label;
+        }
+
+        static Attachment of(StoredDocument document) {
+            return new Attachment(document.filename(), document.kind().mediaType(), document.content(),
+                    document.kind().name());
+        }
+
+        static Attachment of(InvoiceOriginal original) {
+            return new Attachment(original.filename(), original.mediaType(), original.content(), original.filename());
+        }
+    }
+
+    /** A checked e-mail: address, subject, text and the stored files to attach. */
+    private record Outgoing(String to, String subject, String body, List<Attachment> attachments) {
 
         String attachmentNames() {
-            return String.join(", ", attachments.stream().map(file -> file.kind().name()).toList());
+            return String.join(", ", attachments.stream().map(file -> file.label).toList());
         }
     }
 
@@ -208,15 +242,17 @@ public class MailService {
         Fields.checkEmail(problems, to);
         required(problems, subject, "den Betreff", "Der Betreff", MAX_SUBJECT);
         required(problems, body, "den Text", "Der Text", MAX_BODY);
-        List<StoredDocument> attachments = new ArrayList<>();
+        List<Attachment> attachments = new ArrayList<>();
         if (form.isPdf()) {
-            documents.find(invoiceId, DocumentKind.PDF).ifPresent(attachments::add);
+            documents.find(invoiceId, DocumentKind.PDF).map(Attachment::of).ifPresent(attachments::add);
+            // An invoice of the app has no original files: only an external one adds them here.
+            originals.list(invoiceId).stream().map(originals::verified).map(Attachment::of).forEach(attachments::add);
         }
         if (form.isXml()) {
-            documents.find(invoiceId, DocumentKind.XML).ifPresent(attachments::add);
+            documents.find(invoiceId, DocumentKind.XML).map(Attachment::of).ifPresent(attachments::add);
         }
         if (attachments.isEmpty()) {
-            problems.add("Bitte PDF, XML oder beides anhängen.");
+            problems.add("Bitte die Rechnung anhängen: PDF, XML oder die Originaldateien.");
         }
         if (!problems.isEmpty()) {
             throw new InvoiceException(problems);
@@ -243,7 +279,7 @@ public class MailService {
     }
 
     private MimeMessage message(String to, String subject, String body, String htmlBody,
-            List<StoredDocument> attachments) throws MessagingException {
+            List<Attachment> attachments) throws MessagingException {
         MimeMessage message = sender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         helper.setFrom(properties.from());
@@ -253,8 +289,8 @@ public class MailService {
         }
         helper.setSubject(subject);
         helper.setText(body, htmlBody);
-        for (StoredDocument file : attachments) {
-            helper.addAttachment(file.filename(), new ByteArrayResource(file.content()), file.kind().mediaType());
+        for (Attachment file : attachments) {
+            helper.addAttachment(file.filename, new ByteArrayResource(file.content), file.mediaType);
         }
         return message;
     }

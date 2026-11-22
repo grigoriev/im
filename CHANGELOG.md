@@ -13,7 +13,7 @@ All notable changes to this project are documented in this file. The format foll
 - The original files of an invoice are sealed, written once and checked on every read, at startup and every night. The yearly archive and the full export take them along. Further files go in one at a time on the page of the invoice.
 - Numbers of a year before the app: the admin marks the year under "Einstellungen", "Nummernkreis". Its external invoices then take the number of their file, in any order. The number has the form year and counter, its year is the year of the invoice date, and a counter exists once.
 - The page "Nummernkreis" of such a year lists its numbers, the dates out of order and the gaps. Each gap gets a reason, written once. "Jahr abschließen" works without a gap without reason: the counter continues after the highest number.
-- Payments, dispatches, reminders, the Stornorechnung and the reports treat an external invoice like an issued one. The app does not send it by e-mail yet: the user sends the file and notes the dispatch.
+- Payments, dispatches, reminders, the Stornorechnung and the reports treat an external invoice like an issued one. An e-mail from the app attaches its original files byte for byte, and a payment reminder can attach them too.
 
 ## [0.1.10] - 2026-11-17
 

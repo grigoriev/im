@@ -337,7 +337,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 8. The rule "teaching stands alone" does not apply: the invoice exists already. The rules of EN 16931 and of the two
    tax numbers still hold, so the report keeps each business apart.
 9. Dispatch, payments, reminders, archive, export and the integrity check treat it like an issued invoice.
-   For now the user sends its files by hand and notes the dispatch. An e-mail from the app follows later.
+   An e-mail from the app attaches its original files, byte for byte.
 10. The Stornorechnung of an external invoice is external too. It names the invoice it cancels.
 
 Numbers of an external invoice:

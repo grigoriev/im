@@ -57,7 +57,7 @@
     </div>
 
     <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-mail"
-             th:if="${mailConfigured and !external and invoice.status.name() != 'CANCELLED'}" th:open="${mailForm != null}">
+             th:if="${mailConfigured and invoice.status.name() != 'CANCELLED'}" th:open="${mailForm != null}">
       <summary class="btn btn-primary w-fit"><i data-lucide="send" class="size-4"></i>Per E-Mail senden…</summary>
       <form class="mt-3 grid gap-3" method="post" th:action="@{/invoices/{id}/send(id=${invoice.id})}" data-once>
         <label class="floating-label"><span>An</span>
@@ -71,8 +71,8 @@
         </label>
         <div class="flex flex-wrap gap-4 text-sm">
           <label class="flex items-center gap-2"><input id="mail-pdf" name="pdf" type="checkbox" class="checkbox checkbox-sm"
-              value="true" th:checked="${mail.pdf}">PDF anhängen</label>
-          <label class="flex items-center gap-2"><input id="mail-xml" name="xml" type="checkbox" class="checkbox checkbox-sm"
+              value="true" th:checked="${mail.pdf}"><span th:text="${external} ? 'Originaldateien anhängen' : 'PDF anhängen'">PDF anhängen</span></label>
+          <label class="flex items-center gap-2" th:unless="${external}"><input id="mail-xml" name="xml" type="checkbox" class="checkbox checkbox-sm"
               value="true" th:checked="${mail.xml}">XML anhängen</label>
         </div>
         <p class="text-xs text-base-content/75">Die Anhänge sind die gespeicherten Dokumente, Byte für Byte. Der Versand erscheint im Verlauf.</p>
@@ -83,10 +83,8 @@
         </div>
       </form>
     </details>
-    <p class="text-sm text-base-content/75" id="mail-off" th:if="${!mailConfigured and !external and invoice.status.name() != 'CANCELLED'}">Das Versenden per E-Mail ist nicht eingerichtet.
+    <p class="text-sm text-base-content/75" id="mail-off" th:if="${!mailConfigured and invoice.status.name() != 'CANCELLED'}">Das Versenden per E-Mail ist nicht eingerichtet.
       Vermerken Sie den Versand von Hand.</p>
-    <p class="text-sm text-base-content/75" id="mail-external" th:if="${external and invoice.status.name() != 'CANCELLED'}">Eine externe Rechnung
-      versenden Sie selbst. Vermerken Sie den Versand von Hand.</p>
 
     <details class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5" id="invoice-dispatch"
              th:if="${invoice.status.name() != 'CANCELLED'}">
@@ -151,7 +149,7 @@
             <textarea id="reminder-body" name="body" class="textarea w-full h-48" required maxlength="4000" th:text="${reminderMail.body}">Text</textarea>
           </label>
           <label class="flex items-center gap-2 text-sm"><input id="reminder-pdf" name="pdf" type="checkbox" class="checkbox checkbox-sm"
-              value="true" th:checked="${reminderMail.pdf}">Rechnung als PDF anhängen</label>
+              value="true" th:checked="${reminderMail.pdf}"><span th:text="${external} ? 'Rechnung mit ihren Originaldateien anhängen' : 'Rechnung als PDF anhängen'">Rechnung als PDF anhängen</span></label>
           <div class="form-actions">
             <button type="submit" class="btn" id="reminder-preview" formtarget="_blank" formnovalidate th:formaction="@{/invoices/{id}/remind/preview(id=${invoice.id})}"
                     title="Die Erinnerung so, wie der Kunde sie sieht, in einem neuen Tab"><i data-lucide="eye" class="size-4"></i>Vorschau</button>
