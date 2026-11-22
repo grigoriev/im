@@ -124,7 +124,7 @@ public class ExternalInvoiceService {
             return byHand.get();
         }
         // The exception rolls the transaction back, and with it the counter: no gap remains.
-        String number = numbers.assign(draft.issueDate());
+        String number = IssueService.assign(numbers, draft);
         if (!number.equals(entered)) {
             throw new InvoiceException(List.of(NUMBER_DIFFERS.formatted(number, entered)));
         }

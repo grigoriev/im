@@ -106,7 +106,7 @@ public class IssueService {
         if (!problems.isEmpty()) {
             throw new InvoiceException(problems);
         }
-        String number = numbers.assign(draft.issueDate());
+        String number = assign(numbers, draft);
         InvoiceDocument document = invoices.document(draft, number).orElseThrow();
         IssuedEInvoice files;
         try {
@@ -121,6 +121,21 @@ public class IssueService {
         audit.add(id, AuditAction.INVOICE_ISSUED, number + ", "
                 + Customer.label(document.buyer().name(), document.buyer().contactName()));
         return number;
+    }
+
+    /**
+     * Assigns the next number of the year of a draft under the row lock. The check of a year by hand before ran
+     * without the lock: if the admin marked the year meanwhile, the counter gives no number.
+     *
+     * @param numbers the counter
+     * @param draft the draft
+     * @return the invoice number
+     * @throws InvoiceException if the year takes its numbers by hand
+     */
+    static String assign(NumberService numbers, Invoice draft) {
+        int year = draft.issueDate().getYear();
+        return numbers.assign(draft.issueDate())
+                .orElseThrow(() -> new InvoiceException(List.of(BY_HAND.formatted(year))));
     }
 
     /**

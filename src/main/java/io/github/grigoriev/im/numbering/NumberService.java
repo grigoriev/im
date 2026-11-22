@@ -6,7 +6,7 @@ import io.github.grigoriev.im.seller.SettingsException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -34,7 +34,7 @@ public class NumberService {
             ON CONFLICT (year) DO NOTHING""";
     static final String TAKE = """
             UPDATE number_sequence SET next_number = next_number + 1, used = TRUE
-             WHERE year = :year RETURNING next_number - 1""";
+             WHERE year = :year AND NOT manual RETURNING next_number - 1""";
     static final String START = "UPDATE number_sequence SET next_number = :start WHERE year = :year AND NOT used "
             + "AND NOT manual";
     static final String TAKEN = "SELECT EXISTS (SELECT 1 FROM invoice WHERE number = :number)";
@@ -144,18 +144,19 @@ public class NumberService {
 
     /**
      * Assigns the next number. It runs only in the transaction that issues the invoice: a rollback returns
-     * the number, so no gap remains. Without such a transaction it fails, rather than commit a number alone.
+     * the number, so no gap remains. Without such a transaction it fails, rather than commit a number alone. A year
+     * by hand takes no number of the counter, even if the admin marked it after the caller checked.
      *
      * @param issueDate the issue date of the invoice
-     * @return the invoice number
+     * @return the invoice number, empty if the year takes its numbers by hand
      * @throws org.springframework.transaction.IllegalTransactionStateException without a transaction
      */
     @Transactional(propagation = Propagation.MANDATORY)
-    public String assign(LocalDate issueDate) {
+    public Optional<String> assign(LocalDate issueDate) {
         int year = issueDate.getYear();
         jdbc.sql(CREATE_YEAR).param("year", year).update();
-        int counter = Objects.requireNonNull(jdbc.sql(TAKE).param("year", year).query(Integer.class).single());
-        return pattern().format(year, counter);
+        return jdbc.sql(TAKE).param("year", year).query(Integer.class).optional()
+                .map(counter -> pattern().format(year, counter));
     }
 
     private NumberSequence sequence(int year) {

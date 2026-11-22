@@ -32,7 +32,8 @@ import tools.jackson.databind.json.JsonMapper;
  * Writes all data and documents into one ZIP and reads them back into an empty installation (docs/PLAN.md, section
  * 7, "Reports and export", item 4). Each value travels as PostgreSQL text, binary columns as files of their own, so
  * a table round-trips exactly. The import runs in one transaction and keeps the triggers that freeze issued invoices:
- * an issued invoice goes in as a draft, gets its lines, and only then its status, number and snapshot.
+ * an issued invoice goes in as a draft, gets its lines, and only then its number and snapshot as {@code ISSUED}. A
+ * further step moves it on to its status, as the triggers let the status move only along its graph.
  */
 @Service
 public class BackupService {
@@ -54,7 +55,10 @@ public class BackupService {
     static final int FORMAT = 1;
     static final String MANIFEST = "manifest.json";
 
-    /** The tables in the order their keys need. Remember-me logins and the Flyway history stay out. */
+    /**
+     * The tables in the order their keys need. Remember-me logins, the Flyway history, the schema marker
+     * {@code app_info} and the backup runs that the host scripts write stay out.
+     */
     static final List<String> TABLES = List.of("country", "app_setting", "tax_note", "number_sequence", "number_gap",
             "threshold_baseline", "seller_profile", "app_user", "user_entities", "user_credentials", "customer",
             "invoice_template", "invoice_template_line", INVOICE, "invoice_line", "invoice_document", "invoice_original", "dispatch",
@@ -71,6 +75,11 @@ public class BackupService {
     /** The columns of an invoice that the import sets after its lines, so the triggers see a draft until then. */
     static final List<String> LATER = List.of("status", "number", "issued_at", "snapshot", "seal", "cancels_id",
             "template_id");
+    /** Moves an imported invoice from {@code ISSUED} on to its status. */
+    static final String MOVE = "UPDATE invoice SET status = :status WHERE id = CAST(:id AS BIGINT)";
+    private static final String STATUS = "status";
+    private static final String DRAFT = "DRAFT";
+    private static final String ISSUED = "ISSUED";
     static final String DAMAGED = "Die Datensicherung enthält Dateien, die nicht zu Prüfsumme oder Siegel passen: %s. "
             + "Das Siegel braucht denselben IM_INTEGRITY_KEY wie die Installation, aus der die Sicherung stammt.";
 
@@ -275,18 +284,24 @@ public class BackupService {
     private static Map<String, Object> asDraft(Map<String, Object> row) {
         Map<String, Object> draft = new LinkedHashMap<>(row);
         LATER.forEach(column -> draft.put(column, null));
-        draft.put("status", "DRAFT");
+        draft.put(STATUS, DRAFT);
         return draft;
     }
 
+    /** Gives an invoice its number and snapshot as {@code ISSUED}, then moves it on to its status. */
     private void finish(Map<String, String> types, Map<String, Object> invoice) {
+        Object status = invoice.get(STATUS);
+        Object first = DRAFT.equals(status) ? DRAFT : ISSUED;
         List<String> sets = LATER.stream().map(column -> column + " = " + value(types, column)).toList();
         JdbcClient.StatementSpec update = jdbc.sql("UPDATE invoice SET " + String.join(", ", sets)
                 + " WHERE id = CAST(:id AS BIGINT)").param("id", invoice.get("id"));
         for (String column : LATER) {
-            update = update.param(column, invoice.get(column));
+            update = update.param(column, STATUS.equals(column) ? first : invoice.get(column));
         }
         update.update();
+        if (!first.equals(status)) {
+            jdbc.sql(MOVE).param(STATUS, status).param("id", invoice.get("id")).update();
+        }
     }
 
     private void resetIdentity(String table) {

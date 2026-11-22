@@ -34,7 +34,7 @@ class NumberIT {
 
     /** Assigns a number in its own issue transaction, as the issue of an invoice does. */
     private String issue(LocalDate date) {
-        return transactions.execute(status -> numbers.assign(date));
+        return transactions.execute(status -> numbers.assign(date).orElseThrow());
     }
 
     private int counter(String number) {
