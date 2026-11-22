@@ -56,10 +56,10 @@ public class ManualNumbers {
             ON CONFLICT (year) DO NOTHING""";
     static final String STATE = "SELECT year, manual, closed FROM number_sequence WHERE year = :year";
     static final String LOCK = "SELECT manual FROM number_sequence WHERE year = :year FOR UPDATE";
-    static final String YEARS = """
-            SELECT year, manual, closed FROM number_sequence WHERE manual OR closed ORDER BY year DESC""";
-    static final String SET_MANUAL = """
-            UPDATE number_sequence SET manual = :manual WHERE year = :year AND NOT used AND NOT closed""";
+    static final String YEARS = "SELECT year, manual, closed FROM number_sequence WHERE manual OR closed "
+            + "ORDER BY year DESC";
+    static final String SET_MANUAL = "UPDATE number_sequence SET manual = :manual WHERE year = :year AND NOT used "
+            + "AND NOT closed";
     static final String INVOICES = """
             SELECT id, number, issue_date FROM invoice
              WHERE status <> 'DRAFT' AND issue_date BETWEEN :from AND :to ORDER BY id""";
@@ -238,6 +238,9 @@ public class ManualNumbers {
             throw new SettingsException(List.of(WRONG_YEAR.formatted(matcher.group(1), year)));
         }
         int counter = Integer.parseInt(matcher.group(2));
+        if (counter < 1) {
+            throw new SettingsException(List.of(WRONG_FORM.formatted(year)));
+        }
         for (Numbered taken : numbered(year)) {
             if (taken.counter() == counter) {
                 throw new SettingsException(List.of(TAKEN.formatted(entered, taken.number())));

@@ -182,6 +182,8 @@ class ManualNumbersTest {
         assertThatThrownBy(() -> numbers.claim(march, "2026-03")).hasMessage("Für die Nummer 2026-03 ist eine Lücke vermerkt.");
         assertThatThrownBy(() -> numbers.claim(march, "2025-05")).hasMessage("Die Nummer gehört zum Jahr 2025, das Rechnungsdatum zum Jahr 2026.");
         assertThatThrownBy(() -> numbers.claim(march, "R-2026-05")).hasMessage("Die Nummer hat die Form Jahr-Zähler, zum Beispiel 2026-07.");
+        assertThatThrownBy(() -> numbers.claim(march, "2026-00")).as("a counter starts at 1")
+                .hasMessage("Die Nummer hat die Form Jahr-Zähler, zum Beispiel 2026-07.");
     }
 
     @Test

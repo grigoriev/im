@@ -35,8 +35,8 @@ public class NumberService {
     static final String TAKE = """
             UPDATE number_sequence SET next_number = next_number + 1, used = TRUE
              WHERE year = :year RETURNING next_number - 1""";
-    static final String START = """
-            UPDATE number_sequence SET next_number = :start WHERE year = :year AND NOT used AND NOT manual""";
+    static final String START = "UPDATE number_sequence SET next_number = :start WHERE year = :year AND NOT used "
+            + "AND NOT manual";
     static final String TAKEN = "SELECT EXISTS (SELECT 1 FROM invoice WHERE number = :number)";
 
     private final NumberSequenceRepository sequences;
