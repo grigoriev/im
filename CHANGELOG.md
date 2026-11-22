@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- "Einstellungen", "Datensicherung": a warning above "Export herunterladen" says that the file is not encrypted, holds all customer data, IBANs and password hashes, belongs on an encrypted medium only and is deleted after use.
+
 ### Changed
 
 - The docs, comments and tests name neutral examples (`im.example.org`, documentation address ranges, `/volume/example`) instead of the hosts, addresses and paths of the own network.
