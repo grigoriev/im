@@ -2,6 +2,7 @@ package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.validation.Amounts;
 import io.github.grigoriev.im.validation.Fields;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -178,11 +179,11 @@ public class PaymentService {
             problems.add("Bitte den Betrag angeben.");
             return null;
         }
-        if (DraftForm.ambiguous(text)) {
+        if (Amounts.ambiguous(text)) {
             problems.add(AMOUNT + " ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00.");
             return null;
         }
-        BigDecimal value = DraftForm.parse(text);
+        BigDecimal value = Amounts.parse(text);
         if (value == null) {
             problems.add(AMOUNT + " ist keine Zahl, zum Beispiel 400,00 oder -50,00.");
         } else if (value.signum() == 0) {

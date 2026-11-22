@@ -57,7 +57,7 @@ import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.IntegrityMonitor;
-import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.invoice.DamagedSnapshotException;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
@@ -325,8 +325,8 @@ class SecurityWebTest {
     }
 
     private void knownUsers() {
-        when(repository.findByUsername("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
-        when(repository.findByUsername("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
+        when(users.find("admin")).thenReturn(Optional.of(UserTestData.user(1, "admin", Role.ADMIN)));
+        when(users.find("elena")).thenReturn(Optional.of(UserTestData.user(2, "elena", Role.USER)));
     }
 
     @Test
@@ -438,7 +438,7 @@ class SecurityWebTest {
 
     @Test
     void greetsAUserWithoutAccountRecordByTheLoginName() throws Exception {
-        when(repository.findByUsername("ohne-datensatz")).thenReturn(Optional.empty());
+        when(users.find("ohne-datensatz")).thenReturn(Optional.empty());
         mvc.perform(get("/").with(user("ohne-datensatz").roles("USER"))).andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Guten Tag, ohne-datensatz")));
     }

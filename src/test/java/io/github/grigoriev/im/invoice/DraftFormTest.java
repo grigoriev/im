@@ -11,43 +11,8 @@ import java.time.LocalDate;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 class DraftFormTest {
-
-    @ParameterizedTest
-    @CsvSource(delimiter = '|', value = {
-        "45          | 45",
-        "45,5        | 45.5",
-        "45.50       | 45.50",
-        "1.234,56    | 1234.56",
-        "1.234.567,8 | 1234567.8",
-        "' 400 € '   | 400",
-        "-10,00      | -10.00",
-        "0,0001      | 0.0001"
-    })
-    void readsAmountsAsGermansTypeThem(String text, BigDecimal amount) {
-        assertThat(DraftForm.parse(text)).isEqualByComparingTo(amount);
-    }
-
-    @ParameterizedTest
-    @CsvSource({"1.500, true", "12.000, true", "-1.500, true", "' 1.500 € ', true", "1.5, false", "45.50, false",
-        "'1.500,00', false", "1500, false", "1234.567, false"})
-    void namesTheAmbiguousDotBeforeThreeDigits(String text, boolean ambiguous) {
-        assertThat(DraftForm.ambiguous(text)).isEqualTo(ambiguous);
-        if (ambiguous) {
-            assertThat(DraftForm.parse(text)).isNull();
-        }
-        assertThat(DraftForm.ambiguous(null)).isFalse();
-    }
-
-    @ParameterizedTest
-    @CsvSource(delimiter = '|', value = {"''", "abc", "1,2,3", "12.34.56", "1.23,4", "4 5x"})
-    void refusesWhatIsNoNumber(String text) {
-        assertThat(DraftForm.parse(text)).isNull();
-        assertThat(DraftForm.parse(null)).isNull();
-    }
 
     @Test
     void writesPricesAndQuantitiesGermanStyle() {

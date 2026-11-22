@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,6 +16,8 @@ import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import io.github.grigoriev.im.setting.SettingKey;
+import io.github.grigoriev.im.setting.SettingRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,46 +33,29 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
-import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
 
 class ProcedureServiceTest {
 
     private static final Instant NOW = Instant.parse("2027-01-04T09:00:00Z");
     private static final byte[] PDF = "%PDF-1.7".getBytes();
 
-    private final JdbcClient jdbc = mock(JdbcClient.class);
+    private final SettingRepository settingRepository = mock(SettingRepository.class);
     private final SellerService sellers = mock(SellerService.class);
     private final DocumentService documents = mock(DocumentService.class);
     private final InvoicePdfRenderer pdf = mock(InvoicePdfRenderer.class);
     @SuppressWarnings("unchecked")
     private final ObjectProvider<BuildProperties> build = mock(ObjectProvider.class);
-    private final ProcedureService service = new ProcedureService(jdbc, sellers, documents, pdf, build,
+    private final ProcedureService service = new ProcedureService(settingRepository, sellers, documents, pdf, build,
             Clock.fixed(NOW, ZoneOffset.UTC));
     private final Map<String, String> settings = new HashMap<>();
 
-    @SuppressWarnings("unchecked")
-    private StatementSpec statement() {
-        StatementSpec spec = mock(StatementSpec.class);
-        Map<String, Object> params = new HashMap<>();
-        when(spec.param(anyString(), any())).thenAnswer(call -> {
-            params.put(call.getArgument(0), call.getArgument(1));
-            return spec;
-        });
-        MappedQuerySpec<String> query = mock(MappedQuerySpec.class);
-        when(spec.query(String.class)).thenReturn(query);
-        when(query.optional()).thenAnswer(call -> Optional.ofNullable(settings.get((String) params.get("key"))));
-        when(spec.update()).thenAnswer(call -> {
-            settings.put((String) params.get("key"), (String) params.get("value"));
-            return 1;
-        });
-        return spec;
-    }
-
     @BeforeEach
     void stubs() {
-        when(jdbc.sql(anyString())).thenAnswer(call -> statement());
+        // The stored settings by their key in the database.
+        when(settingRepository.read(any())).thenAnswer(
+                call -> Optional.ofNullable(settings.get(call.<SettingKey>getArgument(0).stored())));
+        doAnswer(call -> settings.put(call.<SettingKey>getArgument(0).stored(), call.getArgument(1)))
+                .when(settingRepository).write(any(), any());
         when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile()));
         when(pdf.render(eq("pdf/procedure"), any())).thenReturn(PDF);
         when(documents.list()).thenReturn(List.of());

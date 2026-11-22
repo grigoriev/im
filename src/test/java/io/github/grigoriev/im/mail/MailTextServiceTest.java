@@ -3,7 +3,6 @@ package io.github.grigoriev.im.mail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -17,6 +16,8 @@ import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.InvoiceTemplate;
 import io.github.grigoriev.im.seller.SettingsException;
+import io.github.grigoriev.im.setting.SettingKey;
+import io.github.grigoriev.im.setting.SettingRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,20 +27,17 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
-import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
 
 class MailTextServiceTest {
 
     private static final LocalDate DAY = LocalDate.of(2027, 3, 18);
 
-    private final JdbcClient jdbc = mock(JdbcClient.class);
+    private final SettingRepository settingRepository = mock(SettingRepository.class);
     private final InvoiceService invoices = mock(InvoiceService.class);
     private final AuditService audit = mock(AuditService.class);
-    private final MailTextService service = new MailTextService(jdbc, invoices, audit);
+    private final MailTextService service = new MailTextService(settingRepository, invoices, audit);
+    /** The stored settings by their key in the database. */
     private final Map<String, String> settings = new HashMap<>();
-    private final Map<String, StatementSpec> statements = new HashMap<>();
 
     private final Invoice invoice = new Invoice(5L, InvoiceStatus.ISSUED, 2L, "2027-07", InvoiceFormat.ZUGFERD_EN16931,
             DAY, LocalDate.of(2027, 3, 1), LocalDate.of(2027, 3, 16), 14, null, null, null, null, List.of(),
@@ -50,26 +48,10 @@ class MailTextServiceTest {
                 List.of(), Instant.EPOCH, Instant.EPOCH, 0L, null);
     }
 
-    /** A statement per SQL that keeps its parameters, and a query that reads the settings map. */
-    @SuppressWarnings("unchecked")
-    private StatementSpec statement(String sql) {
-        return statements.computeIfAbsent(sql, key -> {
-            StatementSpec spec = mock(StatementSpec.class);
-            Map<String, Object> params = new HashMap<>();
-            when(spec.param(anyString(), any())).thenAnswer(call -> {
-                params.put(call.getArgument(0), call.getArgument(1));
-                return spec;
-            });
-            MappedQuerySpec<String> query = mock(MappedQuerySpec.class);
-            when(spec.query(String.class)).thenReturn(query);
-            when(query.optional()).thenAnswer(call -> Optional.ofNullable(settings.get((String) params.get("key"))));
-            return spec;
-        });
-    }
-
     @BeforeEach
     void statements() {
-        when(jdbc.sql(anyString())).thenAnswer(call -> statement(call.getArgument(0)));
+        when(settingRepository.read(any())).thenAnswer(
+                call -> Optional.ofNullable(settings.get(call.<SettingKey>getArgument(0).stored())));
         when(invoices.template(invoice)).thenReturn(Optional.empty());
     }
 
@@ -84,16 +66,16 @@ class MailTextServiceTest {
     @Test
     void savesAChangedTextAndResetsABlankOrBuiltInOne() {
         service.save("  Rechnung {Rechnungsnummer} von Elena ", "Hallo,\r\nanbei die Rechnung.\r\n");
-        verify(statements.get(MailTextService.WRITE)).param("value", "Rechnung {Rechnungsnummer} von Elena");
-        verify(statements.get(MailTextService.WRITE)).param("value", "Hallo,\nanbei die Rechnung.");
+        verify(settingRepository).write(SettingKey.MAIL_SUBJECT, "Rechnung {Rechnungsnummer} von Elena");
+        verify(settingRepository).write(SettingKey.MAIL_BODY, "Hallo,\nanbei die Rechnung.");
         verify(audit).add(AuditAction.MAIL_TEXT_SAVED, "");
 
         service.save(" ", MailTextService.DEFAULT_BODY);
-        verify(statements.get(MailTextService.RESET)).param("key", "mail-subject");
-        verify(statements.get(MailTextService.RESET)).param("key", "mail-body");
+        verify(settingRepository).reset(SettingKey.MAIL_SUBJECT);
+        verify(settingRepository).reset(SettingKey.MAIL_BODY);
         service.save(null, null);
-        verify(statements.get(MailTextService.WRITE), times(2)).update();
-        verify(statements.get(MailTextService.RESET), times(4)).update();
+        verify(settingRepository, times(2)).write(any(), any());
+        verify(settingRepository, times(4)).reset(any());
     }
 
     @Test
@@ -141,12 +123,11 @@ class MailTextServiceTest {
                 .isEqualTo(new MailText(MailTextService.DEFAULT_SUBJECT, MailTextService.DEFAULT_BODY));
 
         service.saveReminder(" Erinnerung {Rechnungsnummer} ", "Bitte zahlen.\r\n");
-        verify(statements.get(MailTextService.WRITE)).param("key", "reminder-subject");
-        verify(statements.get(MailTextService.WRITE)).param("value", "Erinnerung {Rechnungsnummer}");
-        verify(statements.get(MailTextService.WRITE)).param("value", "Bitte zahlen.");
+        verify(settingRepository).write(SettingKey.REMINDER_SUBJECT, "Erinnerung {Rechnungsnummer}");
+        verify(settingRepository).write(SettingKey.REMINDER_BODY, "Bitte zahlen.");
         verify(audit).add(AuditAction.MAIL_TEXT_SAVED, "Zahlungserinnerung");
         service.saveReminder(MailTextService.DEFAULT_REMINDER_SUBJECT, " ");
-        verify(statements.get(MailTextService.RESET)).param("key", "reminder-body");
+        verify(settingRepository).reset(SettingKey.REMINDER_BODY);
         assertThat(catchThrowableOfType(SettingsException.class, () -> service.saveReminder("s".repeat(201), null))
                 .problems()).containsExactly("Der Betreff hat höchstens 200 Zeichen.");
     }

@@ -1,4 +1,4 @@
-package io.github.grigoriev.im.invoice;
+package io.github.grigoriev.im.archive;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,16 +9,27 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+
 import io.github.grigoriev.im.document.BusinessDocument;
 import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentFile;
 import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.ItSamples;
+import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseCategory;
 import io.github.grigoriev.im.expense.ExpenseService;
-import io.github.grigoriev.im.einvoice.ItSamples;
-import io.github.grigoriev.im.einvoice.SampleInvoices;
+import io.github.grigoriev.im.invoice.DocumentKind;
+import io.github.grigoriev.im.invoice.DocumentStore;
+import io.github.grigoriev.im.invoice.Invoice;
+import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.invoice.InvoiceIntegrity;
+import io.github.grigoriev.im.invoice.InvoiceOriginal;
+import io.github.grigoriev.im.invoice.InvoiceService;
+import io.github.grigoriev.im.invoice.InvoiceStatus;
+import io.github.grigoriev.im.invoice.OriginalStore;
+import io.github.grigoriev.im.invoice.StoredDocument;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -119,9 +130,10 @@ class ArchiveServiceTest {
                 14, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 1L, Instant.EPOCH, "{}", null);
         when(invoices.list()).thenReturn(List.of(external));
         when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.EXTERNAL));
-        InvoiceOriginal xlsx = new InvoiceOriginal(1, 8, "April.xlsx", OriginalStore.XLSX,
+        InvoiceOriginal xlsx = new InvoiceOriginal(1, 8, "April.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "xlsx".getBytes(StandardCharsets.UTF_8), "sha-x", 4, "seal", Instant.EPOCH, "elena");
-        InvoiceOriginal pdf = new InvoiceOriginal(2, 8, "April.pdf", OriginalStore.PDF,
+        InvoiceOriginal pdf = new InvoiceOriginal(2, 8, "April.pdf", "application/pdf",
                 "%PDF".getBytes(StandardCharsets.UTF_8), "sha-p", 4, "seal", Instant.EPOCH, "elena");
         when(originals.list(8)).thenReturn(List.of(xlsx, pdf));
         when(originals.verified(any())).thenAnswer(call -> call.getArgument(0));

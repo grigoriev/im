@@ -3,6 +3,8 @@ package io.github.grigoriev.im.document;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;
+import io.github.grigoriev.im.setting.SettingKey;
+import io.github.grigoriev.im.setting.SettingRepository;
 import io.github.grigoriev.im.validation.Fields;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -14,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.info.BuildProperties;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,21 +29,14 @@ public class ProcedureService {
 
     static final String TITLE = "Verfahrensdokumentation";
     static final String PREFIX = "Verfahrensdokumentation_";
-    static final String VALID_FROM_KEY = "procedure-valid-from";
-    static final String EXPENSES_KEY = "procedure-expenses";
-    static final String ARCHIVE_KEY = "procedure-archive";
     static final int MAX_TEXT = 200;
     static final String FIRST = "Erstfassung";
     static final String NO_PROFILE = "Bitte zuerst das Profil mit Name, Anschrift und Steuernummer ausfüllen.";
 
-    static final String READ = "SELECT value FROM app_setting WHERE key = :key";
-    static final String WRITE = """
-            INSERT INTO app_setting (key, value) VALUES (:key, :value)
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""";
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
-    private final JdbcClient jdbc;
+    private final SettingRepository settings;
     private final SellerService sellers;
     private final DocumentService documents;
     private final InvoicePdfRenderer pdf;
@@ -52,16 +46,16 @@ public class ProcedureService {
     /**
      * Creates the service.
      *
-     * @param jdbc keeps the values of the form
+     * @param settings keeps the values of the form
      * @param sellers the profile
      * @param documents keeps the versions
      * @param pdf renders the PDF
      * @param build the version of the app, absent in a build without build info
      * @param clock the date of a version
      */
-    public ProcedureService(JdbcClient jdbc, SellerService sellers, DocumentService documents, InvoicePdfRenderer pdf,
+    public ProcedureService(SettingRepository settings, SellerService sellers, DocumentService documents, InvoicePdfRenderer pdf,
             ObjectProvider<BuildProperties> build, Clock clock) {
-        this.jdbc = jdbc;
+        this.settings = settings;
         this.sellers = sellers;
         this.documents = documents;
         this.pdf = pdf;
@@ -85,9 +79,9 @@ public class ProcedureService {
      */
     public ProcedureForm form() {
         ProcedureForm form = new ProcedureForm();
-        form.setValidFrom(read(VALID_FROM_KEY).map(LocalDate::parse).orElse(null));
-        form.setExpenses(read(EXPENSES_KEY).orElse(null));
-        form.setArchive(read(ARCHIVE_KEY).orElse(null));
+        form.setValidFrom(settings.read(SettingKey.PROCEDURE_VALID_FROM).map(LocalDate::parse).orElse(null));
+        form.setExpenses(settings.read(SettingKey.PROCEDURE_EXPENSES).orElse(null));
+        form.setArchive(settings.read(SettingKey.PROCEDURE_ARCHIVE).orElse(null));
         form.setChange(current().isEmpty() ? FIRST : null);
         return form;
     }
@@ -124,9 +118,9 @@ public class ProcedureService {
     public BusinessDocument save(ProcedureForm form) {
         SellerProfile seller = check(form);
         byte[] content = render(seller, form);
-        write(VALID_FROM_KEY, form.getValidFrom().toString());
-        write(EXPENSES_KEY, Fields.text(form.getExpenses()));
-        write(ARCHIVE_KEY, Fields.text(form.getArchive()));
+        settings.write(SettingKey.PROCEDURE_VALID_FROM, form.getValidFrom().toString());
+        settings.write(SettingKey.PROCEDURE_EXPENSES, Fields.text(form.getExpenses()));
+        settings.write(SettingKey.PROCEDURE_ARCHIVE, Fields.text(form.getArchive()));
         LocalDate today = LocalDate.now(clock);
         DocumentForm description = new DocumentForm();
         description.setCategory(DocumentCategory.PROCEDURE);
@@ -184,11 +178,4 @@ public class ProcedureService {
         return properties == null ? "ohne Versionsangabe" : properties.getVersion();
     }
 
-    private Optional<String> read(String key) {
-        return jdbc.sql(READ).param("key", key).query(String.class).optional();
-    }
-
-    private void write(String key, String value) {
-        jdbc.sql(WRITE).param("key", key).param("value", value).update();
-    }
 }

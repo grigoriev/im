@@ -12,7 +12,7 @@ import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseCategory;
 import io.github.grigoriev.im.expense.ExpenseService;
-import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerService;

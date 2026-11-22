@@ -405,6 +405,7 @@
                         <param>io.github.grigoriev.im.numbering.NumberService</param>
                         <param>io.github.grigoriev.im.numbering.ManualNumbers*</param>
                         <param>io.github.grigoriev.im.validation.Fields</param>
+                        <param>io.github.grigoriev.im.validation.Amounts</param>
                         <param>io.github.grigoriev.im.customer.CustomerService</param>
                         <param>io.github.grigoriev.im.country.CountryService</param>
                         <param>io.github.grigoriev.im.audit.AuditService</param>
@@ -421,7 +422,7 @@
                         <param>io.github.grigoriev.im.invoice.DispatchService</param>
                         <param>io.github.grigoriev.im.invoice.DispatchChannel</param>
                         <param>io.github.grigoriev.im.invoice.PaymentService</param>
-                        <param>io.github.grigoriev.im.invoice.ArchiveService</param>
+                        <param>io.github.grigoriev.im.archive.ArchiveService</param>
                         <param>io.github.grigoriev.im.invoice.ExternalInvoiceService</param>
                         <param>io.github.grigoriev.im.invoice.OriginalStore*</param>
                         <param>io.github.grigoriev.im.invoice.ReminderService</param>
@@ -444,6 +445,7 @@
                         <param>io.github.grigoriev.im.invoice.InvoiceIntegrity*</param>
                         <param>io.github.grigoriev.im.integrity.*</param>
                         <param>io.github.grigoriev.im.expense.*</param>
+                        <param>io.github.grigoriev.im.setting.*</param>
                     </targetClasses>
                     <targetTests>
                         <param>io.github.grigoriev.im.einvoice.*Test</param>
@@ -460,6 +462,8 @@
                         <param>io.github.grigoriev.im.document.*Test</param>
                         <param>io.github.grigoriev.im.integrity.*Test</param>
                         <param>io.github.grigoriev.im.expense.*Test</param>
+                        <param>io.github.grigoriev.im.archive.*Test</param>
+                        <param>io.github.grigoriev.im.setting.*Test</param>
                     </targetTests>
                     <!-- These tests run the full validators (KoSIT, veraPDF) and take a minute each. The mutated
                          classes have fast tests of their own, so PIT leaves the slow ones out. -->

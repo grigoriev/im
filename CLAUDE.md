@@ -47,7 +47,7 @@ Package `io.github.grigoriev.im`:
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
-  validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `ReminderService` records the payment reminders of an invoice with money open (table `reminder`, written once), sent by `MailService.sendReminder` or noted by hand; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `ArchiveService` zips the documents of a year, with the business documents of that year in "Dokumente"; `TemplateService` keeps the templates
+  validates and freezes in one transaction, and a Stornorechnung (`InvoiceService.createCancellation`) cancels its invoice there; `DispatchService` records a dispatch and moves the status to `SENT`; `PaymentService` records payments and refunds and keeps `PAID` in step with their sum; `ReminderService` records the payment reminders of an invoice with money open (table `reminder`, written once), sent by `MailService.sendReminder` or noted by hand; `DocumentStore` keeps the PDF and XML (`invoice_document`) and the JSON snapshot; `TemplateService` keeps the templates
   per customer. `ExternalInvoiceService` registers an external invoice (format `EXTERNAL`: facts by hand, the number
   under the lock of the issue or, in a year by hand, the number of its file, all in one transaction); `OriginalStore`
   keeps its original files (`InvoiceOriginal`, PDF, XLSX, DOCX or XML, table `invoice_original`, written once, sealed,
@@ -59,7 +59,10 @@ Package `io.github.grigoriev.im`:
 - `customer`: the customers (`CustomerService`), each with its e-invoice format and `toParty()` for the buyer
 - `country`: the ISO countries with German names from Java, and the short list of the admin (`CountryService`)
 - `document`: the business documents (`DocumentService`: files written once, a new version names the one it replaces, `ofYear` feeds the yearly archive; table `business_document` with a trigger that keeps the file; `ProcedureService` writes the Verfahrensdokumentation from template `templates/pdf/procedure.html`)
-- `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length)
+- `archive`: `ArchiveService` zips the documents of a year, with the business documents of that year in "Dokumente" and the receipts in "Ausgaben"; it reads `invoice`, `document` and `expense`, and none of them reads it
+- `validation`: `Fields`, the shared field checks of the forms (text, e-mail, VAT ID, country, length), and `Amounts`, which reads an amount as Germans type it (`1.234,56`, ambiguous `1.500`)
+- `format`: `GermanFormat`, the German formats of money, prices, dates and periods for the PDF, the e-mails and the placeholders; it uses the JDK only
+- `setting`: `SettingRepository`, the single values of table `app_setting` behind the typed keys of `SettingKey` (number pattern, e-mail texts, Verfahrensdokumentation)
 - `numbering`: the number pattern (`NumberPattern`) and the yearly counter (`NumberService.assign` under a row lock);
   `ManualNumbers` keeps a year before the app: the numbers of the files in any order, a reason written once per gap
   (table `number_gap`), "Jahr abschließen" continues the counter after the highest number

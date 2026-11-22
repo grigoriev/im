@@ -17,7 +17,7 @@ import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.TaxCategory;
-import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
 import io.github.grigoriev.im.invoice.DispatchService;
