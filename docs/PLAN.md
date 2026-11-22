@@ -272,7 +272,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. Dashboard: counted §19 revenue of the previous and the current year against 25 000 and 100 000 EUR.
 2. Forecast at the current rate.
 3. Warning when a new draft would push the current year over the limit.
-4. The 2026 revenue goes into `ThresholdBaseline`, because the system starts in 2027.
+4. The 2025 revenue goes into `ThresholdBaseline`. The app counts 2026 from the external invoices and their payments.
 
 ### Reports and export
 
@@ -348,12 +348,12 @@ Numbers of an external invoice:
 
 Payments before the app:
 
-1. The user records the payments of a 2026 invoice with day and amount, as for any invoice (decision 2026-11-22).
+1. The user records every payment of 2026 with day and amount, as for any invoice (decision 2026-11-22).
    They close the invoice: status, open invoices and reminders follow them.
-2. The §19 revenue of 2026 comes from the baseline: the payments of 2025 invoices stay outside the app.
-3. A payment dated in a year with a baseline counts neither for §19 nor for the Anlage EÜR. The baseline covers that year.
-4. A year with a baseline takes payments, and a year with payments takes a baseline.
-5. A 2026 invoice paid in 2027 or later counts as usual.
+2. The app counts 2026 by itself: §19 revenue and Anlage EÜR, per business. The report feeds WISO Steuer in January 2027.
+3. A 2025 invoice paid in 2026 is registered as an external invoice too. Its payment belongs to 2026 (Zuflussprinzip).
+4. Such a year holds only some invoices: the number and its year are checked, the gaps are not. The year never closes.
+5. The 2025 revenue goes into the baseline. It is the previous year of the §19 check for 2026.
 
 ## 8. Deployment on lemming
 
@@ -481,8 +481,8 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | M4 | Threshold and reports | Dashboard, baseline, EÜR report, CSV, archive export | 2026-12 |
 | M5 | Operations | Deployment on lemming, backups to meerkat, restore test, full export and import | 2026-12 |
 | M6 | Acceptance | Test with realistic invoices, fixes, final legal check | 2026-12 |
-| M7 | External invoices | Original files, facts by hand, number check, gaps with reason, closed year, payments in a baseline year | 2026-12 |
-| GO | Go-live | Clean database, real seller profile, baseline 2026, invoices of 2026 as external, 2026 closed, first invoice `2027-01` | 2027-01-01 |
+| M7 | External invoices | Original files, facts by hand, number check, gaps with reason, closed year, payments of 2026 | 2026-12 |
+| GO | Go-live | Clean database, real seller profile, baseline 2025, invoices and payments of 2026 as external, 2026 closed, first invoice `2027-01` | 2027-01-01 |
 
 ## 13. Open questions
 
