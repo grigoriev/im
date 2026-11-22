@@ -89,7 +89,7 @@ public class IssuedInvoicePage {
         model.addAttribute("cancellation", invoices.cancellation(invoice).orElse(null));
         model.addAttribute("mailConfigured", mail.configured());
         model.addAttribute("external", invoice.format().isExternal());
-        String buyerEmail = documents.restore(invoice.snapshot()).buyer().email();
+        String buyerEmail = documents.verifiedSnapshot(invoice).buyer().email();
         if (model.containsAttribute(MAIL_FORM)) {
             model.addAttribute("mail", model.getAttribute(MAIL_FORM));
         } else if (mail.configured()) {

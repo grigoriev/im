@@ -10,6 +10,10 @@ All notable changes to this project are documented in this file. The format foll
 
 - The docs, comments and tests name neutral examples (`im.example.org`, documentation address ranges, `/volume/example`) instead of the hosts, addresses and paths of the own network.
 
+### Security
+
+- The reports, the §19 threshold, the payments, the open amounts and the Stornorechnung now check the seal of an invoice's snapshot before they compute with it. Until now they read it without the check. If someone changed the snapshot outside the app, the page shows what the check found and computes nothing. The payment and the issue are refused.
+
 ## [0.1.11] - 2026-11-22
 
 ### Added

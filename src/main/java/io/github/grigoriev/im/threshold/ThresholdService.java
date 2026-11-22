@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ThresholdService {
 
     static final String PAYMENTS = """
-            SELECT p.paid_on, p.amount, p.note, i.number, i.snapshot, i.activity
+            SELECT p.paid_on, p.amount, p.note, i.number, i.snapshot, i.activity, i.id, i.seal
               FROM payment p JOIN invoice i ON i.id = p.invoice_id
              WHERE p.paid_on BETWEEN :from AND :to ORDER BY p.paid_on, p.id""";
     static final String YEARS = """
@@ -202,7 +202,8 @@ public class ThresholdService {
     }
 
     /**
-     * Returns the payments of a year as the reports count them, in the order they came in.
+     * Returns the payments of a year as the reports count them, in the order they came in. A snapshot changed outside
+     * the app stops the count with a {@code DamagedSnapshotException}: a wrong sum would look right.
      *
      * @param year the year
      * @return one row per payment, rounded to cents per payment
@@ -210,7 +211,8 @@ public class ThresholdService {
     public List<RevenueRow> rows(int year) {
         return jdbc.sql(PAYMENTS).param("from", LocalDate.of(year, 1, 1)).param("to", LocalDate.of(year, 12, 31))
                 .query((rs, row) -> row(rs.getDate(1).toLocalDate(), rs.getBigDecimal(2), rs.getString(3),
-                        rs.getString(4), documents.restore(rs.getString(5)), rs.getString(6)))
+                        rs.getString(4), documents.verifiedSnapshot(rs.getLong(7), rs.getString(4), rs.getString(5),
+                                rs.getString(8)), rs.getString(6)))
                 .list();
     }
 
@@ -226,7 +228,7 @@ public class ThresholdService {
         if (document.total().signum() != 0) {
             byCategory.putAll(split(amount, gross(document), document.total()));
         }
-        BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS));
+        BigDecimal counted = byCategory.getOrDefault(TaxCategory.KLEINUNTERNEHMER, BigDecimal.ZERO.setScale(CENTS, RoundingMode.UNNECESSARY));
         return new RevenueRow(paidOn, number,
                 Customer.label(document.buyer().name(), document.buyer().contactName()), amount, counted, amount.subtract(counted),
                 byCategory, note, Activity.valueOf(activity));
@@ -261,7 +263,7 @@ public class ThresholdService {
                 .limit(left).forEach(entry -> floors.merge(entry.getKey(), BigDecimal.ONE, BigDecimal::add));
         Map<TaxCategory, BigDecimal> parts = new EnumMap<>(TaxCategory.class);
         floors.forEach((category, floor) -> parts.put(category,
-                floor.multiply(BigDecimal.valueOf(amount.signum())).movePointLeft(CENTS).setScale(CENTS)));
+                floor.multiply(BigDecimal.valueOf(amount.signum())).movePointLeft(CENTS).setScale(CENTS, RoundingMode.UNNECESSARY)));
         return parts;
     }
 

@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -67,7 +68,7 @@ class HomeControllerTest {
         open(dueToday, "20.00");
         open(settled, "0.00");
         when(invoices.cancelled(storno)).thenReturn(Optional.of(due));
-        when(documents.restore("{}")).thenReturn(ItSamples.withBuyerContact(
+        when(documents.verifiedSnapshot(any())).thenReturn(ItSamples.withBuyerContact(
                 SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931), "Frau Berg"));
         when(threshold.today()).thenReturn(TODAY);
         when(reminders.last()).thenReturn(Map.of(1L, TODAY.minusDays(2)));

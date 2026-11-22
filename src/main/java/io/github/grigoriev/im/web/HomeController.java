@@ -79,7 +79,7 @@ public class HomeController {
             if (waiting && invoices.cancelled(invoice).isEmpty()) {
                 BigDecimal amount = payments.summary(invoice).open();
                 if (amount.signum() > 0) {
-                    open.add(new Open(invoice, label(documents.restore(invoice.snapshot()).buyer()), amount,
+                    open.add(new Open(invoice, label(documents.verifiedSnapshot(invoice).buyer()), amount,
                             invoice.dueDate().isBefore(today), reminded.get(invoice.id())));
                 }
             }

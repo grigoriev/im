@@ -129,13 +129,29 @@ public class DocumentStore {
      *
      * @param invoice the invoice
      * @return the invoice document as it was issued
-     * @throws InvoiceException if the snapshot does not match its seal
+     * @throws DamagedSnapshotException if the snapshot does not match its seal
      */
     public InvoiceDocument verifiedSnapshot(Invoice invoice) {
-        if (!sealed(invoice)) {
-            throw new InvoiceException(List.of(SNAPSHOT_DAMAGED.formatted(invoice.number())));
+        return verifiedSnapshot(invoice.id(), invoice.number(), invoice.snapshot(),
+                documents.findSnapshotSeal(invoice.id()));
+    }
+
+    /**
+     * Reads the snapshot of an issued invoice back that a query fetched together with its seal, after it passed the
+     * check of that seal.
+     *
+     * @param invoiceId the invoice
+     * @param number its number
+     * @param snapshot the JSON
+     * @param storedSeal the seal stored with the snapshot
+     * @return the invoice document as it was issued
+     * @throws DamagedSnapshotException if the snapshot does not match its seal
+     */
+    public InvoiceDocument verifiedSnapshot(long invoiceId, String number, String snapshot, String storedSeal) {
+        if (!Seal.matches(storedSeal, seal(invoiceId, number, snapshot))) {
+            throw new DamagedSnapshotException(number);
         }
-        return restore(invoice.snapshot());
+        return restore(snapshot);
     }
 
     /**
@@ -161,12 +177,13 @@ public class DocumentStore {
     }
 
     /**
-     * Reads a snapshot back.
+     * Reads a snapshot back without the check of its seal. Only the check itself uses it, to name what is wrong;
+     * everything else reads through {@link #verifiedSnapshot(Invoice)}.
      *
      * @param snapshot the JSON
      * @return the invoice document as it was issued
      */
-    public InvoiceDocument restore(String snapshot) {
+    InvoiceDocument restore(String snapshot) {
         return json.readValue(snapshot, InvoiceDocument.class);
     }
 

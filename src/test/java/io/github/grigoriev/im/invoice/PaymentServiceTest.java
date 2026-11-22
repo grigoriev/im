@@ -82,7 +82,7 @@ class PaymentServiceTest {
     @BeforeEach
     void issued() {
         is(InvoiceStatus.ISSUED);
-        when(documents.restore("{}")).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(repository.findByInvoiceIdOrderByPaidOnAscIdAsc(5)).thenAnswer(call -> List.copyOf(stored));
         when(jdbc.sql(PaymentService.LOCK)).thenReturn(lock);
         when(lock.param(anyString(), any())).thenReturn(lock);
@@ -122,6 +122,16 @@ class PaymentServiceTest {
         when(dispatches.existsByInvoiceId(5)).thenReturn(sent);
         assertThat(service.add(5, form(TODAY, amount, null))).isEqualTo(after);
         verify(status).param("status", after.name());
+    }
+
+    @Test
+    void aChangedSnapshotTakesNoPaymentAndLeavesTheStatus() {
+        DamagedSnapshotException damaged = new DamagedSnapshotException("2027-01");
+        when(documents.verifiedSnapshot(any())).thenThrow(damaged);
+        assertThatThrownBy(() -> service.add(5, form(TODAY, "480,00", null))).isSameAs(damaged);
+        assertThatThrownBy(() -> service.summary(invoice(InvoiceStatus.ISSUED))).isSameAs(damaged);
+        verify(repository, never()).save(any());
+        verify(status, never()).update();
     }
 
     @Test

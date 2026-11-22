@@ -142,7 +142,7 @@ class ExternalInvoiceIT {
 
         Invoice registered = invoices.find(draft.id()).orElseThrow();
         assertThat(registered.status()).isEqualTo(InvoiceStatus.ISSUED);
-        InvoiceDocument snapshot = documents.restore(registered.snapshot());
+        InvoiceDocument snapshot = documents.verifiedSnapshot(registered);
         assertThat(snapshot.total()).isEqualByComparingTo("700.00");
         assertThat(snapshot.format()).isEqualTo(InvoiceFormat.EXTERNAL);
         assertThat(documents.list(draft.id())).as("no PDF or XML of the app").isEmpty();
@@ -210,7 +210,7 @@ class ExternalInvoiceIT {
         externals.register(stornoDraft.id(), stornoDraft.version(), number, "Storno.pdf",
                 "%PDF-1.7 Storno".getBytes(StandardCharsets.US_ASCII));
         assertThat(invoices.find(draft.id()).orElseThrow().status()).isEqualTo(InvoiceStatus.CANCELLED);
-        assertThat(documents.restore(invoices.find(storno.id()).orElseThrow().snapshot()).cancels().number())
+        assertThat(documents.verifiedSnapshot(invoices.find(storno.id()).orElseThrow()).cancels().number())
                 .isEqualTo("2055-01");
     }
 

@@ -470,6 +470,6 @@ public class InvoiceController {
 
     /** The document of a draft from the current data, or the frozen snapshot of an issued invoice. */
     private Optional<InvoiceDocument> document(Invoice invoice) {
-        return invoice.isDraft() ? invoices.document(invoice) : Optional.of(documents.restore(invoice.snapshot()));
+        return invoice.isDraft() ? invoices.document(invoice) : Optional.of(documents.verifiedSnapshot(invoice));
     }
 }

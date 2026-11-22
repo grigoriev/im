@@ -712,7 +712,7 @@ class InvoiceServiceTest {
 
     @Test
     void aStornorechnungNamesItsInvoiceAndKeepsItsLinesAndFormat() {
-        when(documents.restore("{}")).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
         Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
                 0, null, null, null, null, List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L,
                 null, null, null);
@@ -746,15 +746,28 @@ class InvoiceServiceTest {
                 null, null);
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         when(repository.findById(7L)).thenReturn(Optional.of(original(InvoiceStatus.ISSUED)));
-        when(documents.restore("{}")).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
+        when(documents.verifiedSnapshot(any())).thenReturn(ItSamples.reading(InvoiceFormat.ZUGFERD_EN16931));
         assertThat(service.document(storno).orElseThrow().seller().taxNumber()).as("the number of the cancelled invoice, "
                 + "even after the profile changed")
                 .isEqualTo("143/123/45678");
         InvoiceDocument withVatId = ItSamples.reverseCharge(InvoiceFormat.ZUGFERD_EN16931);
-        when(documents.restore("{}")).thenReturn(withVatId);
+        when(documents.verifiedSnapshot(any())).thenReturn(withVatId);
         assertThat(service.document(storno).orElseThrow().seller()).as("both tax IDs of the cancelled invoice")
                 .extracting(Party::taxNumber, Party::vatId)
                 .containsExactly(withVatId.seller().taxNumber(), withVatId.seller().vatId());
+    }
+
+    @Test
+    void aStornorechnungOfAChangedInvoiceTakesNoTaxIdsFromIt() {
+        Invoice storno = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY, TODAY,
+                0, null, null, null, null, List.of(lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 0L, null,
+                null, null);
+        Invoice original = original(InvoiceStatus.ISSUED);
+        when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
+        when(repository.findById(7L)).thenReturn(Optional.of(original));
+        DamagedSnapshotException damaged = new DamagedSnapshotException("2027-07");
+        when(documents.verifiedSnapshot(original)).thenThrow(damaged);
+        assertThatThrownBy(() -> service.document(storno, "2027-11")).isSameAs(damaged);
     }
 
     @Test
