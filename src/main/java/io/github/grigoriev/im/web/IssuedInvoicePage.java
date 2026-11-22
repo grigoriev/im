@@ -88,13 +88,11 @@ public class IssuedInvoicePage {
         model.addAttribute("payments", payments.summary(invoice));
         model.addAttribute("cancellation", invoices.cancellation(invoice).orElse(null));
         model.addAttribute("mailConfigured", mail.configured());
-        // The app sends no external invoice yet: its original files go out by hand.
-        boolean external = invoice.format().isExternal();
-        model.addAttribute("external", external);
+        model.addAttribute("external", invoice.format().isExternal());
         String buyerEmail = documents.restore(invoice.snapshot()).buyer().email();
         if (model.containsAttribute(MAIL_FORM)) {
             model.addAttribute("mail", model.getAttribute(MAIL_FORM));
-        } else if (mail.configured() && !external) {
+        } else if (mail.configured()) {
             model.addAttribute("mail", mail.form(invoice, buyerEmail));
         }
         model.addAttribute("reminders", reminders.list(invoice.id()));
@@ -103,7 +101,7 @@ public class IssuedInvoicePage {
         model.addAttribute("overdue", reminders.overdue(invoice));
         if (model.containsAttribute(REMINDER_FORM)) {
             model.addAttribute("reminderMail", model.getAttribute(REMINDER_FORM));
-        } else if (remindable && mail.configured() && !external) {
+        } else if (remindable && mail.configured()) {
             model.addAttribute("reminderMail", mail.reminderForm(invoice, buyerEmail));
         }
     }

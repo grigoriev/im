@@ -68,8 +68,8 @@ test('registers an external invoice with the next number and its file', async ({
   await expect(page.getByRole('status')).toHaveText('Externe Rechnung 2003-01 erfasst.');
   await expect(page.locator('#invoice-number')).toHaveText('Rechnung 2003-01');
   await expect(page.locator('#invoice-originals')).toContainText('Juni.xlsx');
-  await expect(page.locator('#mail-external')).toBeVisible();
-  await expect(page.locator('#invoice-mail')).toHaveCount(0);
+  await expect(page.locator('#invoice-mail')).toContainText('Originaldateien anhängen');
+  await expect(page.locator('#mail-xml'), 'an external invoice has no XML of the app').toHaveCount(0);
   await expect(page.locator('#invoice-history')).toContainText('Externe Rechnung erfasst');
 
   const download = await page.request.get((await page.locator('#download-original-1').getAttribute('href'))!);
@@ -84,6 +84,13 @@ test('registers an external invoice with the next number and its file', async ({
   await page.locator('#original-add').click();
   await expect(page.getByRole('status')).toHaveText('Datei „Juni.pdf“ hinzugefügt.');
   await expect(page.locator('#invoice-originals li')).toHaveCount(2);
+
+  const address = `portal-${randomUUID().slice(0, 8)}@kunde.example`;
+  await page.getByText('Per E-Mail senden…').click();
+  await page.locator('#mail-to').fill(address);
+  await page.getByRole('button', { name: 'Senden', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText(`E-Mail an ${address} gesendet.`);
+  await expect(page.locator('#invoice-history li').last()).toContainText(`${address}, Notiz: Juni.xlsx, Juni.pdf`);
 
   await page.locator('#invoice-payment summary').click();
   await page.locator('#payment-date').fill('2003-06-30');

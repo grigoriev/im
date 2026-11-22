@@ -20,7 +20,9 @@ import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.invoice.InvoiceOriginal;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
+import io.github.grigoriev.im.invoice.OriginalStore;
 import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import jakarta.mail.Message;
@@ -51,6 +53,7 @@ class MailServiceTest {
     private final JavaMailSender sender = mock(JavaMailSender.class);
     private final DispatchService dispatches = mock(DispatchService.class);
     private final DocumentStore documents = mock(DocumentStore.class);
+    private final OriginalStore originals = mock(OriginalStore.class);
     private final MailTextService texts = mock(MailTextService.class);
     private final ReminderService reminders = mock(ReminderService.class);
 
@@ -74,8 +77,8 @@ class MailServiceTest {
     }
 
     private MailService service(MailProperties properties) {
-        return new MailService(properties, sender, dispatches, documents, texts, new MailHtml(SampleInvoices.templates()),
-                reminders);
+        return new MailService(properties, sender, dispatches, documents, originals, texts,
+                new MailHtml(SampleInvoices.templates()), reminders);
     }
 
     @BeforeEach
@@ -147,6 +150,43 @@ class MailServiceTest {
     }
 
     @Test
+    void sendsTheOriginalFilesOfAnExternalInvoice() throws Exception {
+        when(documents.find(5, DocumentKind.PDF)).thenReturn(Optional.empty());
+        byte[] xlsx = {'P', 'K'};
+        InvoiceOriginal original = new InvoiceOriginal(1, 5, "Rechnung März.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx, "ab", 2, "seal",
+                Instant.EPOCH, "elena");
+        when(originals.list(5)).thenReturn(List.of(original));
+        when(originals.verified(original)).thenReturn(original);
+        service(ON).send(5, form("a@b.example", "Rechnung", "Text", true, false));
+        MimeMessage message = sent();
+        message.saveChanges();
+        List<Part> parts = parts(message);
+        assertThat(parts).extracting(Part::getFileName).containsExactly(null, "Rechnung März.xlsx");
+        assertThat(parts.get(1).getContentType())
+                .startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        verify(dispatches).recordEmail(5, "a@b.example", "Rechnung März.xlsx");
+    }
+
+    @Test
+    void namesTheAttachmentsThatFitIntoTheNoteOfTheDispatch() {
+        assertThat(MailService.note(List.of("PDF", "XML"))).isEqualTo("PDF, XML");
+        String name = "x".repeat(196) + ".pdf";
+        assertThat(MailService.note(List.of(name, name))).hasSize(402);
+        String note = MailService.note(List.of(name, name, name, name));
+        assertThat(note).isEqualTo(name + ", " + name + " und 2 weitere").hasSizeLessThanOrEqualTo(MailService.MAX_NOTE);
+        String exact = "y".repeat(MailService.MAX_NOTE);
+        assertThat(MailService.note(List.of(exact))).as("one name of the full length").isEqualTo(exact);
+        assertThat(MailService.note(List.of(exact, "a.pdf"))).as("no name fits").isEqualTo("2 Dateien");
+        List<String> ten = new ArrayList<>(List.of("a".repeat(200), "b".repeat(284)));
+        for (int i = 0; i < 8; i++) {
+            ten.add("c.pdf");
+        }
+        assertThat(MailService.note(ten)).as("exactly 500 characters, with a one-digit rest")
+                .isEqualTo("a".repeat(200) + ", " + "b".repeat(284) + " und 8 weitere").hasSize(MailService.MAX_NOTE);
+    }
+
+    @Test
     void sendsABlindCopyAndOneAttachment() throws Exception {
         MailService service = service(new MailProperties("smtp.example.org", 587, "", "", true, "rechnung@elena.example",
                 "elena@elena.example"));
@@ -163,7 +203,7 @@ class MailServiceTest {
         InvoiceException e = catchThrowableOfType(InvoiceException.class,
                 () -> service(ON).send(5, form("keine-adresse", " ", " ", false, false)));
         assertThat(e.problems()).containsExactly("Bitte eine gültige E-Mail-Adresse angeben.", "Bitte den Betreff angeben.",
-                "Bitte den Text angeben.", "Bitte PDF, XML oder beides anhängen.");
+                "Bitte den Text angeben.", "Bitte die Rechnung anhängen: PDF, XML oder die Originaldateien.");
         assertThat(catchThrowableOfType(InvoiceException.class, () -> service(ON).send(5,
                 form("a@b.example", "s".repeat(201), "b".repeat(4001), true, false))).problems())
                 .containsExactly("Der Betreff hat höchstens 200 Zeichen.", "Der Text hat höchstens 4000 Zeichen.");
@@ -173,7 +213,7 @@ class MailServiceTest {
         when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         when(documents.find(5, DocumentKind.XML)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service(ON).send(5, form("a@b.example", "Betreff", "Text", false, true)))
-                .hasMessage("Bitte PDF, XML oder beides anhängen.");
+                .hasMessage("Bitte die Rechnung anhängen: PDF, XML oder die Originaldateien.");
         verify(sender, never()).send(any(MimeMessage.class));
         verify(dispatches, never()).recordEmail(anyLong(), anyString(), anyString());
     }
@@ -227,6 +267,11 @@ class MailServiceTest {
         SendForm both = service(ON).form(xrechnung, null);
         assertThat(both.isPdf()).isTrue();
         assertThat(both.isXml()).isTrue();
+        Invoice external = invoice(InvoiceFormat.EXTERNAL);
+        when(texts.forInvoice(external)).thenReturn(new MailText("s", "b"));
+        SendForm originalsOnly = service(ON).form(external, null);
+        assertThat(originalsOnly.isPdf()).as("the original files").isTrue();
+        assertThat(originalsOnly.isXml()).isFalse();
         assertThat(service(ON).configured()).isTrue();
     }
 

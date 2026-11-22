@@ -1737,17 +1737,21 @@ class SecurityWebTest {
         when(originals.list(9)).thenReturn(List.of(original));
         when(mail.configured()).thenReturn(true);
         when(reminders.isRemindable(9)).thenReturn(true);
+        SendForm send = new SendForm();
+        send.setTo("a@b.example");
+        send.setPdf(true);
+        when(mail.form(eq(registered), any())).thenReturn(send);
+        when(mail.reminderForm(eq(registered), any())).thenReturn(send);
         mvc.perform(get("/invoices/9").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("id=\"invoice-originals\"")))
                 .andExpect(content().string(Matchers.containsString("Rechnung März.xlsx")))
                 .andExpect(content().string(Matchers.containsString("href=\"/invoices/9/originals/1\"")))
-                .andExpect(content().string(Matchers.containsString("id=\"mail-external\"")))
                 .andExpect(content().string(Matchers.containsString("Externe Rechnung: eigene Datei, von Hand erfasst")))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-mail\""))))
-                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"reminder-to\""))))
+                .andExpect(content().string(Matchers.containsString("Originaldateien anhängen")))
+                .andExpect(content().string(Matchers.containsString("Rechnung mit ihren Originaldateien anhängen")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"mail-xml\""))))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-documents\""))));
-        verify(mail, never()).form(any(), any());
-        verify(mail, never()).reminderForm(any(), any());
+        verify(mail).form(eq(registered), any());
 
         when(originals.find(9, 1)).thenReturn(Optional.of(original));
         mvc.perform(get("/invoices/9/originals/1").with(user("elena").roles("USER"))).andExpect(status().isOk())
