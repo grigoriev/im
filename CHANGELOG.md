@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-22
+
 ### Added
 
 - External invoices: an invoice made outside the app goes in with its original file, a PDF, XLSX, DOCX or XML of at most 25 MB. The format "Externe Rechnung" on a customer, a template or a draft marks it. The draft editor takes the facts: dates, amounts per tax category, the tax note. "Rechnung erfassen" asks for the number of the file and the file itself.
