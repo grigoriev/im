@@ -169,6 +169,24 @@ class MailServiceTest {
     }
 
     @Test
+    void namesTheAttachmentsThatFitIntoTheNoteOfTheDispatch() {
+        assertThat(MailService.note(List.of("PDF", "XML"))).isEqualTo("PDF, XML");
+        String name = "x".repeat(196) + ".pdf";
+        assertThat(MailService.note(List.of(name, name))).hasSize(402);
+        String note = MailService.note(List.of(name, name, name, name));
+        assertThat(note).isEqualTo(name + ", " + name + " und 2 weitere").hasSizeLessThanOrEqualTo(MailService.MAX_NOTE);
+        String exact = "y".repeat(MailService.MAX_NOTE);
+        assertThat(MailService.note(List.of(exact))).as("one name of the full length").isEqualTo(exact);
+        assertThat(MailService.note(List.of(exact, "a.pdf"))).as("no name fits").isEqualTo("2 Dateien");
+        List<String> ten = new ArrayList<>(List.of("a".repeat(200), "b".repeat(284)));
+        for (int i = 0; i < 8; i++) {
+            ten.add("c.pdf");
+        }
+        assertThat(MailService.note(ten)).as("exactly 500 characters, with a one-digit rest")
+                .isEqualTo("a".repeat(200) + ", " + "b".repeat(284) + " und 8 weitere").hasSize(MailService.MAX_NOTE);
+    }
+
+    @Test
     void sendsABlindCopyAndOneAttachment() throws Exception {
         MailService service = service(new MailProperties("smtp.example.org", 587, "", "", true, "rechnung@elena.example",
                 "elena@elena.example"));

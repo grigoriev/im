@@ -41,6 +41,8 @@ public class MailService {
             + "die Erinnerung von Hand vermerken.";
     static final int MAX_SUBJECT = 200;
     static final int MAX_BODY = 4000;
+    /** The length of the note of a dispatch. */
+    static final int MAX_NOTE = 500;
 
     private static final Logger LOG = LoggerFactory.getLogger(MailService.class);
 
@@ -229,8 +231,34 @@ public class MailService {
     private record Outgoing(String to, String subject, String body, List<Attachment> attachments) {
 
         String attachmentNames() {
-            return String.join(", ", attachments.stream().map(file -> file.label).toList());
+            return note(attachments.stream().map(file -> file.label).toList());
         }
+    }
+
+    /**
+     * Names the attachments in the note of a dispatch, which holds 500 characters: the names that fit, then how many
+     * more there are.
+     *
+     * @param names the names of the attachments
+     * @return for example {@code PDF, XML}, or {@code a.pdf, b.pdf und 3 weitere}
+     */
+    static String note(List<String> names) {
+        String all = String.join(", ", names);
+        if (all.length() <= MAX_NOTE) {
+            return all;
+        }
+        // The full list is too long, so the loop stops before it takes the last name.
+        int listed = 0;
+        while (String.join(", ", names.subList(0, listed + 1)).length() + more(names.size() - listed - 1).length()
+                <= MAX_NOTE) {
+            listed++;
+        }
+        return listed == 0 ? names.size() + " Dateien"
+                : String.join(", ", names.subList(0, listed)) + more(names.size() - listed);
+    }
+
+    private static String more(int count) {
+        return " und " + count + " weitere";
     }
 
     /** Checks the entered values and gathers the attachments. */
