@@ -145,6 +145,8 @@ Not chosen:
 | `Invoice` | Number, status, format, title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, file name, content (in the database), SHA-256, size. Written once |
+| `InvoiceOriginal` | Original file of an external invoice: file name, type, content, SHA-256, seal. Written once |
+| `NumberGap` | Explained gap in the numbers of a year before the app: number, reason, user. Written once |
 | `Dispatch` | When, to whom, channel (`EMAIL_APP`, or by hand: `OWN_MAIL`, `POST`, `PORTAL`, `IN_PERSON`), by which user, note. Written once |
 | `Payment` | Date, amount, note. A negative amount is a refund |
 | `Reminder` | Payment reminder: day, channel (`EMAIL_APP` or `MANUAL`), recipient, note, by which user. Written once |
@@ -317,6 +319,40 @@ The admin edits the default tax notes. A template and an invoice can override th
    one is cancelled with a reason, stays with its receipt and counts no more. A cancelled expense never changes.
 6. Not in scope: mileage, the home office lump sum, Bewirtung at 70 %. They go into WISO directly.
 
+### External invoices
+
+1. Some customers demand their own invoice form (decision 2026-11-22). The invoices of 2026 exist outside the app too.
+2. The app registers such an invoice as an external invoice ("Externe Rechnung"). It generates no PDF and no XML.
+3. It keeps the original files: PDF, XLSX, DOCX or XML, at most 25 MB each, one or more per invoice.
+4. The app checks the first bytes, XLSX and DOCX also their ZIP content. Keep the file that went to the customer.
+5. The user types in the facts: number, date, service period, payment days, customer, business, amount per tax category.
+   A tax note is optional. The total follows from the amounts.
+6. The facts form the snapshot, one line per tax category. Reports and the §19 threshold read it like any snapshot.
+7. Number, snapshot and files carry a seal and never change, as for an issued invoice.
+8. The rules of the tax categories only warn: the invoice exists already.
+9. Dispatch, payments, reminders, archive, export and the integrity check treat it like an issued invoice.
+   An e-mail from the app sends its original files.
+10. The Stornorechnung of an external invoice is external too. It names the invoice it cancels.
+
+Numbers of an external invoice:
+
+1. A year of the app (2027 on): one sequence with the invoices of the app. The form shows the next number.
+2. The registration assigns the number under the row lock of the issue. It refuses a file number that differs.
+   A rollback leaves no gap.
+3. No reservation of numbers: a dropped reservation leaves a gap.
+4. A year before the app (2026): numbers follow `{YYYY}-{N}`, for example `2026-01`. They come in any order.
+5. The year of the number matches the year of the invoice date. A number exists once.
+6. Page "Nummernkreis" shows the range of the year, its gaps and numbers out of date order.
+7. A gap needs a reason, for example a spoiled number. The reason is written once and goes into the audit log.
+8. "Jahr abschließen" works without an unexplained gap. The counter becomes the highest number plus one and locks.
+
+Payments before the app:
+
+1. Payments of 2026 stay outside the app (decision 2026-11-22). The §19 revenue of 2026 comes from the baseline.
+2. The app refuses a payment dated in a year with a baseline.
+3. A 2026 invoice paid in 2026 gets the mark "Vor dem Start bezahlt". It leaves the open invoices and gets no reminder.
+4. A 2026 invoice without the mark stays open. Its payment from 2027 on counts as usual.
+
 ## 8. Deployment on lemming
 
 1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.
@@ -443,7 +479,8 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | M4 | Threshold and reports | Dashboard, baseline, EÜR report, CSV, archive export | 2026-12 |
 | M5 | Operations | Deployment on lemming, backups to meerkat, restore test, full export and import | 2026-12 |
 | M6 | Acceptance | Test with realistic invoices, fixes, final legal check | 2026-12 |
-| GO | Go-live | Clean database, real seller profile, baseline 2026, first invoice `2027-01` | 2027-01-01 |
+| M7 | External invoices | Original files, facts by hand, number check, gaps with reason, closed year, mark "Vor dem Start bezahlt" | 2026-12 |
+| GO | Go-live | Clean database, real seller profile, baseline 2026, invoices of 2026 as external, 2026 closed, first invoice `2027-01` | 2027-01-01 |
 
 ## 13. Open questions
 
