@@ -34,6 +34,9 @@ class SealTest {
         assertThat(seal.businessDocument(5, ABC_SHA256)).isEqualTo(Seal.mac("HmacSHA256",
                 new SecretKeySpec(KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256"), "business_document\n5\n"
                         + ABC_SHA256));
+        assertThat(seal.invoiceOriginal(5, 9, ABC_SHA256)).isEqualTo(Seal.mac("HmacSHA256",
+                new SecretKeySpec(KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256"), "invoice_original\n5\n9\n"
+                        + ABC_SHA256)).isNotEqualTo(seal.invoiceOriginal(6, 9, ABC_SHA256));
         assertThat(seal.snapshot(5, "2027-01", "abc")).isEqualTo(Seal.mac("HmacSHA256",
                 new SecretKeySpec(KEY.getBytes(StandardCharsets.UTF_8), "HmacSHA256"), "invoice\n5\n2027-01\n"
                         + ABC_SHA256));

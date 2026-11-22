@@ -391,11 +391,22 @@ public class DocumentService implements IntegrityCheck {
      * @return the name, "Dokument" with the extension of the type if nothing is left
      */
     public static String filename(String uploaded, String mediaType) {
+        return safeName(uploaded, "Dokument" + EXTENSIONS.get(mediaType));
+    }
+
+    /**
+     * Returns a safe file name: without a folder and control characters, at most 200 characters with its extension.
+     *
+     * @param uploaded the name of the upload, may be {@code null}
+     * @param fallback the name if nothing is left
+     * @return the name
+     */
+    public static String safeName(String uploaded, String fallback) {
         String name = uploaded == null ? "" : uploaded.substring(Math.max(uploaded.lastIndexOf('/'),
                 uploaded.lastIndexOf('\\')) + 1);
         name = name.replaceAll("\\p{Cntrl}", "").strip();
         if (name.isEmpty() || name.equals(".") || name.equals("..")) {
-            name = "Dokument" + EXTENSIONS.get(mediaType);
+            name = fallback;
         }
         int dot = name.lastIndexOf('.');
         String extension = dot != -1 && name.length() - dot <= 10 ? name.substring(dot) : "";

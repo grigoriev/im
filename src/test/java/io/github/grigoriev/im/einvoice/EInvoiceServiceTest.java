@@ -38,7 +38,7 @@ class EInvoiceServiceTest {
 
     static Stream<Arguments> invoices() {
         List<Arguments> cases = new ArrayList<>();
-        for (InvoiceFormat format : InvoiceFormat.values()) {
+        for (InvoiceFormat format : ItSamples.issuedFormats()) {
             String ref = format.followsXRechnung() ? REF : null;
             cases.add(Arguments.of(format, "§19", invoice(PUBLISHER, ref, format, line("Lesung", "1", "400.00", KLEINUNTERNEHMER))));
             cases.add(Arguments.of(format, "§4", invoice(SCHOOL, ref, format, line("Unterricht", "24", "41.00", EXEMPT_4_21))));
@@ -87,7 +87,15 @@ class EInvoiceServiceTest {
             case ZUGFERD_EN16931 -> assertThat(validators).containsExactly("Mustang");
             case ZUGFERD_XRECHNUNG -> assertThat(validators).containsExactly("Mustang", "KoSIT");
             case XRECHNUNG -> assertThat(validators).containsExactly("KoSIT");
+            case EXTERNAL -> throw new AssertionError("the app issues no external invoice");
         }
+    }
+
+    @Test
+    void issuesNoEInvoiceForAnExternalInvoice() {
+        InvoiceDocument external = SampleInvoices.reading(InvoiceFormat.EXTERNAL);
+        assertThatThrownBy(() -> service.issue(external)).isInstanceOf(EInvoiceException.class)
+                .hasMessage("Invoice 2027-10 is external: the app issues no e-invoice");
     }
 
     @Test

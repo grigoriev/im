@@ -65,14 +65,17 @@ import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.DraftLine;
+import io.github.grigoriev.im.invoice.ExternalInvoiceService;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceIntegrity;
+import io.github.grigoriev.im.invoice.InvoiceOriginal;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.InvoiceTemplate;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.OriginalStore;
 import io.github.grigoriev.im.invoice.Payment;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
@@ -234,6 +237,12 @@ class SecurityWebTest {
 
     @MockitoBean
     private IssueService issues;
+
+    @MockitoBean
+    private ExternalInvoiceService externals;
+
+    @MockitoBean
+    private OriginalStore originals;
 
     @MockitoBean
     private DocumentStore documents;
@@ -1585,6 +1594,96 @@ class SecurityWebTest {
         mvc.perform(post("/invoices/5/issue").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(redirectedUrl("/invoices/5"))
                 .andExpect(flash().attribute("error", "Nicht gültig."));
+    }
+
+    private static Invoice external(long id, InvoiceStatus status) {
+        Invoice app = invoice(id, status);
+        return new Invoice(id, status, 3L, app.number(), InvoiceFormat.EXTERNAL, app.issueDate(), app.serviceFrom(),
+                app.serviceTo(), 14, "04011000-1", "Hallo", "Danke", null, app.lines(), Instant.EPOCH, Instant.EPOCH, 3L,
+                app.issuedAt(), app.snapshot(), null);
+    }
+
+    @Test
+    void registersAnExternalInvoiceWithItsFile() throws Exception {
+        when(invoices.find(8)).thenReturn(Optional.of(external(8, InvoiceStatus.DRAFT)));
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        when(externals.nextNumber(any())).thenReturn("2026-04");
+        mvc.perform(get("/invoices/8").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("id=\"invoice-register\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"register-next\">2026-04<")))
+                .andExpect(content().string(Matchers.containsString("id=\"external-hint\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-preview\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-intro\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-issue\""))))
+                .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"intro\" name=\"intro\"")))
+                .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"closing\" name=\"closing\"")))
+                .andExpect(content().string(Matchers.containsString(
+                        "type=\"hidden\" id=\"buyerReference\" name=\"buyerReference\"")));
+        mvc.perform(get("/invoices/8/preview").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/invoices/8"))
+                .andExpect(flash().attribute("error", "Eine externe Rechnung hat keine Vorschau. Ihre Datei ist die Rechnung."));
+
+        byte[] xlsx = "PK-Tabelle".getBytes(StandardCharsets.US_ASCII);
+        when(externals.register(8, 3L, "2026-04", "April.xlsx", xlsx)).thenReturn("2026-04");
+        MockMultipartFile file = new MockMultipartFile("file", "April.xlsx", "application/octet-stream", xlsx);
+        mvc.perform(upload("/invoices/8/register").file(file).param("version", "3").param("number", "2026-04")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/8"))
+                .andExpect(flash().attribute("success", "Externe Rechnung 2026-04 erfasst."));
+        when(externals.register(8, null, null, null, new byte[0]))
+                .thenThrow(new InvoiceException(List.of("Bitte eine Datei wählen.")));
+        mvc.perform(upload("/invoices/8/register").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/8")).andExpect(flash().attribute("error", "Bitte eine Datei wählen."));
+        MockMultipartFile huge = new MockMultipartFile("file", "x.pdf", "application/pdf",
+                new byte[DocumentService.MAX_BYTES + 1]);
+        mvc.perform(upload("/invoices/8/register").file(huge).with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(flash().attribute("error", DocumentService.TOO_LARGE));
+    }
+
+    @Test
+    void showsAnExternalInvoiceWithItsOriginalFiles() throws Exception {
+        Invoice registered = external(9, InvoiceStatus.ISSUED);
+        when(invoices.find(9)).thenReturn(Optional.of(registered));
+        when(documents.restore("{snapshot}")).thenReturn(SampleInvoices.reading(InvoiceFormat.EXTERNAL));
+        InvoiceOriginal original = new InvoiceOriginal(1, 9, "Rechnung März.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "PK".getBytes(StandardCharsets.US_ASCII), "ab12", 2, "seal", Instant.EPOCH, "elena");
+        when(originals.list(9)).thenReturn(List.of(original));
+        when(mail.configured()).thenReturn(true);
+        when(reminders.isRemindable(9)).thenReturn(true);
+        mvc.perform(get("/invoices/9").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("id=\"invoice-originals\"")))
+                .andExpect(content().string(Matchers.containsString("Rechnung März.xlsx")))
+                .andExpect(content().string(Matchers.containsString("href=\"/invoices/9/originals/1\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"mail-external\"")))
+                .andExpect(content().string(Matchers.containsString("Externe Rechnung: eigene Datei, von Hand erfasst")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-mail\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"reminder-to\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-documents\""))));
+        verify(mail, never()).form(any(), any());
+        verify(mail, never()).reminderForm(any(), any());
+
+        when(originals.find(9, 1)).thenReturn(Optional.of(original));
+        mvc.perform(get("/invoices/9/originals/1").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(header().string("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(header().string("Content-Disposition", Matchers.containsString("filename*=UTF-8''Rechnung%20M%C3%A4rz.xlsx")))
+                .andExpect(content().string("PK"));
+        when(originals.find(9, 2)).thenReturn(Optional.empty());
+        mvc.perform(get("/invoices/9/originals/2").with(user("elena").roles("USER"))).andExpect(status().isNotFound());
+        when(originals.find(9, 3)).thenThrow(new InvoiceException(List.of("kaputt")));
+        mvc.perform(get("/invoices/9/originals/3").with(user("elena").roles("USER"))).andExpect(status().isSeeOther())
+                .andExpect(redirectedUrl("/invoices/9"));
+
+        byte[] copy = "%PDF-1.7".getBytes(StandardCharsets.US_ASCII);
+        when(externals.addOriginal(9, "März.pdf", copy)).thenReturn(new InvoiceOriginal(2, 9, "März.pdf",
+                "application/pdf", copy, "cd", 8, "seal", Instant.EPOCH, "elena"));
+        mvc.perform(upload("/invoices/9/originals").file(new MockMultipartFile("file", "März.pdf", "application/pdf", copy))
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/9")).andExpect(flash().attribute("success", "Datei „März.pdf“ hinzugefügt."));
+        when(externals.addOriginal(9, null, new byte[0])).thenThrow(new InvoiceException(List.of("Bitte eine Datei wählen.")));
+        mvc.perform(upload("/invoices/9/originals").with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/9")).andExpect(flash().attribute("error", "Bitte eine Datei wählen."));
     }
 
     @Test

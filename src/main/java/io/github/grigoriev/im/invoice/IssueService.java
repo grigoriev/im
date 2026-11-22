@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -40,6 +41,7 @@ public class IssueService {
     static final String NOT_VALID = "Die E-Rechnung hat die Prüfung nicht bestanden. Die Rechnung bleibt ein Entwurf.";
     static final String NUMBER_TAKEN = "Die Rechnungsnummer %s gibt es schon. Bitte das Nummernmuster oder die "
             + "Startnummer in den Einstellungen prüfen.";
+    static final String EXTERNAL = "Eine externe Rechnung wird mit ihrer Datei erfasst, nicht ausgestellt.";
 
     private static final Logger LOG = LoggerFactory.getLogger(IssueService.class);
 
@@ -87,6 +89,9 @@ public class IssueService {
         if (version == null || !version.equals(draft.version())) {
             throw new InvoiceException(List.of(InvoiceService.CHANGED_ELSEWHERE));
         }
+        if (draft.format().isExternal()) {
+            throw new InvoiceException(List.of(EXTERNAL));
+        }
         List<String> problems = invoices.problems(draft);
         if (!problems.isEmpty()) {
             throw new InvoiceException(problems);
@@ -101,13 +106,39 @@ public class IssueService {
             throw new InvoiceException(List.of(NOT_VALID));
         }
         Instant at = clock.instant();
+        frozen(draft, document, at);
+        store.store(id, number, files, at);
+        audit.add(id, AuditAction.INVOICE_ISSUED, number + ", "
+                + Customer.label(document.buyer().name(), document.buyer().contactName()));
+        return number;
+    }
+
+    /**
+     * Freezes a draft with its number and snapshot. A Stornorechnung cancels its invoice in the same step. It runs in
+     * the transaction that assigned the number, so a failure returns the number too.
+     *
+     * @param draft the draft as the transaction read it
+     * @param document the invoice document with its number
+     * @param at time of the issue
+     * @throws InvoiceException if the number exists, the draft changed meanwhile or its invoice is cancelled
+     * @throws org.springframework.transaction.IllegalTransactionStateException without a transaction
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void freeze(Invoice draft, InvoiceDocument document, Instant at) {
+        frozen(draft, document, at);
+    }
+
+    /** Freezes a draft in the running transaction: the body of {@link #freeze}, which the issue calls directly. */
+    private void frozen(Invoice draft, InvoiceDocument document, Instant at) {
+        long id = draft.id();
+        String number = document.number();
         int updated;
         try {
             String snapshot = store.snapshot(document);
             updated = jdbc.sql(ISSUE).param("number", number).param("at", Timestamp.from(at))
                     .param("snapshot", snapshot).param("seal", store.seal(id, number, snapshot))
                     .param("activity", InvoiceService.activity(draft).name())
-                    .param("id", id).param("version", version).update();
+                    .param("id", id).param("version", draft.version()).update();
         } catch (DuplicateKeyException _) {
             throw new InvoiceException(List.of(NUMBER_TAKEN.formatted(number)));
         }
@@ -125,9 +156,5 @@ public class IssueService {
             audit.add(original.id(), AuditAction.INVOICE_CANCELLED, original.number() + ", durch Stornorechnung "
                     + number);
         }
-        store.store(id, number, files, at);
-        audit.add(id, AuditAction.INVOICE_ISSUED, number + ", "
-                + Customer.label(document.buyer().name(), document.buyer().contactName()));
-        return number;
     }
 }

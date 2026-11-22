@@ -57,7 +57,7 @@ public class BackupService {
     /** The tables in the order their keys need. Remember-me logins and the Flyway history stay out. */
     static final List<String> TABLES = List.of("country", "app_setting", "tax_note", "number_sequence",
             "threshold_baseline", "seller_profile", "app_user", "user_entities", "user_credentials", "customer",
-            "invoice_template", "invoice_template_line", INVOICE, "invoice_line", "invoice_document", "dispatch",
+            "invoice_template", "invoice_template_line", INVOICE, "invoice_line", "invoice_document", "invoice_original", "dispatch",
             "payment", "reminder", "audit_event", "business_document", "expense");
 
     /** The data an installation makes by itself, for example the first admin: the import replaces it. */

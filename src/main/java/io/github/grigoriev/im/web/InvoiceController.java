@@ -2,6 +2,7 @@ package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
+import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
@@ -10,16 +11,21 @@ import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentKind;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.invoice.ExternalInvoiceService;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceService;
+import io.github.grigoriev.im.invoice.InvoiceOriginal;
 import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.OriginalStore;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.threshold.ThresholdService;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -39,12 +45,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
- * The page "Rechnungen": the list with its filters, a new draft for a customer, the editor of a draft, the issue, and
- * the page of an issued invoice ({@link IssuedInvoicePage}). Both roles use it.
+ * The page "Rechnungen": the list with its filters, a new draft for a customer, the editor of a draft, the issue, the
+ * registration of an external invoice with its original files, and the page of an issued invoice
+ * ({@link IssuedInvoicePage}). Both roles use it.
  */
 @Controller
 @RequestMapping("/invoices")
@@ -82,7 +90,9 @@ public class InvoiceController {
 
     private final InvoiceService invoices;
     private final IssueService issues;
+    private final ExternalInvoiceService externals;
     private final DocumentStore documents;
+    private final OriginalStore originals;
     private final CustomerService customers;
     private final InvoicePdfRenderer pdf;
     private final IssuedInvoicePage issuedPage;
@@ -93,18 +103,23 @@ public class InvoiceController {
      *
      * @param invoices the invoice service
      * @param issues issues a draft
+     * @param externals registers an external invoice
      * @param documents the documents and snapshots of issued invoices
+     * @param originals the original files of external invoices
      * @param customers the customers for a new draft
      * @param pdf renders the preview
      * @param issuedPage fills the page of an issued invoice
      * @param threshold warns when a draft would cross the §19 limit
      */
-    public InvoiceController(InvoiceService invoices, IssueService issues, DocumentStore documents,
-            CustomerService customers, InvoicePdfRenderer pdf, IssuedInvoicePage issuedPage,
-            ThresholdService threshold) {
+    @SuppressWarnings("java:S107") // the services of the pages of an invoice
+    public InvoiceController(InvoiceService invoices, IssueService issues, ExternalInvoiceService externals,
+            DocumentStore documents, OriginalStore originals, CustomerService customers, InvoicePdfRenderer pdf,
+            IssuedInvoicePage issuedPage, ThresholdService threshold) {
         this.invoices = invoices;
         this.issues = issues;
+        this.externals = externals;
         this.documents = documents;
+        this.originals = originals;
         this.customers = customers;
         this.pdf = pdf;
         this.issuedPage = issuedPage;
@@ -237,6 +252,10 @@ public class InvoiceController {
             return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(INVOICE_PATH + "/" + id + "/documents/pdf"))
                     .build();
         }
+        if (invoice.format().isExternal()) {
+            flash.addFlashAttribute(ERROR, "Eine externe Rechnung hat keine Vorschau. Ihre Datei ist die Rechnung.");
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(INVOICE_PATH + "/" + id)).build();
+        }
         return invoices.document(invoice)
                 .map(document -> ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
                         .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
@@ -264,6 +283,88 @@ public class InvoiceController {
             flash.addFlashAttribute(ERROR, e.getMessage());
         }
         return TO_INVOICE + id;
+    }
+
+    /**
+     * Registers an external invoice: the number of its file, checked against the next number, and its original file.
+     *
+     * @param id the ID of the draft
+     * @param version the version of the draft the user saw
+     * @param number the number printed on the file
+     * @param file the original file
+     * @param flash messages for the next page
+     * @return a redirect to the invoice
+     * @throws IOException if the upload cannot be read
+     */
+    @PostMapping("/{id}/register")
+    public String register(@PathVariable long id, @RequestParam(required = false) Long version,
+            @RequestParam(required = false) String number, @RequestParam(required = false) MultipartFile file,
+            RedirectAttributes flash) throws IOException {
+        try {
+            flash.addFlashAttribute(SUCCESS, "Externe Rechnung " + externals.register(id, version, number, name(file),
+                    bytes(file)) + " erfasst.");
+        } catch (InvoiceException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+        }
+        return TO_INVOICE + id;
+    }
+
+    /**
+     * Adds a further original file to a registered external invoice.
+     *
+     * @param id the ID
+     * @param file the file
+     * @param flash messages for the next page
+     * @return a redirect to the invoice
+     * @throws IOException if the upload cannot be read
+     */
+    @PostMapping("/{id}/originals")
+    public String addOriginal(@PathVariable long id, @RequestParam(required = false) MultipartFile file,
+            RedirectAttributes flash) throws IOException {
+        try {
+            InvoiceOriginal added = externals.addOriginal(id, name(file), bytes(file));
+            flash.addFlashAttribute(SUCCESS, "Datei „" + added.filename() + "“ hinzugefügt.");
+        } catch (InvoiceException e) {
+            flash.addFlashAttribute(ERROR, e.getMessage());
+        }
+        return TO_INVOICE + id;
+    }
+
+    /**
+     * Downloads an original file of an external invoice, byte for byte as it was uploaded.
+     *
+     * @param id the ID of the invoice
+     * @param originalId the ID of the file
+     * @return the file; a redirect to the invoice, which shows the check, if the file is broken or changed
+     */
+    @GetMapping("/{id}/originals/{originalId}")
+    public ResponseEntity<byte[]> downloadOriginal(@PathVariable long id, @PathVariable long originalId) {
+        InvoiceOriginal original;
+        try {
+            original = originals.find(id, originalId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        } catch (InvoiceException _) {
+            return ResponseEntity.status(HttpStatus.SEE_OTHER).location(URI.create(INVOICE_PATH + "/" + id)).build();
+        }
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(original.mediaType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(original.filename(), StandardCharsets.UTF_8).build().toString())
+                .body(original.content());
+    }
+
+    private static String name(MultipartFile file) {
+        return file == null ? null : file.getOriginalFilename();
+    }
+
+    /** Reads the upload, unless it is too large: the upload limit of a form allows more than a file may have. */
+    private static byte[] bytes(MultipartFile file) throws IOException {
+        if (file == null) {
+            return new byte[0];
+        }
+        if (file.getSize() > DocumentService.MAX_BYTES) {
+            throw new InvoiceException(List.of(DocumentService.TOO_LARGE));
+        }
+        return file.getBytes();
     }
 
     /**
@@ -346,6 +447,9 @@ public class InvoiceController {
         }
         model.addAttribute("form", form);
         model.addAttribute("problems", invoices.problems(invoice));
+        if (invoice.format().isExternal()) {
+            model.addAttribute("nextNumber", externals.nextNumber(invoice));
+        }
         // A Stornorechnung adds no revenue: it takes no payments.
         model.addAttribute("overLimit", cancelled.isEmpty() && document.isPresent()
                 && threshold.wouldExceed(document.get()));

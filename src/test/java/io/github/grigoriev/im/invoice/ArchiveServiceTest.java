@@ -45,6 +45,7 @@ class ArchiveServiceTest {
 
     private final InvoiceService invoices = mock(InvoiceService.class);
     private final DocumentStore documents = mock(DocumentStore.class);
+    private final OriginalStore originals = mock(OriginalStore.class);
     private final DocumentService businessDocuments = mock(DocumentService.class);
     private final InvoiceIntegrity integrity = mock(InvoiceIntegrity.class);
     private final ExpenseService expenses = mock(ExpenseService.class);
@@ -54,7 +55,7 @@ class ArchiveServiceTest {
 
     @BeforeEach
     void intact() {
-        service = new ArchiveService(invoices, documents, businessDocuments, integrity, expenses, folder);
+        service = new ArchiveService(invoices, documents, originals, businessDocuments, integrity, expenses, folder);
         when(documents.verified(any())).thenAnswer(call -> call.getArgument(0));
         when(integrity.check(any())).thenReturn(new InvoiceIntegrity.Report(List.of(), List.of()));
     }
@@ -109,6 +110,29 @@ class ArchiveServiceTest {
                 + "\"2027-03\";01.03.2027;\"Verlag am Fluss GmbH\";Rechnung_2027-03.xml;8;sha-2027-03\r\n");
         verify(documents, never()).list(4);
         verify(documents, never()).list(5);
+    }
+
+    @Test
+    void zipsTheOriginalFilesOfAnExternalInvoice() throws IOException {
+        LocalDate day = LocalDate.of(2026, 4, 2);
+        Invoice external = new Invoice(8L, InvoiceStatus.PAID, 2L, "2026-04", InvoiceFormat.EXTERNAL, day, day, day,
+                14, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 1L, Instant.EPOCH, "{}", null);
+        when(invoices.list()).thenReturn(List.of(external));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.EXTERNAL));
+        InvoiceOriginal xlsx = new InvoiceOriginal(1, 8, "April.xlsx", OriginalStore.XLSX,
+                "xlsx".getBytes(StandardCharsets.UTF_8), "sha-x", 4, "seal", Instant.EPOCH, "elena");
+        InvoiceOriginal pdf = new InvoiceOriginal(2, 8, "April.pdf", OriginalStore.PDF,
+                "%PDF".getBytes(StandardCharsets.UTF_8), "sha-p", 4, "seal", Instant.EPOCH, "elena");
+        when(originals.list(8)).thenReturn(List.of(xlsx, pdf));
+        when(originals.verified(any())).thenAnswer(call -> call.getArgument(0));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        service.write(2026, out);
+        Map<String, String> entries = unzip(out.toByteArray());
+        assertThat(entries).containsEntry("April.xlsx", "xlsx").containsEntry("April.pdf", "%PDF")
+                .containsEntry("Inhalt.csv", String.valueOf((char) 0xFEFF) + ArchiveService.HEAD + "\r\n"
+                + "\"2026-04\";02.04.2026;\"Verlag am Fluss GmbH\";April.xlsx;4;sha-x\r\n"
+                + "\"2026-04\";02.04.2026;\"Verlag am Fluss GmbH\";April.pdf;4;sha-p\r\n");
+        verify(documents, never()).list(8);
     }
 
     @Test
@@ -190,7 +214,7 @@ class ArchiveServiceTest {
     void growsTheArchiveInTheTemporaryFolderOfJava() throws IOException {
         when(invoices.list()).thenReturn(List.of());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        new ArchiveService(invoices, documents, businessDocuments, integrity, expenses).write(2020, out);
+        new ArchiveService(invoices, documents, originals, businessDocuments, integrity, expenses).write(2020, out);
         assertThat(unzip(out.toByteArray())).containsOnlyKeys("Inhalt.csv");
     }
 

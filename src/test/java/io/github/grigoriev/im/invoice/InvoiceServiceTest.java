@@ -381,6 +381,25 @@ class InvoiceServiceTest {
     }
 
     @Test
+    void anExternalDraftStartsWithoutTextsAndMayMixTeachingWithOneTaxNumber() {
+        Customer verlag = CustomerTestData.verlag();
+        when(customers.find(3)).thenReturn(Optional.of(new Customer(3L, verlag.name(), verlag.street(),
+                verlag.postcode(), verlag.city(), verlag.countryCode(), null, verlag.email(), null, null,
+                InvoiceFormat.EXTERNAL, null)));
+        Invoice created = service.createDraft(3, null);
+        assertThat(created.format()).isEqualTo(InvoiceFormat.EXTERNAL);
+        assertThat(created.intro()).isNull();
+        assertThat(created.closing()).isNull();
+
+        Invoice draft = draft(List.of(lump("Kurs", "300", TaxCategory.EXEMPT_4_21),
+                lump("Lesung", "100", TaxCategory.KLEINUNTERNEHMER)));
+        Invoice mixed = new Invoice(draft.id(), draft.status(), draft.customerId(), null, InvoiceFormat.EXTERNAL,
+                TODAY, TODAY, TODAY, 14, null, null, null, draft.taxNote(), draft.lines(), NOW, NOW, 0L, null, null,
+                null);
+        assertThat(service.problems(mixed)).as("the invoice exists already").isEmpty();
+    }
+
+    @Test
     void keepsTeachingOnItsOwnInvoiceAndNamesItsTaxNumber() {
         SellerProfile p = SellerTestData.profile();
         when(sellers.find()).thenReturn(Optional.of(new SellerProfile(p.name(), p.street(), p.postcode(), p.city(),

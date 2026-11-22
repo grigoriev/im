@@ -64,7 +64,7 @@ class ApplicationIT {
 
     @Test
     void issuesAnEInvoiceWithTheBeansOfTheContext() {
-        for (InvoiceFormat format : InvoiceFormat.values()) {
+        for (InvoiceFormat format : ItSamples.issuedFormats()) {
             IssuedEInvoice issued = einvoices.issue(ItSamples.reading(format));
             assertThat(issued.validations()).isNotEmpty().allMatch(ValidationResult::valid);
         }

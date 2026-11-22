@@ -16,7 +16,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Checks an issued invoice: the seal of its snapshot, each document against its SHA-256 and seal, the XML of a
- * ZUGFeRD PDF against the XML file, and the facts of the XML against the snapshot. The last one names what changed.
+ * ZUGFeRD PDF against the XML file, and the facts of the XML against the snapshot. The last one names what changed. An
+ * external invoice has its original files instead, each checked against its SHA-256 and seal.
  */
 @Service
 public class InvoiceIntegrity implements IntegrityCheck {
@@ -29,9 +30,11 @@ public class InvoiceIntegrity implements IntegrityCheck {
     static final String XML_UNREADABLE = "Die XML-Datei lässt sich nicht lesen.";
     static final String PDF_XML_DIFFERS = "Die XML in der PDF-Datei weicht von der XML-Datei ab.";
     static final String PDF_WITHOUT_XML = "Die PDF-Datei enthält keine lesbare XML.";
+    static final String NO_ORIGINAL = "Die Originaldatei der externen Rechnung fehlt.";
 
     private final InvoiceService invoices;
     private final DocumentStore documents;
+    private final OriginalStore originals;
     private final EInvoiceWriter writer;
 
     /**
@@ -63,11 +66,14 @@ public class InvoiceIntegrity implements IntegrityCheck {
      *
      * @param invoices the invoices
      * @param documents the documents and snapshots
+     * @param originals the original files of external invoices
      * @param writer reads the XML of a ZUGFeRD PDF
      */
-    public InvoiceIntegrity(InvoiceService invoices, DocumentStore documents, EInvoiceWriter writer) {
+    public InvoiceIntegrity(InvoiceService invoices, DocumentStore documents, OriginalStore originals,
+            EInvoiceWriter writer) {
         this.invoices = invoices;
         this.documents = documents;
+        this.originals = originals;
         this.writer = writer;
     }
 
@@ -81,6 +87,9 @@ public class InvoiceIntegrity implements IntegrityCheck {
         List<String> problems = new ArrayList<>();
         if (!documents.sealed(invoice)) {
             problems.add(SNAPSHOT_CHANGED);
+        }
+        if (invoice.format().isExternal()) {
+            return checkExternal(invoice, problems);
         }
         Map<DocumentKind, StoredDocument> files = new EnumMap<>(DocumentKind.class);
         documents.list(invoice.id()).forEach(file -> files.put(file.kind(), file));
@@ -109,6 +118,21 @@ public class InvoiceIntegrity implements IntegrityCheck {
             compareEmbedded(problems, pdf, xml);
         }
         return new Report(problems, differences);
+    }
+
+    /** An external invoice has its original files instead of the PDF and XML of the app, and no XML to compare. */
+    private Report checkExternal(Invoice invoice, List<String> problems) {
+        List<InvoiceOriginal> files = originals.list(invoice.id());
+        if (files.isEmpty()) {
+            problems.add(NO_ORIGINAL);
+        }
+        files.forEach(file -> problems.addAll(originals.problems(file)));
+        try {
+            documents.restore(invoice.snapshot());
+        } catch (RuntimeException _) {
+            problems.add(SNAPSHOT_UNREADABLE);
+        }
+        return new Report(problems, List.of());
     }
 
     /**

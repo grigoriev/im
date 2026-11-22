@@ -1,9 +1,21 @@
 package io.github.grigoriev.im.einvoice;
 
+import java.util.Arrays;
+import java.util.List;
+
 /** Gives tests outside this package access to the sample invoices. */
 public final class ItSamples {
 
     private ItSamples() {
+    }
+
+    /**
+     * Returns the formats whose e-invoice the app issues: all but the external one.
+     *
+     * @return the formats
+     */
+    public static List<InvoiceFormat> issuedFormats() {
+        return Arrays.stream(InvoiceFormat.values()).filter(format -> !format.isExternal()).toList();
     }
 
     /**

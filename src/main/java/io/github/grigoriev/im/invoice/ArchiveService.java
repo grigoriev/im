@@ -30,7 +30,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Writes the archive of a year (docs/PLAN.md, section 7): a ZIP with the stored PDF and XML of every invoice issued
- * with an invoice date in that year, byte for byte, and a table of contents with their SHA-256. The folder
+ * with an invoice date in that year, and the original files of every external one, byte for byte, and a table of
+ * contents with their SHA-256. The folder
  * "Dokumente" holds every version of the business documents of that year, with a table of contents of its own.
  */
 @Service
@@ -58,6 +59,7 @@ public class ArchiveService {
 
     private final InvoiceService invoices;
     private final DocumentStore documents;
+    private final OriginalStore originals;
     private final DocumentService businessDocuments;
     private final InvoiceIntegrity integrity;
     private final ExpenseService expenses;
@@ -68,14 +70,15 @@ public class ArchiveService {
      *
      * @param invoices the invoices
      * @param documents the stored documents and snapshots
+     * @param originals the original files of external invoices
      * @param businessDocuments the business documents
      * @param integrity checks the invoices
      * @param expenses the expenses and their receipts
      */
     @Autowired
-    public ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
-            InvoiceIntegrity integrity, ExpenseService expenses) {
-        this(invoices, documents, businessDocuments, integrity, expenses,
+    public ArchiveService(InvoiceService invoices, DocumentStore documents, OriginalStore originals,
+            DocumentService businessDocuments, InvoiceIntegrity integrity, ExpenseService expenses) {
+        this(invoices, documents, originals, businessDocuments, integrity, expenses,
                 Path.of(System.getProperty("java.io.tmpdir")));
     }
 
@@ -84,15 +87,17 @@ public class ArchiveService {
      *
      * @param invoices the invoices
      * @param documents the stored documents and snapshots
+     * @param originals the original files of external invoices
      * @param businessDocuments the business documents
      * @param integrity checks the invoices
      * @param expenses the expenses and their receipts
      * @param workFolder where the archive grows before it goes out
      */
-    ArchiveService(InvoiceService invoices, DocumentStore documents, DocumentService businessDocuments,
-            InvoiceIntegrity integrity, ExpenseService expenses, Path workFolder) {
+    ArchiveService(InvoiceService invoices, DocumentStore documents, OriginalStore originals,
+            DocumentService businessDocuments, InvoiceIntegrity integrity, ExpenseService expenses, Path workFolder) {
         this.invoices = invoices;
         this.documents = documents;
+        this.originals = originals;
         this.businessDocuments = businessDocuments;
         this.integrity = integrity;
         this.expenses = expenses;
@@ -175,12 +180,12 @@ public class ArchiveService {
         try (ZipOutputStream zip = new ZipOutputStream(out, StandardCharsets.UTF_8)) {
             for (Invoice invoice : issued) {
                 InvoiceDocument document = documents.verifiedSnapshot(invoice);
-                for (StoredDocument file : documents.list(invoice.id()).stream().map(documents::verified).toList()) {
-                    String name = unique(names, file.filename(), invoice.id());
+                for (ArchivedFile file : files(invoice)) {
+                    String name = unique(names, file.filename, invoice.id());
                     zip.putNextEntry(new ZipEntry(name));
-                    zip.write(file.content());
+                    zip.write(file.content);
                     contents.append(String.join(";", quoted(invoice.number()), GERMAN.format(invoice.issueDate()),
-                            quoted(Customer.label(document.buyer().name(), document.buyer().contactName())), name, Integer.toString(file.size()), file.sha256()))
+                            quoted(Customer.label(document.buyer().name(), document.buyer().contactName())), name, Integer.toString(file.size), file.sha256))
                             .append("\r\n");
                 }
             }
@@ -189,6 +194,32 @@ public class ArchiveService {
             writeDocuments(year, zip);
             writeExpenses(year, zip);
         }
+    }
+
+    /** A file of an invoice in the archive: a document of the app or an original file. */
+    private static final class ArchivedFile {
+
+        private final String filename;
+        private final byte[] content;
+        private final int size;
+        private final String sha256;
+
+        ArchivedFile(String filename, byte[] content, int size, String sha256) {
+            this.filename = filename;
+            this.content = content;
+            this.size = size;
+            this.sha256 = sha256;
+        }
+    }
+
+    /** The checked files of an invoice: its PDF and XML, or the original files of an external one. */
+    private List<ArchivedFile> files(Invoice invoice) {
+        if (invoice.format().isExternal()) {
+            return originals.list(invoice.id()).stream().map(originals::verified)
+                    .map(file -> new ArchivedFile(file.filename(), file.content(), file.size(), file.sha256())).toList();
+        }
+        return documents.list(invoice.id()).stream().map(documents::verified)
+                .map(file -> new ArchivedFile(file.filename(), file.content(), file.size(), file.sha256())).toList();
     }
 
     private List<Invoice> issued(int year) {

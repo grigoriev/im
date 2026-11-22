@@ -35,7 +35,8 @@ class InvoiceIntegrityTest {
     private final EInvoiceWriter writer = new EInvoiceWriter(new MustangInvoiceMapper());
     private final InvoicePdfRenderer renderer = new InvoicePdfRenderer(SampleInvoices.templates());
     private final InvoiceService invoices = mock(InvoiceService.class);
-    private final InvoiceIntegrity integrity = new InvoiceIntegrity(invoices, store, writer);
+    private final OriginalStore originals = mock(OriginalStore.class);
+    private final InvoiceIntegrity integrity = new InvoiceIntegrity(invoices, store, originals, writer);
 
     /** The seal of the snapshot in the database, {@code null} for no row. */
     private String storedSeal;
@@ -87,6 +88,31 @@ class InvoiceIntegrityTest {
         assertThat(report.intact()).isTrue();
         when(invoices.list()).thenReturn(List.of(invoice, invoice(7, null, InvoiceFormat.XRECHNUNG, null)));
         assertThat(integrity.damaged()).as("a draft has nothing to check").isEmpty();
+    }
+
+    @Test
+    void checksTheOriginalFilesOfAnExternalInvoice() {
+        InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.EXTERNAL);
+        Invoice invoice = issued(8, reading);
+        InvoiceOriginal file = new InvoiceOriginal(1, 8, "Rechnung.xlsx", OriginalStore.XLSX, new byte[] {1}, "abc", 1,
+                "seal", NOW, "elena");
+        when(originals.list(8)).thenReturn(List.of(file));
+        when(originals.problems(file)).thenReturn(List.of());
+        assertThat(integrity.check(invoice).intact()).isTrue();
+
+        when(originals.problems(file)).thenReturn(List.of("Rechnung.xlsx: Das Siegel passt nicht."));
+        assertThat(integrity.check(invoice).problems()).containsExactly("Rechnung.xlsx: Das Siegel passt nicht.");
+
+        when(originals.list(8)).thenReturn(List.of());
+        assertThat(integrity.check(invoice).problems()).containsExactly(InvoiceIntegrity.NO_ORIGINAL);
+        assertThat(integrity.check(invoice).differences()).isEmpty();
+
+        String broken = "{broken";
+        storedSeal = seal.snapshot(8, "2027-10", broken);
+        Invoice unreadable = invoice(8, "2027-10", InvoiceFormat.EXTERNAL, broken);
+        when(originals.list(8)).thenReturn(List.of(file));
+        when(originals.problems(file)).thenReturn(List.of());
+        assertThat(integrity.check(unreadable).problems()).containsExactly(InvoiceIntegrity.SNAPSHOT_UNREADABLE);
     }
 
     @Test

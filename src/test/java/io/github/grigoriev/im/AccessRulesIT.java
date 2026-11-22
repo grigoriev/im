@@ -76,6 +76,9 @@ class AccessRulesIT {
             Map.entry("GET /invoices/{id}/preview", Access.USER),
             Map.entry("POST /invoices/{id}/issue", Access.USER),
             Map.entry("POST /invoices/{id}/cancel", Access.USER),
+            Map.entry("POST /invoices/{id}/register", Access.USER),
+            Map.entry("POST /invoices/{id}/originals", Access.USER),
+            Map.entry("GET /invoices/{id}/originals/{originalId}", Access.USER),
             Map.entry("GET /reports", Access.USER),
             Map.entry("GET /reports/payments.csv", Access.USER),
             Map.entry("GET /reports/archive.zip", Access.USER),
@@ -161,7 +164,7 @@ class AccessRulesIT {
     /** A URL for a pattern. The values exist nowhere: a request that passes the rules changes nothing. */
     private static String url(String pattern) {
         return pattern.replace("{id}", "999999").replace("{customerId}", "999998").replace("{code}", "ZZ")
-                .replace("{kind}", "pdf");
+                .replace("{kind}", "pdf").replace("{originalId}", "999997");
     }
 
     private static MockHttpServletRequestBuilder request(String rule) {

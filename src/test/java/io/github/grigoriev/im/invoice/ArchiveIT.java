@@ -63,6 +63,9 @@ class ArchiveIT {
     private ExpenseService expenses;
 
     @Autowired
+    private OriginalStore originals;
+
+    @Autowired
     private TestDatabase.Owner owner;
 
     @Autowired
@@ -81,7 +84,7 @@ class ArchiveIT {
     private Path workFolder;
 
     private ArchiveService archive() {
-        return new ArchiveService(invoices, documents, businessDocuments, integrity, expenses, workFolder);
+        return new ArchiveService(invoices, documents, originals, businessDocuments, integrity, expenses, workFolder);
     }
 
     private BusinessDocument letter(LocalDate date) {
