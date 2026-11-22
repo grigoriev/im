@@ -79,7 +79,7 @@ class NumberIT {
         numbers.setStart(2043, 10);
         assertThat(counter(issue(LocalDate.of(2043, 3, 1)))).isEqualTo(10);
         assertThatThrownBy(() -> numbers.setStart(2043, 1)).isInstanceOf(SettingsException.class)
-                .hasMessageContaining("Für 2043 sind schon Nummern vergeben.");
+                .hasMessageContaining("Für 2043 sind schon Nummern vergeben, oder sie kommen von Hand.");
         assertThat(counter(issue(LocalDate.of(2043, 12, 31)))).isEqualTo(11);
     }
 

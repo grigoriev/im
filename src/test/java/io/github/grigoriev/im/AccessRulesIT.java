@@ -129,6 +129,10 @@ class AccessRulesIT {
             Map.entry("GET /admin/numbers", Access.ADMIN),
             Map.entry("POST /admin/numbers/pattern", Access.ADMIN),
             Map.entry("POST /admin/numbers/start", Access.ADMIN),
+            Map.entry("POST /admin/numbers/manual", Access.ADMIN),
+            Map.entry("GET /numbers/{year}", Access.USER),
+            Map.entry("POST /numbers/{year}/gaps", Access.USER),
+            Map.entry("POST /numbers/{year}/close", Access.USER),
             Map.entry("GET /admin/audit", Access.ADMIN),
             Map.entry("GET /admin/countries", Access.ADMIN),
             Map.entry("POST /admin/countries", Access.ADMIN),
@@ -164,7 +168,8 @@ class AccessRulesIT {
     /** A URL for a pattern. The values exist nowhere: a request that passes the rules changes nothing. */
     private static String url(String pattern) {
         return pattern.replace("{id}", "999999").replace("{customerId}", "999998").replace("{code}", "ZZ")
-                .replace("{kind}", "pdf").replace("{originalId}", "999997");
+                .replace("{kind}", "pdf").replace("{originalId}", "999997")
+                .replace("{year}", "2099");
     }
 
     private static MockHttpServletRequestBuilder request(String rule) {

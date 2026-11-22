@@ -35,7 +35,8 @@ public class NumberService {
     static final String TAKE = """
             UPDATE number_sequence SET next_number = next_number + 1, used = TRUE
              WHERE year = :year RETURNING next_number - 1""";
-    static final String START = "UPDATE number_sequence SET next_number = :start WHERE year = :year AND NOT used";
+    static final String START = "UPDATE number_sequence SET next_number = :start WHERE year = :year AND NOT used "
+            + "AND NOT manual";
     static final String TAKEN = "SELECT EXISTS (SELECT 1 FROM invoice WHERE number = :number)";
 
     private final NumberSequenceRepository sequences;
@@ -135,7 +136,8 @@ public class NumberService {
         }
         jdbc.sql(CREATE_YEAR).param("year", year).update();
         if (jdbc.sql(START).param("start", start).param("year", year).update() == 0) {
-            throw new SettingsException(List.of("Für " + year + " sind schon Nummern vergeben. Der Zähler ist gesperrt."));
+            throw new SettingsException(List.of("Für " + year + " sind schon Nummern vergeben, oder sie kommen von Hand. "
+                    + "Der Zähler ist gesperrt."));
         }
         audit.add(AuditAction.NUMBER_START_SET, year + ": " + start);
     }

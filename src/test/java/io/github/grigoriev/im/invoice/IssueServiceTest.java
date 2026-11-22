@@ -19,6 +19,7 @@ import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
 import io.github.grigoriev.im.einvoice.ItSamples;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
+import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberService;
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -40,12 +41,13 @@ class IssueServiceTest {
 
     private final InvoiceService invoices = mock(InvoiceService.class);
     private final NumberService numbers = mock(NumberService.class);
+    private final ManualNumbers manual = mock(ManualNumbers.class);
     private final EInvoiceService einvoices = mock(EInvoiceService.class);
     private final DocumentStore store = mock(DocumentStore.class);
     private final JdbcClient jdbc = mock(JdbcClient.class);
     private final StatementSpec statement = mock(StatementSpec.class);
     private final AuditService audit = mock(AuditService.class);
-    private final IssueService service = new IssueService(invoices, numbers, einvoices, store, jdbc, audit,
+    private final IssueService service = new IssueService(invoices, numbers, manual, einvoices, store, jdbc, audit,
             Clock.fixed(NOW, ZoneId.of("Europe/Berlin")));
 
     private final Invoice draft = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY,
@@ -118,6 +120,15 @@ class IssueServiceTest {
         verify(statement).param("number", document.number());
         verify(statement).param("snapshot", "{}");
         verifyNoInteractions(einvoices, audit);
+    }
+
+    @Test
+    void issuesNoInvoiceInAYearByHand() {
+        when(manual.isManual(2027)).thenReturn(true);
+        assertThatThrownBy(() -> service.issue(5, 3L)).isInstanceOf(InvoiceException.class)
+                .hasMessage("Für 2027 werden die Nummern von Hand erfasst. Eine Rechnung dieses Jahres kommt als externe "
+                        + "Rechnung mit ihrer Datei.");
+        verifyNoInteractions(numbers, einvoices, store, audit);
     }
 
     @Test

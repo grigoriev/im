@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>Nummernkreis · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('Nummernkreis', 'invoices', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <a th:href="@{/invoices}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
+    <div>
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-2xl font-semibold tracking-tight" id="book-title" th:text="'Nummernkreis ' + ${book.year}">Nummernkreis 2026</h1>
+        <span class="badge badge-soft whitespace-nowrap" id="book-state" th:if="${book.manual or book.closed}"
+              th:classappend="${book.manual} ? 'badge-info' : 'badge-success'"
+              th:text="${book.manual} ? 'Nummern von Hand' : 'Abgeschlossen'">Nummern von Hand</span>
+      </div>
+      <p class="text-sm text-base-content/75 mt-1" id="book-summary"
+         th:text="${book.entries.size() - gaps} + ' Rechnungen · ' + ${gaps} + ' Lücken, davon ' + ${open} + ' ohne Grund'">5 Rechnungen · 1 Lücken, davon 1 ohne Grund</p>
+    </div>
+    <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
+    <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3 text-sm" id="book-about">
+      <p th:if="${book.manual}">Die Rechnungen dieses Jahres kommen als externe Rechnungen mit der Nummer ihrer Datei, in
+        beliebiger Reihenfolge. Jede Lücke braucht einen Grund, zum Beispiel eine verschriebene Nummer. Ein Grund bleibt,
+        wie er ist.</p>
+      <p th:if="${book.closed}">Das Jahr ist abgeschlossen. Eine weitere Rechnung dieses Jahres bekommt die nächste Nummer
+        des Zählers.</p>
+      <p th:unless="${book.manual or book.closed}">Die Nummern dieses Jahres kommen vom Zähler. Die Nummern von Hand
+        stellt der Admin unter „Einstellungen“, „Nummernkreis“ ein.</p>
+    </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="book-entries">
+      <h2 class="font-semibold">Nummern</h2>
+      <p class="text-sm text-base-content/75" th:if="${book.entries.isEmpty()}">Noch keine Rechnung erfasst.</p>
+      <ol class="grid gap-2" th:unless="${book.entries.isEmpty()}">
+        <li th:each="entry : ${book.entries}" th:id="'entry-' + ${entry.counter}"
+            class="border border-base-300 rounded-field p-3 grid gap-2 @container">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" th:unless="${entry.gap()}">
+            <a class="link font-medium num" th:href="@{/invoices/{id}(id=${entry.invoiceId})}" th:text="${entry.number}">2026-01</a>
+            <span class="num text-base-content/75" th:text="${#temporals.format(entry.date, 'dd.MM.yyyy')}">12.01.2026</span>
+            <span class="flex items-center gap-1 text-warning" th:if="${entry.outOfOrder}">
+              <i data-lucide="triangle-alert" class="size-4" aria-hidden="true"></i>Datum vor einer kleineren Nummer</span>
+          </div>
+          <th:block th:if="${entry.gap()}">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              <span class="font-medium num" th:text="${book.label(entry)}">2026-03</span>
+              <span class="badge badge-sm whitespace-nowrap" th:classappend="${entry.reason == null} ? 'badge-warning badge-soft' : 'badge-ghost'"
+                    th:text="${entry.reason == null} ? 'Lücke ohne Grund' : 'Lücke'">Lücke</span>
+            </div>
+            <p class="text-sm [overflow-wrap:anywhere]" th:if="${entry.reason != null}" th:text="${entry.reason}">Nummer verschrieben</p>
+            <form class="flex flex-wrap gap-2 items-end" method="post" th:if="${entry.reason == null and book.manual}"
+                  th:action="@{/numbers/{year}/gaps(year=${book.year})}">
+              <input type="hidden" name="counter" th:value="${entry.counter}">
+              <label class="floating-label grow basis-60"><span>Grund</span>
+                <input th:id="'gap-reason-' + ${entry.counter}" name="reason" class="input w-full" required maxlength="500">
+              </label>
+              <button type="submit" class="btn" th:id="'gap-save-' + ${entry.counter}"><i data-lucide="check" class="size-4"></i>Begründen</button>
+            </form>
+          </th:block>
+        </li>
+      </ol>
+    </section>
+
+    <th:block th:if="${book.manual and !book.entries.isEmpty() and open == 0}">
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" data-dialog="book-close"><i data-lucide="lock" class="size-4"></i>Jahr abschließen…</button>
+      </div>
+      <dialog class="modal" id="book-close" aria-labelledby="book-close-title">
+        <div class="modal-box">
+          <div th:replace="~{fragments/dialog :: dialogTitle('book-close', 'Jahr abschließen?')}"></div>
+          <form method="post" th:action="@{/numbers/{year}/close(year=${book.year})}">
+            <div class="modal-body"><p class="text-sm">Danach kommen keine Nummern von Hand mehr dazu. Eine weitere Rechnung
+              dieses Jahres bekommt die nächste Nummer des Zählers. Das lässt sich nicht zurücknehmen.</p></div>
+            <div class="modal-foot">
+              <button type="button" class="btn" data-close>Abbrechen</button>
+              <button type="submit" class="btn btn-primary" id="book-close-confirm"><i data-lucide="lock" class="size-4"></i>Jetzt abschließen</button>
+            </div>
+          </form>
+        </div>
+        <form th:replace="~{fragments/dialog :: dialogBackdrop}"></form>
+      </dialog>
+    </th:block>
+  </div>
+</div>
+</body>
+</html>

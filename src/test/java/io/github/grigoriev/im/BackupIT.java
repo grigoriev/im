@@ -166,7 +166,7 @@ class BackupIT {
         external.getLines().getFirst().setText("Lesung im Auftrag");
         external.getLines().getFirst().setAmount("300");
         Invoice externalDraft = invoices.saveDraft(outside.id(), external);
-        externals.register(externalDraft.id(), externalDraft.version(), externals.nextNumber(externalDraft),
+        externals.register(externalDraft.id(), externalDraft.version(), externals.nextNumber(externalDraft).orElseThrow(),
                 "Lesung.xlsx", SampleOffice.workbook());
         threshold.saveBaseline(2012, "1.000,00");
         DocumentForm letter = new DocumentForm();

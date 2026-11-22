@@ -19,7 +19,8 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
 - Payments and refunds by the day the money came in, which the income report and the threshold use.
 - Payment reminders for open invoices: by e-mail with the open amount, or noted by hand, with their history.
 - External invoices: an invoice made outside the app, in a form a customer demands or before the app, goes in with its
-  original file (PDF, XLSX, DOCX or XML) and the facts typed in by hand. Its number must be the next one.
+  original file (PDF, XLSX, DOCX or XML) and the facts typed in by hand. Its number must be the next one. A year
+  before the app takes the numbers of its files in any order, with a reason for each gap, until it is closed.
 - Issued PDF and XML stay in the database with their SHA-256, so one `pg_dump` backs up everything.
 - A store of business documents: the Verfahrensdokumentation, tax assessments, letters, certificates and contracts.
   Every file stays, a new version replaces it in the list, and the yearly archive takes them along. The app writes

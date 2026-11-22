@@ -151,7 +151,7 @@ Not chosen:
 | `Payment` | Date, amount, note. A negative amount is a refund |
 | `Reminder` | Payment reminder: day, channel (`EMAIL_APP` or `MANUAL`), recipient, note, by which user. Written once |
 | `Expense` | Day of payment, amount with VAT, kind, vendor, description, asset mark, receipt (written once, sealed), cancellation with reason. Never deleted |
-| `NumberSequence` | Format pattern, year, last number, closed (a year before the app, after "Jahr abschließen") |
+| `NumberSequence` | Format pattern, year, last number, by hand (a year before the app), closed (after "Jahr abschließen") |
 | `ThresholdBaseline` | Revenue counted for §19 in a year before the system existed |
 | `Setting` | Key-value settings: SMTP, texts, defaults |
 | `AuditEvent` | Who did what and when |
@@ -347,6 +347,8 @@ Numbers of an external invoice:
    A rollback leaves no gap.
 3. No reservation of numbers: a dropped reservation leaves a gap.
 4. A year before the app (2026): numbers follow `{YYYY}-{NN}`, for example `2026-01`. They come in any order.
+   The admin marks such a year under "Einstellungen", "Nummernkreis", while it has no number of the counter.
+   The app issues no invoice of that year: each one comes as an external invoice.
 5. The year of the number matches the year of the invoice date. The counter is read as an integer.
    A counter exists once a year: `2026-1` next to `2026-01` is a duplicate. The number stays as printed on the file.
 6. Page "Nummernkreis" shows the range of the year, its gaps and numbers out of date order.

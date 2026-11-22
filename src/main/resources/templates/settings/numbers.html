@@ -55,6 +55,33 @@
         </div>
       </div>
     </section>
+
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4" id="manual-years">
+      <div>
+        <h2 class="font-semibold">Jahre vor der App</h2>
+        <p class="text-sm text-base-content/75">Die Rechnungen eines solchen Jahres kommen als externe Rechnungen mit der
+          Nummer ihrer Datei, in beliebiger Reihenfolge. „Jahr abschließen“ im Nummernkreis des Jahres beendet das.</p>
+      </div>
+      <ul class="grid gap-2" th:unless="${manualYears.isEmpty()}">
+        <li th:each="state : ${manualYears}" class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
+          <a class="link font-medium num" th:href="@{/numbers/{year}(year=${state.year})}" th:text="'Nummernkreis ' + ${state.year}">Nummernkreis 2026</a>
+          <span class="badge badge-sm whitespace-nowrap" th:classappend="${state.manual} ? 'badge-info badge-soft' : 'badge-success badge-soft'"
+                th:text="${state.manual} ? 'von Hand' : 'abgeschlossen'">von Hand</span>
+          <form class="ms-auto" method="post" th:if="${state.manual}" th:action="@{/admin/numbers/manual}">
+            <input type="hidden" name="year" th:value="${state.year}">
+            <input type="hidden" name="byHand" value="false">
+            <button type="submit" class="btn btn-sm" th:id="'manual-off-' + ${state.year}"><i data-lucide="undo-2" class="size-4"></i>Zurück zum Zähler</button>
+          </form>
+        </li>
+      </ul>
+      <form class="flex flex-wrap justify-end gap-2 items-end" method="post" th:action="@{/admin/numbers/manual}">
+        <input type="hidden" name="byHand" value="true">
+        <label class="floating-label grow basis-full sm:basis-48"><span>Jahr</span>
+          <input id="manual-year" name="year" type="number" min="2000" max="9999" class="input w-full" required>
+        </label>
+        <button type="submit" class="btn" id="manual-on"><i data-lucide="pencil-line" class="size-4"></i>Nummern von Hand</button>
+      </form>
+    </section>
   </div>
 </div>
 </body>
