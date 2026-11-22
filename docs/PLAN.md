@@ -348,10 +348,12 @@ Numbers of an external invoice:
 
 Payments before the app:
 
-1. Payments of 2026 stay outside the app (decision 2026-11-22). The §19 revenue of 2026 comes from the baseline.
-2. The app refuses a payment dated in a year with a baseline.
-3. A 2026 invoice paid in 2026 gets the mark "Vor dem Start bezahlt". It leaves the open invoices and gets no reminder.
-4. A 2026 invoice without the mark stays open. Its payment from 2027 on counts as usual.
+1. The user records the payments of a 2026 invoice with day and amount, as for any invoice (decision 2026-11-22).
+   They close the invoice: status, open invoices and reminders follow them.
+2. The §19 revenue of 2026 comes from the baseline: the payments of 2025 invoices stay outside the app.
+3. A payment dated in a year with a baseline counts neither for §19 nor for the Anlage EÜR. The baseline covers that year.
+4. A year with a baseline takes payments, and a year with payments takes a baseline.
+5. A 2026 invoice paid in 2027 or later counts as usual.
 
 ## 8. Deployment on lemming
 
@@ -479,7 +481,7 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | M4 | Threshold and reports | Dashboard, baseline, EÜR report, CSV, archive export | 2026-12 |
 | M5 | Operations | Deployment on lemming, backups to meerkat, restore test, full export and import | 2026-12 |
 | M6 | Acceptance | Test with realistic invoices, fixes, final legal check | 2026-12 |
-| M7 | External invoices | Original files, facts by hand, number check, gaps with reason, closed year, mark "Vor dem Start bezahlt" | 2026-12 |
+| M7 | External invoices | Original files, facts by hand, number check, gaps with reason, closed year, payments in a baseline year | 2026-12 |
 | GO | Go-live | Clean database, real seller profile, baseline 2026, invoices of 2026 as external, 2026 closed, first invoice `2027-01` | 2027-01-01 |
 
 ## 13. Open questions
