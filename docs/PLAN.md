@@ -142,14 +142,16 @@ Not chosen:
 | `SellerProfile` | Name, a line below it (for example the profession), address, contact data, website, tax status, tax number or VAT ID, IBAN, BIC, bank name, account holder (the form fills in the name). No logo. Four tabs (Anschrift, Kontakt, Steuer, Bankverbindung) save on their own; an incomplete profile saves, and the issue names what is missing. E-mail and phone are needed for XRechnung only (BR-DE-6, BR-DE-7). The PDF shows the phone only if the profile asks (off by default); the XML always carries it |
 | `Customer` | Address, country, e-mail, USt-IdNr, buyer reference (the Leitweg-ID for a public buyer), format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
 | `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), e-mail text |
-| `Invoice` | Number, status, format, title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |
+| `Invoice` | Origin (app or external, an external one has no format), number, status, format, title, dates, service period, texts, tax note, payment terms, snapshot of the issued document with seller and buyer (JSON) |
 | `InvoiceLine` | Text, quantity, unit, price, tax category |
 | `Document` | Generated PDF or XML: type, file name, content (in the database), SHA-256, size. Written once |
+| `InvoiceOriginal` | Original file of an external invoice: file name, type, content, SHA-256, seal. Written once |
+| `NumberGap` | Explained gap in the numbers of a year before the app: number, reason, user. Written once |
 | `Dispatch` | When, to whom, channel (`EMAIL_APP`, or by hand: `OWN_MAIL`, `POST`, `PORTAL`, `IN_PERSON`), by which user, note. Written once |
 | `Payment` | Date, amount, note. A negative amount is a refund |
 | `Reminder` | Payment reminder: day, channel (`EMAIL_APP` or `MANUAL`), recipient, note, by which user. Written once |
 | `Expense` | Day of payment, amount with VAT, kind, vendor, description, asset mark, receipt (written once, sealed), cancellation with reason. Never deleted |
-| `NumberSequence` | Format pattern, year, last number |
+| `NumberSequence` | Format pattern, year, last number, closed (a year before the app, after "Jahr abschließen") |
 | `ThresholdBaseline` | Revenue counted for §19 in a year before the system existed |
 | `Setting` | Key-value settings: SMTP, texts, defaults |
 | `AuditEvent` | Who did what and when |
@@ -239,6 +241,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. The admin sets the pattern, for example `{YYYY}-{NN}`, which gives `2026-01`.
 2. Tokens: `{YYYY}`, `{YY}`, `{N}` with padding (`{NN}`, `{NNN}`), fixed text.
 3. The counter resets each year. The admin can set the start value only for a year without issued invoices.
+   A closed year refuses it too.
    The check runs in the same locked transaction that assigns numbers.
 4. A number is assigned only at issue, in one transaction with a row lock. No gaps, no duplicates.
 5. A pattern change applies to the next number. The system rejects a pattern that can repeat an existing number.
@@ -270,7 +273,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 1. Dashboard: counted §19 revenue of the previous and the current year against 25 000 and 100 000 EUR.
 2. Forecast at the current rate.
 3. Warning when a new draft would push the current year over the limit.
-4. The 2026 revenue goes into `ThresholdBaseline`, because the system starts in 2027.
+4. The 2025 revenue goes into `ThresholdBaseline`. The app counts 2026 from the external invoices and their payments.
 
 ### Reports and export
 
@@ -316,6 +319,44 @@ The admin edits the default tax notes. A template and an invoice can override th
    details may change; each change goes into the audit log with before and after. An expense never goes away: a wrong
    one is cancelled with a reason, stays with its receipt and counts no more. A cancelled expense never changes.
 6. Not in scope: mileage, the home office lump sum, Bewirtung at 70 %. They go into WISO directly.
+
+### External invoices
+
+1. Some customers demand their own invoice form (decision 2026-11-22). The invoices of 2026 exist outside the app too.
+2. The app registers such an invoice as an external invoice ("Externe Rechnung"). It generates no PDF and no XML.
+3. It keeps the original files: PDF, XLSX, DOCX or XML, at most 25 MB each, one or more per invoice.
+   The registration takes one file. Further files go in one per request on the invoice page, each written once.
+   The 32 MB limit of a form thus holds. The integrity check reads the originals instead of the PDF and XML.
+4. The app checks the first bytes, XLSX and DOCX also their ZIP content. Keep the file that went to the customer.
+5. The user types in the facts: number, date, service period, payment days, customer, business, amount per tax category.
+   A tax note is optional. The total follows from the amounts.
+6. The facts form the snapshot, one line per tax category. Reports and the §19 threshold read it like any snapshot.
+7. Number, snapshot and files carry a seal and never change, as for an issued invoice.
+8. The rules of the tax categories only warn: the invoice exists already.
+9. Dispatch, payments, reminders, archive, export and the integrity check treat it like an issued invoice.
+   An e-mail from the app sends its original files.
+10. The Stornorechnung of an external invoice is external too. It names the invoice it cancels.
+
+Numbers of an external invoice:
+
+1. A year of the app (2027 on): one sequence with the invoices of the app. The form shows the next number.
+2. The registration assigns the number under the row lock of the issue. It refuses a file number that differs.
+   A rollback leaves no gap.
+3. No reservation of numbers: a dropped reservation leaves a gap.
+4. A year before the app (2026): numbers follow `{YYYY}-{NN}`, for example `2026-01`. They come in any order.
+5. The year of the number matches the year of the invoice date. The counter is read as an integer.
+   A counter exists once a year: `2026-1` next to `2026-01` is a duplicate. The number stays as printed on the file.
+6. Page "Nummernkreis" shows the range of the year, its gaps and numbers out of date order.
+7. A gap needs a reason, for example a spoiled number. The reason is written once and goes into the audit log.
+8. "Jahr abschließen" works without an unexplained gap. The counter becomes the highest number plus one and locks.
+
+Payments before the app:
+
+1. The user records every payment of 2026 with day and amount, as for any invoice (decision 2026-11-22).
+   They close the invoice: status, open invoices and reminders follow them.
+2. The app counts 2026 by itself: §19 revenue and Anlage EÜR, per business. The report feeds WISO Steuer in January 2027.
+3. No 2025 invoice was paid in 2026, so the 2026 income is complete (Zuflussprinzip).
+4. The 2025 revenue goes into the baseline. It is the previous year of the §19 check for 2026.
 
 ## 8. Deployment on lemming
 
@@ -443,7 +484,8 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | M4 | Threshold and reports | Dashboard, baseline, EÜR report, CSV, archive export | 2026-12 |
 | M5 | Operations | Deployment on lemming, backups to meerkat, restore test, full export and import | 2026-12 |
 | M6 | Acceptance | Test with realistic invoices, fixes, final legal check | 2026-12 |
-| GO | Go-live | Clean database, real seller profile, baseline 2026, first invoice `2027-01` | 2027-01-01 |
+| M7 | External invoices | Original files, facts by hand, number check, gaps with reason, closed year, payments of 2026 | 2026-12 |
+| GO | Go-live | Clean database, real seller profile, baseline 2025, invoices and payments of 2026 as external, 2026 closed, first invoice `2027-01` | 2027-01-01 |
 
 ## 13. Open questions
 
