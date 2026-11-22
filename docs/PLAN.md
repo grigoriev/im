@@ -124,9 +124,9 @@ Currency: EUR only.
    The admin can delete a user with its passkeys and "Angemeldet bleiben"; its open sessions end. Nobody deletes the
    own account, and the last admin stays.
 9. Sessions use secure cookies and CSRF protection. A "remember me" option is available.
-10. nginx additionally allows only the own network: the home LAN (10.10.10.0/24) and the VPN, that is the hub
-    (10.255.0.0/24), the office LAN (172.20.20.0/24) and the travel LANs (decision 2026-11-16). The intranet
-    repository keeps the list (`lemming/docker/nginx/conf.d/im.conf`).
+10. nginx additionally allows only the own network: the home LAN (for example 192.0.2.0/24) and the VPN, that is the hub
+    (198.51.100.0/24), the office LAN (203.0.113.0/24) and the travel LANs (decision 2026-11-16). The intranet
+    repository keeps the list (`docker/nginx/conf.d/im.conf`).
 
 Not chosen:
 
@@ -363,30 +363,30 @@ Payments before the app:
 3. No 2025 invoice was paid in 2026, so the 2026 income is complete (Zuflussprinzip).
 4. The 2025 revenue goes into the baseline. It is the previous year of the §19 check for 2026.
 
-## 8. Deployment on lemming
+## 8. Deployment on the NAS
 
 1. CI builds the image for linux/amd64 (the NAS is x86_64) and pushes it to `ghcr.io/grigoriev/im` with build attestations.
-2. The compose file lives in the intranet repository: `lemming/docker/im`.
+2. The compose file lives in the intranet repository: `docker/im`.
 3. Services: `im-migrate` (the migration, runs once per start and ends), `im` (app) and `im-db` (PostgreSQL). The app
    listens on `127.0.0.1` only. Each service gets only its own secrets: the owner's password goes to the migration, not
    to the app. The app runs on a read-only file system, without capabilities.
-4. The host nginx proxies `im.h.g7v.io` to the app and allows the home LAN and the VPN only. It sends `X-Forwarded-Proto`,
+4. The host nginx proxies `im.example.org` to the app and allows the home LAN and the VPN only. It sends `X-Forwarded-Proto`,
    so the app marks its cookies `Secure` (`server.forward-headers-strategy=native`).
-   Passkeys are bound to that host: `IM_WEBAUTHN_RP_ID=im.h.g7v.io`, `IM_WEBAUTHN_ALLOWED_ORIGINS=https://im.h.g7v.io`.
+   Passkeys are bound to that host: `IM_WEBAUTHN_RP_ID=im.example.org`, `IM_WEBAUTHN_ALLOWED_ORIGINS=https://im.example.org`.
 5. The certificate comes from acme.sh, as for the other sites.
-6. Data lives under `/volume1/docker/im`: the database files. The documents live in the database too.
+6. Data lives under `/volume/example/docker/im`: the database files. The documents live in the database too.
 7. Renovate and the nightly `update.sh` update the image, pinned by digest. The migration brings the schema up to date
    before the app starts.
 8. Secrets (database password, SMTP password, first admin) stay outside git, in files with mode 600.
 
 ## 9. Backups
 
-1. Nightly: `pg_dump` to `/volume1/backup/im`. It holds the documents too.
-2. Nightly: restic copies that directory, encrypted, to meerkat.
+1. Nightly: `pg_dump` to `/volume/example/backup/im`. It holds the documents too.
+2. Nightly: restic copies that directory, encrypted, to a second machine (`backup.example`).
 3. Retention: 7 daily, 8 weekly, 24 monthly snapshots. Yearly archives stay for 10 years.
 4. Monthly: an automatic restore test into a throwaway container. A failure sends an e-mail.
 5. The admin panel shows the time of the last successful backup.
-6. The scripts live in the intranet repository, `lemming/backup`. They write the last success into table `backup_run`.
+6. The scripts live in the intranet repository, `backup`. They write the last success into table `backup_run`.
 7. The admin panel warns when the backup is older than 36 hours or the restore test older than 35 days.
 
 ## 10. Testing
@@ -463,7 +463,7 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | PostgreSQL image of the tests, limited to the production major | one constant with a `// renovate:` comment | regex |
 | XRechnung validator configuration | `pom.xml` property with a `renovate:` comment | regex, GitHub releases |
 | GitHub Actions, SHA pinned | `.github/workflows` | github-actions |
-| `im` image on lemming | intranet repository, compose file | docker |
+| `im` image on the NAS | intranet repository, compose file | docker |
 
 ### Rules
 
@@ -474,7 +474,7 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 5. A new XRechnung configuration needs the file name and SHA-256 in `pom.xml`. Renovate changes only the version.
 6. The root `.npmrc` sets `allow-remote=all`: npm 12 otherwise refuses a bundled Tailwind package, and Renovate cannot update the lock file.
    `e2e/` has no such package and keeps the npm default.
-7. The PostgreSQL image of the tests stays on the production major. A major upgrade runs first on lemming (dump and restore),
+7. The PostgreSQL image of the tests stays on the production major. A major upgrade runs first on the NAS (dump and restore),
    then the limit in `renovate.json` moves in the same step.
 8. The frontend libraries come from npm and go into the jar at build time. No CDN at runtime.
 
@@ -487,7 +487,7 @@ Renovate updates everything by itself (owner decision 2026-11-13): an update mer
 | M2 | Invoices | Templates, drafts, preview, issue, numbers, PDF, ZUGFeRD, XRechnung, validation, archive | 2026-12 |
 | M3 | Sending and payments | SMTP sending, manual dispatch, payments, Stornorechnung | 2026-12 |
 | M4 | Threshold and reports | Dashboard, baseline, EÜR report, CSV, archive export | 2026-12 |
-| M5 | Operations | Deployment on lemming, backups to meerkat, restore test, full export and import | 2026-12 |
+| M5 | Operations | Deployment on the NAS, off-site backups, restore test, full export and import | 2026-12 |
 | M6 | Acceptance | Test with realistic invoices, fixes, final legal check | 2026-12 |
 | M7 | External invoices | Original files, facts by hand, number check, gaps with reason, closed year, payments of 2026 | 2026-12 |
 | GO | Go-live | Clean database, real seller profile, baseline 2025, invoices and payments of 2026 as external, 2026 closed, first invoice `2027-01` | 2027-01-01 |

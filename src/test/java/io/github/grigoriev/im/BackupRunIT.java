@@ -23,7 +23,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 @Import(TestDatabase.class)
 class BackupRunIT {
 
-    /** The statement of the host script (intranet repository, lemming/backup/im-backup.sh), with fixed values. */
+    /** The statement of the host script (intranet repository, backup/im-backup.sh), with fixed values. */
     private static final String UPSERT = """
             INSERT INTO backup_run (kind, succeeded_at, detail) VALUES (:kind, now(), :detail)
             ON CONFLICT (kind) DO UPDATE SET succeeded_at = EXCLUDED.succeeded_at, detail = EXCLUDED.detail""";

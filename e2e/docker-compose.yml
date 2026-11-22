@@ -41,7 +41,7 @@ services:
       db:
         condition: service_healthy
 
-  # Hardened as on lemming: a read-only file system, no capabilities. Uploads and Tomcat use /tmp.
+  # Hardened as in production: a read-only file system, no capabilities. Uploads and Tomcat use /tmp.
   web:
     image: ${IM_IMAGE:-im:test}
     read_only: true

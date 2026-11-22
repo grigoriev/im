@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * The relying party of the passkeys. A passkey belongs to its host name: set {@code IM_WEBAUTHN_RP_ID}
- * to the host of the app, for example {@code im.h.g7v.io}, and {@code IM_WEBAUTHN_ALLOWED_ORIGINS} to its
- * address, for example {@code https://im.h.g7v.io}.
+ * to the host of the app, for example {@code im.example.org}, and {@code IM_WEBAUTHN_ALLOWED_ORIGINS} to its
+ * address, for example {@code https://im.example.org}.
  *
  * @param rpId host name the passkeys belong to
  * @param rpName name the browser shows when it creates a passkey

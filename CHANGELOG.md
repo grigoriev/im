@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- The docs, comments and tests name neutral examples (`im.example.org`, documentation address ranges, `/volume/example`) instead of the hosts, addresses and paths of the own network.
+
 ## [0.1.11] - 2026-11-22
 
 ### Added
