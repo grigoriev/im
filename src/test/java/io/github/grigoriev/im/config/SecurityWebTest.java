@@ -1342,7 +1342,11 @@ class SecurityWebTest {
         mvc.perform(get("/admin/backup").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Export herunterladen")))
                 .andExpect(content().string(Matchers.containsString("enctype=\"multipart/form-data\"")))
-                .andExpect(content().string(Matchers.containsString("aria-selected=\"true\">Datensicherung")));
+                .andExpect(content().string(Matchers.containsString("aria-selected=\"true\">Datensicherung")))
+                .andExpect(content().string(Matchers.containsString("id=\"backup-export-warning\"")))
+                .andExpect(content().string(Matchers.containsString("alle Kundendaten, IBANs und Passwort-Hashes")))
+                .andExpect(content().string(Matchers.containsString("nur auf einem verschlüsselten Datenträger")))
+                .andExpect(content().string(Matchers.containsString("nach dem Gebrauch löschen")));
         mvc.perform(get("/admin/backup").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
         var started = mvc.perform(get("/admin/backup/export.zip").with(user("admin").roles("ADMIN")))
                 .andExpect(request().asyncStarted()).andReturn();

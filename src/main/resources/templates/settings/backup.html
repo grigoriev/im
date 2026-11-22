@@ -66,8 +66,12 @@
         <h2 class="font-semibold">Alles exportieren</h2>
         <p class="text-sm text-base-content/75">Eine ZIP-Datei mit allen Daten und Dokumenten: Profil, Kunden, Vorlagen,
           Rechnungen mit PDF und XML, Zahlungen, Versand, Ausgaben mit Belegen, abgelegte Dokumente, Einstellungen, Benutzer mit Passwort-Hashes und Passkeys, Protokoll.
-          Damit zieht die App auf einen neuen Rechner um. Bitte sicher aufbewahren.</p>
+          Damit zieht die App auf einen neuen Rechner um.</p>
       </div>
+      <div role="alert" class="alert alert-warning alert-soft text-sm text-base-content" id="backup-export-warning">
+        <i data-lucide="triangle-alert" class="size-4 text-warning" aria-hidden="true"></i>
+        <span>Die Datei ist nicht verschlüsselt und enthält alle Kundendaten, IBANs und Passwort-Hashes.
+          Bitte nur auf einem verschlüsselten Datenträger speichern und nach dem Gebrauch löschen.</span></div>
       <div class="form-actions"><a class="btn btn-primary" id="backup-download" th:href="@{/admin/backup/export.zip}">
         <i data-lucide="download" class="size-4"></i>Export herunterladen</a></div>
     </section>

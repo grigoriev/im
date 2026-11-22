@@ -6,6 +6,8 @@ export const ROUTES = [
   { name: 'account', path: '/account', anonymous: false },
   { name: 'invoices', path: '/invoices', anonymous: false },
   { name: 'customers', path: '/customers', anonymous: false },
+  // A year no test writes to: its book stays empty during the run.
+  { name: 'number-book', path: '/numbers/2001', anonymous: false },
   // A past year without expenses: the list of this year fills during the run.
   { name: 'expenses', path: '/expenses?year=2020', anonymous: false },
   { name: 'expense-new', path: '/expenses/new', anonymous: false },

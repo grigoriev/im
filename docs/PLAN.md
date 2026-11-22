@@ -287,6 +287,8 @@ The admin edits the default tax notes. A template and an invoice can override th
    Both stream: the export reads one row at a time and writes it at once, the import reads the upload from disk entry by entry and row by
    row. Memory holds one document at most, so a large export cannot stop the container. Uploads up to 4 GB, as much as an import expands; the export stops before it writes more.
    The upload limit of the app applies to every form, so the proxy allows 4 GB for the import only and 32 MB elsewhere.
+   The ZIP is not encrypted (decision 2026-11-22): it holds all customer data, IBANs and password hashes, and the export
+   page warns to keep it on an encrypted medium only and to delete it after use.
 
 ### Documents
 

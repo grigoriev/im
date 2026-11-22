@@ -95,6 +95,7 @@ test('the admin downloads the full export and cannot import it over data', async
   await page.getByRole('tab', { name: /Datensicherung/ }).click();
   await expect(page.locator('#backup-overdue')).toHaveText('Es gibt noch keine automatische Sicherung.');
   await expect(page.locator('#backup-last')).toHaveText('noch keine');
+  await expect(page.locator('#backup-export-warning')).toContainText('nur auf einem verschlüsselten Datenträger');
   const download = await page.request.get((await page.locator('#backup-download').getAttribute('href'))!);
   expect(download.headers()['content-type']).toBe('application/zip');
   expect(download.headers()['content-disposition']).toMatch(/^attachment; filename="im-datensicherung-\d{4}-\d{2}-\d{2}\.zip"$/);
