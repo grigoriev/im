@@ -61,7 +61,7 @@ public class DispatchService {
      * @param invoiceId the invoice
      * @param form the entered values
      * @return the saved dispatch
-     * @throws InvoiceException if the invoice is unknown, a draft or cancelled, or a value is wrong
+     * @throws InvoiceException if the invoice is unknown, a draft or canceled, or a value is wrong
      */
     @Transactional
     public Dispatch recordManual(long invoiceId, DispatchForm form) {
@@ -95,7 +95,7 @@ public class DispatchService {
      * @param recipient the address
      * @param note the attachments, for example "PDF, XML"
      * @return the saved dispatch
-     * @throws InvoiceException if the invoice is unknown, a draft or cancelled
+     * @throws InvoiceException if the invoice is unknown, a draft or canceled
      */
     @Transactional
     public Dispatch recordEmail(long invoiceId, String recipient, String note) {
@@ -107,7 +107,7 @@ public class DispatchService {
      *
      * @param invoiceId the invoice
      * @return the invoice
-     * @throws InvoiceException if the invoice is unknown, a draft or cancelled
+     * @throws InvoiceException if the invoice is unknown, a draft or canceled
      */
     public Invoice sendable(long invoiceId) {
         Invoice invoice = invoices.find(invoiceId).orElseThrow(() -> new InvoiceException(List.of(InvoiceService.UNKNOWN)));

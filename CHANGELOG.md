@@ -9,6 +9,8 @@ All notable changes to this project are documented in this file. The format foll
 ### Changed
 
 - The docs, comments and tests name neutral examples (`im.example.org`, documentation address ranges, `/volume/example`) instead of the hosts, addresses and paths of the own network.
+- The Verfahrensdokumentation describes external invoices with their original files, the numbers of a year before the app with the reasons of their gaps and "Jahr abschließen", the access over the own VPN, the audit log written once and the seals of snapshots, receipts and original files. Save a new version under "Dokumente" to take the new text.
+- The README describes backup and restore, the table `backup_run` of the host scripts, a rate limit of the login in the reverse proxy and why port 8080 should reach the proxy only. Architecture decision records live in `docs/adr`.
 
 ### Removed
 
@@ -157,12 +159,6 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [0.1.0] - 2026-11-14
 
-### Changed
-
-- `scripts/e2e.sh` refreshes the timestamp of the jar before the image build: with the fixed timestamp of the reproducible build, Docker Desktop could build the image with an old jar.
-- The check of an e-mail address runs in linear time, also for a long crafted input.
-- JetBrains Mono replaces Inter in the app and in the invoice PDF; the PDF embeds the variant without code ligatures. Floating labels stay on one line and never cover their field.
-
 ### Added
 
 - Datensicherung: the admin downloads one ZIP with all data and documents (users with password hashes and passkeys, settings, customers, templates, invoices with PDF and XML, dispatches, payments, audit log) and reads it into an empty installation of the same version, in one transaction, to move to a new host. The import keeps the triggers that freeze issued invoices and continues the identities; afterward every session ends, in every browser, and the users of the export log in. The import locks its tables until it commits and refuses a ZIP that expands beyond 512 MB or 100 000 entries.
@@ -197,6 +193,26 @@ All notable changes to this project are documented in this file. The format foll
 - Container image, PostgreSQL with Flyway, and the release workflow to ghcr.io.
 - Repository baseline: security policy, contribution guide, Claude Code review, Scorecard, Renovate.
 
+### Changed
+
+- `scripts/e2e.sh` refreshes the timestamp of the jar before the image build: with the fixed timestamp of the reproducible build, Docker Desktop could build the image with an old jar.
+- The check of an e-mail address runs in linear time, also for a long crafted input.
+- JetBrains Mono replaces Inter in the app and in the invoice PDF; the PDF embeds the variant without code ligatures. Floating labels stay on one line and never cover their field.
+
 ### Fixed
 
 - The start page no longer fails for a logged-in user without an account record.
+
+[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/grigoriev/im/compare/v0.1.10...v0.1.11
+[0.1.10]: https://github.com/grigoriev/im/compare/v0.1.9...v0.1.10
+[0.1.9]: https://github.com/grigoriev/im/compare/v0.1.8...v0.1.9
+[0.1.8]: https://github.com/grigoriev/im/compare/v0.1.7...v0.1.8
+[0.1.7]: https://github.com/grigoriev/im/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/grigoriev/im/compare/v0.1.5...v0.1.6
+[0.1.5]: https://github.com/grigoriev/im/compare/v0.1.4...v0.1.5
+[0.1.4]: https://github.com/grigoriev/im/compare/v0.1.3...v0.1.4
+[0.1.3]: https://github.com/grigoriev/im/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/grigoriev/im/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/grigoriev/im/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/grigoriev/im/releases/tag/v0.1.0

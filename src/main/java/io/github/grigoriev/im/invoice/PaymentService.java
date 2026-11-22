@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Records the payments and refunds of an issued invoice (docs/PLAN.md, section 7). The status follows the sum: it is
  * {@code PAID} while the payments cover the total, else {@code SENT} after a dispatch and {@code ISSUED} before. A
- * cancelled invoice keeps its status and takes refunds only.
+ * canceled invoice keeps its status and takes refunds only.
  */
 @Service
 public class PaymentService {

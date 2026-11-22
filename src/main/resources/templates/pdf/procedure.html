@@ -42,7 +42,7 @@
   </table>
   <p>Die Anwendung erstellt Ausgangsrechnungen als PDF/A-3 mit eingebetteter XML (ZUGFeRD) oder als reine XML (XRechnung),
     erfasst Versand, Zahlungseingänge und Betriebsausgaben mit Beleg und erstellt die Auswertung für die Anlage EÜR.
-    Die Summen werden in <span th:text="${expenses}">WISO Steuern</span> übertragen, wo die Steuererklärung entsteht.</p>
+    Die Summen werden in <span th:text="${expenses}">WISO Steuer</span> übertragen, wo die Steuererklärung entsteht.</p>
 
   <h2>2. Anwenderdokumentation</h2>
   <ol>
@@ -51,6 +51,18 @@
     <li>„Rechnung ausstellen“ vergibt die nächste Nummer des Nummernkreises lückenlos und fortlaufend, erzeugt PDF und XML
       und prüft sie gegen EN 16931 und das gewählte Format (Mustang, veraPDF, KoSIT). Scheitert die Prüfung, bleibt der
       Entwurf bestehen und die Nummer wird nicht verbraucht.</li>
+    <li>Eine Rechnung, die außerhalb der Anwendung entstanden ist, etwa auf einem Formular des Kunden, wird als externe
+      Rechnung erfasst. Die Anwendung erzeugt dafür weder PDF noch XML. Sie bewahrt die Originaldatei auf, die an den
+      Kunden ging (PDF, XLSX, DOCX oder XML), und prüft deren Dateityp. Die Angaben der Rechnung werden von Hand
+      eingegeben: Nummer, Datum, Leistungszeitraum, Zahlungsziel, Kunde, Tätigkeit und Betrag je Steuerkategorie.
+      „Rechnung erfassen“ vergibt in einem Jahr der Anwendung die nächste Nummer des Nummernkreises und weist eine Datei
+      mit einer anderen Nummer zurück. Nummer, Angaben und Originaldateien sind danach versiegelt und unveränderlich wie
+      bei einer ausgestellten Rechnung.</li>
+    <li>Für ein Jahr vor der Anwendung stellt der Administrator unter „Einstellungen“, „Nummernkreis“ auf Nummern von
+      Hand um. Die Rechnungen dieses Jahres kommen dann nur als externe Rechnungen mit der Nummer ihrer Datei, in
+      beliebiger Reihenfolge. Die Seite „Nummernkreis“ zeigt die Nummern, die Lücken und die Daten außer der Reihe.
+      Jede Lücke erhält einen Grund, der nur einmal geschrieben wird. „Jahr abschließen“ ist erst ohne unbegründete
+      Lücke möglich; danach zählt der Nummernkreis nach der höchsten Nummer weiter.</li>
     <li>Eine ausgestellte Rechnung lässt sich nicht mehr ändern. Eine Korrektur erfolgt durch eine Stornorechnung mit
       eigener Nummer, die auf die ursprüngliche Rechnung verweist.</li>
     <li>Der Versand wird mit Tag, Weg und Empfänger vermerkt. Der E-Mail-Versand aus der Anwendung vermerkt sich selbst.</li>
@@ -69,11 +81,11 @@
   <table class="facts">
     <tr><th>Bestandteil</th><th>Beschreibung</th></tr>
     <tr><td class="label">Anwendung</td><td th:text="'Invoice Manager, Version ' + ${version} + ', Quelltext öffentlich unter github.com/grigoriev/im'">Version</td></tr>
-    <tr><td class="label">Betrieb</td><td>Docker-Container auf einem eigenen Server im Heimnetz, nur aus dem Heimnetz erreichbar</td></tr>
+    <tr><td class="label">Betrieb</td><td>Docker-Container auf einem eigenen Server im Heimnetz, nur aus dem Heimnetz und dem eigenen VPN erreichbar</td></tr>
     <tr><td class="label">Datenbank</td><td>PostgreSQL; Rechnungen, PDF, XML, ein unveränderlicher Datenstand je Rechnung und die abgelegten Dokumente</td></tr>
-    <tr><td class="label">Unveränderbarkeit</td><td>Datenbank-Trigger verweigern jede Änderung einer ausgestellten Rechnung, ihrer Dokumente, Versandvermerke und Zahlungen sowie jede Änderung und Löschung einer abgelegten Datei; die Anwendung kann sie nicht abschalten</td></tr>
-    <tr><td class="label">Prüfsummen</td><td>SHA-256 und Siegel (HMAC, Schlüssel außerhalb der Datenbank) je PDF, XML und Dokument; jeder Zugriff und eine nächtliche Prüfung vergleichen beide</td></tr>
-    <tr><td class="label">Protokoll</td><td>Anmeldungen, Ausstellung, Storno, Versand, Zahlungen, Dokumente und Änderungen der Einstellungen mit Zeit und Benutzer</td></tr>
+    <tr><td class="label">Unveränderbarkeit</td><td>Datenbank-Trigger verweigern jede Änderung einer ausgestellten oder erfassten Rechnung, ihrer Dokumente und Originaldateien, Versandvermerke, Zahlungen und Zahlungserinnerungen, der Belege von Betriebsausgaben, der Gründe von Nummernlücken und des Protokolls sowie jede Änderung und Löschung einer abgelegten Datei; die Anwendung verbindet sich mit einer eigenen Datenbankrolle ohne Eigentümerrechte und kann sie nicht abschalten</td></tr>
+    <tr><td class="label">Prüfsummen</td><td>SHA-256 und Siegel (HMAC, Schlüssel außerhalb der Datenbank) je PDF, XML, Datenstand einer Rechnung, Originaldatei einer externen Rechnung, Beleg einer Betriebsausgabe und Dokument; jeder Zugriff, der Start der Anwendung und eine nächtliche Prüfung vergleichen beide</td></tr>
+    <tr><td class="label">Protokoll</td><td>Anmeldungen, Ausstellung, Erfassung externer Rechnungen, Storno, Versand, Zahlungen, Zahlungserinnerungen, Betriebsausgaben, Dokumente, Gründe von Nummernlücken, Jahresabschluss des Nummernkreises und Änderungen der Einstellungen mit Zeit und Benutzer; einmal geschrieben, nicht änderbar</td></tr>
     <tr><td class="label">Zugang</td><td>Benutzerkonten mit Passkey oder Passwort, Rollen Benutzer und Administrator</td></tr>
   </table>
 

@@ -76,7 +76,7 @@ public class InvoiceService {
      * @param sellers the seller profile
      * @param notes the default tax notes
      * @param audit the audit log
-     * @param documents the snapshot of a cancelled invoice, for the tax number of its Stornorechnung
+     * @param documents the snapshot of a canceled invoice, for the tax number of its Stornorechnung
      * @param clock source of today
      */
     public InvoiceService(InvoiceRepository invoices, TemplateRepository templates, CustomerService customers,
@@ -424,7 +424,7 @@ public class InvoiceService {
      *
      * @param id the invoice to cancel
      * @return the draft
-     * @throws InvoiceException if the invoice is unknown, a draft, cancelled, a Stornorechnung, or has one already
+     * @throws InvoiceException if the invoice is unknown, a draft, canceled, a Stornorechnung, or has one already
      */
     @Transactional
     public Invoice createCancellation(long id) {
@@ -456,7 +456,7 @@ public class InvoiceService {
      * Returns the invoice a Stornorechnung cancels.
      *
      * @param invoice the invoice
-     * @return the cancelled invoice, empty for an invoice that is no Stornorechnung
+     * @return the canceled invoice, empty for an invoice that is no Stornorechnung
      */
     public Optional<Invoice> cancelled(Invoice invoice) {
         return invoices.cancelsId(invoice.id()).flatMap(invoices::findById);

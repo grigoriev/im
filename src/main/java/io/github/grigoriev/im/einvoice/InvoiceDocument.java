@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * @param format e-invoice format
  * @param lines invoice lines, at least one
  * @param cancels the invoice this Stornorechnung cancels, {@code null} for an invoice; a Stornorechnung is a credit note
- *     (type 381) with the lines of the cancelled invoice
+ *     (type 381) with the lines of the canceled invoice
  * @param phoneOnInvoice whether the PDF shows the phone number of the seller; the XML carries it anyway
  */
 public record InvoiceDocument(

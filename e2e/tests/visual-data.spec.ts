@@ -66,7 +66,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await expect(page.getByRole('status')).toHaveText('Rechnung 2031-01 ausgestellt.');
   const issued = page.url();
 
-  // A second invoice of this customer in 2032, cancelled by a Stornorechnung of the same year: numbers 2032-01 and
+  // A second invoice of this customer in 2032, canceled by a Stornorechnung of the same year: numbers 2032-01 and
   // 2032-02, all dates fixed.
   await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });

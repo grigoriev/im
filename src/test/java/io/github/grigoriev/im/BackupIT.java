@@ -127,7 +127,7 @@ class BackupIT {
         return entries;
     }
 
-    /** An issued, sent, paid and cancelled invoice of 2013 with its Stornorechnung, a template and a baseline. */
+    /** An issued, sent, paid and canceled invoice of 2013 with its Stornorechnung, a template and a baseline. */
     private void someOfEverything() {
         SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");

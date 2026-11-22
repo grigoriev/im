@@ -13,9 +13,16 @@ scripts/e2e.sh --update                      # write new screenshot baselines
 mvn test -Dtest=PdfVisualTest -Dvisual.update=true   # write new PDF baselines
 ```
 
-CI runs the lint job, the build with SonarCloud, the E2E tests and the Claude Code review for every
-pull request. Trivy scans the dependencies and the built image: a HIGH or CRITICAL vulnerability
-with a fix fails the build. A nightly scan of main reports to the Security tab.
+`scripts/e2e.sh` reads two variables:
+
+- `IM_IMAGE`: the image under test, default `im:test`. The script builds it under this name, and the compose file of
+  the E2E stack starts it.
+- `SKIP_IMAGE_BUILD`: any value skips `docker build`, for example to test an image pulled from the registry:
+  `IM_IMAGE=ghcr.io/grigoriev/im:<version> SKIP_IMAGE_BUILD=1 scripts/e2e.sh`.
+
+CI runs the lint job, the build with SonarCloud and the E2E tests for every pull request. Trivy scans the
+dependencies and the built image: a HIGH or CRITICAL vulnerability with a fix fails the build. A nightly scan of
+main reports to the Security tab. Claude Code and Greptile review every pull request.
 
 ## Pull requests
 
@@ -28,6 +35,9 @@ with a fix fails the build. A nightly scan of main reports to the Security tab.
 4. Sign your commits. The default branch accepts verified signatures only.
 5. Add an entry under `## [Unreleased]` in `CHANGELOG.md`, written for users: the release notes
    quote it. Update the README when behavior or configuration changes.
+6. Change the Verfahrensdokumentation (`src/main/resources/templates/pdf/procedure.html`) together with
+   `docs/PLAN.md` when a change touches how invoices are made, stored or kept, and update its PDF baseline.
+7. Record a lasting decision as an ADR in `docs/adr/` and link it from `docs/PLAN.md`.
 
 Pull requests are squash-merged once all required checks are green.
 

@@ -112,7 +112,7 @@ class PdfVisualTest {
                 p.email(), p.phone(), p.taxNumber(), null, p.iban(), p.bic(), p.taxStatus(), null, null, null, null,
                 "98/765/43210", false);
         List<BufferedImage> pages = render(renderer.render("pdf/procedure", Map.of("seller", seller,
-                "validFrom", "01.01.2027", "expenses", "WISO Steuern", "archive", "in einem Dropbox-Ordner",
+                "validFrom", "01.01.2027", "expenses", "WISO Steuer", "archive", "in einem Dropbox-Ordner",
                 "version", "0.1.4", "changes", List.of(new ProcedureService.Change("04.01.2027", "Erstfassung"),
                         new ProcedureService.Change("01.06.2027", "Neue Version der App")))));
         for (int page = 0; page < pages.size(); page++) {

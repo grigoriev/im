@@ -69,7 +69,7 @@ public enum AuditAction {
     INVOICE_REGISTERED("Externe Rechnung erfasst"),
     /** A further original file of an external invoice was added. */
     ORIGINAL_ADDED("Datei hinzugefügt"),
-    /** An invoice was cancelled by the issue of its Stornorechnung. */
+    /** An invoice was canceled by the issue of its Stornorechnung. */
     INVOICE_CANCELLED("Rechnung storniert"),
     /** A dispatch of an invoice was recorded. */
     INVOICE_SENT("Versand vermerkt"),
@@ -89,7 +89,7 @@ public enum AuditAction {
     EXPENSE_ADDED("Ausgabe erfasst"),
     /** The details of an expense changed. */
     EXPENSE_CHANGED("Ausgabe geändert"),
-    /** An expense was cancelled. */
+    /** An expense was canceled. */
     EXPENSE_CANCELLED("Ausgabe storniert");
 
     private final String label;

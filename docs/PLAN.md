@@ -72,6 +72,8 @@ Checked against the statutes, the official Anlage EÜR 2025 with its instruction
 1. **Correct first.** No invoice leaves the system without a passed validation for its format (see section 4).
 2. **Immutable.** Issuing freezes the invoice, its XML and its PDF. The system stores a SHA-256 of each document and
    seals it with an HMAC whose key lives outside the database. A change in the database shows, see section 6.
+   Decisions: [ADR 0002](adr/0002-write-once-by-triggers-and-an-app-role.md),
+   [ADR 0003](adr/0003-hmac-seals-with-an-integrity-key.md).
 3. **Snapshot.** Issuing copies seller and buyer data into the invoice. Later edits of master data do not change it.
 4. **Small footprint.** One household, two users, one container plus a database.
 5. **Own data.** Full export and import. No dependency on a cloud service.
@@ -79,6 +81,9 @@ Checked against the statutes, the official Anlage EÜR 2025 with its instruction
    No horizontal scroll at any width: tables adapt to the width of their card (container queries),
    merge secondary columns, and turn into cards on a narrow screen. Text wraps instead of being cut.
 7. **No real data in git.** Tests and demo use generated data only.
+8. **English technical names.** URLs, parameters, element IDs, CSS classes, code, database and JSON are English; what
+   the user reads is German. Code imports a class instead of naming it fully qualified (decision 2026-11-14,
+   [ADR 0006](adr/0006-english-technical-names-and-no-fqcn.md)).
 
 ## 4. Technology
 
@@ -174,13 +179,14 @@ DRAFT -> ISSUED -> SENT -> PAID
    their SHA-256. Every read checks the SHA-256 and the seal: the page of the invoice names the problem and compares
    number, dates, amount, IBAN and parties of the XML with the snapshot. A changed file stays out of download, e-mail
    and archive. The app checks everything at startup and every night; the overview lists what failed, the audit log
-   records it.
+   records it. Decisions: [ADR 0001](adr/0001-issue-in-one-transaction.md),
+   [ADR 0002](adr/0002-write-once-by-triggers-and-an-app-role.md), [ADR 0003](adr/0003-hmac-seals-with-an-integrity-key.md).
 3. `SENT` records each dispatch. One invoice can have several dispatches.
 4. `PAID` applies when the sum of all payments covers the total.
 5. `CANCELLED` links to the Stornorechnung. The cancellation invoice has its own number. It is a credit note (type 381)
-   with the lines of the cancelled invoice and names it (BT-25, BT-26). Its issue sets `CANCELLED` in the same
+   with the lines of the canceled invoice and names it (BT-25, BT-26). Its issue sets `CANCELLED` in the same
    transaction. One invoice has at most one Stornorechnung; its lines and format stay those of the invoice.
-6. A paid invoice can be cancelled too. The money that goes back is a refund: a payment with a negative amount.
+6. A paid invoice can be canceled too. The money that goes back is a refund: a payment with a negative amount.
 7. A refund lowers the §19 revenue and the EÜR income in the year it is paid, not in the year of the invoice.
 
 ### Tax categories
@@ -243,7 +249,8 @@ The admin edits the default tax notes. A template and an invoice can override th
 3. The counter resets each year. The admin can set the start value only for a year without issued invoices.
    A closed year refuses it too.
    The check runs in the same locked transaction that assigns numbers.
-4. A number is assigned only at issue, in one transaction with a row lock. No gaps, no duplicates.
+4. A number is assigned only at issue, in one transaction with a row lock. No gaps, no duplicates
+   ([ADR 0001](adr/0001-issue-in-one-transaction.md)).
 5. A pattern change applies to the next number. The system rejects a pattern that can repeat an existing number.
 
 ### Sending
@@ -284,6 +291,7 @@ The admin edits the default tax notes. A template and an invoice can override th
 3. Archive export: ZIP with all XML and PDF files of a year, the business documents (folder "Dokumente") and the
    receipts of the expenses (folder "Ausgaben"), each with a table of contents.
 4. Full export and import: ZIP with JSON data and all documents. This also moves the system to a new host.
+   The import goes only into an empty installation ([ADR 0004](adr/0004-import-only-into-an-empty-installation.md)).
    Both stream: the export reads one row at a time and writes it at once, the import reads the upload from disk entry by entry and row by
    row. Memory holds one document at most, so a large export cannot stop the container. Uploads up to 4 GB, as much as an import expands; the export stops before it writes more.
    The upload limit of the app applies to every form, so the proxy allows 4 GB for the import only and 32 MB elsewhere.
@@ -317,12 +325,13 @@ The admin edits the default tax notes. A template and an invoice can override th
    does not.
 5. Every expense needs its receipt: a PDF, JPG or PNG of at most 25 MB, written once and sealed like a document. The
    details may change; each change goes into the audit log with before and after. An expense never goes away: a wrong
-   one is cancelled with a reason, stays with its receipt and counts no more. A cancelled expense never changes.
+   one is canceled with a reason, stays with its receipt and counts no more. A canceled expense never changes.
 6. Not in scope: mileage, the home office lump sum, Bewirtung at 70 %. They go into WISO directly.
 
 ### External invoices
 
-1. Some customers demand their own invoice form (decision 2026-11-22). The invoices of 2026 exist outside the app too.
+1. Some customers demand their own invoice form (decision 2026-11-22,
+   [ADR 0005](adr/0005-external-invoices-and-numbers-by-hand.md)). The invoices of 2026 exist outside the app too.
 2. The app registers such an invoice as an external invoice ("Externe Rechnung"). It generates no PDF and no XML.
    Its format is `EXTERNAL`. A customer and a template may name it, so a new draft of that customer is external.
    The draft editor takes its facts. "Rechnung erfassen" adds the number and the file.

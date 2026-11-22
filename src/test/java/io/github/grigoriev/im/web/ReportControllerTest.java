@@ -105,7 +105,7 @@ class ReportControllerTest {
         assertThat((Map<ExpenseCategory, BigDecimal>) model.get("expenseTotals")).as("the laptop goes in as an asset")
                 .containsExactly(Map.entry(ExpenseCategory.LITERATURE, new BigDecimal("49.90")));
         assertThat((BigDecimal) model.get("expenseTotal")).isEqualByComparingTo("49.90");
-        assertThat((List<Expense>) model.get("assets")).as("a cancelled asset is none").containsExactly(laptop);
+        assertThat((List<Expense>) model.get("assets")).as("a canceled asset is none").containsExactly(laptop);
 
         ResponseEntity<byte[]> csv = controller.expensesCsv(2027);
         assertThat(csv.getHeaders().getContentDisposition().getFilename()).isEqualTo("Ausgaben_2027.csv");

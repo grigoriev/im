@@ -39,7 +39,7 @@ interface InvoiceRepository extends ListCrudRepository<Invoice, Long> {
      * Links a Stornorechnung draft to the invoice it cancels.
      *
      * @param id the draft
-     * @param cancelsId the cancelled invoice
+     * @param cancelsId the canceled invoice
      */
     @Modifying
     @Query("UPDATE invoice SET cancels_id = :cancelsId WHERE id = :id")
@@ -49,7 +49,7 @@ interface InvoiceRepository extends ListCrudRepository<Invoice, Long> {
      * Returns the invoice a Stornorechnung cancels.
      *
      * @param id the Stornorechnung
-     * @return the cancelled invoice's ID, empty for an invoice
+     * @return the canceled invoice's ID, empty for an invoice
      */
     @Query("SELECT cancels_id FROM invoice WHERE id = :id AND cancels_id IS NOT NULL")
     Optional<Long> cancelsId(long id);
