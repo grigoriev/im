@@ -3,6 +3,7 @@ package io.github.grigoriev.im.einvoice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.grigoriev.im.format.GermanFormat;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -181,6 +182,11 @@ class InvoicePdfRendererTest {
         InvoiceDocument document = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
         assertThatThrownBy(() -> broken.render(document)).isInstanceOf(EInvoiceException.class)
                 .hasMessageContaining("Cannot load font fonts/broken.ttf");
+    }
+
+    @Test
+    void printsAsManyDecimalsAsTheXmlCarries() {
+        assertThat(GermanFormat.DECIMALS).isEqualTo(InvoiceLine.MAX_DECIMALS);
     }
 
     private static String text(byte[] pdf) throws IOException {

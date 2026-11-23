@@ -10,8 +10,8 @@ import java.util.Locale;
 /** German number, money and date formats for what the user reads: the PDF, the e-mails and their placeholders. */
 public final class GermanFormat {
 
-    /** The decimals of a unit price, as many as a line of an invoice allows. */
-    static final int PRICE_DECIMALS = 4;
+    /** The decimals of a quantity and a unit price, as many as a line of an invoice allows. */
+    public static final int DECIMALS = 4;
 
     private static final Locale GERMAN = Locale.GERMANY;
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy", GERMAN);
@@ -36,7 +36,7 @@ public final class GermanFormat {
      */
     public String price(BigDecimal price) {
         NumberFormat format = NumberFormat.getCurrencyInstance(GERMAN);
-        format.setMaximumFractionDigits(PRICE_DECIMALS);
+        format.setMaximumFractionDigits(DECIMALS);
         format.setRoundingMode(RoundingMode.HALF_UP);
         return format.format(price);
     }
@@ -59,7 +59,7 @@ public final class GermanFormat {
      */
     public String quantity(BigDecimal quantity) {
         NumberFormat format = NumberFormat.getNumberInstance(GERMAN);
-        format.setMaximumFractionDigits(4);
+        format.setMaximumFractionDigits(DECIMALS);
         format.setRoundingMode(RoundingMode.HALF_UP);
         return format.format(quantity);
     }

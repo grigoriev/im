@@ -1,10 +1,12 @@
 package io.github.grigoriev.im.setting;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -72,11 +74,10 @@ class SettingRepositoryTest {
     }
 
     @Test
-    void writesAnEmptyValueAsNull() {
-        settings.write(SettingKey.PROCEDURE_ARCHIVE, null);
-        verify(statement).param("key", "procedure-archive");
-        verify(statement).param("value", null);
-        verify(statement).update();
+    void refusesNoValueBecauseTheColumnNeedsOne() {
+        assertThatThrownBy(() -> settings.write(SettingKey.PROCEDURE_ARCHIVE, null))
+                .isInstanceOf(NullPointerException.class);
+        verifyNoInteractions(jdbc);
     }
 
     @Test

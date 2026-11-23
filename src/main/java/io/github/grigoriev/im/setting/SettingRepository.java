@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.setting;
 
+import java.util.Objects;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -39,9 +40,10 @@ public class SettingRepository {
      * Writes a value, in place of the one before.
      *
      * @param key the key
-     * @param value the value; {@code null} keeps the row without a value
+     * @param value the value, never {@code null}; {@link #reset(SettingKey)} removes one
      */
     public void write(SettingKey key, String value) {
+        Objects.requireNonNull(value, "value");
         jdbc.sql(WRITE).param("key", key.stored()).param("value", value).update();
     }
 
