@@ -350,7 +350,7 @@ class IntegrityIT {
             assertThatThrownBy(() -> issues.issue(stornoId, version)).isInstanceOf(InvoiceException.class)
                     .hasMessageContaining(refused);
             assertThat(invoices.find(storno.id()).orElseThrow().isDraft()).as("no number, no issue").isTrue();
-            for (String page : List.of("/invoices/" + invoice.id(), "/reports?year=2003")) {
+            for (String page : List.of("/", "/invoices/" + invoice.id(), "/reports?year=2003")) {
                 mvc.perform(get(page).with(user("elena").roles("USER")))
                         .andExpect(status().isInternalServerError())
                         .andExpect(content().string(containsString("Gespeicherte Daten lassen sich nicht lesen")))
