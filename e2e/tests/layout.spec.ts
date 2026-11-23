@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { ANONYMOUS } from './accounts';
 import { ROUTES, WIDTHS } from './routes';
@@ -87,4 +88,65 @@ test('a utility still sets the minimum width of a field', async ({ page }) => {
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   const tax = page.locator('label').filter({ has: page.locator('#line-0-category') });
   expect(await tax.evaluate((label) => getComputedStyle(label).minWidth), '@xl:min-w-64 of the tax field').toBe('256px');
+});
+
+// The place sets the size of a control (CLAUDE.md, Code Style): M (40px) in the head of a page, a form and a dialog,
+// S (32px) in a toolbar, in the actions of a list row and in the head of a dialog. All visible controls of one place
+// have that height, and no template picks a size by class. A closed dialog is hidden: only what the page shows counts.
+const PLACES = [
+  { selector: '.page-head .page-actions', height: 40 },
+  { selector: '.form-actions', height: 40 },
+  { selector: '.modal-foot', height: 40 },
+  { selector: '.toolbar', height: 32 },
+  { selector: '.row-actions', height: 32 },
+  { selector: '.modal-head', height: 32 },
+];
+const SIZE_CLASSES = '.btn-xs, .btn-sm, .btn-md, .btn-lg, .btn-xl, .select-xs, .select-sm, .select-md, .select-lg, '
+  + '.input-xs, .input-sm, .input-md, .input-lg, .badge-xs, .badge-sm, .badge-md, .badge-lg';
+
+function controlSizeProblems(page: Page) {
+  return page.evaluate(({ places, sizeClasses }) => {
+    const problems: string[] = [];
+    const visible = (el: Element) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    const controls = 'button, a.btn, label.btn, summary.btn, select, input:not([type=hidden], [type=checkbox], [type=radio])';
+    for (const place of places) {
+      for (const container of Array.from(document.querySelectorAll(place.selector)).filter(visible)) {
+        for (const control of Array.from(container.querySelectorAll<HTMLElement>(controls)).filter(visible)) {
+          // The height of the layout: a dialog that still scales open does not count.
+          const height = control.offsetHeight;
+          if (Math.abs(height - place.height) > 1) {
+            const name = control.textContent?.trim() || control.getAttribute('aria-label') || control.id;
+            problems.push(`${place.selector}: ${control.tagName.toLowerCase()} "${name}" is ${height}px, not ${place.height}px`);
+          }
+        }
+      }
+    }
+    for (const el of Array.from(document.querySelectorAll(sizeClasses))) {
+      problems.push(`size class on ${el.tagName.toLowerCase()}.${el.className}`);
+    }
+    return problems;
+  }, { places: PLACES, sizeClasses: SIZE_CLASSES });
+}
+
+for (const route of ROUTES) {
+  for (const width of [375, 1440]) {
+    test(`${route.name} sizes its controls by their place at ${width}px`, async ({ browser, adminState }) => {
+      const context = await browser.newContext({
+        viewport: { width, height: 900 },
+        storageState: route.anonymous ? ANONYMOUS : adminState,
+      });
+      const page = await context.newPage();
+      await page.goto(route.path);
+      expect(await controlSizeProblems(page)).toEqual([]);
+      if (!route.anonymous) await expect(page.locator('.page-head .page-title'), 'the head of the page').toHaveCount(1);
+      await context.close();
+    });
+  }
+}
+
+test('an open dialog sizes its controls by their place', async ({ page }) => {
+  await page.goto('/admin/users');
+  await page.locator('#user-list').getByRole('button', { name: 'Passwort setzen' }).first().click();
+  await expect(page.locator('dialog[open] .modal-foot')).toBeVisible();
+  expect(await controlSizeProblems(page)).toEqual([]);
 });

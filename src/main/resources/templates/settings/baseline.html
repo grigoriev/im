@@ -8,7 +8,7 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Einstellungen', 'settings', ~{::content})}">
   <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
-    <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+    <div th:replace="~{fragments/page :: pageHead('Einstellungen', null, null)}"></div>
     <div th:replace="~{fragments/settings :: tabs('baseline')}"></div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -34,11 +34,11 @@
         <li th:each="entry : ${baselines}" class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-base-300 last:border-b-0 py-1">
           <span class="num" th:text="${entry.key}">2026</span>
           <span class="num" th:text="${#numbers.formatDecimal(entry.value, 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</span>
-          <form method="post" th:action="@{/admin/baselines}">
+          <form class="row-actions" method="post" th:action="@{/admin/baselines}">
             <input type="hidden" name="year" th:value="${entry.key}">
             <input type="hidden" name="amount" value="">
-            <button type="submit" class="btn btn-danger btn-xs" th:id="'baseline-remove-' + ${entry.key}"
-                    th:attr="aria-label='Vorjahresumsatz ' + ${entry.key} + ' entfernen'"><i data-lucide="trash-2" class="size-3.5"></i>Entfernen</button>
+            <button type="submit" class="btn btn-danger" th:id="'baseline-remove-' + ${entry.key}"
+                    th:attr="aria-label='Vorjahresumsatz ' + ${entry.key} + ' entfernen'"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>
           </form>
         </li>
       </ul>

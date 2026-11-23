@@ -8,7 +8,7 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
   <main class="px-4 py-12 grid place-items-center">
     <div class="bg-base-100 rounded-box border border-base-300 shadow-xs p-6 sm:p-8 w-full max-w-md grid gap-3 text-center">
-      <h1 class="font-semibold text-xl tracking-tight" th:switch="${status}">
+      <h1 class="page-title" th:switch="${status}">
         <span th:case="403">Kein Zugriff</span>
         <span th:case="404">Seite nicht gefunden</span>
         <span th:case="*">Etwas ist schiefgegangen</span>

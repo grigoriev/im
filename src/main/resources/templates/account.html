@@ -8,7 +8,7 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Mein Konto', 'account', ~{::content})}">
   <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4">
-    <h1 class="text-2xl font-semibold tracking-tight">Mein Konto</h1>
+    <div th:replace="~{fragments/page :: pageHead('Mein Konto', null, null)}"></div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <output class="alert alert-success text-sm" th:if="${param.passkey}">Passkey hinzugefügt.</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -28,10 +28,10 @@
                   th:text="'Hinzugefügt am ' + ${#temporals.format(passkey.created, 'dd.MM.yyyy', 'Europe/Berlin')}
                      + (${passkey.lastUsed} != null ? ' · zuletzt ' + ${#temporals.format(passkey.lastUsed, 'dd.MM.yyyy', 'Europe/Berlin')} : '')">Datum</span>
           </div>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn btn-sm" th:attr="data-dialog='passkey-rename-' + ${passkeyStat.index}"><i data-lucide="pencil" class="size-4"></i>Umbenennen</button>
+          <div class="row-actions">
+            <button type="button" class="btn" th:attr="data-dialog='passkey-rename-' + ${passkeyStat.index}"><i data-lucide="pencil" class="size-4"></i>Umbenennen</button>
             <form th:action="@{/account/passkeys/{id}/delete(id=${passkey.id})}" method="post">
-              <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>
+              <button type="submit" class="btn btn-danger"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>
             </form>
           </div>
           <dialog class="modal" th:id="'passkey-rename-' + ${passkeyStat.index}" th:attr="aria-labelledby='passkey-rename-' + ${passkeyStat.index} + '-title'">

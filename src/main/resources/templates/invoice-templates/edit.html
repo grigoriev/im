@@ -10,9 +10,11 @@
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
     <a th:href="@{/customers/{id}(id=${customerId})}" class="link link-hover text-sm text-base-content/75 w-fit [overflow-wrap:anywhere]"
        th:text="'← ' + ${customer}">← Kunde</a>
-    <div>
-      <div class="text-xs uppercase tracking-wider text-base-content/75">Vorlage</div>
-      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="${template.name}">Vorlage</h1>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow">Vorlage</div>
+        <h1 class="page-title" th:text="${template.name}">Vorlage</h1>
+      </div>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${formProblems}">
@@ -75,7 +77,7 @@
     </form>
 
     <div class="border-t border-base-300 pt-4 form-actions">
-      <button type="button" class="btn btn-sm btn-danger" data-dialog="template-delete"><i data-lucide="trash-2" class="size-4"></i>Vorlage löschen</button>
+      <button type="button" class="btn btn-danger" data-dialog="template-delete"><i data-lucide="trash-2" class="size-4"></i>Vorlage löschen</button>
     </div>
     <dialog class="modal" id="template-delete" aria-labelledby="template-delete-title">
       <div class="modal-box">

@@ -9,9 +9,10 @@
 <div th:replace="~{fragments/layout :: shell('Ausgaben', 'expenses', ~{::content})}">
   <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4"
        th:with="editable=${expense == null or !expense.cancelled()}">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere] min-w-0" th:text="${expense == null ? 'Neue Ausgabe' : expense.vendor}">Ausgabe</h1>
-      <a th:href="${expense == null} ? @{/expenses} : @{/expenses(year=${expense.paidOn.year})}" class="btn" id="expense-back"><i data-lucide="arrow-left" class="size-4"></i>Alle Ausgaben</a>
+    <div th:replace="~{fragments/page :: pageHead(${expense == null ? 'Neue Ausgabe' : expense.vendor}, null, ~{::headActions})}">
+      <th:block th:fragment="headActions">
+        <a th:href="${expense == null} ? @{/expenses} : @{/expenses(year=${expense.paidOn.year})}" class="btn" id="expense-back"><i data-lucide="arrow-left" class="size-4"></i>Alle Ausgaben</a>
+      </th:block>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" id="expense-error" th:if="${error}" th:text="${error}">Fehler</div>

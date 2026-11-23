@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Seite</title>
+</head>
+<body>
+<!-- The head of a page: its title, a line below it if given, and its actions on the right (app.css, M). Pass null for
+     what a page does not have. A head with an ID, a badge or a line above the title uses the same classes directly. -->
+<div th:fragment="pageHead(title, subtitle, actions)" class="page-head">
+  <div>
+    <h1 class="page-title" th:text="${title}">Titel</h1>
+    <p class="page-subtitle" th:if="${subtitle != null}" th:text="${subtitle}">Untertitel</p>
+  </div>
+  <!-- th:insert runs before th:if on one element: the condition sits on a block around it. -->
+  <th:block th:if="${actions != null}"><div class="page-actions" th:insert="${actions}"></div></th:block>
+</div>
+</body>
+</html>

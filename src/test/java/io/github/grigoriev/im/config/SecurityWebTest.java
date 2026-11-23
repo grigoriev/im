@@ -754,7 +754,10 @@ class SecurityWebTest {
     void listsCustomersAndShowsOne() throws Exception {
         when(customers.list()).thenReturn(List.of());
         mvc.perform(get("/customers").with(user("elena").roles("USER"))).andExpect(status().isOk())
-                .andExpect(content().string(Matchers.containsString("Noch keine Kunden.")));
+                .andExpect(content().string(Matchers.containsString("Noch keine Kunden.")))
+                .andExpect(content().string(Matchers.containsString("<h1 class=\"page-title\">Kunden</h1>")))
+                .andExpect(content().string(Matchers.matchesRegex(
+                        "(?s).*<div class=\"page-actions\">\\s*<a href=\"/customers/new\" class=\"btn btn-primary\">.*")));
         when(customers.list()).thenReturn(List.of(CustomerTestData.verlag().withId(3L), CustomerTestData.vhs().withId(4L)));
         when(customers.find(4)).thenReturn(Optional.of(CustomerTestData.vhs().withId(4L)));
         mvc.perform(get("/customers/4").with(user("elena").roles("USER"))).andExpect(status().isOk())
@@ -1472,7 +1475,7 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("Unveränderbar seit")))
                 .andExpect(content().string(Matchers.containsString("Rechnung 2027-10")))
                 .andExpect(content().string(Matchers.containsString(
-                        "min-w-0 [overflow-wrap:anywhere]\" id=\"invoice-number\"")))
+                        "<h1 class=\"page-title num min-w-0\" id=\"invoice-number\"")))
                 .andExpect(content().string(Matchers.containsString("Verlag am Fluss GmbH · 480,00 € · fällig am")))
                 .andExpect(content().string(Matchers.containsString("Entwurf angelegt")))
                 .andExpect(content().string(Matchers.containsString("18.03.2027 09:00")))

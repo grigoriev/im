@@ -8,9 +8,10 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Kunden', 'customers', ~{::content})}">
   <div th:fragment="content" class="max-w-6xl mx-auto grid gap-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight">Kunden</h1>
-      <a th:href="@{/customers/new}" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
+    <div th:replace="~{fragments/page :: pageHead('Kunden', null, ~{::headActions})}">
+      <th:block th:fragment="headActions">
+        <a th:href="@{/customers/new}" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
+      </th:block>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -39,7 +40,7 @@
       <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-5 min-w-0 @container" th:if="${customer != null}">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <h2 class="text-lg font-semibold [overflow-wrap:anywhere] min-w-0" th:text="${customer.id == null ? 'Neuer Kunde' : customer.label()}">Kunde</h2>
-          <a class="btn btn-sm" th:if="${customer.id != null}" th:href="@{/customers/new(from=${customer.id})}" id="customer-copy"
+          <a class="btn" th:if="${customer.id != null}" th:href="@{/customers/new(from=${customer.id})}" id="customer-copy"
              title="Neuer Kunde mit derselben Anschrift, für einen weiteren Ansprechpartner"><i data-lucide="copy" class="size-4"></i>Weiterer Ansprechpartner</a>
         </div>
         <div role="alert" class="alert alert-error text-sm grid gap-1" th:if="${problems}">
@@ -119,7 +120,7 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h3 class="font-semibold">Vorlagen</h3>
             <form method="post" th:action="@{/customers/{id}/templates(id=${customer.id})}">
-              <button type="submit" class="btn btn-sm"><i data-lucide="plus" class="size-4"></i>Neue Vorlage</button>
+              <button type="submit" class="btn"><i data-lucide="plus" class="size-4"></i>Neue Vorlage</button>
             </form>
           </div>
           <p class="text-sm text-base-content/75" th:if="${templates.isEmpty()}">Noch keine Vorlage.</p>
@@ -129,16 +130,16 @@
                  th:text="${template.name}">Vorlage</a>
               <div class="text-xs text-base-content/75 truncate" th:text="${template.summary()}">Positionen</div>
             </div>
-            <form method="post" th:action="@{/invoices}">
+            <form class="row-actions" method="post" th:action="@{/invoices}">
               <input type="hidden" name="customerId" th:value="${customer.id}">
               <input type="hidden" name="templateId" th:value="${template.id}">
-              <button type="submit" class="btn btn-sm"><i data-lucide="file-plus" class="size-4"></i>Rechnung erstellen</button>
+              <button type="submit" class="btn"><i data-lucide="file-plus" class="size-4"></i>Rechnung erstellen</button>
             </form>
           </div>
         </div>
 
         <div class="border-t border-base-300 pt-4 form-actions" th:if="${customer.id != null}">
-          <button type="button" class="btn btn-sm btn-danger" data-dialog="customer-delete"><i data-lucide="trash-2" class="size-4"></i>Kunden löschen</button>
+          <button type="button" class="btn btn-danger" data-dialog="customer-delete"><i data-lucide="trash-2" class="size-4"></i>Kunden löschen</button>
           <dialog class="modal" id="customer-delete" aria-labelledby="customer-delete-title">
       <div class="modal-box">
         <div th:replace="~{fragments/dialog :: dialogTitle('customer-delete', 'Kunden löschen?')}"></div>
