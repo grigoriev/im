@@ -4,6 +4,7 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import java.time.Clock;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
@@ -68,6 +69,16 @@ public class UserService {
      */
     public AppUser get(long id) {
         return users.findById(id).orElseThrow(() -> new UserException("Diesen Benutzer gibt es nicht."));
+    }
+
+    /**
+     * Finds a user by login name.
+     *
+     * @param username the login name
+     * @return the user, empty if there is none
+     */
+    public Optional<AppUser> find(String username) {
+        return users.findByUsername(username);
     }
 
     /**

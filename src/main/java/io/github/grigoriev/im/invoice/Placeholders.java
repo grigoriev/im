@@ -1,6 +1,6 @@
 package io.github.grigoriev.im.invoice;
 
-import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
+import io.github.grigoriev.im.format.GermanFormat;
 import java.time.LocalDate;
 
 /**
@@ -38,7 +38,7 @@ public record Placeholders(String number, LocalDate issueDate, LocalDate service
         if (text == null) {
             return null;
         }
-        InvoicePdfRenderer.Formatter format = new InvoicePdfRenderer.Formatter();
+        GermanFormat format = new GermanFormat();
         return text.replace("{Rechnungsnummer}", number)
                 .replace("{Rechnungsdatum}", format.date(issueDate))
                 .replace("{Leistungszeitraum}", format.period(serviceFrom, serviceTo))

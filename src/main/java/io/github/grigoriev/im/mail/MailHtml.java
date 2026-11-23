@@ -1,9 +1,9 @@
 package io.github.grigoriev.im.mail;
 
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
-import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.Party;
+import io.github.grigoriev.im.format.GermanFormat;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -101,7 +101,7 @@ public class MailHtml {
         if (body == null || body.isBlank()) {
             return new Letter(List.of(), List.of(signer));
         }
-        List<List<String>> text = paragraphs(InvoicePdfRenderer.signed(body, signer));
+        List<List<String>> text = paragraphs(new GermanFormat().signed(body, signer));
         if (text.size() > 1) {
             return new Letter(text.subList(0, text.size() - 1), text.getLast());
         }
@@ -134,7 +134,7 @@ public class MailHtml {
 
     /** The facts of the box: date, amount, due date and bank account; a Stornorechnung names its invoice instead. */
     static List<Fact> facts(InvoiceDocument document) {
-        InvoicePdfRenderer.Formatter format = new InvoicePdfRenderer.Formatter();
+        GermanFormat format = new GermanFormat();
         List<Fact> facts = new ArrayList<>();
         facts.add(new Fact("Rechnungsdatum", DATE.format(document.issueDate())));
         InvoiceReference cancels = document.cancels();
@@ -155,7 +155,7 @@ public class MailHtml {
 
     /** The facts of a reminder: date, due date, the open amount and the bank account. */
     static List<Fact> reminderFacts(InvoiceDocument document, BigDecimal open) {
-        InvoicePdfRenderer.Formatter format = new InvoicePdfRenderer.Formatter();
+        GermanFormat format = new GermanFormat();
         List<Fact> facts = new ArrayList<>();
         facts.add(new Fact("Rechnungsdatum", DATE.format(document.issueDate())));
         facts.add(new Fact("Fällig am", DATE.format(document.dueDate())));
@@ -177,7 +177,7 @@ public class MailHtml {
      * @return the signed text with the address
      */
     public static String plain(InvoiceDocument document, String body) {
-        return InvoicePdfRenderer.signed(body, signer(document.seller())) + "\n\n"
+        return new GermanFormat().signed(body, signer(document.seller())) + "\n\n"
                 + String.join("\n", contact(document.seller()));
     }
 

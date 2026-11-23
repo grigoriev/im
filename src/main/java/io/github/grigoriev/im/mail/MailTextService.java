@@ -2,17 +2,18 @@ package io.github.grigoriev.im.mail;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
-import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
+import io.github.grigoriev.im.format.GermanFormat;
 import io.github.grigoriev.im.invoice.Invoice;
 import io.github.grigoriev.im.invoice.InvoiceService;
 import io.github.grigoriev.im.invoice.InvoiceTemplate;
 import io.github.grigoriev.im.invoice.Placeholders;
 import io.github.grigoriev.im.seller.SettingsException;
+import io.github.grigoriev.im.setting.SettingKey;
+import io.github.grigoriev.im.setting.SettingRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MailTextService {
 
-    static final String SUBJECT_KEY = "mail-subject";
-    static final String BODY_KEY = "mail-body";
     static final String DEFAULT_SUBJECT = "Rechnung {Rechnungsnummer}";
     static final String DEFAULT_BODY = """
             Sehr geehrte Damen und Herren,
@@ -32,8 +31,6 @@ public class MailTextService {
             anbei erhalten Sie meine Rechnung {Rechnungsnummer} vom {Rechnungsdatum}, zahlbar bis {Zahlungsziel}.
 
             Mit freundlichen Grüßen""";
-    static final String REMINDER_SUBJECT_KEY = "reminder-subject";
-    static final String REMINDER_BODY_KEY = "reminder-body";
     static final String DEFAULT_REMINDER_SUBJECT = "Zahlungserinnerung zur Rechnung {Rechnungsnummer}";
     static final String DEFAULT_REMINDER_BODY = """
             Sehr geehrte Damen und Herren,
@@ -48,25 +45,20 @@ public class MailTextService {
     static final int MAX_SUBJECT = 200;
     static final int MAX_BODY = 4000;
 
-    static final String READ = "SELECT value FROM app_setting WHERE key = :key";
-    static final String WRITE = """
-            INSERT INTO app_setting (key, value) VALUES (:key, :value)
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""";
-    static final String RESET = "DELETE FROM app_setting WHERE key = :key";
 
-    private final JdbcClient jdbc;
+    private final SettingRepository settings;
     private final InvoiceService invoices;
     private final AuditService audit;
 
     /**
      * Creates the service.
      *
-     * @param jdbc reads and writes the default text
+     * @param settings reads and writes the default text
      * @param invoices the template of an invoice
      * @param audit the audit log
      */
-    public MailTextService(JdbcClient jdbc, InvoiceService invoices, AuditService audit) {
-        this.jdbc = jdbc;
+    public MailTextService(SettingRepository settings, InvoiceService invoices, AuditService audit) {
+        this.settings = settings;
         this.invoices = invoices;
         this.audit = audit;
     }
@@ -77,7 +69,7 @@ public class MailTextService {
      * @return the text set on "E-Mail", or the built-in one
      */
     public MailText defaults() {
-        return new MailText(read(SUBJECT_KEY).orElse(DEFAULT_SUBJECT), read(BODY_KEY).orElse(DEFAULT_BODY));
+        return new MailText(settings.read(SettingKey.MAIL_SUBJECT).orElse(DEFAULT_SUBJECT), settings.read(SettingKey.MAIL_BODY).orElse(DEFAULT_BODY));
     }
 
     /**
@@ -89,7 +81,7 @@ public class MailTextService {
      */
     @Transactional
     public void save(String subject, String body) {
-        save(subject, body, SUBJECT_KEY, BODY_KEY, new MailText(DEFAULT_SUBJECT, DEFAULT_BODY), "");
+        save(subject, body, SettingKey.MAIL_SUBJECT, SettingKey.MAIL_BODY, new MailText(DEFAULT_SUBJECT, DEFAULT_BODY), "");
     }
 
     /**
@@ -98,8 +90,8 @@ public class MailTextService {
      * @return the text set on "E-Mail", or the built-in one
      */
     public MailText reminderDefaults() {
-        return new MailText(read(REMINDER_SUBJECT_KEY).orElse(DEFAULT_REMINDER_SUBJECT),
-                read(REMINDER_BODY_KEY).orElse(DEFAULT_REMINDER_BODY));
+        return new MailText(settings.read(SettingKey.REMINDER_SUBJECT).orElse(DEFAULT_REMINDER_SUBJECT),
+                settings.read(SettingKey.REMINDER_BODY).orElse(DEFAULT_REMINDER_BODY));
     }
 
     /**
@@ -111,7 +103,7 @@ public class MailTextService {
      */
     @Transactional
     public void saveReminder(String subject, String body) {
-        save(subject, body, REMINDER_SUBJECT_KEY, REMINDER_BODY_KEY,
+        save(subject, body, SettingKey.REMINDER_SUBJECT, SettingKey.REMINDER_BODY,
                 new MailText(DEFAULT_REMINDER_SUBJECT, DEFAULT_REMINDER_BODY), "Zahlungserinnerung");
     }
 
@@ -125,12 +117,12 @@ public class MailTextService {
     public MailText forReminder(Invoice invoice, BigDecimal open) {
         MailText defaults = reminderDefaults();
         Placeholders values = Placeholders.of(invoice, invoice.number());
-        String amount = new InvoicePdfRenderer.Formatter().money(open);
+        String amount = new GermanFormat().money(open);
         return new MailText(values.fill(defaults.subject().replace(OPEN_AMOUNT, amount)),
                 values.fill(defaults.body().replace(OPEN_AMOUNT, amount)));
     }
 
-    private void save(String subject, String body, String subjectKey, String bodyKey, MailText builtIn,
+    private void save(String subject, String body, SettingKey subjectKey, SettingKey bodyKey, MailText builtIn,
             String detail) {
         String newSubject = subject == null ? "" : subject.strip();
         String newBody = body == null ? "" : body.strip().replace("\r\n", "\n");
@@ -166,15 +158,11 @@ public class MailTextService {
         return new MailText(values.fill(subject), values.fill(body));
     }
 
-    private Optional<String> read(String key) {
-        return jdbc.sql(READ).param("key", key).query(String.class).optional();
-    }
-
-    private void write(String key, String value, String builtIn) {
+    private void write(SettingKey key, String value, String builtIn) {
         if (value.isEmpty() || value.equals(builtIn)) {
-            jdbc.sql(RESET).param("key", key).update();
+            settings.reset(key);
         } else {
-            jdbc.sql(WRITE).param("key", key).param("value", value).update();
+            settings.write(key, value);
         }
     }
 }

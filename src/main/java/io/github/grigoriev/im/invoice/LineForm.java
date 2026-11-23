@@ -1,6 +1,7 @@
 package io.github.grigoriev.im.invoice;
 
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.validation.Amounts;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -244,11 +245,11 @@ public class LineForm {
         if (text == null || text.isBlank()) {
             return BigDecimal.ZERO;
         }
-        if (DraftForm.ambiguous(text)) {
+        if (Amounts.ambiguous(text)) {
             problems.add(field + " ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00 oder 1,5.");
             return null;
         }
-        BigDecimal value = DraftForm.parse(text);
+        BigDecimal value = Amounts.parse(text);
         if (value == null) {
             problems.add(field + " ist keine Zahl, zum Beispiel 45,00.");
         } else if (value.precision() - value.scale() > MAX_INTEGER_DIGITS) {

@@ -9,7 +9,7 @@ import io.github.grigoriev.im.customer.CustomerTestData;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
-import io.github.grigoriev.im.invoice.ArchiveService;
+import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.invoice.DocumentStore;
 import io.github.grigoriev.im.invoice.DraftForm;
 import io.github.grigoriev.im.invoice.ExternalInvoiceService;

@@ -13,6 +13,8 @@ import static org.mockito.Mockito.when;
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.seller.SettingsException;
+import io.github.grigoriev.im.setting.SettingKey;
+import io.github.grigoriev.im.setting.SettingRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,9 +25,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.core.simple.JdbcClient.MappedQuerySpec;
 import org.springframework.jdbc.core.simple.JdbcClient.StatementSpec;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 class NumberServiceTest {
 
@@ -35,21 +37,19 @@ class NumberServiceTest {
     private final JdbcClient jdbc = mock(JdbcClient.class);
     private final StatementSpec statement = mock(StatementSpec.class);
     @SuppressWarnings("unchecked")
-    private final MappedQuerySpec<String> text = mock(MappedQuerySpec.class);
-    @SuppressWarnings("unchecked")
     private final MappedQuerySpec<Integer> counter = mock(MappedQuerySpec.class);
     @SuppressWarnings("unchecked")
     private final MappedQuerySpec<Boolean> taken = mock(MappedQuerySpec.class);
+    private final SettingRepository settings = mock(SettingRepository.class);
     private final AuditService audit = mock(AuditService.class);
-    private final NumberService service = new NumberService(sequences, jdbc, NEW_YEARS_EVE, audit);
+    private final NumberService service = new NumberService(sequences, jdbc, settings, NEW_YEARS_EVE, audit);
 
     @BeforeEach
     void statement() {
         when(jdbc.sql(anyString())).thenReturn(statement);
         when(statement.param(anyString(), any())).thenReturn(statement);
-        when(statement.query(String.class)).thenReturn(text);
         when(statement.query(Integer.class)).thenReturn(counter);
-        when(text.optional()).thenReturn(Optional.empty());
+        when(settings.read(SettingKey.INVOICE_NUMBER_PATTERN)).thenReturn(Optional.empty());
         when(statement.query(Boolean.class)).thenReturn(taken);
         when(taken.single()).thenReturn(false);
     }
@@ -57,18 +57,15 @@ class NumberServiceTest {
     @Test
     void usesTheDefaultPatternUntilTheAdminSetsOne() {
         assertThat(service.pattern()).isEqualTo(NumberPattern.DEFAULT);
-        verify(jdbc).sql(NumberService.READ_PATTERN);
-        verify(statement).param("key", NumberService.PATTERN_KEY);
-        when(text.optional()).thenReturn(Optional.of("RE-{YY}-{NNN}"));
+        verify(settings).read(SettingKey.INVOICE_NUMBER_PATTERN);
+        when(settings.read(SettingKey.INVOICE_NUMBER_PATTERN)).thenReturn(Optional.of("RE-{YY}-{NNN}"));
         assertThat(service.pattern().value()).isEqualTo("RE-{YY}-{NNN}");
     }
 
     @Test
     void savesACheckedPattern() {
         assertThat(service.savePattern(" RE-{YYYY}-{NNN} ").value()).isEqualTo("RE-{YYYY}-{NNN}");
-        verify(jdbc).sql(NumberService.WRITE_PATTERN);
-        verify(statement).param("value", "RE-{YYYY}-{NNN}");
-        verify(statement).update();
+        verify(settings).write(SettingKey.INVOICE_NUMBER_PATTERN, "RE-{YYYY}-{NNN}");
         assertThatThrownBy(() -> service.savePattern("{NN}")).isInstanceOf(SettingsException.class);
         verify(audit).add(AuditAction.NUMBER_PATTERN_SAVED, "RE-{YYYY}-{NNN}");
         verify(statement).param("number", "RE-2028-001");
@@ -82,7 +79,7 @@ class NumberServiceTest {
         assertThatThrownBy(() -> service.savePattern("{YY}{NN}")).isInstanceOf(SettingsException.class)
                 .hasMessage("Mit diesem Muster wäre die nächste Nummer 2901, und die gibt es schon. Bitte das Muster ändern.");
         verify(statement).param("number", "2803");
-        verify(statement, never()).update();
+        verify(settings, never()).write(any(), any());
     }
 
     @Test

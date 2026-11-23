@@ -1,7 +1,7 @@
 package io.github.grigoriev.im.web;
 
 import io.github.grigoriev.im.user.AppUser;
-import io.github.grigoriev.im.user.AppUserRepository;
+import io.github.grigoriev.im.user.UserService;
 import java.security.Principal;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 @ControllerAdvice
 public class CurrentUserAdvice {
 
-    private final AppUserRepository users;
+    private final UserService users;
 
     /**
      * Creates the advice.
      *
-     * @param users the user store
+     * @param users the users
      */
-    public CurrentUserAdvice(AppUserRepository users) {
+    public CurrentUserAdvice(UserService users) {
         this.users = users;
     }
 
@@ -29,6 +29,6 @@ public class CurrentUserAdvice {
      */
     @ModelAttribute("currentUser")
     public AppUser currentUser(Principal principal) {
-        return principal == null ? null : users.findByUsername(principal.getName()).orElse(null);
+        return principal == null ? null : users.find(principal.getName()).orElse(null);
     }
 }

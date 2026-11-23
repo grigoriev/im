@@ -3,6 +3,8 @@ package io.github.grigoriev.im.numbering;
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.seller.SettingsException;
+import io.github.grigoriev.im.setting.SettingKey;
+import io.github.grigoriev.im.setting.SettingRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -19,16 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NumberService {
 
-    /** The key of the pattern in {@code app_setting}. */
-    static final String PATTERN_KEY = "invoice-number-pattern";
-
     /** The highest start value. */
     static final int MAX_START = 999_999;
 
-    static final String READ_PATTERN = "SELECT value FROM app_setting WHERE key = :key";
-    static final String WRITE_PATTERN = """
-            INSERT INTO app_setting (key, value) VALUES (:key, :value)
-            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value""";
     static final String CREATE_YEAR = """
             INSERT INTO number_sequence (year, next_number, used) VALUES (:year, 1, FALSE)
             ON CONFLICT (year) DO NOTHING""";
@@ -41,6 +36,7 @@ public class NumberService {
 
     private final NumberSequenceRepository sequences;
     private final JdbcClient jdbc;
+    private final SettingRepository settings;
     private final Clock clock;
     private final AuditService audit;
 
@@ -48,13 +44,16 @@ public class NumberService {
      * Creates the service.
      *
      * @param sequences reads the counters
-     * @param jdbc writes the pattern and the counters
+     * @param jdbc writes the counters
+     * @param settings keeps the pattern
      * @param clock source of the current year
      * @param audit the audit log
      */
-    public NumberService(NumberSequenceRepository sequences, JdbcClient jdbc, Clock clock, AuditService audit) {
+    public NumberService(NumberSequenceRepository sequences, JdbcClient jdbc, SettingRepository settings, Clock clock,
+            AuditService audit) {
         this.sequences = sequences;
         this.jdbc = jdbc;
+        this.settings = settings;
         this.clock = clock;
         this.audit = audit;
     }
@@ -65,8 +64,7 @@ public class NumberService {
      * @return the pattern of the admin, or {@link NumberPattern#DEFAULT}
      */
     public NumberPattern pattern() {
-        return jdbc.sql(READ_PATTERN).param("key", PATTERN_KEY).query(String.class).optional()
-                .map(NumberPattern::new).orElse(NumberPattern.DEFAULT);
+        return settings.read(SettingKey.INVOICE_NUMBER_PATTERN).map(NumberPattern::new).orElse(NumberPattern.DEFAULT);
     }
 
     /**
@@ -87,7 +85,7 @@ public class NumberService {
                         + ", und die gibt es schon. Bitte das Muster ändern."));
             }
         }
-        jdbc.sql(WRITE_PATTERN).param("key", PATTERN_KEY).param("value", pattern.value()).update();
+        settings.write(SettingKey.INVOICE_NUMBER_PATTERN, pattern.value());
         audit.add(AuditAction.NUMBER_PATTERN_SAVED, pattern.value());
         return pattern;
     }

@@ -1,4 +1,4 @@
-package io.github.grigoriev.im.invoice;
+package io.github.grigoriev.im.archive;
 
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.document.BusinessDocument;
@@ -6,6 +6,12 @@ import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseService;
+import io.github.grigoriev.im.invoice.DocumentStore;
+import io.github.grigoriev.im.invoice.Invoice;
+import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.invoice.InvoiceIntegrity;
+import io.github.grigoriev.im.invoice.InvoiceService;
+import io.github.grigoriev.im.invoice.OriginalStore;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;

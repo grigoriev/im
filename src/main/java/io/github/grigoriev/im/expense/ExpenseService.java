@@ -7,7 +7,7 @@ import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.IntegrityCheck;
 import io.github.grigoriev.im.integrity.Seal;
-import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.validation.Amounts;
 import io.github.grigoriev.im.validation.Fields;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -330,11 +330,11 @@ public class ExpenseService implements IntegrityCheck {
             problems.add("Bitte den Betrag angeben.");
             return null;
         }
-        if (DraftForm.ambiguous(text)) {
+        if (Amounts.ambiguous(text)) {
             problems.add("Der Betrag ist mehrdeutig: bitte mit Komma schreiben, zum Beispiel 1.500,00.");
             return null;
         }
-        BigDecimal value = DraftForm.parse(text);
+        BigDecimal value = Amounts.parse(text);
         if (value == null) {
             problems.add("Der Betrag ist keine Zahl, zum Beispiel 49,90.");
         } else if (value.signum() <= 0) {

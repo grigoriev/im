@@ -1,7 +1,8 @@
-package io.github.grigoriev.im.invoice;
+package io.github.grigoriev.im.archive;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 
 import io.github.grigoriev.im.TestDatabase;
 import io.github.grigoriev.im.customer.Customer;
@@ -16,6 +17,16 @@ import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseCategory;
 import io.github.grigoriev.im.expense.ExpenseForm;
 import io.github.grigoriev.im.expense.ExpenseService;
+import io.github.grigoriev.im.invoice.DocumentKind;
+import io.github.grigoriev.im.invoice.DocumentStore;
+import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.invoice.Invoice;
+import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.invoice.InvoiceIntegrity;
+import io.github.grigoriev.im.invoice.InvoiceService;
+import io.github.grigoriev.im.invoice.IssueService;
+import io.github.grigoriev.im.invoice.LineForm;
+import io.github.grigoriev.im.invoice.OriginalStore;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;

@@ -5,8 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.github.grigoriev.im.user.AppUser;
-import io.github.grigoriev.im.user.AppUserRepository;
 import io.github.grigoriev.im.user.Role;
+import io.github.grigoriev.im.user.UserService;
 import io.github.grigoriev.im.user.UserTestData;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -14,8 +14,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 
 class CurrentUserAdviceTest {
 
-    private final AppUserRepository repository = mock(AppUserRepository.class);
-    private final CurrentUserAdvice advice = new CurrentUserAdvice(repository);
+    private final UserService users = mock(UserService.class);
+    private final CurrentUserAdvice advice = new CurrentUserAdvice(users);
 
     @Test
     void returnsNobodyOnPublicPages() {
@@ -25,9 +25,9 @@ class CurrentUserAdviceTest {
     @Test
     void returnsTheLoggedInUserIfItStillExists() {
         AppUser elena = UserTestData.user(2, "elena", Role.USER);
-        when(repository.findByUsername("elena")).thenReturn(Optional.of(elena));
+        when(users.find("elena")).thenReturn(Optional.of(elena));
         assertThat(advice.currentUser(new UsernamePasswordAuthenticationToken("elena", null))).isEqualTo(elena);
-        when(repository.findByUsername("gone")).thenReturn(Optional.empty());
+        when(users.find("gone")).thenReturn(Optional.empty());
         assertThat(advice.currentUser(new UsernamePasswordAuthenticationToken("gone", null))).isNull();
     }
 }

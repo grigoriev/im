@@ -2,14 +2,14 @@ package io.github.grigoriev.im.threshold;
 
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
+import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceLine;
 import io.github.grigoriev.im.einvoice.TaxCategory;
-import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.invoice.DocumentStore;
-import io.github.grigoriev.im.invoice.DraftForm;
+import io.github.grigoriev.im.seller.Activity;
 import io.github.grigoriev.im.seller.SettingsException;
-import io.github.grigoriev.im.customer.Customer;
+import io.github.grigoriev.im.validation.Amounts;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -142,7 +142,7 @@ public class ThresholdService {
             // Removing stays possible: a payment entered later must never leave a double count behind.
             throw new SettingsException(List.of(COUNTED_BY_APP));
         }
-        BigDecimal value = DraftForm.ambiguous(amount) ? null : DraftForm.parse(amount);
+        BigDecimal value = Amounts.ambiguous(amount) ? null : Amounts.parse(amount);
         if (value == null || value.signum() < 0 || value.stripTrailingZeros().scale() > CENTS
                 || value.precision() - value.scale() > 10) {
             throw new SettingsException(List.of("Bitte den Umsatz als Betrag angeben, zum Beispiel 18.250,00."));

@@ -50,6 +50,15 @@ class UserServiceTest {
         verify(audit).add(AuditAction.USER_CREATED, "elena (USER)");
     }
 
+    @Test
+    void findsAUserByLoginName() {
+        AppUser elena = UserTestData.user(2, "elena", Role.USER);
+        when(repository.findByUsername("elena")).thenReturn(Optional.of(elena));
+        when(repository.findByUsername("gone")).thenReturn(Optional.empty());
+        assertThat(service.find("elena")).contains(elena);
+        assertThat(service.find("gone")).isEmpty();
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"ab", "Elena", "elena sommer", "a234567890123456789012345678901234", "élena"})
