@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-11-23
+
 ### Fixed
 
 - A release names the time of its build below the menu too, as a build of `main` does. The menu keeps its place, and the image of a release passes its visual tests.
@@ -234,7 +236,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - The start page no longer fails for a logged-in user without an account record.
 
-[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.13...HEAD
+[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.14...HEAD
+[0.1.14]: https://github.com/grigoriev/im/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/grigoriev/im/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/grigoriev/im/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/grigoriev/im/compare/v0.1.10...v0.1.11
