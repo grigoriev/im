@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- A release names the time of its build below the menu too, as a build of `main` does. The menu keeps its place, and the image of a release passes its visual tests.
+
 ## [0.1.13] - 2026-11-23
 
 ### Added

@@ -100,15 +100,14 @@
           <button type="submit" class="flex w-full items-center gap-2 rounded-field px-3 py-2 text-sm cursor-pointer hover:bg-base-200"><i data-lucide="log-out" class="size-4"></i>Abmelden</button>
         </form>
         <div th:replace="~{fragments/layout :: menuTheme}"></div>
-        <!-- The version of the app: a release links to its notes, a snapshot names the time of its build. -->
+        <!-- The version of the app and the time of its build: a release links to its notes. Release and snapshot
+             take the same two lines, so the menu above stays in place. -->
         <p class="px-3 text-xs text-base-content/75 num grid" id="app-version" th:if="${appVersion != null}" data-volatile>
           <a th:if="${appVersion.release()}" class="hover:underline" th:href="${appVersion.releaseUrl()}" target="_blank" rel="noopener"
              th:text="'Version ' + ${appVersion.number}">Version 0.1.12</a>
-          <th:block th:unless="${appVersion.release()}">
-            <span th:text="'Version ' + ${appVersion.number ?: 'ohne Angabe'}">Version 0.1.13-SNAPSHOT</span>
-            <span th:if="${appVersion.builtAt != null}"
-                  th:text="'gebaut ' + ${#temporals.format(appVersion.builtAt, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">gebaut 23.11.2026, 06:24</span>
-          </th:block>
+          <span th:unless="${appVersion.release()}" th:text="'Version ' + ${appVersion.number ?: 'ohne Angabe'}">Version 0.1.13-SNAPSHOT</span>
+          <span th:if="${appVersion.builtAt != null}"
+                th:text="'gebaut ' + ${#temporals.format(appVersion.builtAt, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">gebaut 23.11.2026, 06:24</span>
         </p>
       </div>
     </nav>

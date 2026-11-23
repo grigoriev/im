@@ -914,6 +914,10 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString(">17.2<")))
                 .andExpect(content().string(Matchers.containsString(">Version 0.1.12<")));
         mvc.perform(get("/admin/system").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+        // A release takes the same two lines below the menu as a snapshot, so the menu stays in place.
+        mvc.perform(get("/admin/audit").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(Matchers.containsString(">Version 0.1.12</a>")))
+                .andExpect(content().string(Matchers.containsString(">gebaut 23.11.2026, 06:24<")));
 
         when(system.version()).thenReturn(new AppVersion("0.1.13-SNAPSHOT", Instant.parse("2026-11-23T05:24:00Z")));
         mvc.perform(get("/admin/audit").with(user("admin").roles("ADMIN")))
