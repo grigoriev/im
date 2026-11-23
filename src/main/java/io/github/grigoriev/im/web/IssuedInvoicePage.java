@@ -80,7 +80,8 @@ public class IssuedInvoicePage {
     void fill(Model model, Invoice invoice) {
         model.addAttribute("integrity", integrity.check(invoice));
         model.addAttribute("documents", documents.list(invoice.id()));
-        model.addAttribute("originals", originals.list(invoice.id()));
+        // The check above read and verified every file; the list needs their names only.
+        model.addAttribute("originals", originals.summaries(invoice.id()));
         model.addAttribute("history", audit.history(invoice.id()));
         model.addAttribute("icons", HISTORY_ICONS);
         model.addAttribute("today", dispatches.today());

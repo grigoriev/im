@@ -47,14 +47,14 @@ import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.document.ProcedureForm;
 import io.github.grigoriev.im.document.ProcedureService;
 import io.github.grigoriev.im.einvoice.EInvoiceFacts;
-import io.github.grigoriev.im.expense.Expense;
-import io.github.grigoriev.im.expense.ExpenseCategory;
-import io.github.grigoriev.im.expense.ExpenseException;
-import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.einvoice.TaxCategory;
+import io.github.grigoriev.im.expense.Expense;
+import io.github.grigoriev.im.expense.ExpenseCategory;
+import io.github.grigoriev.im.expense.ExpenseException;
+import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.IntegrityMonitor;
 import io.github.grigoriev.im.archive.ArchiveService;
@@ -77,13 +77,14 @@ import io.github.grigoriev.im.invoice.InvoiceTemplate;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.OriginalStore;
+import io.github.grigoriev.im.invoice.OriginalSummary;
 import io.github.grigoriev.im.invoice.Payment;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
-import io.github.grigoriev.im.invoice.ReminderService;
-import io.github.grigoriev.im.invoice.ReminderForm;
-import io.github.grigoriev.im.invoice.ReminderChannel;
 import io.github.grigoriev.im.invoice.Reminder;
+import io.github.grigoriev.im.invoice.ReminderChannel;
+import io.github.grigoriev.im.invoice.ReminderForm;
+import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.StoredDocument;
 import io.github.grigoriev.im.invoice.TemplateForm;
 import io.github.grigoriev.im.invoice.TemplateLine;
@@ -161,10 +162,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -1736,10 +1737,8 @@ class SecurityWebTest {
         Invoice registered = external(9, InvoiceStatus.ISSUED);
         when(invoices.find(9)).thenReturn(Optional.of(registered));
         when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.EXTERNAL));
-        InvoiceOriginal original = new InvoiceOriginal(1, 9, "Rechnung März.xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "PK".getBytes(StandardCharsets.US_ASCII), "ab12", 2, "seal", Instant.EPOCH, "elena");
-        when(originals.list(9)).thenReturn(List.of(original));
+        when(originals.summaries(9)).thenReturn(List.of(new OriginalSummary(1, 9, "Rechnung März.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ab12", 2, Instant.EPOCH, "elena")));
         when(mail.configured()).thenReturn(true);
         when(reminders.isRemindable(9)).thenReturn(true);
         SendForm send = new SendForm();
@@ -1756,8 +1755,12 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("Rechnung mit ihren Originaldateien anhängen")))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"mail-xml\""))))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-documents\""))));
+        verify(originals, never()).list(9);
         verify(mail).form(eq(registered), any());
 
+        InvoiceOriginal original = new InvoiceOriginal(1, 9, "Rechnung März.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "PK".getBytes(StandardCharsets.US_ASCII), "ab12", 2, "seal", Instant.EPOCH, "elena");
         when(originals.find(9, 1)).thenReturn(Optional.of(original));
         mvc.perform(get("/invoices/9/originals/1").with(user("elena").roles("USER"))).andExpect(status().isOk())
                 .andExpect(header().string("Content-Type",

@@ -25,6 +25,7 @@ All notable changes to this project are documented in this file. The format foll
 
 - An issue or a registration while the admin marks the year for numbers by hand no longer ends in an error page. The counter gives no number to such a year, and the form says that its invoices come as external invoices.
 - An explained gap in the numbers of a year by hand keeps the audit log, as the other business data do.
+- The page of an external invoice reads its original files, up to 25 MB each, once instead of twice: the check of the files still reads and verifies every byte, the list "Originaldateien" takes name, size and checksum without the content.
 
 ### Security
 

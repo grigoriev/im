@@ -2,6 +2,7 @@ package io.github.grigoriev.im;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
@@ -21,14 +22,15 @@ import io.github.grigoriev.im.invoice.InvoiceStatus;
 import io.github.grigoriev.im.invoice.IssueService;
 import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.OriginalStore;
+import io.github.grigoriev.im.invoice.OriginalSummary;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.PaymentService;
 import io.github.grigoriev.im.invoice.SampleOffice;
 import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberService;
-import io.github.grigoriev.im.seller.SettingsException;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import io.github.grigoriev.im.seller.SettingsException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -160,6 +162,11 @@ class ExternalInvoiceIT {
         byte[] pdf = "%PDF-1.7 Kopie".getBytes(StandardCharsets.US_ASCII);
         externals.addOriginal(draft.id(), "März.pdf", pdf);
         assertThat(originals.list(draft.id())).hasSize(2);
+        assertThat(originals.summaries(draft.id())).as("the list of the page, without the bytes")
+                .extracting(OriginalSummary::filename, OriginalSummary::mediaType, OriginalSummary::size,
+                        OriginalSummary::sha256)
+                .containsExactlyElementsOf(originals.list(draft.id()).stream()
+                        .map(file -> tuple(file.filename(), file.mediaType(), file.size(), file.sha256())).toList());
         ByteArrayOutputStream zip = new ByteArrayOutputStream();
         archive.write(2002, zip);
         assertThat(entries(zip.toByteArray())).containsExactly("März.xlsx", "März.pdf", "Inhalt.csv");

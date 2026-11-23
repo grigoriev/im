@@ -49,7 +49,7 @@ class OriginalStoreTest {
     @BeforeEach
     void table() {
         for (String sql : List.of(OriginalStore.NEXT_ID, OriginalStore.INSERT, OriginalStore.OF_INVOICE,
-                OriginalStore.ONE)) {
+                OriginalStore.ONE, OriginalStore.SUMMARIES)) {
             StatementSpec spec = statement(sql);
             when(jdbc.sql(sql)).thenReturn(spec);
         }
@@ -96,8 +96,14 @@ class OriginalStoreTest {
         int n = 0;
         for (Map<String, Object> row : rows.values()) {
             boolean ofInvoice = row.get("invoice_id").equals(params.get("invoiceId"));
-            if (ofInvoice && (sql.equals(OriginalStore.OF_INVOICE) || row.get("id").equals(params.get("id")))) {
-                found.add(mapper.mapRow(resultSet(row), n++));
+            boolean all = sql.equals(OriginalStore.OF_INVOICE) || sql.equals(OriginalStore.SUMMARIES);
+            if (ofInvoice && (all || row.get("id").equals(params.get("id")))) {
+                ResultSet rs = resultSet(row);
+                if (sql.equals(OriginalStore.SUMMARIES)) {
+                    // The list leaves the bytes in the database: a read of them fails.
+                    when(rs.getBytes("content")).thenThrow(new SQLException("content is not selected"));
+                }
+                found.add(mapper.mapRow(rs, n++));
             }
         }
         return found;
@@ -236,6 +242,23 @@ class OriginalStoreTest {
         assertThat(store.list(6).getFirst().filename()).isEqualTo("Rechnung_2026-08.xml");
         assertThat(store.problems(stored)).isEmpty();
         assertThat(store.verified(stored)).isSameAs(stored);
+    }
+
+    @Test
+    void listsTheFilesWithoutTheirContent() {
+        InvoiceOriginal stored = store.store(5, "2026/07", "Juli.xlsx", PDF, OriginalStore.XLSX, NOW);
+        InvoiceOriginal unnamed = store.store(5, "2026/07", null, PDF, OriginalStore.PDF, NOW);
+        store.store(6, "2026-08", "", PDF, OriginalStore.XML, NOW);
+
+        assertThat(store.summaries(5)).containsExactly(
+                new OriginalSummary(1, 5, "Juli.xlsx", OriginalStore.XLSX, Seal.sha256(PDF), PDF.length, NOW, "system"),
+                new OriginalSummary(2, 5, "Rechnung_2026-07.pdf", OriginalStore.PDF, Seal.sha256(PDF), PDF.length, NOW,
+                        "system"));
+        assertThat(store.summaries(5)).extracting(OriginalSummary::id).containsExactly(stored.id(), unnamed.id());
+        assertThat(store.summaries(7)).isEmpty();
+        String columns = OriginalStore.SUMMARIES.substring(0, OriginalStore.SUMMARIES.indexOf(" FROM "));
+        assertThat(columns).as("the list selects no bytes").doesNotContainIgnoringCase("content")
+                .doesNotContain("*");
     }
 
     @Test

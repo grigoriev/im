@@ -48,6 +48,9 @@ public class OriginalStore {
     static final String OF_INVOICE = "SELECT " + COLUMNS + " FROM invoice_original WHERE invoice_id = :invoiceId "
             + "ORDER BY id";
     static final String ONE = "SELECT " + COLUMNS + " FROM invoice_original WHERE invoice_id = :invoiceId AND id = :id";
+    /** The list of the page: every column but the bytes, which reach up to 25 MB a file. */
+    static final String SUMMARIES = "SELECT id, invoice_id, filename, media_type, sha256, size, created_at, created_by "
+            + "FROM invoice_original WHERE invoice_id = :invoiceId ORDER BY id";
 
     private static final byte[] PDF_MAGIC = "%PDF-".getBytes(StandardCharsets.US_ASCII);
     private static final byte[] ZIP_MAGIC = {'P', 'K', 3, 4};
@@ -61,6 +64,9 @@ public class OriginalStore {
     private static final Map<String, String> EXTENSIONS = Map.of(PDF, ".pdf", XML, ".xml", XLSX, ".xlsx", DOCX,
             ".docx");
     private static final String INVOICE_ID = "invoiceId";
+    private static final String FILENAME = "filename";
+    private static final String SHA256 = "sha256";
+    private static final String CREATED_BY = "created_by";
 
     private final JdbcClient jdbc;
     private final Seal seal;
@@ -161,8 +167,8 @@ public class OriginalStore {
                 "Rechnung_" + number.replace('/', '-') + EXTENSIONS.get(mediaType));
         String user = AuditService.currentUser();
         String sealed = seal.invoiceOriginal(invoiceId, id, sha256);
-        jdbc.sql(INSERT).param("id", id).param(INVOICE_ID, invoiceId).param("filename", filename)
-                .param("mediaType", mediaType).param("content", content).param("sha256", sha256)
+        jdbc.sql(INSERT).param("id", id).param(INVOICE_ID, invoiceId).param(FILENAME, filename)
+                .param("mediaType", mediaType).param("content", content).param(SHA256, sha256)
                 .param("size", content.length).param("seal", sealed).param("createdAt", Timestamp.from(at))
                 .param("createdBy", user).update();
         return new InvoiceOriginal(id, invoiceId, filename, mediaType, content, sha256, content.length, sealed, at,
@@ -177,6 +183,18 @@ public class OriginalStore {
      */
     public List<InvoiceOriginal> list(long invoiceId) {
         return jdbc.sql(OF_INVOICE).param(INVOICE_ID, invoiceId).query(OriginalStore::row).list();
+    }
+
+    /**
+     * Lists the original files of an invoice without their bytes, for a page that names them.
+     *
+     * @param invoiceId the invoice
+     * @return the files in the order of their upload; empty for an invoice of the app
+     */
+    public List<OriginalSummary> summaries(long invoiceId) {
+        return jdbc.sql(SUMMARIES).param(INVOICE_ID, invoiceId).query((rs, n) -> new OriginalSummary(rs.getLong("id"),
+                rs.getLong("invoice_id"), rs.getString(FILENAME), rs.getString("media_type"), rs.getString(SHA256),
+                rs.getInt("size"), rs.getTimestamp("created_at").toInstant(), rs.getString(CREATED_BY))).list();
     }
 
     /**
@@ -228,8 +246,8 @@ public class OriginalStore {
     }
 
     private static InvoiceOriginal row(ResultSet rs, int n) throws SQLException {
-        return new InvoiceOriginal(rs.getLong("id"), rs.getLong("invoice_id"), rs.getString("filename"),
-                rs.getString("media_type"), rs.getBytes("content"), rs.getString("sha256"), rs.getInt("size"),
-                rs.getString("seal"), rs.getTimestamp("created_at").toInstant(), rs.getString("created_by"));
+        return new InvoiceOriginal(rs.getLong("id"), rs.getLong("invoice_id"), rs.getString(FILENAME),
+                rs.getString("media_type"), rs.getBytes("content"), rs.getString(SHA256), rs.getInt("size"),
+                rs.getString("seal"), rs.getTimestamp("created_at").toInstant(), rs.getString(CREATED_BY));
     }
 }
