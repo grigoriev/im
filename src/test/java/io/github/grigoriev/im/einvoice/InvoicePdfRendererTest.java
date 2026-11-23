@@ -218,6 +218,7 @@ class InvoicePdfRendererTest {
             };
             stripper.getText(pdf);
         }
+        assertThat(bottoms).as("the stripper hands over whole lines").containsKeys("Sprachschule am See", "ÖSTERREICH");
         float mm = 72 / 25.4f;
         assertThat(bottoms.get("ÖSTERREICH")).as("bottom of the sixth line").isLessThanOrEqualTo(90 * mm);
         assertThat(bottoms.get("Sprachschule am See")).as("the first line below the sender line").isGreaterThan(62.7f * mm);
