@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- Buttons and fields have one height per place: 40px in the head of a page, in forms and dialogs, 32px in filter bars such as "Jahr" with "Anzeigen" and in the actions of a list row. Page titles look the same on every page, badges have one size, and the year filter of "Ausgaben" and "Berichte" sits in its own bar below the title.
+
 ## [0.1.12] - 2026-11-23
 
 ### Added

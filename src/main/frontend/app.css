@@ -227,6 +227,45 @@
 /* Buttons of a form: one line, at the right edge of the form. */
 .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.5rem; }
 
+/* The place sets the size of a button or field, not the template (decision 2026-11-23). Two sizes: M (40px) in the
+   head of a page, a form and a dialog; S (32px) in a toolbar, in the actions of a list row and in the head of a
+   dialog. daisyUI sets the height on the control itself, so a variable of the container cannot reach it: here each
+   control reads the size of the nearest place instead, which also lets a dialog in a list row keep M. */
+.btn {
+  --size: calc(var(--size-field, 0.25rem) * var(--control-size, 10));
+  --fontsize: var(--control-font-size, 0.875rem); --btn-p: var(--control-padding, 1rem);
+}
+.select { --sl-size-mul: var(--control-size, 10); --font-size-min: var(--control-font-size, 0.875rem); }
+.input { --in-size-mul: var(--control-size, 10); --font-size-min: var(--control-font-size, 0.875rem); }
+.page-actions, .form-actions, .modal-box { --control-size: 10; --control-font-size: 0.875rem; --control-padding: 1rem; }
+.toolbar, .row-actions, .modal-head { --control-size: 8; --control-font-size: 0.75rem; --control-padding: 0.75rem; }
+/* One size of badge everywhere, the small one of daisyUI. */
+.badge { --size: calc(var(--size-selector, 0.25rem) * 5); font-size: 0.75rem; }
+
+/* The places themselves. In the components layer, so a utility of a template can still adjust them. */
+@layer components {
+  /* The head of a page (fragments/page.html): the title on the left, its actions on the right. */
+  .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .page-head > :first-child { min-width: 0; }
+  .page-title {
+    font-size: 1.5rem; line-height: 2rem; font-weight: 600;
+    letter-spacing: -0.025em; overflow-wrap: anywhere;
+  }
+  .page-eyebrow {
+    font-size: 0.75rem; line-height: 1rem; text-transform: uppercase;
+    letter-spacing: 0.05em; color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+  }
+  .page-subtitle {
+    margin-top: 0.25rem; font-size: 0.875rem; line-height: 1.25rem; overflow-wrap: anywhere;
+    color: color-mix(in oklab, var(--color-base-content) 75%, transparent);
+  }
+  .page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  /* A filter bar: fields with their labels on the top line, the buttons beside them. */
+  .toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem; }
+  /* The actions of a row in a list. */
+  .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+}
+
 /* The main menu: the open page in a soft tint of the accent. */
 .menu :where(li > a).menu-active, .menu :where(li > a):where(.menu-active) {
   background-color: color-mix(in oklch, var(--color-primary) 12%, transparent); color: var(--color-primary); font-weight: 600;

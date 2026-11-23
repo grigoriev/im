@@ -9,13 +9,15 @@
 <div th:replace="~{fragments/layout :: shell('Rechnung', 'invoices', ~{::content})}">
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
     <a th:href="@{/invoices}" class="link link-hover text-sm text-base-content/75 w-fit">← Rechnungen</a>
-    <div>
-      <div class="text-xs uppercase tracking-wider text-base-content/75"
-           th:text="${cancelled != null ? 'Stornorechnung · ' + invoice.status.label : invoice.status.label}">Entwurf</div>
-      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="${customer}">Kunde</h1>
-      <p class="text-sm text-base-content/75 mt-1" th:if="${cancelled != null}" id="cancels">
-        Storniert vollständig die <a class="link" th:href="@{/invoices/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
-        Positionen und Format kommen aus dieser Rechnung. Mit dem Ausstellen ist sie storniert.</p>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow"
+             th:text="${cancelled != null ? 'Stornorechnung · ' + invoice.status.label : invoice.status.label}">Entwurf</div>
+        <h1 class="page-title" th:text="${customer}">Kunde</h1>
+        <p class="page-subtitle" th:if="${cancelled != null}" id="cancels">
+          Storniert vollständig die <a class="link" th:href="@{/invoices/{id}(id=${cancelled.id})}" th:text="'Rechnung ' + ${cancelled.number}">Rechnung 2027-01</a>.
+          Positionen und Format kommen aus dieser Rechnung. Mit dem Ausstellen ist sie storniert.</p>
+      </div>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -114,7 +116,7 @@
         <div th:if="${problems.isEmpty()}" class="flex flex-wrap items-center justify-between gap-2">
           <p class="flex items-center gap-2"><i data-lucide="circle-check" class="size-4 text-success"></i>
             Vollständig.</p>
-          <a th:href="@{/invoices/{id}/preview(id=${invoice.id})}" target="_blank" rel="noopener" class="btn btn-sm"
+          <a th:href="@{/invoices/{id}/preview(id=${invoice.id})}" target="_blank" rel="noopener" class="btn"
              id="invoice-preview" th:unless="${invoice.format.isExternal()}"><i data-lucide="file-search" class="size-4"></i>Vorschau (PDF)</a>
         </div>
         <p th:if="${problems.isEmpty()}" class="text-xs text-base-content/75"

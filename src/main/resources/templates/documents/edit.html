@@ -9,9 +9,10 @@
 <div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
   <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4"
        th:with="editable=${document == null or document.current()}">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere] min-w-0" th:text="${document == null ? 'Neues Dokument' : document.title}">Dokument</h1>
-      <a th:href="@{/documents}" class="btn"><i data-lucide="arrow-left" class="size-4"></i>Alle Dokumente</a>
+    <div th:replace="~{fragments/page :: pageHead(${document == null ? 'Neues Dokument' : document.title}, null, ~{::headActions})}">
+      <th:block th:fragment="headActions">
+        <a th:href="@{/documents}" class="btn"><i data-lucide="arrow-left" class="size-4"></i>Alle Dokumente</a>
+      </th:block>
     </div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm grid gap-1" id="document-problems" th:if="${problems}">
@@ -117,7 +118,7 @@
               <span class="[overflow-wrap:anywhere]" th:text="${version.filename}">Bescheid.pdf</span>
               <span class="text-xs opacity-75" th:text="${#temporals.format(version.documentDate, 'dd.MM.yyyy')}">12.05.2028</span>
             </span>
-            <span class="badge badge-sm whitespace-nowrap" th:classappend="${state.first} ? 'badge-success badge-soft' : 'badge-ghost'"
+            <span class="badge whitespace-nowrap" th:classappend="${state.first} ? 'badge-success badge-soft' : 'badge-ghost'"
                   th:text="${state.first ? 'aktuell' : 'ersetzt'}">aktuell</span>
           </a>
         </li>

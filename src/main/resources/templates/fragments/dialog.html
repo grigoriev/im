@@ -7,7 +7,7 @@
 <!-- The head of a dialog: its title and a button that closes it. app.js opens a dialog from data-dialog. -->
 <div th:fragment="dialogTitle(id, title)" class="modal-head">
   <h3 class="font-semibold" th:id="${id} + '-title'" th:text="${title}">Titel</h3>
-  <button type="button" class="btn btn-sm btn-square" data-close><i data-lucide="x" class="size-4"></i><span class="sr-only">Schließen</span></button>
+  <button type="button" class="btn btn-square" data-close><i data-lucide="x" class="size-4"></i><span class="sr-only">Schließen</span></button>
 </div>
 
 <!-- A click beside the box closes the dialog. -->

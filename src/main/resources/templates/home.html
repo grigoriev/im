@@ -8,10 +8,11 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Übersicht', 'home', ~{::content})}">
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4 @container">
-    <div>
-      <div class="text-xs uppercase tracking-wider text-base-content/75 num" data-volatile
-           th:text="'Stand ' + ${#temporals.format(today, 'dd.MM.yyyy')}">Stand 18.03.2027</div>
-      <h1 class="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]" th:text="'Guten Tag, ' + ${currentUser != null ? currentUser.displayName : #authentication.name}">Guten Tag</h1>
+    <div class="page-head">
+      <div>
+        <div class="page-eyebrow num" data-volatile th:text="'Stand ' + ${#temporals.format(today, 'dd.MM.yyyy')}">Stand 18.03.2027</div>
+        <h1 class="page-title" th:text="'Guten Tag, ' + ${currentUser != null ? currentUser.displayName : #authentication.name}">Guten Tag</h1>
+      </div>
     </div>
 
     <section role="alert" class="alert alert-error alert-soft text-sm text-base-content grid-flow-row grid-cols-1 justify-items-start gap-2" id="integrity-alert"
@@ -56,7 +57,7 @@
           <h2 class="font-semibold">Kleinunternehmergrenze</h2>
           <p class="text-xs text-base-content/75">§ 19 UStG, zählt nur Umsätze nach § 19 und nach Zahlungseingang</p>
         </div>
-        <span class="badge badge-sm whitespace-nowrap" data-volatile th:classappend="${threshold.applies()} ? 'badge-success' : 'badge-error'"
+        <span class="badge whitespace-nowrap" data-volatile th:classappend="${threshold.applies()} ? 'badge-success' : 'badge-error'"
               th:text="${threshold.applies()} ? 'gilt ' + ${threshold.year} : 'gilt nicht mehr'">gilt 2027</span>
       </div>
       <div class="grid gap-1.5">

@@ -8,9 +8,10 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
   <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight">Dokumente</h1>
-      <a th:href="@{/documents/new}" class="btn btn-primary" id="document-new"><i data-lucide="file-up" class="size-4"></i>Dokument ablegen</a>
+    <div th:replace="~{fragments/page :: pageHead('Dokumente', null, ~{::headActions})}">
+      <th:block th:fragment="headActions">
+        <a th:href="@{/documents/new}" class="btn btn-primary" id="document-new"><i data-lucide="file-up" class="size-4"></i>Dokument ablegen</a>
+      </th:block>
     </div>
     <p class="text-sm text-base-content/75">Verfahrensdokumentation, Steuerbescheide, Schreiben vom Finanzamt, Bescheinigungen
       und Verträge. Eine Datei bleibt für immer erhalten. Eine neue Fassung ersetzt sie in der Liste, die alte bleibt im Verlauf.</p>
@@ -24,14 +25,14 @@
       <a th:href="@{/documents/procedure}" class="btn" id="procedure-open"><i data-lucide="file-pen" class="size-4"></i>Erstellen</a>
     </section>
 
-    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 flex flex-wrap gap-2 items-end" th:action="@{/documents}" method="get" id="document-filter" th:if="${any}">
+    <form class="bg-base-100 rounded-box border border-base-300 shadow-xs p-4 toolbar" th:action="@{/documents}" method="get" id="document-filter" th:if="${any}">
       <label class="floating-label grow basis-48"><span>Art</span>
-        <select id="filter-category" name="category" class="select select-sm w-full">
+        <select id="filter-category" name="category" class="select w-full">
           <option value="">Alle</option>
           <option th:each="option : ${categories}" th:value="${option}" th:text="${option.label()}" th:selected="${option == category}">Steuerbescheid</option>
         </select>
       </label>
-      <button type="submit" class="btn btn-sm" id="filter-apply"><i data-lucide="filter" class="size-4"></i>Filtern</button>
+      <button type="submit" class="btn" id="filter-apply"><i data-lucide="filter" class="size-4"></i>Filtern</button>
     </form>
 
     <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-2">
@@ -45,7 +46,7 @@
               <span class="text-xs text-base-content/75 [overflow-wrap:anywhere]"
                     th:text="${row.category.label() + ' · ' + #temporals.format(row.documentDate, 'dd.MM.yyyy') + (row.year != null ? ' · für ' + row.year : '') + (row.replacesId != null ? ' · neue Fassung' : '')}">Steuerbescheid · 12.05.2028 · für 2027</span>
             </span>
-            <span class="badge badge-sm badge-ghost whitespace-nowrap num" th:text="${row.mediaType == 'application/pdf' ? 'PDF' : (row.mediaType == 'image/png' ? 'PNG' : 'JPG')}">PDF</span>
+            <span class="badge badge-ghost whitespace-nowrap num" th:text="${row.mediaType == 'application/pdf' ? 'PDF' : (row.mediaType == 'image/png' ? 'PNG' : 'JPG')}">PDF</span>
           </a>
         </li>
       </ul>

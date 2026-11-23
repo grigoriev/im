@@ -8,9 +8,10 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
   <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight">Verfahrensdokumentation</h1>
-      <a th:href="@{/documents}" class="btn"><i data-lucide="arrow-left" class="size-4"></i>Alle Dokumente</a>
+    <div th:replace="~{fragments/page :: pageHead('Verfahrensdokumentation', null, ~{::headActions})}">
+      <th:block th:fragment="headActions">
+        <a th:href="@{/documents}" class="btn"><i data-lucide="arrow-left" class="size-4"></i>Alle Dokumente</a>
+      </th:block>
     </div>
     <div role="alert" class="alert alert-error text-sm grid gap-1" id="procedure-problems" th:if="${problems}">
       <span th:each="problem : ${problems}" th:text="${problem}">Fehler</span>

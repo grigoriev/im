@@ -9,11 +9,11 @@
   <a role="tab" th:href="@{/settings}"
      th:attr="aria-selected=${active == 'profile'}">Profil</a>
   <a role="tab" th:href="@{/settings/mail}" th:attr="aria-selected=${active == 'mail'}">E-Mail</a>
-  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/tax-notes}" th:attr="aria-selected=${active == 'tax-notes'}">Steuerhinweise<span class="badge badge-xs badge-ghost">Admin</span></a>
-  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/numbers}" th:attr="aria-selected=${active == 'numbers'}">Nummernkreis<span class="badge badge-xs badge-ghost">Admin</span></a>
-  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/baselines}" th:attr="aria-selected=${active == 'baseline'}">Vorjahre<span class="badge badge-xs badge-ghost">Admin</span></a>
-  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/backup}" th:attr="aria-selected=${active == 'backup'}">Datensicherung<span class="badge badge-xs badge-ghost">Admin</span></a>
-  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/countries}" th:attr="aria-selected=${active == 'countries'}">Länder<span class="badge badge-xs badge-ghost">Admin</span></a>
+  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/tax-notes}" th:attr="aria-selected=${active == 'tax-notes'}">Steuerhinweise<span class="badge badge-ghost">Admin</span></a>
+  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/numbers}" th:attr="aria-selected=${active == 'numbers'}">Nummernkreis<span class="badge badge-ghost">Admin</span></a>
+  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/baselines}" th:attr="aria-selected=${active == 'baseline'}">Vorjahre<span class="badge badge-ghost">Admin</span></a>
+  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/backup}" th:attr="aria-selected=${active == 'backup'}">Datensicherung<span class="badge badge-ghost">Admin</span></a>
+  <a sec:authorize="hasRole('ADMIN')" role="tab" th:href="@{/admin/countries}" th:attr="aria-selected=${active == 'countries'}">Länder<span class="badge badge-ghost">Admin</span></a>
 </div>
 </body>
 </html>

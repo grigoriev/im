@@ -8,7 +8,7 @@
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
 <div th:replace="~{fragments/layout :: shell('Einstellungen', 'settings', ~{::content})}">
   <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
-    <h1 class="text-2xl font-semibold tracking-tight">Einstellungen</h1>
+    <div th:replace="~{fragments/page :: pageHead('Einstellungen', null, null)}"></div>
     <div th:replace="~{fragments/settings :: tabs('numbers')}"></div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
@@ -65,12 +65,12 @@
       <ul class="grid gap-2" th:unless="${manualYears.isEmpty()}">
         <li th:each="state : ${manualYears}" class="border border-base-300 rounded-field p-3 flex flex-wrap items-center gap-3">
           <a class="link font-medium num" th:href="@{/numbers/{year}(year=${state.year})}" th:text="'Nummernkreis ' + ${state.year}">Nummernkreis 2026</a>
-          <span class="badge badge-sm whitespace-nowrap" th:classappend="${state.manual} ? 'badge-info badge-soft' : 'badge-success badge-soft'"
+          <span class="badge whitespace-nowrap" th:classappend="${state.manual} ? 'badge-info badge-soft' : 'badge-success badge-soft'"
                 th:text="${state.manual} ? 'von Hand' : 'abgeschlossen'">von Hand</span>
-          <form class="ms-auto" method="post" th:if="${state.manual}" th:action="@{/admin/numbers/manual}">
+          <form class="row-actions ms-auto" method="post" th:if="${state.manual}" th:action="@{/admin/numbers/manual}">
             <input type="hidden" name="year" th:value="${state.year}">
             <input type="hidden" name="byHand" value="false">
-            <button type="submit" class="btn btn-sm" th:id="'manual-off-' + ${state.year}"><i data-lucide="undo-2" class="size-4"></i>Zurück zum Zähler</button>
+            <button type="submit" class="btn" th:id="'manual-off-' + ${state.year}"><i data-lucide="undo-2" class="size-4"></i>Zurück zum Zähler</button>
           </form>
         </li>
       </ul>
