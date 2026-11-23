@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditEvent;
 import io.github.grigoriev.im.audit.AuditService;
@@ -57,7 +58,6 @@ import io.github.grigoriev.im.expense.ExpenseException;
 import io.github.grigoriev.im.expense.ExpenseService;
 import io.github.grigoriev.im.integrity.Damage;
 import io.github.grigoriev.im.integrity.IntegrityMonitor;
-import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.invoice.DamagedSnapshotException;
 import io.github.grigoriev.im.invoice.DispatchChannel;
 import io.github.grigoriev.im.invoice.DispatchForm;
@@ -105,6 +105,9 @@ import io.github.grigoriev.im.seller.SellerTestData;
 import io.github.grigoriev.im.seller.SettingsException;
 import io.github.grigoriev.im.seller.TaxNoteService;
 import io.github.grigoriev.im.seller.TaxStatus;
+import io.github.grigoriev.im.system.AppVersion;
+import io.github.grigoriev.im.system.SystemInfo;
+import io.github.grigoriev.im.system.SystemService;
 import io.github.grigoriev.im.threshold.RevenueRow;
 import io.github.grigoriev.im.threshold.Threshold;
 import io.github.grigoriev.im.threshold.ThresholdService;
@@ -136,8 +139,10 @@ import io.github.grigoriev.im.web.NumberBookController;
 import io.github.grigoriev.im.web.NumberController;
 import io.github.grigoriev.im.web.ReportController;
 import io.github.grigoriev.im.web.SettingsController;
+import io.github.grigoriev.im.web.SystemController;
 import io.github.grigoriev.im.web.TaxNoteController;
 import io.github.grigoriev.im.web.TemplateController;
+import io.github.grigoriev.im.web.VersionAdvice;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -179,8 +184,8 @@ import tools.jackson.core.exc.StreamReadException;
         CustomerController.class, CountryController.class,
         AuditController.class, InvoiceController.class, InvoiceRecordsController.class, TemplateController.class,
         MailTextController.class, BaselineController.class, ReportController.class, BackupController.class,
-        DocumentController.class, ExpenseController.class})
-@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
+        DocumentController.class, ExpenseController.class, SystemController.class})
+@Import({SecurityConfig.class, StaleFormHandler.class, CurrentUserAdvice.class, VersionAdvice.class, IssuedInvoicePage.class, ClockConfig.class,
         SessionEpoch.class, RecentLogin.class, UploadLimit.class})
 @EnableConfigurationProperties(PasskeyProperties.class)
 class SecurityWebTest {
@@ -199,6 +204,9 @@ class SecurityWebTest {
 
     @MockitoBean
     private AppUserRepository repository;
+
+    @MockitoBean
+    private SystemService system;
 
     @MockitoBean
     private AppUserDetailsService details;
@@ -886,6 +894,36 @@ class SecurityWebTest {
                 .andExpect(flash().attribute("success", "Schweiz entfernt."));
         mvc.perform(post("/admin/countries/CH/remove").with(user("elena").roles("USER")).with(csrf()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void showsWhatRunsToTheAdminOnlyAndTheVersionOnEveryPage() throws Exception {
+        AppVersion release = new AppVersion("0.1.12", Instant.parse("2026-11-23T05:24:00Z"));
+        when(system.version()).thenReturn(release);
+        when(system.info()).thenReturn(new SystemInfo(release, "36", "17.2", "25.0.1",
+                Instant.parse("2026-11-23T06:00:00Z")));
+        when(audit.latest()).thenReturn(List.of());
+        mvc.perform(get("/admin/system").with(user("admin").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("https://github.com/grigoriev/im/releases/tag/v0.1.12")))
+                .andExpect(content().string(Matchers.containsString("23.11.2026, 06:24")))
+                .andExpect(content().string(Matchers.containsString("23.11.2026, 07:00")))
+                .andExpect(content().string(Matchers.containsString(">V36<")))
+                .andExpect(content().string(Matchers.containsString(">17.2<")))
+                .andExpect(content().string(Matchers.containsString(">Version 0.1.12<")));
+        mvc.perform(get("/admin/system").with(user("elena").roles("USER"))).andExpect(status().isForbidden());
+
+        when(system.version()).thenReturn(new AppVersion("0.1.13-SNAPSHOT", Instant.parse("2026-11-23T05:24:00Z")));
+        mvc.perform(get("/admin/audit").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(Matchers.containsString(">Version 0.1.13-SNAPSHOT<")))
+                .andExpect(content().string(Matchers.containsString(">gebaut 23.11.2026, 06:24<")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("releases/tag"))));
+        when(system.version()).thenReturn(new AppVersion(null, null));
+        when(system.info()).thenReturn(new SystemInfo(new AppVersion(null, null), "36", "17.2", "25.0.1",
+                Instant.parse("2026-11-23T06:00:00Z")));
+        mvc.perform(get("/admin/system").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(Matchers.containsString(">Version ohne Angabe<")))
+                .andExpect(content().string(Matchers.containsString(">ohne Versionsangabe<")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("gebaut "))));
     }
 
     @Test

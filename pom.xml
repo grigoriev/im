@@ -406,6 +406,7 @@
                         <param>io.github.grigoriev.im.numbering.ManualNumbers*</param>
                         <param>io.github.grigoriev.im.validation.Fields</param>
                         <param>io.github.grigoriev.im.validation.Amounts</param>
+                        <param>io.github.grigoriev.im.system.*</param>
                         <param>io.github.grigoriev.im.customer.CustomerService</param>
                         <param>io.github.grigoriev.im.country.CountryService</param>
                         <param>io.github.grigoriev.im.audit.AuditService</param>
@@ -452,6 +453,7 @@
                         <param>io.github.grigoriev.im.seller.*Test</param>
                         <param>io.github.grigoriev.im.numbering.*Test</param>
                         <param>io.github.grigoriev.im.validation.*Test</param>
+                        <param>io.github.grigoriev.im.system.*Test</param>
                         <param>io.github.grigoriev.im.customer.*Test</param>
                         <param>io.github.grigoriev.im.country.*Test</param>
                         <param>io.github.grigoriev.im.audit.*Test</param>

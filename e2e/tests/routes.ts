@@ -24,6 +24,7 @@ export const ROUTES = [
   { name: 'baseline', path: '/admin/baselines', anonymous: false },
   { name: 'backup', path: '/admin/backup', anonymous: false },
   { name: 'countries', path: '/admin/countries', anonymous: false },
+  { name: 'system', path: '/admin/system', anonymous: false },
   // The entries of the log depend on the run: visual-data.spec.ts takes a screenshot of one entry instead.
   { name: 'audit', path: '/admin/audit', anonymous: false, screenshot: false },
 ];
