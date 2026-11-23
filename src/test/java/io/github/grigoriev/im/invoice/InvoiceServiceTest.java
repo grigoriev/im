@@ -383,7 +383,7 @@ class InvoiceServiceTest {
     @Test
     void anExternalDraftStartsWithoutTextsAndMayMixTeachingWithOneTaxNumber() {
         Customer verlag = CustomerTestData.verlag();
-        when(customers.find(3)).thenReturn(Optional.of(new Customer(3L, verlag.name(), verlag.street(),
+        when(customers.find(3)).thenReturn(Optional.of(new Customer(3L, verlag.name(), null, verlag.street(),
                 verlag.postcode(), verlag.city(), verlag.countryCode(), null, verlag.email(), null, null,
                 InvoiceFormat.EXTERNAL, null)));
         Invoice created = service.createDraft(3, null);
@@ -479,7 +479,7 @@ class InvoiceServiceTest {
         when(sellers.find()).thenReturn(Optional.of(seller(TaxStatus.KLEINUNTERNEHMER, "DE123456789")));
         assertThat(service.problems(reverse)).containsExactly(problem);
         Customer v = CustomerTestData.verlag();
-        when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), v.street(), v.postcode(), v.city(), "NL",
+        when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), null, v.street(), v.postcode(), v.city(), "NL",
                 null, null, "NL123456789B01", null, v.format(), null)));
         assertThat(service.problems(reverse)).isEmpty();
     }
@@ -497,7 +497,7 @@ class InvoiceServiceTest {
         assertThat(service.problems(withReference)).isEmpty();
 
         Customer v = CustomerTestData.verlag();
-        when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), v.street(), v.postcode(), v.city(),
+        when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), null, v.street(), v.postcode(), v.city(),
                 v.countryCode(), null, null, null, null, v.format(), null)));
         assertThat(service.problems(withReference))
                 .containsExactly("Die XRechnung braucht die E-Mail-Adresse des Kunden. Bitte beim Kunden eintragen.");

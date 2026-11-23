@@ -113,14 +113,16 @@ public class CustomerService {
     }
 
     static Customer normalize(Customer input) {
-        return new Customer(input.id(), text(input.name()), text(input.street()), text(input.postcode()),
-                text(input.city()), upper(input.countryCode()), text(input.contactName()), text(input.email()),
-                compact(input.vatId()), text(input.buyerReference()), input.format(), input.activity());
+        return new Customer(input.id(), text(input.name()), text(input.addressAddition()), text(input.street()),
+                text(input.postcode()), text(input.city()), upper(input.countryCode()), text(input.contactName()),
+                text(input.email()), compact(input.vatId()), text(input.buyerReference()), input.format(),
+                input.activity());
     }
 
     static List<String> check(Customer customer) {
         List<String> problems = new ArrayList<>();
         required(problems, customer.name(), "Name", 200);
+        optional(problems, customer.addressAddition(), "Abteilung / Zusatz", 200);
         required(problems, customer.street(), "Straße", 200);
         required(problems, customer.postcode(), "PLZ", 16);
         required(problems, customer.city(), "Ort", 100);

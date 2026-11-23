@@ -49,8 +49,8 @@ public final class ItSamples {
      */
     public static InvoiceDocument withBuyerContact(InvoiceDocument document, String contact) {
         Party b = document.buyer();
-        Party buyer = new Party(b.name(), b.street(), b.postcode(), b.city(), b.countryCode(), b.email(), b.phone(),
-                contact, b.taxNumber(), b.vatId());
+        Party buyer = new Party(b.name(), b.addressAddition(), b.street(), b.postcode(), b.city(), b.countryCode(),
+                b.email(), b.phone(), contact, b.taxNumber(), b.vatId());
         return new InvoiceDocument(document.number(), document.issueDate(), document.serviceFrom(),
                 document.serviceTo(), document.dueDate(), document.seller(), buyer, document.buyerReference(),
                 document.iban(), document.bic(), document.intro(), document.closing(), document.taxNote(),

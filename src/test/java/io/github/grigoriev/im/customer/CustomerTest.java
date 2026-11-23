@@ -28,9 +28,17 @@ class CustomerTest {
         assertThat(party.countryCode()).isEqualTo("DE");
         assertThat(party.email()).isEqualTo("erechnung@vhs.example");
         assertThat(party.contactName()).isEqualTo("Frau Beispiel");
+        assertThat(party.addressAddition()).isNull();
         assertThat(party.phone()).isNull();
         assertThat(party.taxNumber()).isNull();
         assertThat(party.vatId()).isNull();
+    }
+
+    @Test
+    void theBuyerPartyCarriesTheAddressAddition() {
+        Party party = CustomerTestData.school().toParty();
+        assertThat(party.addressAddition()).isEqualTo("Abrechnungen Online-Sprachkurse");
+        assertThat(party.contactName()).isEqualTo("Frau Weber");
     }
 
     @Test
@@ -60,9 +68,11 @@ class CustomerTest {
 
     @Test
     void copiesTheOrganizationForAnotherContact() {
-        Customer original = new Customer(7L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
-                "Frau Weber", "weber@sprachschule.example", "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null);
-        assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Sprachschule am See", "Seeweg 5",
-                "86150", "Musterstadt", "DE", null, null, "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null));
+        Customer original = new Customer(7L, "Sprachschule am See", "KST 80441000, Bereich 44 DaF-Programme", "Seeweg 5",
+                "86150", "Musterstadt", "DE", "Frau Weber", "weber@sprachschule.example", "DE123456789",
+                "04011000-12345-67", InvoiceFormat.XRECHNUNG, null);
+        assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Sprachschule am See",
+                "KST 80441000, Bereich 44 DaF-Programme", "Seeweg 5", "86150", "Musterstadt", "DE", null, null,
+                "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null));
     }
 }

@@ -58,6 +58,7 @@ class EInvoiceServiceTest {
                     line("Workshop", "1", "600.00", REVERSE_CHARGE_EU))));
             cases.add(Arguments.of(format, "O", invoice(SWISS, ref, format, line("Lesung", "1", "350.00", NOT_TAXABLE_ABROAD))));
             cases.add(Arguments.of(format, "Stornorechnung", SampleInvoices.cancellation(format)));
+            cases.add(Arguments.of(format, "department and contact", SampleInvoices.department(format)));
         }
         return cases.stream();
     }
@@ -81,6 +82,11 @@ class EInvoiceServiceTest {
                     .contains("20270308");
         } else {
             assertThat(xml).contains("<ram:TypeCode>380</ram:TypeCode>").doesNotContain("InvoiceReferencedDocument");
+        }
+        if (document.buyer().addressAddition() != null) {
+            assertThat(xml).as("BT-51 and BT-56 of the buyer")
+                    .contains("<ram:LineTwo>KST 80441000, Bereich 44 DaF-Programme</ram:LineTwo>")
+                    .containsPattern("<ram:DefinedTradeContact>\\s*<ram:PersonName>Frau Weber</ram:PersonName>");
         }
         List<String> validators = issued.validations().stream().map(ValidationResult::validator).toList();
         switch (format) {

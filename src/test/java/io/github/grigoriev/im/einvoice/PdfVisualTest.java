@@ -85,6 +85,7 @@ class PdfVisualTest {
                         many.subList(0, 30).toArray(InvoiceLine[]::new)))),
                 Arguments.of("long-iban", withIban(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),
                         "MT84MALT011000012345MTLCAST001S")),
+                Arguments.of("address-lines", SampleInvoices.departmentAbroad()),
                 Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                         line("Online-Workshop „Deutsch im Beruf“, 3 Std.", "1", "600.00",
                                 TaxCategory.REVERSE_CHARGE_EU))));

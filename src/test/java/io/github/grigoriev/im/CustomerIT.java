@@ -29,14 +29,23 @@ class CustomerIT {
     void listsTheContactsOfOneOrganizationByTheirName() {
         String name = "Sprachschule am See " + System.nanoTime();
         Customer copy = CustomerTestData.verlag();
-        Customer zeller = customers.create(new Customer(null, name, copy.street(), copy.postcode(), copy.city(), "DE",
+        Customer zeller = customers.create(new Customer(null, name, null, copy.street(), copy.postcode(), copy.city(), "DE",
                 "Zoe Zeller", null, null, null, InvoiceFormat.ZUGFERD_EN16931, null));
-        Customer arndt = customers.create(new Customer(null, name, copy.street(), copy.postcode(), copy.city(), "DE",
+        Customer arndt = customers.create(new Customer(null, name, null, copy.street(), copy.postcode(), copy.city(), "DE",
                 "Anna Arndt", null, null, null, InvoiceFormat.ZUGFERD_EN16931, null));
         assertThat(customers.list()).filteredOn(customer -> customer.name().equals(name))
                 .extracting(Customer::contactName).containsExactly("Anna Arndt", "Zoe Zeller");
         customers.delete(zeller.id());
         customers.delete(arndt.id());
+    }
+
+    @Test
+    void keepsTheAddressAddition() {
+        Customer school = customers.create(CustomerTestData.school());
+        Customer found = customers.find(school.id()).orElseThrow();
+        assertThat(found.addressAddition()).isEqualTo("Abrechnungen Online-Sprachkurse");
+        assertThat(found).isEqualTo(school);
+        customers.delete(school.id());
     }
 
     @Test
@@ -49,9 +58,10 @@ class CustomerIT {
                 "Volkshochschule Musterstadt");
 
         Customer v = CustomerTestData.verlag();
-        customers.update(verlag.id(), new Customer(null, v.name(), "Kai 7", v.postcode(), v.city(), v.countryCode(),
+        customers.update(verlag.id(), new Customer(null, v.name(), null, "Kai 7", v.postcode(), v.city(), v.countryCode(),
                 null, v.email(), "DE123456789", null, InvoiceFormat.ZUGFERD_EN16931, null));
         Customer changed = customers.find(verlag.id()).orElseThrow();
+        assertThat(changed.addressAddition()).isNull();
         assertThat(changed.street()).isEqualTo("Kai 7");
         assertThat(changed.vatId()).isEqualTo("DE123456789");
         assertThat(changed.format()).isEqualTo(InvoiceFormat.ZUGFERD_EN16931);

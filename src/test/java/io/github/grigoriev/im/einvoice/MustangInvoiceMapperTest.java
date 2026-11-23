@@ -128,6 +128,25 @@ class MustangInvoiceMapperTest {
     }
 
     @Test
+    void mapsTheAddressAdditionAsLineTwoAndTheContactOfTheBuyer() {
+        TradeParty buyer = mapper.toMustang(SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931)).getRecipient();
+        assertThat(buyer.getName()).isEqualTo("Sprachschule am See");
+        assertThat(buyer.getStreet()).isEqualTo("Seeweg 5");
+        assertThat(buyer.getAdditionalAddress()).isEqualTo("KST 80441000, Bereich 44 DaF-Programme");
+        assertThat(buyer.getContact().getName()).isEqualTo("Frau Weber");
+        assertThat(buyer.getContact().getPhone()).isNull();
+        assertThat(buyer.getContact().getEMail()).isNull();
+        assertThat(buyer.getUriUniversalCommunicationID()).isEqualTo("erechnung@sprachschule.example");
+    }
+
+    @Test
+    void leavesOutTheAdditionAndContactTheBuyerDoesNotHave() {
+        TradeParty buyer = mapper.toMustang(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931)).getRecipient();
+        assertThat(buyer.getAdditionalAddress()).isNull();
+        assertThat(buyer.getContact()).isNull();
+    }
+
+    @Test
     void mapsLinesWithUnitPriceAndQuantity() {
         Invoice invoice = mapper.toMustang(invoice(PUBLISHER, null, InvoiceFormat.ZUGFERD_EN16931,
                 line("Lektorat", "120", "4.50", KLEINUNTERNEHMER)));

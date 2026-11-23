@@ -53,7 +53,7 @@ public class MustangInvoiceMapper {
                 .setDeliveryDate(date(document.serviceTo()))
                 .setDetailedDeliveryPeriod(date(document.serviceFrom()), date(document.serviceTo()))
                 .setSender(seller(document))
-                .setRecipient(party(document.buyer()))
+                .setRecipient(buyer(document.buyer()))
                 .setPaymentTermDescription("Zahlbar bis " + document.dueDate());
         if (document.buyerReference() != null) {
             invoice.setReferenceNumber(document.buyerReference());
@@ -118,6 +118,18 @@ public class MustangInvoiceMapper {
                 // BR-CO-26 needs BT-29, BT-30 or BT-31. Without a VAT ID the tax number serves as BT-29.
                 party.setID(seller.taxNumber());
             }
+        }
+        return party;
+    }
+
+    /** The buyer with its address line 2 (BT-51) and its contact point (BT-56), if it has them. */
+    private static TradeParty buyer(Party buyer) {
+        TradeParty party = party(buyer);
+        if (buyer.addressAddition() != null) {
+            party.setAdditionalAddress(buyer.addressAddition());
+        }
+        if (buyer.contactName() != null) {
+            party.setContact(new Contact().setName(buyer.contactName()));
         }
         return party;
     }

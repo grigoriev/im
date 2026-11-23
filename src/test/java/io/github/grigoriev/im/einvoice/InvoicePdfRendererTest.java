@@ -6,11 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.grigoriev.im.format.GermanFormat;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.TextPosition;
 import org.junit.jupiter.api.Test;
 
 class InvoicePdfRendererTest {
@@ -158,6 +161,26 @@ class InvoicePdfRendererTest {
     }
 
     @Test
+    void printsTheAddressAdditionAndTheContactBelowTheName() throws IOException {
+        assertThat(text(renderer.render(SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931))))
+                .contains("Sprachschule am See\nKST 80441000, Bereich 44 DaF-Programme\nFrau Weber\nSeeweg 5\n86150 Musterstadt\n")
+                .doesNotContain("z. Hd.");
+        Party b = SampleInvoices.PUBLISHER;
+        Party addition = new Party(b.name(), "Buchhaltung", b.street(), b.postcode(), b.city(), b.countryCode(),
+                b.email(), null, null, null, null);
+        InvoiceDocument document = SampleInvoices.invoice(addition, null, InvoiceFormat.ZUGFERD_EN16931,
+                SampleInvoices.lump("Lesung", "400.00", TaxCategory.KLEINUNTERNEHMER));
+        assertThat(text(renderer.render(document))).contains("Verlag am Fluss GmbH\nBuchhaltung\nHafenweg 3\n20457 Hamburg\n");
+    }
+
+    @Test
+    void printsAForeignCountryInCapitals() throws IOException {
+        InvoiceDocument greek = SampleInvoices.invoice(SampleInvoices.GREEK, null, InvoiceFormat.ZUGFERD_EN16931,
+                SampleInvoices.lump("Lesung", "350.00", TaxCategory.NOT_TAXABLE_ABROAD));
+        assertThat(text(renderer.render(greek))).contains("10563 Athen\nGRIECHENLAND\n").doesNotContain("Griechenland");
+    }
+
+    @Test
     void omitsOptionalTexts() throws IOException {
         InvoiceDocument plain = new InvoiceDocument("7", SampleInvoices.DAY, SampleInvoices.DAY, SampleInvoices.DAY,
                 SampleInvoices.DAY, SampleInvoices.SELLER, SampleInvoices.PUBLISHER, null, "DE02120300000000202051",
@@ -166,6 +189,26 @@ class InvoicePdfRendererTest {
         String text = text(renderer.render(plain));
         assertThat(text).doesNotContain("vielen Dank").doesNotContain("Mit freundlichen")
                 .as("no closing, no signature").doesNotContain("München\nElena Sommer\n");
+    }
+
+    /** DIN 5008, form B: the address field ends 90 mm from the top edge, also with six lines. */
+    @Test
+    void sixAddressLinesStayInsideTheAddressField() throws IOException {
+        Map<String, Float> bottoms = new HashMap<>();
+        try (PDDocument document = Loader.loadPDF(renderer.render(SampleInvoices.departmentAbroad()))) {
+            PDFTextStripper stripper = new PDFTextStripper() {
+                @Override
+                protected void writeString(String line, List<TextPosition> positions) {
+                    TextPosition last = positions.getLast();
+                    bottoms.put(line, last.getYDirAdj() + last.getFont().getFontDescriptor().getDescent() / 1000
+                            * -last.getFontSizeInPt());
+                }
+            };
+            stripper.getText(document);
+        }
+        float mm = 72 / 25.4f;
+        assertThat(bottoms.get("ÖSTERREICH")).as("bottom of the sixth line").isLessThanOrEqualTo(90 * mm);
+        assertThat(bottoms.get("Sprachschule am See")).as("the first line below the sender line").isGreaterThan(62.7f * mm);
     }
 
     @Test
