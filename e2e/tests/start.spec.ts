@@ -10,18 +10,33 @@ test('greets the logged-in user in German', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Guten Tag, ${ADMIN.displayName}`);
 });
 
+// The theme switch sits at the bottom of the menu: in the sidebar on the desktop, in the drawer on the phone.
 test('switches between light, dark and system theme and keeps the choice', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   const root = page.locator('html');
-  await page.getByRole('button', { name: 'Dunkel' }).click();
+  const menu = page.getByRole('navigation', { name: 'Hauptmenü' });
+  await expect(page.getByRole('banner').getByRole('button')).toHaveCount(0);
+  await menu.getByRole('button', { name: 'Dunkel' }).click();
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  await expect(page.getByRole('button', { name: 'Dunkel' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(menu.getByRole('button', { name: 'Dunkel' })).toHaveAttribute('aria-pressed', 'true');
   await page.reload();
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('button', { name: 'Hell' }).click();
+  await menu.getByRole('button', { name: 'Hell' }).click();
   await expect(root).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('button', { name: 'System' }).click();
+  await menu.getByRole('button', { name: 'System' }).click();
   await expect(root).not.toHaveAttribute('data-theme');
+});
+
+test('switches the theme from the drawer on the phone', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto('/');
+  await page.getByRole('banner').locator('label[for="nav"]').click();
+  const menu = page.getByRole('navigation', { name: 'Hauptmenü' });
+  await menu.getByRole('button', { name: 'Dunkel' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await menu.getByRole('button', { name: 'System' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme');
 });
 
 test('loads every asset from the app itself', async ({ page, baseURL }) => {

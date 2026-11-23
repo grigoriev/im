@@ -6,8 +6,8 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell('Übersicht', 'home', ~{::content})}">
-  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4 @container">
+<div th:replace="~{fragments/layout :: shell(null, 'home', ~{::content})}">
+  <div th:fragment="content" class="grid gap-4 @container">
     <div class="page-head">
       <div>
         <div class="page-eyebrow num" data-volatile th:text="'Stand ' + ${#temporals.format(today, 'dd.MM.yyyy')}">Stand 18.03.2027</div>

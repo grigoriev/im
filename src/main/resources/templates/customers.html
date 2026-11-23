@@ -6,8 +6,8 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell('Kunden', 'customers', ~{::content})}">
-  <div th:fragment="content" class="max-w-6xl mx-auto grid gap-4">
+<div th:replace="~{fragments/layout :: shell(${customer == null ? null : (customer.id == null ? 'Neuer Kunde' : customer.label())}, 'customers', ~{::content})}">
+  <div th:fragment="content" class="grid gap-4 @container">
     <div th:replace="~{fragments/page :: pageHead('Kunden', null, ~{::headActions})}">
       <th:block th:fragment="headActions">
         <a th:href="@{/customers/new}" class="btn btn-primary"><i data-lucide="user-plus" class="size-4"></i>Neuer Kunde</a>
@@ -16,7 +16,7 @@
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
 
-    <div class="grid gap-4 grid-cols-[minmax(0,1fr)] md:grid-cols-[18rem_minmax(0,1fr)] items-start">
+    <div class="grid gap-4 grid-cols-[minmax(0,1fr)] @3xl:grid-cols-[18rem_minmax(0,1fr)] items-start">
       <nav aria-label="Kundenliste" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-2">
         <p class="text-sm text-base-content/75 p-3" th:if="${customerList.isEmpty()}">Noch keine Kunden.</p>
         <ul class="menu w-full p-0" th:unless="${customerList.isEmpty()}" id="customer-list">

@@ -14,6 +14,8 @@ All notable changes to this project are documented in this file. The format foll
 ### Changed
 
 - Buttons and fields have one height per place: 40px in the head of a page, in forms and dialogs, 32px in filter bars such as "Jahr" with "Anzeigen" and in the actions of a list row. Page titles look the same on every page, badges have one size, and the year filter of "Ausgaben" and "Berichte" sits in its own bar below the title.
+- Every page has the same width and starts at the same left edge beside the menu, so the content no longer jumps when you switch pages. "Kunden" puts the form below the list when the space is narrow.
+- The bar at the top shows breadcrumbs instead of repeating the title, for example "Rechnungen / 2027-014" with a link back to the list. The switch between "System", "Hell" and "Dunkel" moved to the bottom of the menu, above the version.
 
 ## [0.1.12] - 2026-11-23
 

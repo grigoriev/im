@@ -88,7 +88,9 @@ Package `io.github.grigoriev.im`:
   "Nummernkreis" of a year by hand under `/numbers/{year}`, `DamagedDataAdvice` checks everything and names the damage
   when stored JSON no longer parses), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog`, gives every `select.select` a styled list and opens the camera
   for a file field from `data-capture`). The web app manifest and the icons live in `static` (`manifest.webmanifest`, `favicon.*`, `icons/`), open without login.
-  Every page uses the shell of `templates/fragments/layout.html`; the admin pages live under `/admin`
+  Every page uses the shell of `templates/fragments/layout.html` (`shell(title, active, content)`: `active` names the
+  section of the menu, `title` the page below it for the breadcrumbs, `null` on the page of the section; the theme
+  switch sits at the bottom of the menu); the admin pages live under `/admin`
 
 Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers (the migration as the owner, the app as
 `im_app`; `TestDatabase.Owner` plays whoever edits the database), PDF baselines in
@@ -100,6 +102,9 @@ Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontai
 - Conventional Commits without scope, signed commits, squash merge.
 - Technical names are English: URLs, request and form parameters, element IDs, CSS classes, code, database and JSON (decision 2026-11-14). What the user reads is German: texts, labels, messages and the names of downloaded files. German legal terms without an English equivalent stay as terms, for example `KLEINUNTERNEHMER`.
 - No em-dashes in code, comments, docs or commit messages. American spelling.
+- One content width for every page: the shell sets `max-w-5xl` on `main`, aligned left beside the menu. A page sets no
+  `max-w-*` with `mx-auto`; a narrow form may set a smaller `max-w-*` and keeps the same left edge. Columns inside follow
+  the width of their container (`@container`), not of the window.
 - Buttons of a form or dialog sit on one line at its right edge (`form-actions`, `modal-foot`); a dialog grows wider instead of wrapping them, and only a phone, where it cannot, wraps them. Every button has an icon; destructive ones are `btn-danger`, their confirmation `btn-error`.
 - The container sets the size of a button or field: `page-head` (fragment `fragments/page.html :: pageHead`), `form-actions` and `modal-foot` give M (40px); `toolbar` (filter bars, the navbar), `row-actions` (actions of a list row) and `modal-head` give S (32px). Templates do not use `btn-sm`, `btn-xs`, `btn-lg`, `select-sm`, `input-sm` or badge size classes; every `h1` is `page-title`.
 - No fully qualified class names in code: import the class (decision 2026-11-14).

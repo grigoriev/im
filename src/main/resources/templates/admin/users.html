@@ -6,8 +6,8 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell('Benutzer', 'users', ~{::content})}">
-  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+<div th:replace="~{fragments/layout :: shell(null, 'users', ~{::content})}">
+  <div th:fragment="content" class="grid gap-4">
     <div th:replace="~{fragments/page :: pageHead('Benutzer', null, null)}"></div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <div role="alert" class="alert alert-error text-sm" th:if="${error}" th:text="${error}">Fehler</div>
