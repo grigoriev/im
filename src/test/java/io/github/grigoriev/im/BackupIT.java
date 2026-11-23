@@ -127,11 +127,11 @@ class BackupIT {
         return entries;
     }
 
-    /** An issued, sent, paid and canceled invoice of 2013 with its Stornorechnung, a template and a baseline. */
+    /** A customer with an address addition, an issued, sent, paid and canceled invoice of 2013 with its Stornorechnung, a template and a baseline. */
     private void someOfEverything() {
         SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
-        Customer customer = customers.create(CustomerTestData.verlag());
+        Customer customer = customers.create(CustomerTestData.school());
         templates.create(customer.id());
         Invoice draft = invoices.createDraft(customer.id(), null);
         DraftForm form = DraftForm.of(draft);
@@ -337,6 +337,8 @@ class BackupIT {
         assertThat(copyJdbc.queryForObject("SELECT count(*) FROM app_user WHERE username = 'erster'", Integer.class))
                 .as("the users of the export replace the first admin").isZero();
 
+        assertThat(copyJdbc.queryForObject("SELECT count(*) FROM customer WHERE address_addition = ?", Integer.class,
+                "Abrechnungen Online-Sprachkurse")).as("the address addition of the customer").isPositive();
         Long next = copyJdbc.queryForObject("INSERT INTO customer (name, street, postcode, city, country_code, format) "
                 + "VALUES ('Neu', 'Weg 1', '12345', 'Ort', 'DE', 'ZUGFERD_EN16931') RETURNING id", Long.class);
         assertThat(next).as("the identity continues after the imported rows")

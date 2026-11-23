@@ -111,7 +111,7 @@ class ThresholdIT {
                 null, null, null, false));
         numbers.savePattern("{YYYY}-{NN}");
         Customer v = CustomerTestData.verlag();
-        Customer customer = customers.create(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), "AT", null,
+        Customer customer = customers.create(new Customer(null, v.name(), null, v.street(), v.postcode(), v.city(), "AT", null,
                 v.email(), "ATU12345678", null, v.format(), null));
         LocalDate today = threshold.today();
         LocalDate lastYear = LocalDate.of(today.getYear() - 1, 12, 30);
@@ -196,7 +196,7 @@ class ThresholdIT {
         SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
         Customer v = CustomerTestData.verlag();
-        Customer customer = customers.create(new Customer(null, v.name(), v.street(), v.postcode(), v.city(),
+        Customer customer = customers.create(new Customer(null, v.name(), null, v.street(), v.postcode(), v.city(),
                 v.countryCode(), null, v.email(), null, null, InvoiceFormat.EXTERNAL, null));
         LocalDate day = LocalDate.of(2022, 3, 18);
         Invoice draft = invoices.createDraft(customer.id(), null);

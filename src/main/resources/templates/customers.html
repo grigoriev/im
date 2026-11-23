@@ -53,6 +53,14 @@
             <label class="floating-label"><span>Name</span>
               <input id="customer-name" th:field="*{name}" class="input w-full" maxlength="200" required>
             </label>
+            <label class="floating-label"><span>Abteilung / Zusatz</span>
+              <input id="customer-addition" th:field="*{addressAddition}" class="input w-full" maxlength="200">
+            </label>
+            <label class="floating-label"><span>Ansprechpartner</span>
+              <input id="customer-contact" th:field="*{contactName}" class="input w-full" maxlength="200">
+            </label>
+            <p class="text-xs text-base-content/75 -mt-1">Zusatz und Ansprechpartner stehen je in einer Zeile der Anschrift.
+              Ins Fenster des Umschlags passen etwa 40 Zeichen.</p>
             <label class="floating-label"><span>Straße und Hausnummer</span>
               <input id="customer-street" th:field="*{street}" class="input w-full" maxlength="200" required>
             </label>
@@ -73,14 +81,9 @@
 
           <fieldset class="grid gap-3">
             <legend class="text-sm font-medium mb-2">Kontakt</legend>
-            <div class="grid gap-3 @lg:grid-cols-2">
-              <label class="floating-label"><span>E-Mail für Rechnungen</span>
-                <input id="customer-email" th:field="*{email}" type="email" class="input w-full" maxlength="254">
-              </label>
-              <label class="floating-label"><span>Ansprechpartner</span>
-                <input id="customer-contact" th:field="*{contactName}" class="input w-full" maxlength="200">
-              </label>
-            </div>
+            <label class="floating-label"><span>E-Mail für Rechnungen</span>
+              <input id="customer-email" th:field="*{email}" type="email" class="input w-full" maxlength="254">
+            </label>
           </fieldset>
 
           <fieldset class="grid gap-3">

@@ -6,6 +6,7 @@ import java.util.Objects;
  * Seller or buyer of an invoice.
  *
  * @param name legal name
+ * @param addressAddition department or other address addition below the name (BT-51), may be {@code null}
  * @param street street and number
  * @param postcode postcode
  * @param city city
@@ -18,6 +19,7 @@ import java.util.Objects;
  */
 public record Party(
         String name,
+        String addressAddition,
         String street,
         String postcode,
         String city,
@@ -35,5 +37,24 @@ public record Party(
         Objects.requireNonNull(postcode, "postcode");
         Objects.requireNonNull(city, "city");
         Objects.requireNonNull(countryCode, "countryCode");
+    }
+
+    /**
+     * Creates a party without an address addition: the seller.
+     *
+     * @param name legal name
+     * @param street street and number
+     * @param postcode postcode
+     * @param city city
+     * @param countryCode ISO 3166-1 alpha-2 country code
+     * @param email e-mail address, may be {@code null}
+     * @param phone phone number, may be {@code null}
+     * @param contactName contact person, may be {@code null}
+     * @param taxNumber German tax number (Steuernummer), may be {@code null}
+     * @param vatId VAT identification number, may be {@code null}
+     */
+    public Party(String name, String street, String postcode, String city, String countryCode, String email,
+            String phone, String contactName, String taxNumber, String vatId) {
+        this(name, null, street, postcode, city, countryCode, email, phone, contactName, taxNumber, vatId);
     }
 }

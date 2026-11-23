@@ -399,6 +399,7 @@
                         <param>io.github.grigoriev.im.einvoice.InvoiceLine</param>
                         <param>io.github.grigoriev.im.einvoice.InvoiceDocument</param>
                         <param>io.github.grigoriev.im.einvoice.MustangInvoiceMapper</param>
+                        <param>io.github.grigoriev.im.einvoice.AddressLayout</param>
                         <param>io.github.grigoriev.im.seller.SellerService</param>
                         <param>io.github.grigoriev.im.seller.TaxNoteService</param>
                         <param>io.github.grigoriev.im.numbering.NumberPattern</param>

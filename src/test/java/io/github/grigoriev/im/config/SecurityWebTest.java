@@ -784,9 +784,9 @@ class SecurityWebTest {
 
     @Test
     void tellsTwoContactsOfOneOrganizationApartAndCopiesOne() throws Exception {
-        Customer weber = new Customer(5L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
+        Customer weber = new Customer(5L, "Sprachschule am See", null, "Seeweg 5", "86150", "Musterstadt", "DE",
                 "Frau Weber", "weber@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931, null);
-        Customer klein = new Customer(6L, "Sprachschule am See", "Seeweg 5", "86150", "Musterstadt", "DE",
+        Customer klein = new Customer(6L, "Sprachschule am See", null, "Seeweg 5", "86150", "Musterstadt", "DE",
                 "Herr Klein", "klein@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931, null);
         when(customers.list()).thenReturn(List.of(weber, klein));
         when(customers.find(5)).thenReturn(Optional.of(weber));
@@ -801,6 +801,22 @@ class SecurityWebTest {
         mvc.perform(get("/invoices").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString(">Sprachschule am See · Frau Weber</option>")))
                 .andExpect(content().string(Matchers.containsString(">Sprachschule am See · Herr Klein</option>")));
+    }
+
+    @Test
+    void bindsTheAddressAdditionOfACustomer() throws Exception {
+        when(customers.create(any())).thenReturn(CustomerTestData.school().withId(3L));
+        mvc.perform(post("/customers").param("name", "Sprachschule am See")
+                        .param("addressAddition", "Abrechnungen Online-Sprachkurse")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/customers/3"));
+        verify(customers).create(argThat(customer -> "Abrechnungen Online-Sprachkurse".equals(customer.addressAddition())));
+        when(customers.find(3)).thenReturn(Optional.of(CustomerTestData.school().withId(3L)));
+        mvc.perform(get("/customers/3").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("value=\"Abrechnungen Online-Sprachkurse\"")));
+        mvc.perform(get("/customers/new").param("from", "3").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("value=\"Abrechnungen Online-Sprachkurse\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("value=\"Frau Weber\""))));
     }
 
     @Test
@@ -846,7 +862,7 @@ class SecurityWebTest {
         mvc.perform(get("/customers/new").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
         Customer kosovar = CustomerTestData.verlag();
-        when(customers.find(7)).thenReturn(Optional.of(new Customer(7L, kosovar.name(), kosovar.street(),
+        when(customers.find(7)).thenReturn(Optional.of(new Customer(7L, kosovar.name(), null, kosovar.street(),
                 kosovar.postcode(), kosovar.city(), "XK", "Frau Krasniqi", null, null, null, kosovar.format(), null)));
         when(countries.options(null, "XK")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/customers/new").param("from", "7").with(user("elena").roles("USER")))
@@ -861,7 +877,7 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
 
         Customer swiss = CustomerTestData.verlag();
-        swiss = new Customer(5L, swiss.name(), swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
+        swiss = new Customer(5L, swiss.name(), null, swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
                 null, swiss.format(), null);
         when(customers.find(5)).thenReturn(Optional.of(swiss));
         when(countries.options("CH", null)).thenReturn(list);

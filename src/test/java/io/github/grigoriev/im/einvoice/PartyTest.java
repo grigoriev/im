@@ -1,5 +1,6 @@
 package io.github.grigoriev.im.einvoice;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import org.junit.jupiter.api.Test;
@@ -23,5 +24,11 @@ class PartyTest {
         assertThatNullPointerException()
                 .isThrownBy(() -> new Party("n", "s", "p", "c", null, null, null, null, null, null))
                 .withMessage("countryCode");
+    }
+
+    @Test
+    void theSellerHasNoAddressAddition() {
+        Party seller = new Party("n", "s", "p", "c", "DE", "e", "t", "k", "x", "v");
+        assertThat(seller).isEqualTo(new Party("n", null, "s", "p", "c", "DE", "e", "t", "k", "x", "v"));
     }
 }

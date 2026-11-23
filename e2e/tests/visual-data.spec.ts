@@ -15,6 +15,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   test.slow();
   await page.goto('/customers/new');
   await page.getByLabel('Name', { exact: true }).fill(LONG_NAME);
+  await page.getByLabel('Abteilung / Zusatz').fill('Abrechnungen Online-Sprachkurse');
   await page.getByLabel('Straße und Hausnummer').fill('Lange Straße 123');
   await page.getByLabel('PLZ').fill('86150');
   await page.getByLabel('Ort', { exact: true }).fill('Musterstadt');

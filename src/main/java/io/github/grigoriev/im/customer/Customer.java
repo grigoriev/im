@@ -11,6 +11,7 @@ import org.springframework.data.relational.core.mapping.Table;
  *
  * @param id database ID, {@code null} before the first save
  * @param name legal name
+ * @param addressAddition department or other address addition below the name, may be {@code null}
  * @param street street and number
  * @param postcode postcode
  * @param city city
@@ -26,6 +27,7 @@ import org.springframework.data.relational.core.mapping.Table;
 public record Customer(
         @Id Long id,
         String name,
+        String addressAddition,
         String street,
         String postcode,
         String city,
@@ -43,7 +45,7 @@ public record Customer(
      * @return the empty customer
      */
     public static Customer empty() {
-        return new Customer(null, "", "", "", "", "DE", null, null, null, null, InvoiceFormat.ZUGFERD_EN16931, null);
+        return new Customer(null, "", null, "", "", "", "DE", null, null, null, null, InvoiceFormat.ZUGFERD_EN16931, null);
     }
 
     /**
@@ -53,8 +55,8 @@ public record Customer(
      * @return the copy
      */
     public Customer withId(Long newId) {
-        return new Customer(newId, name, street, postcode, city, countryCode, contactName, email, vatId, buyerReference,
-                format, activity);
+        return new Customer(newId, name, addressAddition, street, postcode, city, countryCode, contactName, email, vatId,
+                buyerReference, format, activity);
     }
 
     /**
@@ -79,14 +81,14 @@ public record Customer(
     }
 
     /**
-     * Returns a new customer for another contact person of the same organization: the address, VAT ID, buyer
-     * reference and format stay, the contact person and e-mail are empty.
+     * Returns a new customer for another contact person of the same organization: the address with its addition, VAT
+     * ID, buyer reference and format stay, the contact person and e-mail are empty.
      *
      * @return the copy, without an ID
      */
     public Customer forAnotherContact() {
-        return new Customer(null, name, street, postcode, city, countryCode, null, null, vatId, buyerReference, format,
-                activity);
+        return new Customer(null, name, addressAddition, street, postcode, city, countryCode, null, null, vatId,
+                buyerReference, format, activity);
     }
 
     /**
@@ -95,6 +97,7 @@ public record Customer(
      * @return the party
      */
     public Party toParty() {
-        return new Party(name, street, postcode, city, countryCode, email, null, contactName, null, vatId);
+        return new Party(name, addressAddition, street, postcode, city, countryCode, email, null, contactName, null,
+                vatId);
     }
 }

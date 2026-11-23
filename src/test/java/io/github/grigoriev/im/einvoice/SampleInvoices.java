@@ -28,6 +28,11 @@ public final class SampleInvoices {
             "erechnung@vhs-musterstadt.example", null, null, null, null);
     static final Party DUTCH = new Party("Lingua Lab B.V.", "Oudegracht 10", "3511", "Utrecht", "NL",
             "invoices@lingualab.example", null, null, null, "NL123456789B01");
+    /** A school with a department and a contact person. */
+    static final Party DEPARTMENT = new Party("Sprachschule am See", "KST 80441000, Bereich 44 DaF-Programme", "Seeweg 5",
+            "86150", "Musterstadt", "DE", "erechnung@sprachschule.example", null, "Frau Weber", null, null);
+    static final Party GREEK = new Party("Glossa Sprachzentrum", "Odos Ermou 10", "10563", "Athen", "GR",
+            "info@glossa.example", null, null, null, null);
     static final Party SWISS = new Party("Kulturforum Zürich AG", "Bahnhofstrasse 5", "8001", "Zürich", "CH",
             "kreditoren@kulturforum.example", null, null, null, null);
 
@@ -108,6 +113,21 @@ public final class SampleInvoices {
     public static InvoiceDocument free(InvoiceFormat format) {
         return invoice(PUBLISHER, format.followsXRechnung() ? "04011000-12345-67" : null, format,
                 lump("Gratis", "0", TaxCategory.KLEINUNTERNEHMER));
+    }
+
+    /** Teaching for a department: 24 × 41,00 € under §4 Nr. 21 to the buyer with its address lines. */
+    public static InvoiceDocument department(InvoiceFormat format) {
+        return invoice(DEPARTMENT, format.followsXRechnung() ? "04011000-12345-67" : null, format,
+                line("Online-Sprachkurs Deutsch B1, je 45 Min.", "24", "41.00", TaxCategory.EXEMPT_4_21));
+    }
+
+    /** Teaching for the department in Austria: six lines in the address field, the most it holds. */
+    static InvoiceDocument departmentAbroad() {
+        Party b = DEPARTMENT;
+        Party buyer = new Party(b.name(), b.addressAddition(), b.street(), "6020", "Innsbruck", "AT", b.email(), null,
+                b.contactName(), null, null);
+        return invoice(buyer, null, InvoiceFormat.ZUGFERD_EN16931,
+                line("Online-Sprachkurs Deutsch B1, je 45 Min.", "24", "41.00", TaxCategory.NOT_TAXABLE_ABROAD));
     }
 
     /** The Stornorechnung 2027-10 of the reading, invoice 2027-07 of March 8, with the same lines. */

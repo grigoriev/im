@@ -31,6 +31,7 @@ class CustomerServiceTest {
         Customer c = CustomerTestData.verlag();
         return new Customer(c.id(),
                 field.equals("name") ? value : c.name(),
+                field.equals("addition") ? value : c.addressAddition(),
                 field.equals("street") ? value : c.street(),
                 field.equals("postcode") ? value : c.postcode(),
                 field.equals("city") ? value : c.city(),
@@ -53,13 +54,13 @@ class CustomerServiceTest {
     @Test
     void createsANormalizedCustomerWithoutTheEnteredId() {
         Customer c = CustomerTestData.verlag();
-        Customer input = new Customer(99L, "  Verlag am Fluss GmbH ", c.street(), c.postcode(), c.city(), " de ", " ",
-                " buchhaltung@verlag.example ", " nl 123456789 b01 ", "", InvoiceFormat.ZUGFERD_EN16931, null);
+        Customer input = new Customer(99L, "  Verlag am Fluss GmbH ", " Abrechnungen Online-Sprachkurse ", c.street(),
+                c.postcode(), c.city(), " de ", " ", " buchhaltung@verlag.example ", " nl 123456789 b01 ", "", InvoiceFormat.ZUGFERD_EN16931, null);
         when(repository.save(any())).thenAnswer(call -> ((Customer) call.getArgument(0)).withId(5L));
         Customer saved = service.create(input);
         assertThat(saved.id()).isEqualTo(5L);
-        verify(repository).save(new Customer(null, "Verlag am Fluss GmbH", c.street(), c.postcode(), c.city(), "DE",
-                null, "buchhaltung@verlag.example", "NL123456789B01", null, InvoiceFormat.ZUGFERD_EN16931, null));
+        verify(repository).save(new Customer(null, "Verlag am Fluss GmbH", "Abrechnungen Online-Sprachkurse", c.street(),
+                c.postcode(), c.city(), "DE", null, "buchhaltung@verlag.example", "NL123456789B01", null, InvoiceFormat.ZUGFERD_EN16931, null));
         verify(audit).add(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
     }
 
@@ -116,7 +117,7 @@ class CustomerServiceTest {
 
     @ParameterizedTest
     @CsvSource({"name, 200, Name", "street, 200, Straße", "postcode, 16, PLZ", "city, 100, Ort",
-        "contact, 200, Ansprechpartner", "reference, 200, Käuferreferenz"})
+        "addition, 200, Abteilung / Zusatz", "contact, 200, Ansprechpartner", "reference, 200, Käuferreferenz"})
     void limitsTheLength(String field, int max, String label) {
         assertThat(CustomerService.check(CustomerService.normalize(with(field, "x".repeat(max))))).isEmpty();
         assertThat(CustomerService.check(CustomerService.normalize(with(field, "x".repeat(max + 1)))))
@@ -132,9 +133,9 @@ class CustomerServiceTest {
     @CsvSource({"XRECHNUNG", "ZUGFERD_XRECHNUNG"})
     void xrechnungNeedsABuyerReferenceAndAnEmail(InvoiceFormat format) {
         Customer v = CustomerTestData.vhs();
-        assertThat(CustomerService.check(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), v.countryCode(),
+        assertThat(CustomerService.check(new Customer(null, v.name(), null, v.street(), v.postcode(), v.city(), v.countryCode(),
                 null, v.email(), null, v.buyerReference(), format, null))).isEmpty();
-        assertThat(CustomerService.check(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), v.countryCode(),
+        assertThat(CustomerService.check(new Customer(null, v.name(), null, v.street(), v.postcode(), v.city(), v.countryCode(),
                 null, null, null, null, format, null))).containsExactly(
                 "Die XRechnung braucht eine Käuferreferenz, zum Beispiel die Leitweg-ID (BR-DE-15).",
                 "Die XRechnung braucht die E-Mail-Adresse des Kunden.");
@@ -143,7 +144,7 @@ class CustomerServiceTest {
     @Test
     void needsAFormat() {
         Customer v = CustomerTestData.verlag();
-        assertThat(CustomerService.check(new Customer(null, v.name(), v.street(), v.postcode(), v.city(), v.countryCode(),
+        assertThat(CustomerService.check(new Customer(null, v.name(), null, v.street(), v.postcode(), v.city(), v.countryCode(),
                 null, null, null, null, null, null))).containsExactly("Bitte das E-Rechnungsformat wählen.");
     }
 }

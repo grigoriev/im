@@ -103,7 +103,7 @@ class ExternalInvoiceIT {
     void profileAndCustomer() {
         SellerTestData.save(sellers, SellerTestData.profile());
         Customer verlag = CustomerTestData.verlag();
-        customer = customers.create(new Customer(null, verlag.name(), verlag.street(), verlag.postcode(),
+        customer = customers.create(new Customer(null, verlag.name(), null, verlag.street(), verlag.postcode(),
                 verlag.city(), verlag.countryCode(), null, verlag.email(), null, null, InvoiceFormat.EXTERNAL, null));
         numbers.savePattern("{YYYY}-{NN}");
     }

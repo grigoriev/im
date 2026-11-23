@@ -85,6 +85,12 @@ class PdfVisualTest {
                         many.subList(0, 30).toArray(InvoiceLine[]::new)))),
                 Arguments.of("long-iban", withIban(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931),
                         "MT84MALT011000012345MTLCAST001S")),
+                Arguments.of("address-lines", SampleInvoices.departmentAbroad()),
+                Arguments.of("address-long-name", SampleInvoices.invoice(new Party(
+                        "Gemeinnützige Gesellschaft für Sprachförderung und interkulturelle Bildung Musterstadt mbH",
+                        "Abrechnungen Online-Sprachkurse", "Seeweg 5", "6020", "Innsbruck", "AT", null, null, "Frau Weber",
+                        null, null), null, InvoiceFormat.ZUGFERD_EN16931, line("Online-Sprachkurs Deutsch B1, je 45 Min.",
+                        "24", "41.00", TaxCategory.NOT_TAXABLE_ABROAD))),
                 Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                         line("Online-Workshop „Deutsch im Beruf“, 3 Std.", "1", "600.00",
                                 TaxCategory.REVERSE_CHARGE_EU))));

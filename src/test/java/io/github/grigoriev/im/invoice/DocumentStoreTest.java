@@ -164,4 +164,23 @@ class DocumentStoreTest {
         assertThat(restored.cancels()).isNull();
         assertThat(restored).isEqualTo(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
     }
+
+    @Test
+    void restoresTheAddressAdditionOfTheBuyer() {
+        InvoiceDocument document = SampleInvoices.department(InvoiceFormat.XRECHNUNG);
+        String json = store.snapshot(document);
+        assertThat(json).contains("\"addressAddition\":\"KST 80441000, Bereich 44 DaF-Programme\"");
+        assertThat(store.restore(json)).isEqualTo(document);
+    }
+
+    @Test
+    void restoresASnapshotFromBeforeTheAddressAddition() {
+        InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        String json = store.snapshot(reading);
+        String older = json.replace("\"addressAddition\":null,", "");
+        assertThat(older).doesNotContain("addressAddition");
+        InvoiceDocument restored = store.restore(older);
+        assertThat(restored.buyer().addressAddition()).isNull();
+        assertThat(restored).isEqualTo(reading);
+    }
 }

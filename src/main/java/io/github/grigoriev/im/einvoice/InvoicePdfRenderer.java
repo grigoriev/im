@@ -48,7 +48,8 @@ public class InvoicePdfRenderer {
      * @return the PDF/A-3B bytes
      */
     public byte[] render(InvoiceDocument document) {
-        return render("pdf/invoice", Map.of("invoice", document, "fmt", new GermanFormat()));
+        return render("pdf/invoice", Map.of("invoice", document, "fmt", new GermanFormat(), "address",
+                AddressLayout.of(document.buyer())));
     }
 
     /**
