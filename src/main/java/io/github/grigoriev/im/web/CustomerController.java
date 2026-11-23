@@ -25,6 +25,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/customers")
 public class CustomerController {
 
+    static final String NEW_CUSTOMER = "Neuer Kunde";
     static final String VIEW = "customers";
 
     /** The German names of the formats. */
@@ -170,6 +171,9 @@ public class CustomerController {
     private String page(Model model, Customer customer, String submitted) {
         model.addAttribute("customerList", customers.list());
         model.addAttribute("customer", customer);
+        // The breadcrumb names the stored customer: after a failed save the form holds what was entered.
+        model.addAttribute("crumb", customer == null ? null : customer.id() == null ? NEW_CUSTOMER
+                : customers.find(customer.id()).map(Customer::label).orElse(null));
         model.addAttribute("formats", FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("countries", countries.options(stored(customer), submitted));

@@ -6,7 +6,7 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell(${customer == null ? null : (customer.id == null ? 'Neuer Kunde' : customer.label())}, 'customers', ~{::content})}">
+<div th:replace="~{fragments/layout :: shell(${crumb}, 'customers', ~{::content})}">
   <div th:fragment="content" class="grid gap-4 @container">
     <div th:replace="~{fragments/page :: pageHead('Kunden', null, ~{::headActions})}">
       <th:block th:fragment="headActions">
