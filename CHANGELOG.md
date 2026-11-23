@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-11-23
+
 ### Added
 
 - Below the menu every page names the version of the app: a release links to its notes on GitHub, a build of `main` names the time of its build. The login page does not show it.
@@ -228,7 +230,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - The start page no longer fails for a logged-in user without an account record.
 
-[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.12...HEAD
+[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.13...HEAD
+[0.1.13]: https://github.com/grigoriev/im/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/grigoriev/im/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/grigoriev/im/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/grigoriev/im/compare/v0.1.9...v0.1.10
