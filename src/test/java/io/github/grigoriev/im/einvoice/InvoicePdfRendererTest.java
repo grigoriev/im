@@ -15,6 +15,8 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class InvoicePdfRendererTest {
 
@@ -191,11 +193,21 @@ class InvoicePdfRendererTest {
                 .as("no closing, no signature").doesNotContain("München\nElena Sommer\n");
     }
 
-    /** DIN 5008, form B: the address field ends 90 mm from the top edge, also with six lines. */
-    @Test
-    void sixAddressLinesStayInsideTheAddressField() throws IOException {
+    /**
+     * DIN 5008, form B: the address field ends 90 mm from the top edge, also with six lines. The addition and the
+     * contact person keep one line each, even at their longest.
+     */
+    @ParameterizedTest
+    @ValueSource(ints = {0, 200})
+    void sixAddressLinesStayInsideTheAddressField(int length) throws IOException {
+        InvoiceDocument d = SampleInvoices.departmentAbroad();
+        Party b = d.buyer();
+        Party buyer = length == 0 ? b : new Party(b.name(), "Bereich ".repeat(25).substring(0, length), b.street(),
+                b.postcode(), b.city(), b.countryCode(), b.email(), null, "Frau Weber ".repeat(19).substring(0, length),
+                null, null);
+        InvoiceDocument document = SampleInvoices.invoice(buyer, null, d.format(), d.lines().toArray(InvoiceLine[]::new));
         Map<String, Float> bottoms = new HashMap<>();
-        try (PDDocument document = Loader.loadPDF(renderer.render(SampleInvoices.departmentAbroad()))) {
+        try (PDDocument pdf = Loader.loadPDF(renderer.render(document))) {
             PDFTextStripper stripper = new PDFTextStripper() {
                 @Override
                 protected void writeString(String line, List<TextPosition> positions) {
@@ -204,7 +216,7 @@ class InvoicePdfRendererTest {
                             * -last.getFontSizeInPt());
                 }
             };
-            stripper.getText(document);
+            stripper.getText(pdf);
         }
         float mm = 72 / 25.4f;
         assertThat(bottoms.get("ÖSTERREICH")).as("bottom of the sixth line").isLessThanOrEqualTo(90 * mm);

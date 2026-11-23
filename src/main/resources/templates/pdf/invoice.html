@@ -23,6 +23,8 @@
     .head td.address { width: 85mm; padding-top: 33.3mm; }
     /* Six lines of 4.5 mm fit the 27.3 mm below the sender line: name, addition, contact, street, city, country. */
     .recipient { line-height: 4.5mm; }
+    /* The addition and the contact person keep one line each: the XML carries them in full. */
+    .recipient .one-line { white-space: nowrap; overflow: hidden; }
     .sender { font-size: 7pt; line-height: 3.9mm; color: #616e7c; white-space: nowrap; overflow: hidden; }
     .meta { text-align: right; font-size: 8.5pt; margin-left: auto; }
     .meta td { padding: 0 0 0.6mm 4mm; white-space: nowrap; }
@@ -58,8 +60,8 @@
         <!-- DIN 5008: the department and the contact person below the name, without "z. Hd.". -->
         <div class="recipient">
           <div class="strong" th:text="${invoice.buyer.name}">Kunde</div>
-          <div th:if="${invoice.buyer.addressAddition != null}" th:text="${invoice.buyer.addressAddition}">Abteilung</div>
-          <div th:if="${invoice.buyer.contactName != null}" th:text="${invoice.buyer.contactName}">Ansprechpartner</div>
+          <div class="one-line" th:if="${invoice.buyer.addressAddition != null}" th:text="${invoice.buyer.addressAddition}">Abteilung</div>
+          <div class="one-line" th:if="${invoice.buyer.contactName != null}" th:text="${invoice.buyer.contactName}">Ansprechpartner</div>
           <div th:text="${invoice.buyer.street}">Straße</div>
           <div th:text="${invoice.buyer.postcode + ' ' + invoice.buyer.city}">Ort</div>
           <div th:if="${invoice.buyer.countryCode != 'DE'}" th:text="${fmt.country(invoice.buyer.countryCode)}">Land</div>

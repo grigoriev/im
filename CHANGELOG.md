@@ -8,7 +8,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
-- "Kunden" has the field "Abteilung / Zusatz" for a department or cost center below the name. A further contact person of the customer keeps it.
+- "Kunden" has the field "Abteilung / Zusatz" for a department or cost center below the name. A further contact person of the customer keeps it. The PDF prints it and the contact person on one line each, so the address always fits the window; the XML carries them in full.
 
 ### Changed
 
