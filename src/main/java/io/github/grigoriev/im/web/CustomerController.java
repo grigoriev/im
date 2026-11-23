@@ -172,13 +172,22 @@ public class CustomerController {
         model.addAttribute("customerList", customers.list());
         model.addAttribute("customer", customer);
         // The breadcrumb names the stored customer: after a failed save the form holds what was entered.
-        model.addAttribute("crumb", customer == null ? null : customer.id() == null ? NEW_CUSTOMER
-                : customers.find(customer.id()).map(Customer::label).orElse(null));
+        model.addAttribute("crumb", crumb(customer));
         model.addAttribute("formats", FORMATS);
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("countries", countries.options(stored(customer), submitted));
         model.addAttribute("templates", customer == null || customer.id() == null ? List.of()
                 : templates.list(customer.id()));
         return VIEW;
+    }
+
+    private String crumb(Customer customer) {
+        if (customer == null) {
+            return null;
+        }
+        if (customer.id() == null) {
+            return NEW_CUSTOMER;
+        }
+        return customers.find(customer.id()).map(Customer::label).orElse(null);
     }
 }
