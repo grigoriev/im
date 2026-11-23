@@ -6,8 +6,8 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell('Mein Konto', 'account', ~{::content})}">
-  <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4">
+<div th:replace="~{fragments/layout :: shell(null, 'account', ~{::content})}">
+  <div th:fragment="content" class="max-w-3xl grid gap-4">
     <div th:replace="~{fragments/page :: pageHead('Mein Konto', null, null)}"></div>
     <output class="alert alert-success text-sm" th:if="${success}" th:text="${success}">OK</output>
     <output class="alert alert-success text-sm" th:if="${param.passkey}">Passkey hinzugefügt.</output>

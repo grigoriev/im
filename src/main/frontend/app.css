@@ -271,6 +271,19 @@
   background-color: color-mix(in oklch, var(--color-primary) 12%, transparent); color: var(--color-primary); font-weight: 600;
 }
 
+/* The breadcrumbs of the navbar (fragments/layout.html): the section links to its list, the page after it cuts its
+   name, so a long one never scrolls sideways. The slash comes from CSS, so screen readers skip it. */
+.breadcrumbs-line { flex: 1 1 auto; min-width: 0; font-size: 0.875rem; line-height: 1.25rem; }
+.breadcrumbs-line > ol { display: flex; align-items: center; min-width: 0; }
+.breadcrumbs-line li { display: flex; align-items: center; min-width: 0; white-space: nowrap; }
+.breadcrumbs-line li:not(:last-child) { flex-shrink: 0; }
+.breadcrumbs-line li + li::before {
+  content: "/" / ""; padding-inline: 0.5rem; color: color-mix(in oklab, var(--color-base-content) 50%, transparent);
+}
+.breadcrumbs-line a { color: color-mix(in oklab, var(--color-base-content) 75%, transparent); }
+.breadcrumbs-line a:hover { color: var(--color-primary); text-decoration: underline; }
+.breadcrumbs-line [aria-current="page"] { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+
 /* Tabs of a page: a line below, the open tab in the accent color. */
 .tabs-line { display: flex; flex-wrap: wrap; column-gap: 1.5rem; border-bottom: 1px solid var(--color-base-300); }
 .tabs-line > a {

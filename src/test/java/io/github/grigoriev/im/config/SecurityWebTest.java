@@ -868,8 +868,11 @@ class SecurityWebTest {
         mvc.perform(get("/customers/5").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("<option value=\"CH\" selected=\"selected\">Schweiz</option>")));
         when(customers.update(eq(5L), any())).thenThrow(new CustomerException(List.of("Bitte ein Land aus der Liste wählen.")));
+        // The name was emptied and the save failed: the breadcrumb still names the stored customer.
         mvc.perform(post("/customers/5").param("countryCode", "JP").with(user("elena").roles("USER")).with(csrf()))
-                .andExpect(content().string(Matchers.containsString("Bitte ein Land aus der Liste wählen.")));
+                .andExpect(content().string(Matchers.containsString("Bitte ein Land aus der Liste wählen.")))
+                .andExpect(content().string(Matchers.containsString("<span aria-current=\"page\">" + swiss.label()
+                        + "</span>")));
         verify(countries).options("CH", "JP");
         mvc.perform(get("/customers").with(user("elena").roles("USER"))).andExpect(status().isOk());
     }

@@ -6,8 +6,8 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
-  <div th:fragment="content" class="max-w-5xl mx-auto grid gap-4">
+<div th:replace="~{fragments/layout :: shell(null, 'documents', ~{::content})}">
+  <div th:fragment="content" class="grid gap-4">
     <div th:replace="~{fragments/page :: pageHead('Dokumente', null, ~{::headActions})}">
       <th:block th:fragment="headActions">
         <a th:href="@{/documents/new}" class="btn btn-primary" id="document-new"><i data-lucide="file-up" class="size-4"></i>Dokument ablegen</a>

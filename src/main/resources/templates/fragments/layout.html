@@ -24,24 +24,52 @@
 </head>
 <body>
 
-<!-- Theme switch: system, light, dark. -->
+<!-- The buttons of the theme switch: system, light, dark. Square, they show only their icon. -->
+<th:block th:fragment="themeButtons(square)" th:with="squareClass=${square} ? 'btn-square' : '', labelClass=${square} ? 'sr-only' : 'hidden sm:inline'">
+  <button type="button" class="btn join-item aria-pressed:btn-active" th:classappend="${squareClass}" data-theme-set="system" aria-pressed="true" title="System"><i data-lucide="monitor" class="size-4"></i><span th:class="${labelClass}">System</span></button>
+  <button type="button" class="btn join-item aria-pressed:btn-active" th:classappend="${squareClass}" data-theme-set="light" aria-pressed="false" title="Hell"><i data-lucide="sun" class="size-4"></i><span th:class="${labelClass}">Hell</span></button>
+  <button type="button" class="btn join-item aria-pressed:btn-active" th:classappend="${squareClass}" data-theme-set="dark" aria-pressed="false" title="Dunkel"><i data-lucide="moon" class="size-4"></i><span th:class="${labelClass}">Dunkel</span></button>
+</th:block>
+
+<!-- Theme switch of a page without the menu, such as the login. -->
 <fieldset th:fragment="theme" class="join">
   <legend class="sr-only">Darstellung</legend>
-  <button type="button" class="btn join-item aria-pressed:btn-active" data-theme-set="system" aria-pressed="true" title="System"><i data-lucide="monitor" class="size-4"></i><span class="hidden sm:inline">System</span></button>
-  <button type="button" class="btn join-item aria-pressed:btn-active" data-theme-set="light" aria-pressed="false" title="Hell"><i data-lucide="sun" class="size-4"></i><span class="hidden sm:inline">Hell</span></button>
-  <button type="button" class="btn join-item aria-pressed:btn-active" data-theme-set="dark" aria-pressed="false" title="Dunkel"><i data-lucide="moon" class="size-4"></i><span class="hidden sm:inline">Dunkel</span></button>
+  <th:block th:replace="~{fragments/layout :: themeButtons(false)}"></th:block>
 </fieldset>
 
-<!-- The app shell of docs/mockup: sidebar on desktop, drawer on the phone. -->
-<div th:fragment="shell(title, active, content)" class="drawer lg:drawer-open min-h-screen">
+<!-- Theme switch at the bottom of the menu: changed rarely, so out of the navbar. S controls, as in a toolbar. -->
+<fieldset th:fragment="menuTheme" class="px-3">
+  <legend class="sr-only">Darstellung</legend>
+  <div class="toolbar flex-nowrap items-center justify-between">
+    <span class="text-xs text-base-content/75" aria-hidden="true">Darstellung</span>
+    <div class="join"><th:block th:replace="~{fragments/layout :: themeButtons(true)}"></th:block></div>
+  </div>
+</fieldset>
+
+<!-- The app shell of docs/mockup: sidebar on desktop, drawer on the phone. The section of the menu comes from active;
+     title names the page below it for the breadcrumbs, null on the page of the section itself, whose H1 says it. All
+     pages share one content width, aligned left next to the menu. SpEL reads a bare name in map[...] as the key
+     itself, so the key of active comes in by preprocessing. -->
+<div th:fragment="shell(title, active, content)" class="drawer lg:drawer-open min-h-screen"
+     th:with="sectionName=${ {home:'Übersicht', invoices:'Rechnungen', expenses:'Ausgaben', customers:'Kunden',
+                              documents:'Dokumente', reports:'Berichte', account:'Mein Konto', settings:'Einstellungen',
+                              users:'Benutzer', audit:'Protokoll', system:'System'}['__${active}__'] },
+              sectionUrl=${ {home:'/', invoices:'/invoices', expenses:'/expenses', customers:'/customers',
+                             documents:'/documents', reports:'/reports', account:'/account', settings:'/settings',
+                             users:'/admin/users', audit:'/admin/audit', system:'/admin/system'}['__${active}__'] }">
   <input id="nav" type="checkbox" class="drawer-toggle" aria-label="Menü">
   <div class="drawer-content flex flex-col min-w-0">
     <header class="navbar toolbar flex-nowrap items-center bg-base-100 border-b border-base-300 gap-2 px-4 sticky top-0 z-20">
       <label for="nav" class="btn btn-square lg:hidden"><i data-lucide="menu" class="size-5"></i><span class="sr-only">Menü öffnen</span></label>
-      <div class="flex-1 min-w-0"><span class="font-semibold truncate" th:text="${title}">Seite</span></div>
-      <div th:replace="~{fragments/layout :: theme}"></div>
+      <span class="font-semibold truncate lg:hidden" th:if="${title == null}" th:text="${sectionName}">Bereich</span>
+      <nav class="breadcrumbs-line" aria-label="Brotkrumen" th:if="${title != null}">
+        <ol>
+          <li><a th:href="@{${sectionUrl}}" th:text="${sectionName}">Bereich</a></li>
+          <li><span aria-current="page" th:text="${title}">Seite</span></li>
+        </ol>
+      </nav>
     </header>
-    <main class="px-4 py-6 flex-1 min-w-0" th:insert="${content}"></main>
+    <main class="box-content max-w-5xl px-4 py-6 flex-1 min-w-0" th:insert="${content}"></main>
   </div>
   <div class="drawer-side z-30">
     <!-- Closes the drawer on a tap beside it. Screen readers close it with the menu button. -->
@@ -71,6 +99,7 @@
         <form th:action="@{/logout}" method="post">
           <button type="submit" class="flex w-full items-center gap-2 rounded-field px-3 py-2 text-sm cursor-pointer hover:bg-base-200"><i data-lucide="log-out" class="size-4"></i>Abmelden</button>
         </form>
+        <div th:replace="~{fragments/layout :: menuTheme}"></div>
         <!-- The version of the app: a release links to its notes, a snapshot names the time of its build. -->
         <p class="px-3 text-xs text-base-content/75 num grid" id="app-version" th:if="${appVersion != null}" data-volatile>
           <a th:if="${appVersion.release()}" class="hover:underline" th:href="${appVersion.releaseUrl()}" target="_blank" rel="noopener"

@@ -6,8 +6,8 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell('Dokumente', 'documents', ~{::content})}">
-  <div th:fragment="content" class="max-w-3xl mx-auto grid gap-4">
+<div th:replace="~{fragments/layout :: shell('Verfahrensdokumentation', 'documents', ~{::content})}">
+  <div th:fragment="content" class="max-w-3xl grid gap-4">
     <div th:replace="~{fragments/page :: pageHead('Verfahrensdokumentation', null, ~{::headActions})}">
       <th:block th:fragment="headActions">
         <a th:href="@{/documents}" class="btn"><i data-lucide="arrow-left" class="size-4"></i>Alle Dokumente</a>

@@ -150,3 +150,56 @@ test('an open dialog sizes its controls by their place', async ({ page }) => {
   await expect(page.locator('dialog[open] .modal-foot')).toBeVisible();
   expect(await controlSizeProblems(page)).toEqual([]);
 });
+
+// One content width for every page, aligned left next to the menu (CLAUDE.md, Code Style): the left edge of the
+// content does not jump when the user switches pages, and no page grows wider than the shell allows.
+test('every page starts its content at the same left edge', async ({ browser, adminState }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: adminState });
+  const page = await context.newPage();
+  const edges: Record<string, number> = {};
+  for (const route of ROUTES.filter((item) => !item.anonymous)) {
+    await page.goto(route.path);
+    const box = await page.locator('main > :first-child').evaluate((content) => content.getBoundingClientRect().toJSON());
+    expect(box.width, `${route.name}: the width of its content`).toBeLessThanOrEqual(1024);
+    edges[route.name] = Math.round(box.left);
+  }
+  const first = Object.values(edges)[0];
+  const jumps = Object.entries(edges).filter(([, left]) => Math.abs(left - first) > 1);
+  expect(jumps, `left edge ${first}px`).toEqual([]);
+  await context.close();
+});
+
+// The navbar says where the user is, not the title that the page shows below it.
+test('a page of a section shows the way back in its breadcrumbs', async ({ page }) => {
+  const name = await newCustomer(page, `Brotkrumenkunde ${randomUUID().slice(0, 8)}`);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('#customer-list').getByRole('link', { name }).click();
+  const crumbs = page.getByRole('navigation', { name: 'Brotkrumen' });
+  await expect(crumbs.getByRole('listitem')).toHaveText(['Kunden', name]);
+  await expect(crumbs.locator('[aria-current="page"]')).toHaveText(name);
+  await crumbs.getByRole('link', { name: 'Kunden' }).click();
+  await expect(page).toHaveURL(/\/customers$/);
+});
+
+test('a top-level page names its section on the phone only', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/customers');
+  const banner = page.getByRole('banner');
+  await expect(banner.getByText('Kunden', { exact: true })).toBeHidden();
+  await expect(banner.getByRole('navigation', { name: 'Brotkrumen' })).toHaveCount(0);
+  await page.setViewportSize({ width: 375, height: 800 });
+  await expect(banner.getByText('Kunden', { exact: true })).toBeVisible();
+});
+
+// The menu stays beside the content however far the user scrolls: its background must not end after one screen.
+test('the menu fills the height of the window on a scrolled page', async ({ browser, adminState }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 500 }, storageState: adminState });
+  const page = await context.newPage();
+  await page.goto('/admin/backup');
+  await page.evaluate(() => window.scrollTo(0, document.scrollingElement!.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY), 'the page scrolls').toBeGreaterThan(0);
+  const menu = await page.getByRole('navigation', { name: 'Hauptmenü' }).evaluate((nav) => nav.getBoundingClientRect().toJSON());
+  expect(menu.top).toBeLessThanOrEqual(0);
+  expect(menu.bottom).toBeGreaterThanOrEqual(500);
+  await context.close();
+});

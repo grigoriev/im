@@ -6,8 +6,8 @@
   <th:block th:replace="~{fragments/layout :: assets}"></th:block>
 </head>
 <body class="min-h-screen bg-base-200 text-base-content font-sans">
-<div th:replace="~{fragments/layout :: shell('Berichte', 'reports', ~{::content})}">
-  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4 @container">
+<div th:replace="~{fragments/layout :: shell(null, 'reports', ~{::content})}">
+  <div th:fragment="content" class="grid gap-4 @container">
     <div th:replace="~{fragments/page :: pageHead('Berichte', null, null)}"></div>
     <form class="toolbar" th:action="@{/reports}" method="get" id="report-year">
       <label class="floating-label w-28 [--label-surface:var(--color-base-200)]"><span>Jahr</span>
