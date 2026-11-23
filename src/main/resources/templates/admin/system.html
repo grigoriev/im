@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <title>System · Rechnungen</title>
+  <th:block th:replace="~{fragments/layout :: assets}"></th:block>
+</head>
+<body class="min-h-screen bg-base-200 text-base-content font-sans">
+<div th:replace="~{fragments/layout :: shell('System', 'system', ~{::content})}">
+  <div th:fragment="content" class="max-w-4xl mx-auto grid gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">System</h1>
+      <p class="text-sm text-base-content/75">Was läuft: nach einem Update zeigt diese Seite, ob die neue Version und ihr Datenbankschema angekommen sind.</p>
+    </div>
+    <section class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-3" id="system-info">
+      <h2 class="font-semibold">Installation</h2>
+      <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+        <dt class="text-base-content/75">Version</dt>
+        <dd class="num" id="system-version" data-volatile>
+          <a th:if="${system.version.release()}" class="link" th:href="${system.version.releaseUrl()}" target="_blank" rel="noopener"
+             th:text="${system.version.number}">0.1.12</a>
+          <span th:unless="${system.version.release()}"
+                th:text="${system.version.number ?: 'ohne Versionsangabe'}">0.1.13-SNAPSHOT</span>
+        </dd>
+        <dt class="text-base-content/75">Gebaut</dt>
+        <dd class="num" id="system-built" data-volatile
+            th:text="${system.version.builtAt == null ? '–' : #temporals.format(system.version.builtAt, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">23.11.2026, 06:24</dd>
+        <dt class="text-base-content/75">Gestartet</dt>
+        <dd class="num" id="system-started" data-volatile
+            th:text="${#temporals.format(system.startedAt, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">23.11.2026, 07:00</dd>
+        <dt class="text-base-content/75">Datenbankschema</dt>
+        <dd class="num" id="system-schema" th:text="${'V' + system.schema}">V36</dd>
+        <dt class="text-base-content/75">PostgreSQL</dt>
+        <dd class="num" id="system-database" data-volatile th:text="${system.database}">17.2</dd>
+        <dt class="text-base-content/75">Java</dt>
+        <dd class="num" id="system-java" data-volatile th:text="${system.java}">25.0.1</dd>
+      </dl>
+    </section>
+  </div>
+</div>
+</body>
+</html>

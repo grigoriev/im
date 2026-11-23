@@ -6,6 +6,11 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Added
+
+- Below the menu every page names the version of the app: a release links to its notes on GitHub, a build of `main` names the time of its build. The login page does not show it.
+- "Verwaltung", "System": the version and the time of the build, the start of the app, the schema of the database, PostgreSQL and Java. After an update it shows whether the new version and its migration arrived.
+
 ### Changed
 
 - Buttons and fields have one height per place: 40px in the head of a page, in forms and dialogs, 32px in filter bars such as "Jahr" with "Anzeigen" and in the actions of a list row. Page titles look the same on every page, badges have one size, and the year filter of "Ausgaben" and "Berichte" sits in its own bar below the title.

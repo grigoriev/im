@@ -134,6 +134,7 @@ class AccessRulesIT {
             Map.entry("POST /numbers/{year}/gaps", Access.USER),
             Map.entry("POST /numbers/{year}/close", Access.USER),
             Map.entry("GET /admin/audit", Access.ADMIN),
+            Map.entry("GET /admin/system", Access.ADMIN),
             Map.entry("GET /admin/countries", Access.ADMIN),
             Map.entry("POST /admin/countries", Access.ADMIN),
             Map.entry("POST /admin/countries/{code}/remove", Access.ADMIN));

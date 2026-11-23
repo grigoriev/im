@@ -77,12 +77,14 @@ Package `io.github.grigoriev.im`:
   The audit log is written once too (trigger `audit_event_kept`)
 - `migration`: `Migration` runs Flyway as the owner in a step of its own (`java -jar im.jar migrate`, profile
   `migrate`), the only one with `IM_DB_OWNER_PASSWORD`; `SchemaCheck` lets the app start only on the current schema
+- `system`: what runs (`SystemService`: the version from `build-info.properties` as `AppVersion`, a release with the
+  link to its notes; the schema, PostgreSQL, Java and the start for the page "System" under `/admin/system`)
 - `config`: `SecurityConfig` (form login, remember-me, CSRF, CSP, admin area), `ClockConfig`, `SessionEpoch` (ends
   sessions after an import, a deletion or a new password), `RecentLogin` (a new passkey needs a login of the last
   15 minutes or the password confirmed), `UploadLimit` (refuses a large upload before the CSRF check reads it), `StaleFormHandler` (a form
   with the CSRF token of an expired session leads to the login page; a stale logout from the app still logs out),
   `PasskeyConfig` (the passkey stores of Spring Security on JDBC)
-- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments, `NumberBookController` the page
+- `web`: controllers and Thymeleaf pages (`IssuedInvoicePage` fills the page of an issued invoice, `InvoiceRecordsController` takes its dispatches and payments, `SystemController` the page "System" of the admin, `VersionAdvice` the version below the menu of every page, `NumberBookController` the page
   "Nummernkreis" of a year by hand under `/numbers/{year}`, `DamagedDataAdvice` checks everything and names the damage
   when stored JSON no longer parses), styled with Tailwind and daisyUI in the look of Preline UI (`src/main/frontend/app.css`; `static/js/app.js` opens dialogs from `data-dialog`, gives every `select.select` a styled list and opens the camera
   for a file field from `data-capture`). The web app manifest and the icons live in `static` (`manifest.webmanifest`, `favicon.*`, `icons/`), open without login.

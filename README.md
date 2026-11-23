@@ -69,6 +69,10 @@ psql -U im -d im -c "CREATE ROLE im_app LOGIN PASSWORD '...'"
 
 A restore of a `pg_dump` into a new server needs the role too, since the dump grants it its rights.
 
+After an update, the line below the menu names the running version. The admin page "System" (`/admin/system`)
+shows it with the time of the build, the schema of the database, PostgreSQL and Java, so you can check that the new
+image and its migration arrived.
+
 `IM_INTEGRITY_KEY` seals each PDF, XML, snapshot and document with an HMAC-SHA256. Set a random value of at least 32
 characters and keep a copy apart from the backups: an import checks the seals with the same key. A change made in the
 database with the owner's password then shows on the invoice, on the overview and in the audit log. The app keeps a
