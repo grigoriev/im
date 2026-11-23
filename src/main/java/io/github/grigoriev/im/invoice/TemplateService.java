@@ -95,7 +95,7 @@ public class TemplateService {
         InvoiceTemplate saved = templates.save(new InvoiceTemplate(null, customerId, DEFAULT_NAME, customer.format(),
                 InvoiceService.DEFAULT_PAYMENT_DAYS, InvoiceService.DEFAULT_INTRO, InvoiceService.DEFAULT_CLOSING,
                 notes.note(category), DEFAULT_SUBJECT, DEFAULT_BODY, List.of(TemplateLine.of(DraftLine.empty(category))),
-                clock.instant(), clock.instant(), null, null));
+                clock.instant(), clock.instant(), null, null, null, null));
         audit.add(AuditAction.TEMPLATE_CREATED, customer.name());
         return saved;
     }
@@ -130,6 +130,8 @@ public class TemplateService {
         LineForm.length(problems, form.getTaxNote(), "Der Steuerhinweis", InvoiceService.MAX_TAX_NOTE);
         LineForm.length(problems, form.getEmailSubject(), "Der Betreff", MAX_SUBJECT);
         LineForm.length(problems, form.getEmailBody(), "Der Text der E-Mail", MAX_BODY);
+        LineForm.length(problems, form.getPurchaseOrder(), "Die Bestellnummer", InvoiceService.MAX_REFERENCE);
+        LineForm.length(problems, form.getContract(), "Der Vertrag", InvoiceService.MAX_REFERENCE);
         if (form.getPaymentDays() < 0 || form.getPaymentDays() > InvoiceService.MAX_PAYMENT_DAYS) {
             problems.add("Das Zahlungsziel liegt zwischen 0 und " + InvoiceService.MAX_PAYMENT_DAYS + " Tagen.");
         }
@@ -143,7 +145,8 @@ public class TemplateService {
             return templates.save(new InvoiceTemplate(template.id(), customerId, form.getName().strip(),
                     form.getFormat(), form.getPaymentDays(), text(form.getIntro()), text(form.getClosing()),
                     text(form.getTaxNote()), text(form.getEmailSubject()), text(form.getEmailBody()), lines,
-                    template.createdAt(), clock.instant(), template.version(), form.getActivity()));
+                    template.createdAt(), clock.instant(), template.version(), form.getActivity(),
+                    text(form.getPurchaseOrder()), text(form.getContract())));
         } catch (OptimisticLockingFailureException _) {
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
         }

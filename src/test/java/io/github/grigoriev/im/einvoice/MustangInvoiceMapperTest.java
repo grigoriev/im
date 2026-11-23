@@ -73,6 +73,42 @@ class MustangInvoiceMapperTest {
     }
 
     @Test
+    void mapsTheReferencesTheCustomerAsksFor() {
+        Invoice invoice = mapper.toMustang(SampleInvoices.referenced(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(invoice.getSender().getID()).as("BT-29, assigned by the buyer")
+                .isEqualTo("70001234, Sprachzentrum Musterstadt / 1024");
+        assertThat(invoice.getSender().getTaxID()).as("BT-32 keeps the tax number").isEqualTo("143/123/45678");
+        assertThat(invoice.getBuyerOrderReferencedDocumentID()).as("BT-13").isEqualTo("4500012345");
+        assertThat(invoice.getContractReferencedDocument().getIssuerAssignedID()).as("BT-12")
+                .isEqualTo("Rahmenvertrag vom 15.01.2027, Kurs B1 Online");
+    }
+
+    @Test
+    void leavesOutTheReferencesTheInvoiceDoesNotHave() {
+        Invoice invoice = mapper.toMustang(SampleInvoices.withReferences(
+                SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931), new CustomerReferences(null, "4500012345", null)));
+        assertThat(invoice.getSender().getID()).as("the tax number serves as BT-29").isEqualTo("143/123/45678");
+        assertThat(invoice.getBuyerOrderReferencedDocumentID()).isEqualTo("4500012345");
+        assertThat(invoice.getContractReferencedDocument()).isNull();
+        Invoice plain = mapper.toMustang(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(plain.getBuyerOrderReferencedDocumentID()).isNull();
+        assertThat(plain.getContractReferencedDocument()).isNull();
+    }
+
+    @Test
+    void mapsTheSellerIdentifierNextToTheVatId() {
+        Party withVat = new Party("Elena Sommer", "Lindenstraße 12", "80331", "München", "DE", null, null, null,
+                "143/123/45678", "DE123456789");
+        InvoiceDocument document = SampleInvoices.withReferences(new InvoiceDocument("1", DAY, DAY, DAY, DAY, withVat,
+                PUBLISHER, null, "I", "B", null, null, null, InvoiceFormat.ZUGFERD_EN16931,
+                List.of(line("x", "1", "1", KLEINUNTERNEHMER))), new CustomerReferences("K-17", null, null));
+        TradeParty seller = mapper.toMustang(document).getSender();
+        assertThat(seller.getID()).isEqualTo("K-17");
+        assertThat(seller.getVATID()).isEqualTo("DE123456789");
+        assertThat(seller.getTaxID()).isEqualTo("143/123/45678");
+    }
+
+    @Test
     void mapsTheSellerWithContactBankAndTaxNumberAsIdentifier() {
         TradeParty seller = mapper.toMustang(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931)).getSender();
         assertThat(seller.getName()).isEqualTo("Elena Sommer");

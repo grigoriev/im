@@ -91,6 +91,13 @@ class PdfVisualTest {
                         "Abrechnungen Online-Sprachkurse", "Seeweg 5", "6020", "Innsbruck", "AT", null, null, "Frau Weber",
                         null, null), null, InvoiceFormat.ZUGFERD_EN16931, line("Online-Sprachkurs Deutsch B1, je 45 Min.",
                         "24", "41.00", TaxCategory.NOT_TAXABLE_ABROAD))),
+                Arguments.of("references", SampleInvoices.referenced(InvoiceFormat.ZUGFERD_EN16931)),
+                Arguments.of("references-long", SampleInvoices.withReferences(
+                        SampleInvoices.school(InvoiceFormat.XRECHNUNG), new CustomerReferences(
+                                "70001234, Sprachzentrum Musterstadt / 1024, Abrechnung Kurse Online und Präsenz",
+                                "45000123454500012345450001234545000123454500012345",
+                                "Rahmenvertrag vom 15.01.2027 über Sprachkurse Deutsch B1 und B2, online und in Präsenz, "
+                                        + "Anlage 3, Leistungsschein 2.1"))),
                 Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                         line("Online-Workshop „Deutsch im Beruf“, 3 Std.", "1", "600.00",
                                 TaxCategory.REVERSE_CHARGE_EU))));

@@ -28,6 +28,8 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param updatedAt time of the last change
  * @param version counts the saves; a save with an older version is refused
  * @param activity the business of its drafts with two tax numbers, {@code null} for the one of the customer
+ * @param purchaseOrder the Bestellnummer of its drafts, may be {@code null}
+ * @param contract the contract of its drafts, may be {@code null}
  */
 @Table("invoice_template")
 public record InvoiceTemplate(
@@ -45,7 +47,9 @@ public record InvoiceTemplate(
         Instant createdAt,
         Instant updatedAt,
         @Version Long version,
-        Activity activity) {
+        Activity activity,
+        String purchaseOrder,
+        String contract) {
 
     /** Copies the lines, so a stored template never shares a list. */
     public InvoiceTemplate {

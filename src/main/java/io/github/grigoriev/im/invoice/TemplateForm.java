@@ -17,6 +17,8 @@ public class TemplateForm {
     private String taxNote;
     private String emailSubject;
     private String emailBody;
+    private String purchaseOrder;
+    private String contract;
     private Activity activity;
     private List<LineForm> lines = new ArrayList<>();
 
@@ -37,6 +39,8 @@ public class TemplateForm {
         form.taxNote = template.taxNote();
         form.emailSubject = template.emailSubject();
         form.emailBody = template.emailBody();
+        form.purchaseOrder = template.purchaseOrder();
+        form.contract = template.contract();
         form.activity = template.activity();
         form.lines = DraftForm.rows(template.lines().stream().map(TemplateLine::toDraftLine).toList());
         return form;
@@ -140,6 +144,26 @@ public class TemplateForm {
     /** @param emailBody the text of the e-mail */
     public void setEmailBody(String emailBody) {
         this.emailBody = emailBody;
+    }
+
+    /** @return the Bestellnummer */
+    public String getPurchaseOrder() {
+        return purchaseOrder;
+    }
+
+    /** @param purchaseOrder the Bestellnummer */
+    public void setPurchaseOrder(String purchaseOrder) {
+        this.purchaseOrder = purchaseOrder;
+    }
+
+    /** @return the contract */
+    public String getContract() {
+        return contract;
+    }
+
+    /** @param contract the contract */
+    public void setContract(String contract) {
+        this.contract = contract;
     }
 
     /** @return the lines */

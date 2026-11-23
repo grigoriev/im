@@ -2,6 +2,7 @@ package io.github.grigoriev.im.invoice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.seller.Activity;
@@ -30,9 +31,13 @@ class DraftFormTest {
                 day.minusDays(1), 30, "04011000-12345-67", "Hallo", "Danke", "Steuerfrei.",
                 List.of(new DraftLine("Unterricht", false, new BigDecimal("16"), new BigDecimal("45"), TaxCategory.EXEMPT_4_21),
                         new DraftLine("Lesung", true, BigDecimal.ONE, new BigDecimal("400"), TaxCategory.EXEMPT_4_21)),
-                Instant.EPOCH, Instant.EPOCH, 0L, null, null, null);
+                Instant.EPOCH, Instant.EPOCH, 0L, null, null, null,
+                new CustomerReferences("70001234", "4500012345", "Rahmenvertrag"));
         DraftForm form = DraftForm.of(invoice);
         assertThat(form.getVersion()).isZero();
+        assertThat(form.getSellerIdentifier()).isEqualTo("70001234");
+        assertThat(form.getPurchaseOrder()).isEqualTo("4500012345");
+        assertThat(form.getContract()).isEqualTo("Rahmenvertrag");
         assertThat(form.getFormat()).isEqualTo(InvoiceFormat.XRECHNUNG);
         assertThat(form.getIssueDate()).isEqualTo(day);
         assertThat(form.getServiceFrom()).isEqualTo(day.minusDays(2));

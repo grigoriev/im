@@ -20,6 +20,7 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param email address for invoices, may be {@code null}; both XRechnung formats need it
  * @param vatId VAT identification number, may be {@code null}; reverse charge needs it
  * @param buyerReference buyer reference, for a public buyer the Leitweg-ID; both XRechnung formats need it
+ * @param sellerIdentifier the number of the seller at this customer, the Geschäftspartnernummer; may be {@code null}
  * @param format the e-invoice format of new invoices
  * @param activity the business of its invoices with two tax numbers, {@code null} follows the lines
  */
@@ -36,6 +37,7 @@ public record Customer(
         String email,
         String vatId,
         String buyerReference,
+        String sellerIdentifier,
         InvoiceFormat format,
         Activity activity) {
 
@@ -45,7 +47,8 @@ public record Customer(
      * @return the empty customer
      */
     public static Customer empty() {
-        return new Customer(null, "", null, "", "", "", "DE", null, null, null, null, InvoiceFormat.ZUGFERD_EN16931, null);
+        return new Customer(null, "", null, "", "", "", "DE", null, null, null, null, null, InvoiceFormat.ZUGFERD_EN16931,
+                null);
     }
 
     /**
@@ -56,7 +59,7 @@ public record Customer(
      */
     public Customer withId(Long newId) {
         return new Customer(newId, name, addressAddition, street, postcode, city, countryCode, contactName, email, vatId,
-                buyerReference, format, activity);
+                buyerReference, sellerIdentifier, format, activity);
     }
 
     /**
@@ -82,13 +85,13 @@ public record Customer(
 
     /**
      * Returns a new customer for another contact person of the same organization: the address with its addition, VAT
-     * ID, buyer reference and format stay, the contact person and e-mail are empty.
+     * ID, buyer reference, Geschäftspartnernummer and format stay, the contact person and e-mail are empty.
      *
      * @return the copy, without an ID
      */
     public Customer forAnotherContact() {
         return new Customer(null, name, addressAddition, street, postcode, city, countryCode, null, null, vatId,
-                buyerReference, format, activity);
+                buyerReference, sellerIdentifier, format, activity);
     }
 
     /**

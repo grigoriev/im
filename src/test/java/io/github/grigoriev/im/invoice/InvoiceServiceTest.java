@@ -18,6 +18,7 @@ import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
@@ -74,7 +75,7 @@ class InvoiceServiceTest {
         return new Invoice(9L, draft.status(), draft.customerId(), draft.number(), draft.format(), draft.issueDate(),
                 draft.serviceFrom(), draft.serviceTo(), draft.paymentDays(), draft.buyerReference(), draft.intro(),
                 draft.closing(), draft.taxNote(), draft.lines(), draft.createdAt(), draft.updatedAt(), draft.version(),
-                draft.issuedAt(), draft.snapshot(), draft.activity());
+                draft.issuedAt(), draft.snapshot(), draft.activity(), draft.references());
     }
 
     private static Invoice draft(List<DraftLine> lines) {
@@ -141,7 +142,7 @@ class InvoiceServiceTest {
     void copiesATemplateOfTheCustomerIntoTheDraft() {
         InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_XRECHNUNG, 30, "Hallo {x}",
                 "Danke", "Steuerfrei.", "Betreff", "Text", List.of(new TemplateLine("Kurs", false, new BigDecimal("24"),
-                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L, null);
+                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 4L, null, null, null);
         when(templates.findById(7L)).thenReturn(Optional.of(template));
         Invoice created = service.createDraft(2, 7L);
         assertThat(created.format()).isEqualTo(InvoiceFormat.ZUGFERD_XRECHNUNG);
@@ -159,16 +160,35 @@ class InvoiceServiceTest {
 
         InvoiceTemplate abroad = new InvoiceTemplate(7L, 2L, "Kurs in Taschkent", InvoiceFormat.ZUGFERD_EN16931, 30, null,
                 null, null, null, null, List.of(new TemplateLine("Kurs", true, BigDecimal.ONE, new BigDecimal("300"),
-                        TaxCategory.NOT_TAXABLE_ABROAD)), NOW, NOW, 4L, Activity.TEACHING);
+                        TaxCategory.NOT_TAXABLE_ABROAD)), NOW, NOW, 4L, Activity.TEACHING, null, null);
         when(templates.findById(7L)).thenReturn(Optional.of(abroad));
         assertThat(service.createDraft(2, 7L).activity()).as("the template names the business").isEqualTo(Activity.TEACHING);
 
         when(templates.findById(8L)).thenReturn(Optional.of(new InvoiceTemplate(8L, 3L, "Fremd", InvoiceFormat.XRECHNUNG,
-                14, null, null, null, null, null, List.of(), NOW, NOW, 0L, null)));
+                14, null, null, null, null, null, List.of(), NOW, NOW, 0L, null, null, null)));
         assertThatThrownBy(() -> service.createDraft(2, 8L)).isInstanceOf(InvoiceException.class)
                 .hasMessage("Diese Vorlage gibt es nicht.");
         when(templates.findById(9L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.createDraft(2, 9L)).isInstanceOf(InvoiceException.class);
+    }
+
+    @Test
+    void takesTheGeschaeftspartnernummerFromTheCustomer() {
+        when(customers.find(3)).thenReturn(Optional.of(CustomerTestData.school().withId(3L)));
+        assertThat(service.createDraft(3, null).references()).isEqualTo(
+                new CustomerReferences("70001234, Sprachzentrum Musterstadt / 1024", null, null));
+        assertThat(service.createDraft(2, null).references()).as("a customer without one")
+                .isEqualTo(CustomerReferences.NONE);
+    }
+
+    @Test
+    void aTemplatePrefillsTheBestellnummerAndTheContract() {
+        when(customers.find(3)).thenReturn(Optional.of(CustomerTestData.school().withId(3L)));
+        when(templates.findById(7L)).thenReturn(Optional.of(new InvoiceTemplate(7L, 3L, "Kurs",
+                InvoiceFormat.ZUGFERD_EN16931, 14, null, null, null, null, null, List.of(), NOW, NOW, 0L, null,
+                "4500012345", "Rahmenvertrag vom 15.01.2027")));
+        assertThat(service.createDraft(3, 7L).references()).isEqualTo(new CustomerReferences(
+                "70001234, Sprachzentrum Musterstadt / 1024", "4500012345", "Rahmenvertrag vom 15.01.2027"));
     }
 
     @Test
@@ -206,7 +226,11 @@ class InvoiceServiceTest {
                 row("Lesung", true, "1", "1.234,50", TaxCategory.EXEMPT_4_21));
         form.setIntro(" ");
         form.setBuyerReference(" 04011000-12345-67 ");
+        form.setSellerIdentifier(" 70001234 ");
+        form.setPurchaseOrder(" ");
+        form.setContract(" Rahmenvertrag vom 15.01.2027 ");
         Invoice saved = service.saveDraft(5, form);
+        assertThat(saved.references()).isEqualTo(new CustomerReferences("70001234", null, "Rahmenvertrag vom 15.01.2027"));
         assertThat(saved.lines()).containsExactly(
                 new DraftLine("Unterricht", false, new BigDecimal("16"), new BigDecimal("45.00"), TaxCategory.EXEMPT_4_21),
                 new DraftLine("Lesung", true, BigDecimal.ONE, new BigDecimal("1234.50"), TaxCategory.EXEMPT_4_21));
@@ -223,6 +247,9 @@ class InvoiceServiceTest {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
         DraftForm form = form(row("x".repeat(501), false, "abc", "1,23456", null));
         form.setBuyerReference("r".repeat(201));
+        form.setSellerIdentifier("g".repeat(201));
+        form.setPurchaseOrder("b".repeat(201));
+        form.setContract("v".repeat(201));
         form.setIntro("i".repeat(2001));
         form.setClosing("c".repeat(2001));
         form.setTaxNote("t".repeat(1001));
@@ -234,6 +261,9 @@ class InvoiceServiceTest {
                 "Position 1: Die Menge ist keine Zahl, zum Beispiel 45,00.",
                 "Position 1: Der Preis hat höchstens 4 Nachkommastellen.",
                 "Die Käuferreferenz hat höchstens 200 Zeichen.",
+                "Die Geschäftspartnernummer hat höchstens 200 Zeichen.",
+                "Die Bestellnummer hat höchstens 200 Zeichen.",
+                "Der Vertrag hat höchstens 200 Zeichen.",
                 "Die Einleitung hat höchstens 2000 Zeichen.",
                 "Der Schlusstext hat höchstens 2000 Zeichen.",
                 "Der Steuerhinweis hat höchstens 1000 Zeichen.",
@@ -246,6 +276,9 @@ class InvoiceServiceTest {
         when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
         DraftForm form = form(row("x".repeat(500), false, "1,5", "0,0001", TaxCategory.KLEINUNTERNEHMER));
         form.setBuyerReference("r".repeat(200));
+        form.setSellerIdentifier("g".repeat(200));
+        form.setPurchaseOrder("b".repeat(200));
+        form.setContract("v".repeat(200));
         form.setIntro("i".repeat(2000));
         form.setClosing("c".repeat(2000));
         form.setTaxNote("t".repeat(1000));
@@ -294,7 +327,7 @@ class InvoiceServiceTest {
         when(repository.templateId(5L)).thenReturn(null);
         assertThat(service.template(invoice)).isEmpty();
         InvoiceTemplate template = new InvoiceTemplate(7L, 2L, "Kurs", InvoiceFormat.ZUGFERD_EN16931, 14, null, null,
-                null, "Betreff", "Text", List.of(), NOW, NOW, 0L, null);
+                null, "Betreff", "Text", List.of(), NOW, NOW, 0L, null, null, null);
         when(repository.templateId(5L)).thenReturn(7L);
         when(templates.findById(7L)).thenReturn(Optional.of(template));
         assertThat(service.template(invoice)).contains(template);
@@ -329,6 +362,12 @@ class InvoiceServiceTest {
         assertThat(document.intro()).isEqualTo("Hallo");
         assertThat(document.closing()).isEqualTo("Danke");
         assertThat(document.phoneOnInvoice()).isFalse();
+        assertThat(document.references()).isEqualTo(CustomerReferences.NONE);
+        Invoice referenced = new Invoice(5L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, TODAY, TODAY,
+                TODAY, 14, null, null, null, null, complete.lines(), NOW, NOW, 0L, null, null, null,
+                new CustomerReferences("70001234", "4500012345", "Rahmenvertrag"));
+        assertThat(service.document(referenced).orElseThrow().references()).as("from the draft, not the customer")
+                .isEqualTo(referenced.references());
         when(sellers.find()).thenReturn(Optional.of(SellerTestData.profile(true)));
         assertThat(service.document(complete).orElseThrow().phoneOnInvoice()).as("the choice of the profile").isTrue();
     }
@@ -385,7 +424,7 @@ class InvoiceServiceTest {
         Customer verlag = CustomerTestData.verlag();
         when(customers.find(3)).thenReturn(Optional.of(new Customer(3L, verlag.name(), null, verlag.street(),
                 verlag.postcode(), verlag.city(), verlag.countryCode(), null, verlag.email(), null, null,
-                InvoiceFormat.EXTERNAL, null)));
+                null, InvoiceFormat.EXTERNAL, null)));
         Invoice created = service.createDraft(3, null);
         assertThat(created.format()).isEqualTo(InvoiceFormat.EXTERNAL);
         assertThat(created.intro()).isNull();
@@ -480,7 +519,7 @@ class InvoiceServiceTest {
         assertThat(service.problems(reverse)).containsExactly(problem);
         Customer v = CustomerTestData.verlag();
         when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), null, v.street(), v.postcode(), v.city(), "NL",
-                null, null, "NL123456789B01", null, v.format(), null)));
+                null, null, "NL123456789B01", null, null, v.format(), null)));
         assertThat(service.problems(reverse)).isEmpty();
     }
 
@@ -498,7 +537,7 @@ class InvoiceServiceTest {
 
         Customer v = CustomerTestData.verlag();
         when(customers.find(2)).thenReturn(Optional.of(new Customer(2L, v.name(), null, v.street(), v.postcode(), v.city(),
-                v.countryCode(), null, null, null, null, v.format(), null)));
+                v.countryCode(), null, null, null, null, null, v.format(), null)));
         assertThat(service.problems(withReference))
                 .containsExactly("Die XRechnung braucht die E-Mail-Adresse des Kunden. Bitte beim Kunden eintragen.");
         when(customers.find(2)).thenReturn(Optional.empty());
@@ -649,7 +688,8 @@ class InvoiceServiceTest {
     private static Invoice original(InvoiceStatus status) {
         return new Invoice(7L, status, 2L, "2027-07", InvoiceFormat.ZUGFERD_XRECHNUNG, TODAY.minusDays(10),
                 TODAY.minusDays(12), TODAY.minusDays(11), 14, "04011000-1", "Hallo", "Danke", "§ 19",
-                List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 2L, NOW, "{}", null);
+                List.of(lump("Lesung", "400", TaxCategory.KLEINUNTERNEHMER)), NOW, NOW, 2L, NOW, "{}", null,
+                new CustomerReferences("70001234", "4500012345", "Rahmenvertrag"));
     }
 
     @Test
@@ -664,6 +704,7 @@ class InvoiceServiceTest {
         assertThat(draft.serviceTo()).isEqualTo(TODAY.minusDays(11));
         assertThat(draft.paymentDays()).isZero();
         assertThat(draft.buyerReference()).isEqualTo("04011000-1");
+        assertThat(draft.references()).isEqualTo(new CustomerReferences("70001234", "4500012345", "Rahmenvertrag"));
         assertThat(draft.intro()).isNull();
         assertThat(draft.closing()).isEqualTo("Danke");
         assertThat(draft.taxNote()).isEqualTo("§ 19");

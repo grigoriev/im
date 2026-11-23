@@ -30,6 +30,7 @@ import io.github.grigoriev.im.invoice.LineForm;
 import io.github.grigoriev.im.invoice.PaymentForm;
 import io.github.grigoriev.im.invoice.SampleOffice;
 import io.github.grigoriev.im.invoice.PaymentService;
+import io.github.grigoriev.im.invoice.TemplateForm;
 import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.SellerService;
@@ -127,12 +128,14 @@ class BackupIT {
         return entries;
     }
 
-    /** A customer with an address addition, an issued, sent, paid and canceled invoice of 2013 with its Stornorechnung, a template and a baseline. */
+    /** A customer with an address addition and references, an issued, sent, paid and canceled invoice of 2013 with its Stornorechnung, a template and a baseline. */
     private void someOfEverything() {
         SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
         Customer customer = customers.create(CustomerTestData.school());
-        templates.create(customer.id());
+        TemplateForm template = TemplateForm.of(templates.create(customer.id()));
+        template.setContract("Rahmenvertrag vom 15.01.2013");
+        templates.save(customer.id(), templates.list(customer.id()).getFirst().id(), template);
         Invoice draft = invoices.createDraft(customer.id(), null);
         DraftForm form = DraftForm.of(draft);
         LocalDate day = LocalDate.of(2013, 4, 2);
@@ -140,6 +143,8 @@ class BackupIT {
         form.setServiceFrom(day);
         form.setServiceTo(day);
         form.setBuyerReference(customer.buyerReference());
+        form.setPurchaseOrder("4500012345");
+        form.setContract("Rahmenvertrag vom 15.01.2013");
         LineForm line = form.getLines().getFirst();
         line.setText("Lesung „am Fluss“");
         line.setAmount("400");
@@ -339,6 +344,14 @@ class BackupIT {
 
         assertThat(copyJdbc.queryForObject("SELECT count(*) FROM customer WHERE address_addition = ?", Integer.class,
                 "Abrechnungen Online-Sprachkurse")).as("the address addition of the customer").isPositive();
+        assertThat(copyJdbc.queryForObject("SELECT count(*) FROM customer WHERE seller_identifier = ?", Integer.class,
+                "70001234, Sprachzentrum Musterstadt / 1024")).as("the Geschäftspartnernummer").isPositive();
+        assertThat(copyJdbc.queryForObject("SELECT count(*) FROM invoice WHERE status <> 'DRAFT' AND purchase_order = ? "
+                + "AND contract = ? AND seller_identifier = ?", Integer.class, "4500012345", "Rahmenvertrag vom 15.01.2013",
+                "70001234, Sprachzentrum Musterstadt / 1024")).as("the invoice and its Stornorechnung, of each run")
+                .isEven().isPositive();
+        assertThat(copyJdbc.queryForObject("SELECT count(*) FROM invoice_template WHERE contract = ?", Integer.class,
+                "Rahmenvertrag vom 15.01.2013")).as("the contract of the template").isPositive();
         Long next = copyJdbc.queryForObject("INSERT INTO customer (name, street, postcode, city, country_code, format) "
                 + "VALUES ('Neu', 'Weg 1', '12345', 'Ort', 'DE', 'ZUGFERD_EN16931') RETURNING id", Long.class);
         assertThat(next).as("the identity continues after the imported rows")

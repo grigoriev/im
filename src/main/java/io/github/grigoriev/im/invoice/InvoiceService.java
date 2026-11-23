@@ -4,6 +4,7 @@ import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.Party;
@@ -121,10 +122,10 @@ public class InvoiceService {
     }
 
     /**
-     * Creates a draft for a customer, today's dates and the customer's buyer reference. Without a template it takes the
-     * customer's format, one empty line and the tax note of the seller's tax status; an external invoice gets no intro
-     * and closing, its file has them. With a template it copies the template's format, texts, payment days and lines; a
-     * later change of the template leaves the draft as it is.
+     * Creates a draft for a customer, today's dates and the customer's buyer reference and Geschäftspartnernummer.
+     * Without a template it takes the customer's format, one empty line and the tax note of the seller's tax status; an
+     * external invoice gets no intro and closing, its file has them. With a template it copies the template's format,
+     * texts, payment days, lines, Bestellnummer and contract; a later change of the template leaves the draft as it is.
      *
      * @param customerId the customer
      * @param templateId the template, {@code null} for none
@@ -147,7 +148,7 @@ public class InvoiceService {
                     DEFAULT_PAYMENT_DAYS, customer.buyerReference(), external ? null : DEFAULT_INTRO,
                     external ? null : DEFAULT_CLOSING,
                     notes.note(category), List.of(DraftLine.empty(category)), clock.instant(), clock.instant(), null, null, null,
-                    customer.activity());
+                    customer.activity(), new CustomerReferences(customer.sellerIdentifier(), null, null));
         } else {
             InvoiceTemplate template = templates.findById(templateId)
                     .filter(found -> found.customerId() == customerId)
@@ -156,7 +157,8 @@ public class InvoiceService {
                     template.paymentDays(), customer.buyerReference(), template.intro(), template.closing(),
                     template.taxNote(), template.lines().stream().map(TemplateLine::toDraftLine).toList(),
                     clock.instant(), clock.instant(), null, null, null,
-                    template.activity() != null ? template.activity() : customer.activity());
+                    template.activity() != null ? template.activity() : customer.activity(),
+                    new CustomerReferences(customer.sellerIdentifier(), template.purchaseOrder(), template.contract()));
         }
         Invoice saved = invoices.save(draft);
         if (templateId != null) {
@@ -192,6 +194,9 @@ public class InvoiceService {
             }
         }
         LineForm.length(problems, form.getBuyerReference(), "Die Käuferreferenz", MAX_REFERENCE);
+        LineForm.length(problems, form.getSellerIdentifier(), "Die Geschäftspartnernummer", MAX_REFERENCE);
+        LineForm.length(problems, form.getPurchaseOrder(), "Die Bestellnummer", MAX_REFERENCE);
+        LineForm.length(problems, form.getContract(), "Der Vertrag", MAX_REFERENCE);
         LineForm.length(problems, form.getIntro(), "Die Einleitung", MAX_TEXT);
         LineForm.length(problems, form.getClosing(), "Der Schlusstext", MAX_TEXT);
         LineForm.length(problems, form.getTaxNote(), "Der Steuerhinweis", MAX_TAX_NOTE);
@@ -211,7 +216,8 @@ public class InvoiceService {
                     form.getIssueDate(), form.getServiceFrom(), form.getServiceTo(), form.getPaymentDays(),
                     text(form.getBuyerReference()), text(form.getIntro()), text(form.getClosing()),
                     text(form.getTaxNote()), lines, draft.createdAt(), clock.instant(), draft.version(), null, null,
-                    cancellation ? draft.activity() : form.getActivity()));
+                    cancellation ? draft.activity() : form.getActivity(), new CustomerReferences(
+                            text(form.getSellerIdentifier()), text(form.getPurchaseOrder()), text(form.getContract()))));
         } catch (OptimisticLockingFailureException _) {
             // Two saves of one version at the same moment: the database lets the first win.
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
@@ -415,12 +421,14 @@ public class InvoiceService {
                 invoice.buyerReference(),
                 seller.iban(), seller.bic(), values.fill(invoice.intro()), values.fill(invoice.closing()),
                 values.fill(invoice.taxNote()), invoice.format(),
-                invoice.lines().stream().map(DraftLine::toInvoiceLine).toList(), cancels, seller.showsPhone()));
+                invoice.lines().stream().map(DraftLine::toInvoiceLine).toList(), cancels, seller.showsPhone(),
+                invoice.references()));
     }
 
     /**
-     * Creates the Stornorechnung of an issued invoice as a draft: same customer, format, service period, closing, tax
-     * note and lines, dated today, without intro. Its number follows at the issue, which cancels the invoice.
+     * Creates the Stornorechnung of an issued invoice as a draft: same customer, format, service period, references,
+     * closing, tax note and lines, dated today, without intro. Its number follows at the issue, which cancels the
+     * invoice.
      *
      * @param id the invoice to cancel
      * @return the draft
@@ -440,7 +448,7 @@ public class InvoiceService {
         Invoice saved = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, original.customerId(), null,
                 original.format(), today, original.serviceFrom(), original.serviceTo(), 0, original.buyerReference(),
                 null, original.closing(), original.taxNote(), original.lines(), clock.instant(), clock.instant(),
-                null, null, null, original.activity()));
+                null, null, null, original.activity(), original.references()));
         try {
             invoices.linkCancels(saved.id(), id);
         } catch (DuplicateKeyException _) {

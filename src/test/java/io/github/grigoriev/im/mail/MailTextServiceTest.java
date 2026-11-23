@@ -45,7 +45,7 @@ class MailTextServiceTest {
 
     private static InvoiceTemplate template(String subject, String body) {
         return new InvoiceTemplate(7L, 2L, "Lesung", InvoiceFormat.ZUGFERD_EN16931, 14, null, null, null, subject, body,
-                List.of(), Instant.EPOCH, Instant.EPOCH, 0L, null);
+                List.of(), Instant.EPOCH, Instant.EPOCH, 0L, null, null, null);
     }
 
     @BeforeEach

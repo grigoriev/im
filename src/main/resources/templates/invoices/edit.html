@@ -59,9 +59,23 @@
         <label class="floating-label" th:unless="${invoice.format.isExternal()}"><span>Käuferreferenz (Leitweg-ID)</span>
           <input id="invoice-reference" th:field="*{buyerReference}" class="input w-full" maxlength="200">
         </label>
+        <div class="grid gap-3 @lg:grid-cols-2" th:unless="${invoice.format.isExternal()}">
+          <label class="floating-label"><span>Geschäftspartnernummer</span>
+            <input id="invoice-partner-number" th:field="*{sellerIdentifier}" class="input w-full" maxlength="200">
+          </label>
+          <label class="floating-label"><span>Bestellnummer</span>
+            <input id="invoice-purchase-order" th:field="*{purchaseOrder}" class="input w-full" maxlength="200">
+          </label>
+        </div>
+        <label class="floating-label" th:unless="${invoice.format.isExternal()}"><span>Vertrag</span>
+          <input id="invoice-contract" th:field="*{contract}" class="input w-full" maxlength="200">
+        </label>
         <!-- The file of an external invoice has its texts: they stay hidden, and kept for a switch back to an e-invoice. -->
         <th:block th:if="${invoice.format.isExternal()}">
           <input type="hidden" th:field="*{buyerReference}">
+          <input type="hidden" th:field="*{sellerIdentifier}">
+          <input type="hidden" th:field="*{purchaseOrder}">
+          <input type="hidden" th:field="*{contract}">
           <input type="hidden" th:field="*{intro}">
           <input type="hidden" th:field="*{closing}">
         </th:block>

@@ -7,6 +7,7 @@ import io.github.grigoriev.im.TestDatabase;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -45,6 +46,24 @@ class InvoiceRepositoryIT {
         assertThatThrownBy(() -> invoices.save(stale)).isInstanceOf(OptimisticLockingFailureException.class);
         assertThat(invoices.findById(first.id()).orElseThrow().paymentDays()).isEqualTo(30);
         invoices.deleteById(first.id());
+        customers.delete(customer.id());
+    }
+
+    @Test
+    void storesTheReferencesAndReadsNoneAsNone() {
+        Customer customer = customers.create(CustomerTestData.verlag());
+        LocalDate day = LocalDate.of(2027, 3, 18);
+        CustomerReferences references = new CustomerReferences("70001234", "4500012345", "Rahmenvertrag");
+        Invoice saved = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, customer.id(), null,
+                InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, List.of(), Instant.EPOCH,
+                Instant.EPOCH, null, null, null, null, references));
+        assertThat(invoices.findById(saved.id()).orElseThrow().references()).isEqualTo(references);
+        Invoice none = invoices.save(new Invoice(null, InvoiceStatus.DRAFT, customer.id(), null,
+                InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, List.of(), Instant.EPOCH,
+                Instant.EPOCH, null, null, null, null));
+        assertThat(invoices.findById(none.id()).orElseThrow().references()).isEqualTo(CustomerReferences.NONE);
+        invoices.deleteById(saved.id());
+        invoices.deleteById(none.id());
         customers.delete(customer.id());
     }
 }

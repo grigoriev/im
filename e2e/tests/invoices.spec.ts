@@ -328,3 +328,61 @@ test('warns when a draft would cross the §19 limit', async ({ page }) => {
   await page.locator('#invoice-delete-confirm').click();
   await expect(page.getByRole('status')).toHaveText('Entwurf gelöscht.');
 });
+
+/** The XML that a ZUGFeRD PDF embeds: Mustang writes the stream of the embedded file uncompressed. */
+function embeddedXml(pdf: Buffer): string {
+  const text = pdf.toString('utf8');
+  const start = text.indexOf('<rsm:CrossIndustryInvoice');
+  return start < 0 ? '' : text.substring(start, text.indexOf('</rsm:CrossIndustryInvoice>', start));
+}
+
+test('the references of customer, template and draft reach the issued PDF and XML', async ({ page }) => {
+  await ensureProfile(page);
+  const name = `Sprachzentrum ${randomUUID().slice(0, 8)}`;
+  await page.goto('/customers/new');
+  await page.getByLabel('Name', { exact: true }).fill(name);
+  await page.getByLabel('Straße und Hausnummer').fill('Seeweg 5');
+  await page.getByLabel('PLZ').fill('86150');
+  await page.getByLabel('Ort', { exact: true }).fill('Musterstadt');
+  await page.getByLabel('Geschäftspartnernummer').fill('70001234, Sprachzentrum Musterstadt / 1024');
+  await page.getByRole('button', { name: 'Anlegen' }).click();
+  await expect(page.getByRole('status')).toHaveText(`Kunde „${name}“ angelegt.`);
+  await expect(page.getByLabel('Geschäftspartnernummer')).toHaveValue('70001234, Sprachzentrum Musterstadt / 1024');
+
+  await page.getByRole('button', { name: 'Neue Vorlage' }).click();
+  await page.getByLabel('Name der Vorlage').fill('Kurs B1');
+  await page.getByLabel('Bestellnummer').fill('4500012345');
+  await page.getByLabel('Vertrag').fill('Rahmenvertrag vom 15.01.2027');
+  await page.locator('#line-0-text').fill('Online-Sprachkurs Deutsch B1');
+  await page.locator('#line-0-amount').fill('984');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Vorlage gespeichert.');
+  await expect(page.getByLabel('Bestellnummer')).toHaveValue('4500012345');
+
+  await page.getByRole('link', { name: `← ${name}` }).click();
+  await page.locator('#customer-templates > div').filter({ hasText: 'Kurs B1' })
+    .getByRole('button', { name: 'Rechnung erstellen' }).click();
+  await expect(page.getByLabel('Geschäftspartnernummer'), 'from the customer')
+    .toHaveValue('70001234, Sprachzentrum Musterstadt / 1024');
+  await expect(page.getByLabel('Bestellnummer'), 'from the template').toHaveValue('4500012345');
+  await page.getByLabel('Vertrag').fill('Rahmenvertrag vom 15.01.2027, Kurs B1 Online');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  await expect(page.getByRole('status')).toHaveText(/^Rechnung .+ ausgestellt\.$/);
+  await expect(page.locator('#issued-partner-number')).toHaveText('70001234, Sprachzentrum Musterstadt / 1024');
+  await expect(page.locator('#issued-purchase-order')).toHaveText('4500012345');
+  await expect(page.locator('#issued-contract')).toHaveText('Rahmenvertrag vom 15.01.2027, Kurs B1 Online');
+
+  const xml = await (await page.request.get((await page.locator('#download-xml').getAttribute('href'))!)).text();
+  const pdf = await (await page.request.get((await page.locator('#download-pdf').getAttribute('href'))!)).body();
+  for (const [file, content] of [['XML', xml], ['PDF', embeddedXml(pdf)]]) {
+    expect(content, `${file}: BT-29, the Geschäftspartnernummer`)
+      .toMatch(/<ram:SellerTradeParty>\s*<ram:ID>70001234, Sprachzentrum Musterstadt \/ 1024<\/ram:ID>/);
+    expect(content, `${file}: BT-13, the Bestellnummer`)
+      .toMatch(/<ram:BuyerOrderReferencedDocument>\s*<ram:IssuerAssignedID>4500012345<\/ram:IssuerAssignedID>/);
+    expect(content, `${file}: BT-12, the contract`).toMatch(
+      /<ram:ContractReferencedDocument>\s*<ram:IssuerAssignedID>Rahmenvertrag vom 15.01.2027, Kurs B1 Online</);
+  }
+});

@@ -51,7 +51,7 @@ class TemplateServiceTest {
     private static InvoiceTemplate template(long customerId) {
         return new InvoiceTemplate(7L, customerId, "Kurs", InvoiceFormat.XRECHNUNG, 30, "Hallo", "Danke", "Steuerfrei.",
                 "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Kurs", false, new BigDecimal("24"),
-                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 0L, null);
+                        new BigDecimal("41"), TaxCategory.EXEMPT_4_21)), NOW, NOW, 0L, null, "4500012345", null);
     }
 
     private static LineForm row(String text, String amount) {
@@ -102,7 +102,11 @@ class TemplateServiceTest {
         form.setTaxNote(null);
         form.getLines().add(row("Prüfung", "120"));
         form.setActivity(Activity.TEACHING);
+        form.setPurchaseOrder(" ");
+        form.setContract(" Rahmenvertrag vom 15.01.2027 ");
         InvoiceTemplate saved = service.save(2, 7, form);
+        assertThat(saved.purchaseOrder()).isNull();
+        assertThat(saved.contract()).isEqualTo("Rahmenvertrag vom 15.01.2027");
         assertThat(saved.activity()).isEqualTo(Activity.TEACHING);
         assertThat(TemplateForm.of(saved).getActivity()).isEqualTo(Activity.TEACHING);
         assertThat(saved.name()).isEqualTo("Integrationskurs");
@@ -132,6 +136,8 @@ class TemplateServiceTest {
         form.setTaxNote("t".repeat(1001));
         form.setEmailSubject("s".repeat(201));
         form.setEmailBody("b".repeat(4001));
+        form.setPurchaseOrder("o".repeat(201));
+        form.setContract("v".repeat(201));
         form.getLines().add(row("Prüfung", "viel"));
         InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.save(2, 7, form));
         assertThat(e.problems()).containsExactly(
@@ -142,6 +148,8 @@ class TemplateServiceTest {
                 "Der Steuerhinweis hat höchstens 1000 Zeichen.",
                 "Der Betreff hat höchstens 200 Zeichen.",
                 "Der Text der E-Mail hat höchstens 4000 Zeichen.",
+                "Die Bestellnummer hat höchstens 200 Zeichen.",
+                "Der Vertrag hat höchstens 200 Zeichen.",
                 "Das Zahlungsziel liegt zwischen 0 und 365 Tagen.",
                 "Bitte das E-Rechnungsformat wählen.");
         TemplateForm longName = TemplateForm.of(template(2));
@@ -164,6 +172,8 @@ class TemplateServiceTest {
         form.setPaymentDays(365);
         form.setEmailSubject("s".repeat(200));
         form.setEmailBody("b".repeat(4000));
+        form.setPurchaseOrder("o".repeat(200));
+        form.setContract("v".repeat(200));
         assertThat(service.save(2, 7, form).name()).hasSize(100);
         form.setPaymentDays(0);
         assertThat(service.save(2, 7, form).paymentDays()).isZero();
