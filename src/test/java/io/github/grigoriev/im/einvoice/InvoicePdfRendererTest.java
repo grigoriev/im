@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.font.PDFont;
@@ -16,7 +17,8 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class InvoicePdfRendererTest {
 
@@ -193,35 +195,55 @@ class InvoicePdfRendererTest {
                 .as("no closing, no signature").doesNotContain("München\nElena Sommer\n");
     }
 
+    static Stream<Arguments> addresses() {
+        String longName = "Gemeinnützige Gesellschaft für Sprachförderung und interkulturelle Bildung Musterstadt mbH";
+        String longest = "Gemeinnützige Gesellschaft ".repeat(8).substring(0, 200).strip();
+        return Stream.of(
+                Arguments.of("six lines", "Sprachschule am See", "KST 80441000, Bereich 44 DaF-Programme", "Frau Weber",
+                        "AT"),
+                Arguments.of("longest addition and contact", "Sprachschule am See", "Bereich ".repeat(25).substring(0, 200),
+                        "Frau Weber ".repeat(19).substring(0, 200), "AT"),
+                Arguments.of("long name alone", longName, null, null, "DE"),
+                Arguments.of("long name, addition, contact, abroad", longName, "Abrechnungen Online-Sprachkurse",
+                        "Frau Weber", "AT"),
+                Arguments.of("longest of all", longest, "Bereich ".repeat(25).substring(0, 200),
+                        "Frau Weber ".repeat(19).substring(0, 200), "AT"));
+    }
+
     /**
-     * DIN 5008, form B: the address field ends 90 mm from the top edge, also with six lines. The addition and the
-     * contact person keep one line each, even at their longest.
+     * DIN 5008, form B: the address field ends 90 mm from the top edge, whatever the buyer holds. A long name stays in
+     * full, as §14 Abs. 4 Nr. 1 UStG asks; the addition and the contact person keep one line each.
      */
-    @ParameterizedTest
-    @ValueSource(ints = {0, 200})
-    void sixAddressLinesStayInsideTheAddressField(int length) throws IOException {
-        InvoiceDocument d = SampleInvoices.departmentAbroad();
-        Party b = d.buyer();
-        Party buyer = length == 0 ? b : new Party(b.name(), "Bereich ".repeat(25).substring(0, length), b.street(),
-                b.postcode(), b.city(), b.countryCode(), b.email(), null, "Frau Weber ".repeat(19).substring(0, length),
-                null, null);
-        InvoiceDocument document = SampleInvoices.invoice(buyer, null, d.format(), d.lines().toArray(InvoiceLine[]::new));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("addresses")
+    void theAddressStaysInsideTheAddressField(String title, String name, String addition, String contact, String country)
+            throws IOException {
+        Party b = SampleInvoices.DEPARTMENT;
+        Party buyer = new Party(name, addition, b.street(), "6020", "Innsbruck", country, b.email(), null, contact, null,
+                null);
+        InvoiceDocument document = SampleInvoices.invoice(buyer, null, InvoiceFormat.ZUGFERD_EN16931,
+                SampleInvoices.line("Online-Sprachkurs Deutsch B1, je 45 Min.", "24", "41.00", TaxCategory.NOT_TAXABLE_ABROAD));
+        byte[] rendered = renderer.render(document);
         Map<String, Float> bottoms = new HashMap<>();
-        try (PDDocument pdf = Loader.loadPDF(renderer.render(document))) {
+        try (PDDocument pdf = Loader.loadPDF(rendered)) {
             PDFTextStripper stripper = new PDFTextStripper() {
                 @Override
                 protected void writeString(String line, List<TextPosition> positions) {
                     TextPosition last = positions.getLast();
-                    bottoms.put(line, last.getYDirAdj() + last.getFont().getFontDescriptor().getDescent() / 1000
+                    bottoms.put(line.strip(), last.getYDirAdj() + last.getFont().getFontDescriptor().getDescent() / 1000
                             * -last.getFontSizeInPt());
                 }
             };
             stripper.getText(pdf);
         }
-        assertThat(bottoms).as("the stripper hands over whole lines").containsKeys("Sprachschule am See", "ÖSTERREICH");
+        String lastLine = "DE".equals(country) ? "6020 Innsbruck" : "ÖSTERREICH";
+        assertThat(bottoms).as("the stripper hands over whole lines").containsKey(lastLine);
         float mm = 72 / 25.4f;
-        assertThat(bottoms.get("ÖSTERREICH")).as("bottom of the sixth line").isLessThanOrEqualTo(90 * mm);
-        assertThat(bottoms.get("Sprachschule am See")).as("the first line below the sender line").isGreaterThan(62.7f * mm);
+        assertThat(bottoms.get(lastLine)).as("bottom of the last line").isLessThanOrEqualTo(90 * mm);
+        float first = bottoms.entrySet().stream().filter(line -> name.startsWith(line.getKey()))
+                .map(Map.Entry::getValue).min(Float::compare).orElseThrow();
+        assertThat(first).as("the first line below the sender line").isGreaterThan(62.7f * mm);
+        assertThat(text(rendered).replaceAll("\\s+", " ")).as("the full name").contains(name);
     }
 
     @Test

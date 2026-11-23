@@ -12,7 +12,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Changed
 
-- The address of an invoice follows DIN 5008: name, "Abteilung / Zusatz", the contact person, street, postcode and city, country. The contact person was not printed before. Six lines fit the window of the envelope. The XML carries the addition as address line 2 (BT-51) and the contact person as contact point of the buyer (BT-56). Issued invoices stay as they are.
+- The address of an invoice follows DIN 5008: name, "Abteilung / Zusatz", the contact person, street, postcode and city, country. The contact person was not printed before. Six lines fit the window of the envelope. A longer address, for example a name of two lines, gets a smaller text, so the full name stays and the address still fits. The XML carries the addition as address line 2 (BT-51) and the contact person as contact point of the buyer (BT-56). Issued invoices stay as they are.
 - On "Kunden" the contact person sits in "Anschrift", below the name, since it is now part of the address.
 
 ## [0.1.14] - 2026-11-23
