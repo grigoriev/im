@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-11-23
+
 ### Added
 
 - "Einstellungen", "Datensicherung": a warning above "Export herunterladen" says that the file is not encrypted, holds all customer data, IBANs and password hashes, belongs on an encrypted medium only and is deleted after use.
@@ -215,7 +217,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - The start page no longer fails for a logged-in user without an account record.
 
-[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/grigoriev/im/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/grigoriev/im/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/grigoriev/im/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/grigoriev/im/compare/v0.1.8...v0.1.9
