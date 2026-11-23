@@ -26,7 +26,7 @@
         <dd class="num" id="system-started" data-volatile
             th:text="${#temporals.format(system.startedAt, 'dd.MM.yyyy, HH:mm', 'Europe/Berlin')}">23.11.2026, 07:00</dd>
         <dt class="text-base-content/75">Datenbankschema</dt>
-        <dd class="num" id="system-schema" th:text="${'V' + system.schema}">V36</dd>
+        <dd class="num" id="system-schema" data-volatile th:text="${'V' + system.schema}">V36</dd>
         <dt class="text-base-content/75">PostgreSQL</dt>
         <dd class="num" id="system-database" data-volatile th:text="${system.database}">17.2</dd>
         <dt class="text-base-content/75">Java</dt>
