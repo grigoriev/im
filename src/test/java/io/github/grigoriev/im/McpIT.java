@@ -49,13 +49,27 @@ class McpIT {
 
     private final HttpClient client = HttpClient.newHttpClient();
 
+    private List<String> names(CreatedToken token) throws Exception {
+        List<String> names = new ArrayList<>();
+        json.readTree(send(token.secret(), "tools/list", "{}").body()).at("/result/tools")
+                .forEach(tool -> names.add(tool.get("name").asString()));
+        return names;
+    }
+
     private HttpResponse<String> send(String token, String method, String params) throws Exception {
+        return send(token, method, params, null);
+    }
+
+    private HttpResponse<String> send(String token, String method, String params, String origin) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/mcp"))
                 .header("Content-Type", "application/json").header("Accept", "application/json, text/event-stream")
                 .POST(HttpRequest.BodyPublishers.ofString("{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"" + method
                         + "\", \"params\": " + params + "}"));
         if (token != null) {
             request.header("Authorization", "Bearer " + token);
+        }
+        if (origin != null) {
+            request.header("Origin", origin);
         }
         return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
@@ -80,11 +94,13 @@ class McpIT {
         assertThat(init.statusCode()).as(init.body()).isEqualTo(200);
         assertThat(json.readTree(init.body()).at("/result/serverInfo/name").asString()).isEqualTo("im");
 
-        JsonNode list = json.readTree(send(reader.secret(), "tools/list", "{}").body()).at("/result/tools");
-        List<String> names = new ArrayList<>();
-        list.forEach(tool -> names.add(tool.get("name").asString()));
-        assertThat(names).contains("list_customers", "create_customer", "save_template", "save_number_pattern")
-                .hasSize(16);
+        assertThat(names(reader)).as("a reading token sees the reading tools of a user")
+                .containsExactlyInAnyOrder("list_customers", "get_customer", "list_templates", "get_template",
+                        "get_profile", "get_mail_texts");
+        assertThat(names(writer)).contains("create_customer", "save_template").hasSize(12)
+                .doesNotContain("get_tax_notes", "save_number_pattern");
+        HttpResponse<String> foreign = send(writer.secret(), "tools/list", "{}", "https://fremd.example");
+        assertThat(foreign.statusCode()).as("a foreign page").isEqualTo(403);
 
         String customer = """
                 {"customer": {"name": "Sprachschule am Kanal %s", "street": "Kanalweg 3", "postcode": "12345",

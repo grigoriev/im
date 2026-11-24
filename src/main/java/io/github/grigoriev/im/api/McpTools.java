@@ -8,11 +8,13 @@ import io.github.grigoriev.im.invoice.TemplateForm;
 import io.github.grigoriev.im.mail.MailText;
 import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SettingsException;
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.Tool;
 import io.modelcontextprotocol.spec.McpSchema.ToolAnnotations;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -82,6 +84,7 @@ public class McpTools {
             {"type": "object", "properties": {"customerId": {"type": "integer"}, "id": {"type": "integer"}},
              "required": ["customerId", "id"]}""";
 
+    private final Map<String, Access> access = new HashMap<>();
     private final ApiCustomerController customers;
     private final ApiTemplateController templates;
     private final ApiSettingsController settings;
@@ -201,11 +204,54 @@ public class McpTools {
      */
     SyncToolSpecification tool(String name, String description, String schema, Access access,
             Function<Map<String, Object>, Object> call) {
-        boolean reads = access == Access.READ || access == Access.ADMIN_READ;
+        this.access.put(name, access);
         Tool tool = Tool.builder().name(name).description(description).inputSchema(mcpJson, schema)
-                .annotations(new ToolAnnotations(null, reads, false, true, false, null)).build();
+                .annotations(annotations(name)).build();
         return SyncToolSpecification.builder().tool(tool)
                 .callHandler((context, request) -> call(access, call, request.arguments())).build();
+    }
+
+    /**
+     * Returns the hints of a tool for the assistant: {@code get_} and {@code list_} only read, {@code create_} adds
+     * something new each time, the others overwrite what is there.
+     *
+     * @param name the name of the tool
+     * @return the hints
+     */
+    static ToolAnnotations annotations(String name) {
+        if (name.startsWith("get_") || name.startsWith("list_")) {
+            return new ToolAnnotations(null, true, false, true, false, null);
+        }
+        if (name.startsWith("create_")) {
+            return new ToolAnnotations(null, false, false, false, false, null);
+        }
+        return new ToolAnnotations(null, false, true, true, false, null);
+    }
+
+    /**
+     * Filters the list of tools for the token of the request.
+     *
+     * @param context the transport, unused: the login sits in the security context
+     * @param tool the tool
+     * @return {@code true} if the token may call it
+     */
+    public boolean visible(McpTransportContext context, Tool tool) {
+        return visible(tool.name());
+    }
+
+    /**
+     * Tells whether the token of the request may call a tool, so the list shows it only what it may use.
+     *
+     * @param name the name of the tool
+     * @return {@code true} if the check passes
+     */
+    public boolean visible(String name) {
+        try {
+            check(access.getOrDefault(name, Access.ADMIN_WRITE));
+            return true;
+        } catch (Refused _) {
+            return false;
+        }
     }
 
     /**
@@ -278,7 +324,8 @@ public class McpTools {
     }
 
     private static String unfit(String name, JacksonException e) {
-        return "Das Argument „" + name + "“ passt nicht zum Schema: " + e.getOriginalMessage();
+        LOG.debug("MCP argument {} does not convert", name, e);
+        return "Das Argument „" + name + "“ passt nicht zum Schema.";
     }
 
     private long id(Map<String, Object> args, String name) {

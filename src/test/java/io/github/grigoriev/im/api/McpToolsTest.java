@@ -117,11 +117,58 @@ class McpToolsTest {
         call("save_tax_notes", Map.of("notes", Map.of("KLEINUNTERNEHMER", "Neu")));
         verify(settings).saveTaxNotes(Map.of(TaxCategory.KLEINUNTERNEHMER, "Neu"));
         assertThat(text(call("save_tax_notes", Map.of("notes", Map.of("UNBEKANNT", "x")))))
-                .startsWith("Das Argument „notes“ passt nicht zum Schema: ");
+                .isEqualTo("Das Argument „notes“ passt nicht zum Schema.");
         call("get_number_pattern", Map.of());
         verify(settings).numberPattern();
         call("save_number_pattern", Map.of("pattern", "RE-{YYYY}-{NN}"));
         verify(settings).saveNumberPattern(new ApiSettingsController.NumberPatternView("RE-{YYYY}-{NN}", null));
+    }
+
+    /** The access of every tool: a new tool needs its line here, or the test fails. */
+    private static final Map<String, McpTools.Access> ACCESS = Map.ofEntries(
+            Map.entry("list_customers", McpTools.Access.READ), Map.entry("get_customer", McpTools.Access.READ),
+            Map.entry("create_customer", McpTools.Access.WRITE), Map.entry("update_customer", McpTools.Access.WRITE),
+            Map.entry("list_templates", McpTools.Access.READ), Map.entry("get_template", McpTools.Access.READ),
+            Map.entry("create_template", McpTools.Access.WRITE), Map.entry("save_template", McpTools.Access.WRITE),
+            Map.entry("get_profile", McpTools.Access.READ), Map.entry("save_profile", McpTools.Access.WRITE),
+            Map.entry("get_mail_texts", McpTools.Access.READ), Map.entry("save_mail_text", McpTools.Access.WRITE),
+            Map.entry("get_tax_notes", McpTools.Access.ADMIN_READ),
+            Map.entry("save_tax_notes", McpTools.Access.ADMIN_WRITE),
+            Map.entry("get_number_pattern", McpTools.Access.ADMIN_READ),
+            Map.entry("save_number_pattern", McpTools.Access.ADMIN_WRITE));
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            ROLE_USER,SCOPE_READ
+            ROLE_USER,SCOPE_READ,SCOPE_WRITE
+            ROLE_ADMIN,SCOPE_READ
+            ROLE_ADMIN,SCOPE_READ,SCOPE_WRITE
+            """)
+    void everyToolKeepsItsAccessAndTheListShowsOnlyWhatTheTokenMayUse(String authorities) {
+        login(authorities.split(","));
+        boolean admin = authorities.contains("ROLE_ADMIN");
+        boolean write = authorities.contains("SCOPE_WRITE");
+        assertThat(tools.specifications()).extracting(spec -> spec.tool().name())
+                .containsExactlyInAnyOrderElementsOf(ACCESS.keySet());
+        ACCESS.forEach((name, access) -> {
+            boolean allowed = (write || access == McpTools.Access.READ || access == McpTools.Access.ADMIN_READ)
+                    && (admin || access == McpTools.Access.READ || access == McpTools.Access.WRITE);
+            String answer = text(call(name, Map.of()));
+            assertThat(answer).as(name).matches(allowed ? "(?s)(?!Nur mit|Der API-Token).*" : "(Nur mit|Der API-Token).*");
+            assertThat(tools.visible(name)).as(name).isEqualTo(allowed);
+        });
+        assertThat(tools.visible("unbekannt")).isEqualTo(admin && write);
+        assertThat(tools.visible(null, tools.specifications().getFirst().tool())).isTrue();
+    }
+
+    @Test
+    void hintsWhatEachToolDoes() {
+        assertThat(McpTools.annotations("get_customer").readOnlyHint()).isTrue();
+        assertThat(McpTools.annotations("list_customers").idempotentHint()).isTrue();
+        assertThat(McpTools.annotations("create_customer").idempotentHint()).isFalse();
+        assertThat(McpTools.annotations("create_customer").destructiveHint()).isFalse();
+        assertThat(McpTools.annotations("save_template").destructiveHint()).isTrue();
+        assertThat(McpTools.annotations("update_customer").readOnlyHint()).isFalse();
     }
 
     @ParameterizedTest
@@ -169,7 +216,7 @@ class McpToolsTest {
             throw new IllegalStateException("intern");
         }, "Ein Fehler im Server. Das Protokoll nennt ihn.");
         assertThat(text(call("get_customer", Map.of()))).isEqualTo("Das Argument „id“ fehlt.");
-        assertThat(text(call("get_customer", Map.of("id", "vier")))).startsWith("Das Argument „id“ passt nicht zum Schema: ");
+        assertThat(text(call("get_customer", Map.of("id", "vier")))).isEqualTo("Das Argument „id“ passt nicht zum Schema.");
         assertThat(text(call("get_tax_notes", Map.of()))).isEqualTo("Nur mit einem API-Token des Administrators.");
     }
 

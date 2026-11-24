@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.config.PasskeyProperties;
 import io.github.grigoriev.im.system.AppVersion;
 import io.github.grigoriev.im.system.SystemService;
 import io.modelcontextprotocol.json.McpJsonMapper;
@@ -21,7 +22,8 @@ class McpConfigTest {
     void buildsTheServerWithTheVersionOfTheApp(String number, String version) {
         McpConfig config = new McpConfig();
         McpJsonMapper json = config.mcpJsonMapper(JsonMapper.builder().build());
-        HttpServletStatelessServerTransport transport = config.mcpTransport(json);
+        HttpServletStatelessServerTransport transport = config.mcpTransport(json,
+                new PasskeyProperties("localhost", "Rechnungen", List.of("http://localhost:8080")));
         McpTools tools = mock(McpTools.class);
         when(tools.specifications()).thenReturn(List.of());
         SystemService system = mock(SystemService.class);

@@ -1,10 +1,12 @@
 package io.github.grigoriev.im.api;
 
+import io.github.grigoriev.im.config.PasskeyProperties;
 import io.github.grigoriev.im.system.SystemService;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
+import io.modelcontextprotocol.server.transport.DefaultServerTransportSecurityValidator;
 import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.Objects;
@@ -23,6 +25,8 @@ public class McpConfig {
 
     /** The URL of the MCP server. */
     static final String PATH = "/mcp";
+    /** The largest request: a template with its hundred lines fits many times over. */
+    static final int MAX_REQUEST = 1024 * 1024;
 
     static final String INSTRUCTIONS = """
             Invoice Manager (im) of a German freelancer. The tools read and change customers, their invoice templates \
@@ -42,14 +46,20 @@ public class McpConfig {
     }
 
     /**
-     * Returns the transport: a servlet that answers each request on its own, without a session.
+     * Returns the transport: a servlet that answers each request on its own, without a session. A request from a
+     * browser page must come from an origin of the app, as for the passkeys; an assistant sends no origin.
      *
      * @param json the JSON mapper
+     * @param passkeys the origins of the app
      * @return the transport
      */
     @Bean
-    public HttpServletStatelessServerTransport mcpTransport(McpJsonMapper json) {
-        return HttpServletStatelessServerTransport.builder().jsonMapper(json).messageEndpoint(PATH).build();
+    public HttpServletStatelessServerTransport mcpTransport(McpJsonMapper json, PasskeyProperties passkeys) {
+        return HttpServletStatelessServerTransport.builder().jsonMapper(json).messageEndpoint(PATH)
+                .securityValidator(DefaultServerTransportSecurityValidator.builder()
+                        .allowedOrigins(passkeys.allowedOrigins()).build())
+                .maxRequestSize(MAX_REQUEST)
+                .build();
     }
 
     /**
@@ -70,6 +80,7 @@ public class McpConfig {
                 .jsonMapper(json)
                 .capabilities(McpSchema.ServerCapabilities.builder().tools(false).build())
                 .immediateExecution(true)
+                .addToolFilter(tools::visible)
                 .tools(tools.specifications())
                 .build();
     }
