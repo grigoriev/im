@@ -25,8 +25,10 @@ settings at once, but it has no way in except to fill the forms like a browser, 
 - The backup leaves the tokens out, as the remember-me logins. An import removes them.
 - The API reads JSON only. It refuses an upload before the servlet stores it, and answers a refusal itself as problem
   details, without the error page and its session.
-- The MCP server follows the API in a later step. It uses the stateless servlet transport of the MCP Java SDK and needs
-  no Spring AI and no session. Its URL joins the filter chain of the API.
+- The MCP server uses the stateless servlet transport of the MCP Java SDK and needs no Spring AI and no session. Its URL
+  joins the filter chain of the API. Each tool runs on the thread of the request and calls the controller of the REST
+  API, so both share the checks. The MCP server takes every call as a POST, so each tool checks the scope and the role
+  itself.
 
 ## Consequences
 

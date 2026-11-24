@@ -22,13 +22,14 @@ import org.springframework.security.web.csrf.CsrfFilter;
 /**
  * The access rules of the API (docs/adr/0007-api-tokens-and-mcp.md). It runs ahead of the rules of the pages: a bearer
  * token only, no session, no login page. Every token reads; a write needs the scope {@code WRITE}. The URLs under
- * {@code /api/v1/admin} need a token of the admin, as the pages under {@code /admin}.
+ * {@code /api/v1/admin} need a token of the admin, as the pages under {@code /admin}. The MCP server under
+ * {@code /mcp} takes every token and checks each tool itself ({@link McpTools}).
  */
 @Configuration(proxyBeanMethods = false)
 public class ApiSecurityConfig {
 
     /** The URLs of the API. */
-    static final String[] PATHS = {"/api/**"};
+    static final String[] PATHS = {"/api/**", McpConfig.PATH};
     /** The URLs of the admin, as {@code /admin} for the pages. */
     static final String ADMIN = "/api/v1/admin/**";
     private static final String ADMIN_ROLE = "ADMIN";
@@ -53,6 +54,8 @@ public class ApiSecurityConfig {
                 .securityMatcher(PATHS)
                 .addFilterBefore(new ApiTokenFilter(tokens), CsrfFilter.class)
                 .authorizeHttpRequests(auth -> auth
+                        // The MCP server takes every call as a POST and checks the scope per tool.
+                        .requestMatchers(McpConfig.PATH).hasAuthority(ApiTokenScope.READ_AUTHORITY)
                         .requestMatchers(HttpMethod.GET, ADMIN).access(allOf(hasRole(ADMIN_ROLE),
                                 hasAuthority(ApiTokenScope.READ_AUTHORITY)))
                         .requestMatchers(HttpMethod.HEAD, ADMIN).access(allOf(hasRole(ADMIN_ROLE),

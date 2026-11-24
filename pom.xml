@@ -41,6 +41,7 @@
         <testcontainers.version>2.0.5</testcontainers.version>
         <greenmail.version>2.1.15</greenmail.version>
         <bouncycastle.version>1.87</bouncycastle.version>
+        <mcp.version>2.1.0</mcp.version>
 
         <jacoco.version>0.8.16</jacoco.version>
         <pitest.version>1.30.2</pitest.version>
@@ -170,6 +171,12 @@
             <groupId>org.kosit</groupId>
             <artifactId>validator</artifactId>
             <version>${kosit-validator.version}</version>
+        </dependency>
+        <!-- The MCP server of the API (docs/adr/0007-api-tokens-and-mcp.md): the stateless servlet transport. -->
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
+            <version>${mcp.version}</version>
         </dependency>
         <dependency>
             <groupId>org.xhtmlrenderer</groupId>
