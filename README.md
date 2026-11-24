@@ -111,7 +111,7 @@ The REST API lives under `/api/v1` and takes a personal API token only, never th
 
 The JSON fields are those of the form: `name`, `addressAddition`, `street`, `postcode`, `city`, `countryCode`,
 `contactName`, `email`, `vatId`, `buyerReference`, `sellerIdentifier`, `format` (`ZUGFERD_EN16931`,
-`ZUGFERD_XRECHNUNG`, `XRECHNUNG`) and `activity` (`TEACHING`, `OTHER` or empty). A refused input answers 400 with
+`ZUGFERD_XRECHNUNG`, `XRECHNUNG`, `EXTERNAL` for invoices made elsewhere) and `activity` (`TEACHING`, `OTHER` or empty). A refused input answers 400 with
 the list `problems`. The audit log names the token of each change. Issuing, canceling and deleting stay in the forms.
 
 Sending invoices by e-mail needs an SMTP server: `IM_SMTP_HOST`, `IM_SMTP_PORT` (587), `IM_SMTP_USERNAME`,
