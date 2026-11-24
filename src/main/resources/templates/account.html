@@ -71,7 +71,7 @@
       <p role="alert" class="alert alert-error text-sm" data-passkey-message hidden></p>
     </section>
 
-    <section id="api-tokens" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4">
+    <section id="api-tokens" class="bg-base-100 rounded-box border border-base-300 shadow-xs p-5 grid gap-4 @container">
       <div>
         <h2 class="font-semibold">API-Token</h2>
         <p class="text-sm text-base-content/75">Mit einem API-Token richtet ein Assistent wie Claude Code die App über
@@ -101,7 +101,7 @@
           </div>
         </div>
       </div>
-      <form id="token-create" class="grid gap-3 sm:grid-cols-3" th:action="@{/account/tokens}" method="post" th:if="${recentLogin}">
+      <form id="token-create" class="grid gap-3 @sm:grid-cols-3" th:action="@{/account/tokens}" method="post" th:if="${recentLogin}">
         <label class="floating-label"><span>Name</span>
           <input id="token-name" name="name" class="input w-full" maxlength="64" required>
         </label>
@@ -117,7 +117,7 @@
                     th:selected="${days == 90}">90 Tage</option>
           </select>
         </label>
-        <div class="form-actions sm:col-span-3"><button type="submit" class="btn btn-primary"><i data-lucide="plus" class="size-4"></i>Token anlegen</button></div>
+        <div class="form-actions @sm:col-span-3"><button type="submit" class="btn btn-primary"><i data-lucide="plus" class="size-4"></i>Token anlegen</button></div>
       </form>
       <p class="text-sm text-base-content/75" th:unless="${recentLogin}">Bestätigen Sie oben Ihr Passwort, um einen Token anzulegen.</p>
     </section>

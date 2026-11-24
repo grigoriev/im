@@ -21,8 +21,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Logs a request of the API in with its bearer token. Without a valid token it answers 401: the API knows no session
- * and no login page. It refuses an upload at once: the API reads JSON only, and the servlet would store a multipart
- * body on disk before any check. Not a bean, so that it runs in the filter chain of the API only.
+ * and no login page. It refuses an upload at once, ahead of the CSRF check: the API reads JSON only, and the servlet
+ * would store a multipart body on disk before any check. An error the servlet answers later, such as an unknown URL,
+ * becomes problem details too, without the error page. Not a bean, so that it runs in the filter chain of the API
+ * only.
  */
 public class ApiTokenFilter extends OncePerRequestFilter {
 
@@ -59,7 +61,7 @@ public class ApiTokenFilter extends OncePerRequestFilter {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication(login.get()));
         SecurityContextHolder.setContext(context);
-        chain.doFilter(request, response);
+        chain.doFilter(request, new ProblemResponse(response));
     }
 
     /**

@@ -122,6 +122,31 @@ class ApiWebTest {
     }
 
     @Test
+    void answersEveryErrorAsProblemDetails() throws Exception {
+        mvc.perform(post("/api/v1/customers").header("Authorization", WRITER).contentType(MediaType.APPLICATION_JSON)
+                        .content("{kaputt"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
+        mvc.perform(get("/api/v1/customers/abc").header("Authorization", READER))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400));
+        mvc.perform(get("/api/v1/unbekannt").header("Authorization", READER))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.detail").value("Diese Adresse gibt es nicht."));
+        mvc.perform(post("/api/v1/customers").header("Authorization", WRITER).contentType(MediaType.TEXT_PLAIN)
+                .content("x")).andExpect(status().isUnsupportedMediaType()).andExpect(jsonPath("$.status").value(415));
+        when(customers.list()).thenThrow(new IllegalStateException("intern: geheimes Detail"));
+        mvc.perform(get("/api/v1/customers").header("Authorization", READER))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("Ein Fehler im Server. Das Protokoll nennt ihn."));
+    }
+
+    @Test
+    void refusesAnUploadAheadOfTheCsrfCheck() throws Exception {
+        mvc.perform(post("/api/v1/customers").cookie(new Cookie("JSESSIONID", "x"))
+                        .contentType("multipart/form-data; boundary=x").content("--x--"))
+                .andExpect(status().isUnsupportedMediaType());
+        verify(tokens, never()).authenticate(any());
+    }
+
+    @Test
     void refusesARequestWithoutAValidToken() throws Exception {
         mvc.perform(get("/api/v1/customers")).andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Bitte einen gültigen API-Token senden."));

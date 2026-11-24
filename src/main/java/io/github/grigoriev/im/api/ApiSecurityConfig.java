@@ -12,8 +12,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
 
 /**
  * The access rules of the API (docs/adr/0007-api-tokens-and-mcp.md). It runs ahead of the rules of the pages: a bearer
@@ -43,7 +43,7 @@ public class ApiSecurityConfig {
     public SecurityFilterChain apiFilterChain(HttpSecurity http, ApiTokenService tokens) throws Exception {
         return http
                 .securityMatcher(PATHS)
-                .addFilterBefore(new ApiTokenFilter(tokens), AnonymousAuthenticationFilter.class)
+                .addFilterBefore(new ApiTokenFilter(tokens), CsrfFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, PATHS).hasAuthority(ApiTokenScope.READ_AUTHORITY)
                         .requestMatchers(HttpMethod.HEAD, PATHS).hasAuthority(ApiTokenScope.READ_AUTHORITY)
