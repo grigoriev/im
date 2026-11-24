@@ -22,6 +22,8 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -177,6 +179,20 @@ class TemplateServiceTest {
         assertThat(service.save(2, 7, form).name()).hasSize(100);
         form.setPaymentDays(0);
         assertThat(service.save(2, 7, form).paymentDays()).isZero();
+    }
+
+    @Test
+    void holdsTheLinesToAHundredAndTakesNoneForNull() {
+        when(repository.findById(7L)).thenReturn(Optional.of(template(2)));
+        TemplateForm form = TemplateForm.of(template(2));
+        LineForm line = form.getLines().getFirst();
+        form.setLines(new ArrayList<>(Collections.nCopies(100, line)));
+        assertThat(service.save(2, 7, form).lines()).hasSize(100);
+        form.setLines(new ArrayList<>(Collections.nCopies(101, line)));
+        assertThat(catchThrowableOfType(InvoiceException.class, () -> service.save(2, 7, form)).problems())
+                .containsExactly("Eine Vorlage hat höchstens 100 Zeilen.");
+        form.setLines(null);
+        assertThat(form.getLines()).isEmpty();
     }
 
     @Test

@@ -21,6 +21,8 @@ public class TemplateService {
     static final int MAX_NAME = 100;
     static final int MAX_SUBJECT = 200;
     static final int MAX_BODY = 4000;
+    /** Most lines of a template: the editor grows to 256 at most, the API is held below it. */
+    static final int MAX_LINES = 100;
     static final String DEFAULT_NAME = "Neue Vorlage";
     static final String DEFAULT_SUBJECT = "Rechnung {Rechnungsnummer}";
     static final String DEFAULT_BODY = """
@@ -115,6 +117,9 @@ public class TemplateService {
                 .orElseThrow(() -> new InvoiceException(List.of("Diese Vorlage gibt es nicht.")));
         if (form.getVersion() == null || !form.getVersion().equals(template.version())) {
             throw new InvoiceException(List.of(CHANGED_ELSEWHERE));
+        }
+        if (form.getLines().size() > MAX_LINES) {
+            throw new InvoiceException(List.of("Eine Vorlage hat höchstens " + MAX_LINES + " Zeilen."));
         }
         List<String> problems = new ArrayList<>();
         List<TemplateLine> lines = new ArrayList<>();
