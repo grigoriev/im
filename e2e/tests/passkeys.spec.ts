@@ -125,7 +125,7 @@ test('a login by "Angemeldet bleiben" confirms the password before a new passkey
   await addVirtualAuthenticator(remembered);
 
   await remembered.goto('/account');
-  await expect(remembered.getByText('Bestätigen Sie für einen neuen Passkey zuerst Ihr Passwort.')).toBeVisible();
+  await expect(remembered.getByText('Bestätigen Sie für einen neuen Passkey oder API-Token zuerst Ihr Passwort.')).toBeVisible();
   await expect(remembered.getByRole('button', { name: 'Passkey hinzufügen' })).toHaveCount(0);
   const confirm = remembered.locator('#passkey-confirm');
   await confirm.getByLabel('Passwort').fill('falsch-falsch-falsch');

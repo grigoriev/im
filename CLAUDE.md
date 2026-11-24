@@ -43,7 +43,12 @@ Package `io.github.grigoriev.im`:
 - `user`: accounts, roles (`USER`, `ADMIN`), Argon2 passwords, the first admin from `IM_ADMIN_*`,
   passkeys (`PasskeyService` on the JDBC stores of Spring Security, `IM_WEBAUTHN_*`)
 - `seller`: the seller profile (`SellerService`, one row, IBAN checksum; `ProfilePart` saves one tab, `missing` names what invoices still need; `taxNumberTeaching` is the second tax number for §4 Nr. 21, chosen per invoice by `toParty(teaching)`; `Activity` is the business of an invoice, `InvoiceService.activity` picks it) and the default tax notes (`TaxNoteService`)
-- `audit`: the audit log (`AuditService.add`, joins the caller's transaction; with an invoice ID the entry joins its `history`); logins come from `user.LoginAudit`,
+- `api`: the REST API under `/api/v1` and its personal API tokens (`ApiTokenService`: `im_` and 32 random bytes, the
+  table `api_token` keeps the SHA-256; `ApiTokenFilter` logs a bearer token in, `ApiSecurityConfig` the stateless chain
+  ahead of the pages, reading for every token, writing for scope `WRITE`; ADR 7). `ApiCustomerController` serves the
+  customers through `CustomerService`; `ApiExceptionHandler` answers problem details. "Mein Konto" lists, creates and
+  deletes the tokens. The API leaves out what cannot be undone: issuing, canceling, deleting, payments, the import
+- `audit`: the audit log (`AuditService.add`, joins the caller's transaction; with an invoice ID the entry joins its `history`; an `AuditNote` in the details of the login, such as the API token, goes into each detail); logins come from `user.LoginAudit`,
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`
 - `invoice`: invoices (`Invoice` with `DraftLine`s); `InvoiceService` creates and saves drafts and names what blocks the issue
   (`problems`), `document` builds the `InvoiceDocument` of a complete draft; `IssueService.issue` assigns the number,
@@ -95,7 +100,7 @@ Package `io.github.grigoriev.im`:
 Tests: unit tests `*Test`, integration tests `*IT` with PostgreSQL in Testcontainers (the migration as the owner, the app as
 `im_app`; `TestDatabase.Owner` plays whoever edits the database), PDF baselines in
 `src/test/resources/visual/pdf`, Playwright tests and screenshot baselines in `e2e/tests`.
-`AccessRulesIT` holds the access rule of every URL: a new controller URL needs an entry there, or it fails.
+`AccessRulesIT` holds the access rule of every URL: a new controller URL needs an entry there, or it fails. An API URL has the rule `TOKEN`.
 
 ## Code Style
 

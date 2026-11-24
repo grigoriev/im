@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
  * Tells every page whether teaching has a tax number of its own. Only then do customers and drafts offer the business
  * ("Tätigkeit") that picks the tax number of an invoice.
  */
-@ControllerAdvice
+@ControllerAdvice(basePackageClasses = ActivityAdvice.class)
 public class ActivityAdvice {
 
     private final SellerService sellers;

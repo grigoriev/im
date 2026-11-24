@@ -12,6 +12,7 @@ fact; their date is the date of the decision.
 | [0004](0004-import-only-into-an-empty-installation.md) | The full import goes only into an empty installation | 2026-11-14 |
 | [0005](0005-external-invoices-and-numbers-by-hand.md) | External invoices and numbers by hand | 2026-11-22 |
 | [0006](0006-english-technical-names-and-no-fqcn.md) | English technical names and no fully qualified class names | 2026-11-14 |
+| [0007](0007-api-tokens-and-mcp.md) | A REST API and an MCP server behind personal API tokens | 2026-11-24 |
 
 A new record takes the next number, the status "accepted" and the date of the decision. A record that a later one
 replaces gets the status "superseded by" with a link.

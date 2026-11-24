@@ -108,7 +108,22 @@ class UserServiceTest {
         when(repository.findById(1L)).thenReturn(Optional.of(UserTestData.user(1, "elena", Role.USER)));
         assertThat(service.resetPassword(1, PASSWORD).passwordHash()).isEqualTo("{enc}" + PASSWORD);
         verify(rememberMe).removeUserTokens("elena");
+        verify(repository).deleteApiTokens(1L);
         verify(audit).add(AuditAction.PASSWORD_RESET, "elena");
+    }
+
+    @Test
+    void aNewPasswordEndsTheApiTokensAndTheLogNamesThem() {
+        when(repository.findById(1L)).thenReturn(Optional.of(UserTestData.user(1, "elena", Role.USER)));
+        when(repository.deleteApiTokens(1L)).thenReturn(2);
+        service.resetPassword(1, PASSWORD);
+        verify(audit).add(AuditAction.PASSWORD_RESET, "elena, 2 API-Token gelöscht");
+        when(repository.findByUsername("paula")).thenReturn(Optional.of(UserTestData.user(3, "paula", Role.USER)));
+        when(encoder.matches("alt-passwort", "{noop}x")).thenReturn(true);
+        when(repository.deleteApiTokens(3L)).thenReturn(1);
+        service.changePassword("paula", "alt-passwort", PASSWORD);
+        verify(audit).add("paula", AuditAction.PASSWORD_CHANGED, "1 API-Token gelöscht");
+        assertThat(UserService.endedTokens(0)).isEmpty();
     }
 
     @Test
@@ -137,6 +152,7 @@ class UserServiceTest {
         service.changePassword("elena", "alt-passwort", PASSWORD);
         verify(repository).save(ArgumentMatchers.argThat(user -> user.passwordHash().equals("{enc}" + PASSWORD)));
         verify(rememberMe).removeUserTokens("elena");
+        verify(repository).deleteApiTokens(2L);
         verify(audit).add("elena", AuditAction.PASSWORD_CHANGED, "");
     }
 

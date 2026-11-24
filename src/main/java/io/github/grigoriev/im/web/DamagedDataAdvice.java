@@ -16,7 +16,7 @@ import tools.jackson.core.JacksonException;
  * no longer parses or that no longer matches its seal. Every page that reads it would fail; this page checks everything
  * at once and names the damage.
  */
-@ControllerAdvice
+@ControllerAdvice(basePackageClasses = DamagedDataAdvice.class)
 public class DamagedDataAdvice {
 
     static final String VIEW = "damaged-data";

@@ -2,6 +2,7 @@ package io.github.grigoriev.im.user;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.ListCrudRepository;
 
@@ -32,6 +33,16 @@ public interface AppUserRepository extends ListCrudRepository<AppUser, Long> {
      */
     @Query("SELECT id FROM app_user WHERE role = 'ADMIN' ORDER BY id FOR UPDATE")
     List<Long> lockAdmins();
+
+    /**
+     * Deletes the API tokens of a user, after a new password: a token made with a leaked password stops too.
+     *
+     * @param userId the user
+     * @return the number of deleted tokens
+     */
+    @Modifying
+    @Query("DELETE FROM api_token WHERE user_id = :userId")
+    int deleteApiTokens(long userId);
 
     /**
      * Lists all users by login name.

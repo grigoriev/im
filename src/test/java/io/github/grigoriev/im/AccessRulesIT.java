@@ -45,7 +45,9 @@ class AccessRulesIT {
         /** Every logged-in user, both roles. */
         USER,
         /** The admin only. */
-        ADMIN
+        ADMIN,
+        /** An API token only: no session, no login page (docs/adr/0007-api-tokens-and-mcp.md). */
+        TOKEN
     }
 
     /** One rule per method and URL pattern of a controller. Path variables get harmless values, see {@link #url}. */
@@ -58,6 +60,12 @@ class AccessRulesIT {
             Map.entry("POST /account/passkeys/{id}/delete", Access.USER),
             Map.entry("POST /account/password", Access.USER),
             Map.entry("POST /account/confirm", Access.USER),
+            Map.entry("POST /account/tokens", Access.USER),
+            Map.entry("POST /account/tokens/{id}/delete", Access.USER),
+            Map.entry("GET /api/v1/customers", Access.TOKEN),
+            Map.entry("POST /api/v1/customers", Access.TOKEN),
+            Map.entry("GET /api/v1/customers/{id}", Access.TOKEN),
+            Map.entry("PUT /api/v1/customers/{id}", Access.TOKEN),
             Map.entry("GET /customers", Access.USER),
             Map.entry("GET /customers/new", Access.USER),
             Map.entry("GET /customers/{id}", Access.USER),
@@ -213,7 +221,9 @@ class AccessRulesIT {
         return RULES.entrySet().stream().sorted(Map.Entry.comparingByKey()).flatMap(rule -> Stream.of(
                 DynamicTest.dynamicTest(rule.getKey() + " anonymous", () -> {
                     MockHttpServletResponse response = send(rule.getKey(), null);
-                    if (rule.getValue() == Access.PUBLIC) {
+                    if (rule.getValue() == Access.TOKEN) {
+                        assertThat(response.getStatus()).isEqualTo(401);
+                    } else if (rule.getValue() == Access.PUBLIC) {
                         assertThat(admitted(rule.getKey(), response)).as("admitted").isTrue();
                     } else {
                         assertThat(response.getStatus()).isEqualTo(302);
@@ -222,7 +232,9 @@ class AccessRulesIT {
                 }),
                 DynamicTest.dynamicTest(rule.getKey() + " user", () -> {
                     MockHttpServletResponse response = send(rule.getKey(), ACTORS.get("user"));
-                    if (rule.getValue() == Access.ADMIN) {
+                    if (rule.getValue() == Access.TOKEN) {
+                        assertThat(response.getStatus()).as("a session is no token").isEqualTo(401);
+                    } else if (rule.getValue() == Access.ADMIN) {
                         assertThat(response.getStatus()).isEqualTo(403);
                     } else {
                         assertThat(admitted(rule.getKey(), response)).as("admitted, status %s", response.getStatus()).isTrue();
@@ -230,13 +242,20 @@ class AccessRulesIT {
                 }),
                 DynamicTest.dynamicTest(rule.getKey() + " admin", () -> {
                     MockHttpServletResponse response = send(rule.getKey(), ACTORS.get("admin"));
-                    assertThat(admitted(rule.getKey(), response)).as("admitted, status %s", response.getStatus()).isTrue();
+                    if (rule.getValue() == Access.TOKEN) {
+                        assertThat(response.getStatus()).as("a session is no token").isEqualTo(401);
+                    } else {
+                        assertThat(admitted(rule.getKey(), response)).as("admitted, status %s", response.getStatus())
+                                .isTrue();
+                    }
                 })));
     }
 
     @TestFactory
     Stream<DynamicTest> everyFormNeedsTheCsrfToken() {
-        Stream<String> posts = Stream.concat(RULES.keySet().stream().filter(rule -> rule.startsWith("POST ")),
+        Stream<String> posts = Stream.concat(RULES.entrySet().stream()
+                        .filter(rule -> rule.getKey().startsWith("POST ") && rule.getValue() != Access.TOKEN)
+                        .map(Map.Entry::getKey),
                 Stream.of("POST /logout", "POST /webauthn/register/options", "POST /webauthn/register"));
         return posts.sorted().map(rule -> DynamicTest.dynamicTest(rule, () -> {
             MockHttpServletResponse response = mvc.perform(request(rule).with(ACTORS.get("admin")))

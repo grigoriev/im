@@ -113,7 +113,7 @@ public class UserService {
     }
 
     /**
-     * Sets a new password and ends every "Angemeldet bleiben" of the user: a reset usually follows a
+     * Sets a new password and ends every "Angemeldet bleiben" and API token of the user: a reset usually follows a
      * leaked password or a lost device.
      *
      * @param id the user
@@ -127,13 +127,14 @@ public class UserService {
         AppUser user = get(id);
         AppUser saved = users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(saved.username());
-        audit.add(AuditAction.PASSWORD_RESET, saved.username());
+        int tokens = users.deleteApiTokens(saved.id());
+        audit.add(AuditAction.PASSWORD_RESET, saved.username() + endedTokens(tokens));
         return saved;
     }
 
     /**
      * Changes the password of the logged-in user, after a check of the current one. Other devices
-     * lose their "Angemeldet bleiben".
+     * lose their "Angemeldet bleiben", and the API tokens of the user end.
      *
      * @param username the login name
      * @param current the current password
@@ -146,7 +147,8 @@ public class UserService {
         checkPassword(password);
         users.save(user.withPasswordHash(encoder.encode(password)));
         rememberMe.removeUserTokens(username);
-        audit.add(username, AuditAction.PASSWORD_CHANGED, "");
+        int tokens = users.deleteApiTokens(user.id());
+        audit.add(username, AuditAction.PASSWORD_CHANGED, endedTokens(tokens).replaceFirst("^, ", ""));
     }
 
     /**
@@ -190,6 +192,16 @@ public class UserService {
         users.delete(user);
         audit.add(AuditAction.USER_DELETED, user.username() + " (" + user.role() + ")");
         return user;
+    }
+
+    /**
+     * Names the API tokens a new password ended, for the audit log.
+     *
+     * @param count the number of tokens
+     * @return for example ", 2 API-Token gelöscht", empty for none
+     */
+    static String endedTokens(int count) {
+        return count == 0 ? "" : ", " + count + " API-Token gelöscht";
     }
 
     private static void checkPassword(String password) {

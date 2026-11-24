@@ -23,6 +23,10 @@ public enum AuditAction {
     PASSKEY_REMOVED("Passkey entfernt"),
     /** The admin removed every passkey of a user. */
     PASSKEYS_REMOVED("Alle Passkeys entfernt"),
+    /** A user created an API token. */
+    API_TOKEN_CREATED("API-Token angelegt"),
+    /** A user deleted an API token. */
+    API_TOKEN_DELETED("API-Token gelöscht"),
     /** The seller profile changed. */
     PROFILE_SAVED("Profil gespeichert"),
     /** The default tax notes changed. */

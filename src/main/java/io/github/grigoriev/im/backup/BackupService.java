@@ -56,7 +56,7 @@ public class BackupService {
     static final String MANIFEST = "manifest.json";
 
     /**
-     * The tables in the order their keys need. Remember-me logins, the Flyway history, the schema marker
+     * The tables in the order their keys need. Remember-me logins, API tokens, the Flyway history, the schema marker
      * {@code app_info} and the backup runs that the host scripts write stay out.
      */
     static final List<String> TABLES = List.of("country", "app_setting", "tax_note", "number_sequence", "number_gap",
@@ -66,7 +66,7 @@ public class BackupService {
 
     /** The data an installation makes by itself, for example the first admin: the import replaces it. */
     static final List<String> SETUP = List.of("audit_event", "user_credentials", "user_entities", "persistent_logins",
-            "app_user", "threshold_baseline", "number_sequence", "tax_note", "app_setting", "country");
+            "api_token", "app_user", "threshold_baseline", "number_sequence", "tax_note", "app_setting", "country");
 
     /** The data a user enters: the import needs it empty. */
     static final List<String> BUSINESS = List.of("seller_profile", "customer", "invoice_template", INVOICE, "number_gap",
@@ -161,7 +161,7 @@ public class BackupService {
                     + " der Datenbank, diese App hat Version " + schema() + ". Bitte dieselbe Version verwenden.");
         }
         // Nobody writes into these tables until the import commits: no customer can slip in between check and import.
-        jdbc.sql("LOCK TABLE " + String.join(", ", TABLES) + ", persistent_logins IN EXCLUSIVE MODE").update();
+        jdbc.sql("LOCK TABLE " + String.join(", ", TABLES) + ", persistent_logins, api_token IN EXCLUSIVE MODE").update();
         for (String table : BUSINESS) {
             if (jdbc.sql("SELECT EXISTS (SELECT 1 FROM " + table + ")").query(Boolean.class).single()) {
                 throw new BackupException("Hier gibt es schon Daten. Eine Datensicherung lässt sich nur in eine leere "
