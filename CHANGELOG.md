@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-11-24
+
 ### Added
 
 - An MCP server under `/mcp`, so Claude Code sets up the app with an API token: 16 tools for the customers, their templates, the profile, the e-mail texts and, with a token of the admin, the tax notes and the number pattern. Each tool has the checks of the REST API and its form; a tool that writes needs a token that writes.
@@ -257,7 +259,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - The start page no longer fails for a logged-in user without an account record.
 
-[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.15...HEAD
+[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.16...HEAD
+[0.1.16]: https://github.com/grigoriev/im/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/grigoriev/im/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/grigoriev/im/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/grigoriev/im/compare/v0.1.12...v0.1.13
