@@ -74,12 +74,13 @@ public class McpTools {
               "activity": {"type": ["string", "null"], "enum": ["TEACHING", "OTHER", null],
                "description": "TEACHING for §4 Nr. 21 UStG, OTHER, or null to follow the lines"}},
              "required": ["name", "street", "postcode", "city", "countryCode", "format"]}""";
-    private static final String NONE = """
-            {"type": "object", "properties": {}}""";
-    private static final String ID = """
-            {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]}""";
-    private static final String CUSTOMER_ID = """
-            {"type": "object", "properties": {"customerId": {"type": "integer"}}, "required": ["customerId"]}""";
+    private static final String CUSTOMER_ARG = "customer";
+    private static final String CUSTOMER_ID_ARG = "customerId";
+    private static final String NONE = "{\"type\": \"object\", \"properties\": {}}";
+    private static final String ID = "{\"type\": \"object\", \"properties\": {\"id\": {\"type\": \"integer\"}}, "
+            + "\"required\": [\"id\"]}";
+    private static final String CUSTOMER_ID = "{\"type\": \"object\", \"properties\": {\"customerId\": "
+            + "{\"type\": \"integer\"}}, \"required\": [\"customerId\"]}";
     private static final String TEMPLATE_ID = """
             {"type": "object", "properties": {"customerId": {"type": "integer"}, "id": {"type": "integer"}},
              "required": ["customerId", "id"]}""";
@@ -119,28 +120,28 @@ public class McpTools {
                 tool("list_customers", "Lists all customers by name and contact person.", NONE, Access.READ,
                         args -> customers.list()),
                 tool("get_customer", "Returns one customer.", ID, Access.READ, args -> customers.get(id(args, "id"))),
-                tool("create_customer", "Creates a customer. Returns it with its id.", wrap("customer", CUSTOMER),
-                        Access.WRITE, args -> customers.create(arg(args, "customer", Customer.class)).getBody()),
+                tool("create_customer", "Creates a customer. Returns it with its id.", wrap(CUSTOMER_ARG, CUSTOMER),
+                        Access.WRITE, args -> customers.create(arg(args, CUSTOMER_ARG, Customer.class)).getBody()),
                 tool("update_customer", "Changes every field of a customer. Read it first with get_customer.",
                         """
                         {"type": "object", "properties": {"id": {"type": "integer"}, "customer": %s},
                          "required": ["id", "customer"]}""".formatted(CUSTOMER), Access.WRITE,
-                        args -> customers.update(id(args, "id"), arg(args, "customer", Customer.class))),
+                        args -> customers.update(id(args, "id"), arg(args, CUSTOMER_ARG, Customer.class))),
                 tool("list_templates", "Lists the invoice templates of a customer.", CUSTOMER_ID, Access.READ,
-                        args -> templates.list(id(args, "customerId"))),
+                        args -> templates.list(id(args, CUSTOMER_ID_ARG))),
                 tool("get_template", """
                         Returns an invoice template as the form of its editor. Amounts are German text, for example \
                         "1.234,56". Change it and send it back with save_template, with its version.""",
-                        TEMPLATE_ID, Access.READ, args -> templates.get(id(args, "customerId"), id(args, "id"))),
+                        TEMPLATE_ID, Access.READ, args -> templates.get(id(args, CUSTOMER_ID_ARG), id(args, "id"))),
                 tool("create_template", "Creates an invoice template with the defaults of the customer.", CUSTOMER_ID,
-                        Access.WRITE, args -> templates.create(id(args, "customerId")).getBody()),
+                        Access.WRITE, args -> templates.create(id(args, CUSTOMER_ID_ARG)).getBody()),
                 tool("save_template", """
                         Saves an invoice template: the form that get_template returned, changed. A version that \
                         changed meanwhile is refused.""", """
                         {"type": "object", "properties": {"customerId": {"type": "integer"}, "id": {"type": "integer"},
                          "form": {"type": "object", "description": "The form of get_template"}},
                          "required": ["customerId", "id", "form"]}""", Access.WRITE,
-                        args -> templates.save(id(args, "customerId"), id(args, "id"),
+                        args -> templates.save(id(args, CUSTOMER_ID_ARG), id(args, "id"),
                                 arg(args, "form", TemplateForm.class))),
                 tool("get_profile", "Returns the profile of the seller: address, contact, tax, bank.", NONE,
                         Access.READ, args -> settings.profile()),
@@ -172,8 +173,8 @@ public class McpTools {
                 tool("get_number_pattern", "Returns the invoice number pattern and the next numbers. Admin only.",
                         NONE, Access.ADMIN_READ, args -> settings.numberPattern()),
                 tool("save_number_pattern", "Changes the invoice number pattern, for example {YYYY}-{NN}. Admin only.",
-                        """
-                        {"type": "object", "properties": {"pattern": {"type": "string"}}, "required": ["pattern"]}""",
+                        "{\"type\": \"object\", \"properties\": {\"pattern\": {\"type\": \"string\"}}, "
+                                + "\"required\": [\"pattern\"]}",
                         Access.ADMIN_WRITE, args -> settings.saveNumberPattern(
                                 new ApiSettingsController.NumberPatternView(arg(args, "pattern", String.class), null))));
     }
@@ -188,8 +189,8 @@ public class McpTools {
     }
 
     private static String wrap(String name, String schema) {
-        return """
-                {"type": "object", "properties": {"%s": %s}, "required": ["%s"]}""".formatted(name, schema, name);
+        return "{\"type\": \"object\", \"properties\": {\"%s\": %s}, \"required\": [\"%s\"]}"
+                .formatted(name, schema, name);
     }
 
     /**
@@ -267,18 +268,27 @@ public class McpTools {
             check(access);
             return CallToolResult.builder().addTextContent(json.writeValueAsString(call.apply(args == null ? Map.of() : args)))
                     .build();
-        } catch (CustomerException e) {
-            return refused(e.problems());
-        } catch (SettingsException e) {
-            return refused(e.problems());
-        } catch (InvoiceException e) {
-            return refused(e.problems());
-        } catch (Refused | NotFoundException e) {
-            return refused(List.of(e.getMessage()));
+        } catch (CustomerException | SettingsException | InvoiceException | Refused | NotFoundException e) {
+            return refused(problems(e));
         } catch (RuntimeException e) {
             LOG.error("MCP tool failed", e);
             return refused(List.of(ProblemResponse.detail(500)));
         }
+    }
+
+    /**
+     * Returns what a refusal names: every problem of a form, or its message.
+     *
+     * @param e the refusal
+     * @return the problems
+     */
+    static List<String> problems(RuntimeException e) {
+        return switch (e) {
+            case CustomerException customer -> customer.problems();
+            case SettingsException settingsProblem -> settingsProblem.problems();
+            case InvoiceException invoice -> invoice.problems();
+            default -> List.of(e.getMessage());
+        };
     }
 
     private static CallToolResult refused(List<String> problems) {
