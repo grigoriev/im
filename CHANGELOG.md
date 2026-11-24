@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-11-24
+
 ### Added
 
 - "Kunden" has the field "Abteilung / Zusatz" for a department or cost center below the name. A further contact person of the customer keeps it. The PDF prints it and the contact person on one line each, so the address always fits the window; the XML carries them in full.
@@ -249,7 +251,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - The start page no longer fails for a logged-in user without an account record.
 
-[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.14...HEAD
+[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.15...HEAD
+[0.1.15]: https://github.com/grigoriev/im/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/grigoriev/im/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/grigoriev/im/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/grigoriev/im/compare/v0.1.11...v0.1.12
