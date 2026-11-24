@@ -71,7 +71,7 @@
         <sonar.issue.ignore.multicriteria.mustangdate.resourceKey>**/MustangInvoiceMapper.java</sonar.issue.ignore.multicriteria.mustangdate.resourceKey>
         <!-- HttpSecurity.build() declares "throws Exception"; the bean method must pass it on. -->
         <sonar.issue.ignore.multicriteria.securitythrows.ruleKey>java:S112</sonar.issue.ignore.multicriteria.securitythrows.ruleKey>
-        <sonar.issue.ignore.multicriteria.securitythrows.resourceKey>**/config/SecurityConfig.java</sonar.issue.ignore.multicriteria.securitythrows.resourceKey>
+        <sonar.issue.ignore.multicriteria.securitythrows.resourceKey>**/*SecurityConfig.java</sonar.issue.ignore.multicriteria.securitythrows.resourceKey>
         <!-- The full export works on every table: the table names are constants, and a column name of an import reaches
              SQL only after a check against the table in pg_attribute and a name pattern. The values are parameters. -->
         <sonar.issue.ignore.multicriteria.backupsql.ruleKey>java:S2077</sonar.issue.ignore.multicriteria.backupsql.ruleKey>

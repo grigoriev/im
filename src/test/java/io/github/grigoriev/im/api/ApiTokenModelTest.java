@@ -14,7 +14,7 @@ class ApiTokenModelTest {
         ApiToken token = new ApiToken(1L, 2L, "Claude", "geheimer-hash", ApiTokenScope.READ, AT, AT.plusSeconds(9), null);
         assertThat(token.usedAt(AT.plusSeconds(5))).isEqualTo(new ApiToken(1L, 2L, "Claude", "geheimer-hash",
                 ApiTokenScope.READ, AT, AT.plusSeconds(9), AT.plusSeconds(5)));
-        assertThat(token.toString()).isEqualTo("ApiToken[id=1, userId=2, name=Claude, scope=READ]");
+        assertThat(token).hasToString("ApiToken[id=1, userId=2, name=Claude, scope=READ]");
     }
 
     @Test
