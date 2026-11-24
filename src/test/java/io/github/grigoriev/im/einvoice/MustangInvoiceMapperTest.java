@@ -78,7 +78,7 @@ class MustangInvoiceMapperTest {
         assertThat(invoice.getSender().getID()).as("BT-29, assigned by the buyer")
                 .isEqualTo("70001234, Sprachzentrum Musterstadt / 1024");
         assertThat(invoice.getSender().getTaxID()).as("BT-32 keeps the tax number").isEqualTo("143/123/45678");
-        assertThat(invoice.getBuyerOrderReferencedDocumentID()).as("BT-13").isEqualTo("4500012345");
+        assertThat(invoice.getBuyerOrderReferencedDocument().getIssuerAssignedID()).as("BT-13").isEqualTo("4500012345");
         assertThat(invoice.getContractReferencedDocument().getIssuerAssignedID()).as("BT-12")
                 .isEqualTo("Rahmenvertrag vom 15.01.2027, Kurs B1 Online");
     }
@@ -88,10 +88,10 @@ class MustangInvoiceMapperTest {
         Invoice invoice = mapper.toMustang(SampleInvoices.withReferences(
                 SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931), new CustomerReferences(null, "4500012345", null)));
         assertThat(invoice.getSender().getID()).as("the tax number serves as BT-29").isEqualTo("143/123/45678");
-        assertThat(invoice.getBuyerOrderReferencedDocumentID()).isEqualTo("4500012345");
+        assertThat(invoice.getBuyerOrderReferencedDocument().getIssuerAssignedID()).isEqualTo("4500012345");
         assertThat(invoice.getContractReferencedDocument()).isNull();
         Invoice plain = mapper.toMustang(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
-        assertThat(plain.getBuyerOrderReferencedDocumentID()).isNull();
+        assertThat(plain.getBuyerOrderReferencedDocument()).isNull();
         assertThat(plain.getContractReferencedDocument()).isNull();
     }
 

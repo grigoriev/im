@@ -60,7 +60,7 @@ public class MustangInvoiceMapper {
         }
         CustomerReferences references = document.references();
         if (references.purchaseOrder() != null) {
-            invoice.setBuyerOrderReferencedDocumentID(references.purchaseOrder());
+            invoice.setBuyerOrderReferencedDocument(new ReferencedDocument(references.purchaseOrder()));
         }
         if (references.contract() != null) {
             invoice.setContractReferencedDocument(new ReferencedDocument(references.contract()));

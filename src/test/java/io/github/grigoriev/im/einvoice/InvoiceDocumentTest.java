@@ -267,7 +267,7 @@ class InvoiceDocumentTest {
         assertThat(SampleInvoices.reading(ZUGFERD).references()).isEqualTo(CustomerReferences.NONE);
         assertThat(SampleInvoices.withReferences(SampleInvoices.reading(ZUGFERD), null).references())
                 .as("an old snapshot has none").isEqualTo(CustomerReferences.NONE);
-        assertThat(CustomerReferences.NONE).isEqualTo(new CustomerReferences(null, null, null));
+        assertThat(new CustomerReferences(null, null, null)).isEqualTo(CustomerReferences.NONE);
         assertThat(SampleInvoices.referenced(ZUGFERD).references()).isEqualTo(SampleInvoices.REFERENCES);
     }
 }
