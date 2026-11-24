@@ -37,8 +37,8 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
   page says so.
 - The admin page shows the last nightly backup and restore test of the host, and warns when one is overdue.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
-- A REST API for assistants such as Claude Code, behind personal API tokens. It reads and writes the customers, their
-  templates and the settings.
+- A REST API and an MCP server for assistants such as Claude Code, behind personal API tokens. They read and write the
+  customers, their templates and the settings.
 - Business expenses with their receipts, summed by kind for the Anlage EÜR in WISO Steuer, with a CSV.
 - Seals every PDF, XML and document with a key outside the database, checks them every night and shows what a change
   in the database altered.
@@ -126,6 +126,15 @@ The JSON fields are those of the form: `name`, `addressAddition`, `street`, `pos
 empty). A refused input answers 400 with the list `problems`, settings also the map `fields`. A template keeps the
 amounts as Germans type them, for example `"1.234,56"`. The audit log names the token of each change. Issuing,
 canceling and deleting stay in the forms.
+
+The MCP server under `/mcp` offers the same as tools, for example `list_customers`, `create_customer`,
+`get_template` and `save_template`. Connect Claude Code with a token:
+
+```sh
+claude mcp add --transport http im https://im.example/mcp --header "Authorization: Bearer im_..."
+```
+
+A tool that writes needs a token with "Lesen und schreiben"; the tax notes and the number pattern need the admin.
 
 Sending invoices by e-mail needs an SMTP server: `IM_SMTP_HOST`, `IM_SMTP_PORT` (587), `IM_SMTP_USERNAME`,
 `IM_SMTP_PASSWORD`, `IM_SMTP_STARTTLS` (`true`), the sender `IM_MAIL_FROM` and an optional blind copy

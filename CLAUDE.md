@@ -47,7 +47,9 @@ Package `io.github.grigoriev.im`:
   table `api_token` keeps the SHA-256; `ApiTokenFilter` logs a bearer token in, `ApiSecurityConfig` the stateless chain
   ahead of the pages, reading for every token, writing for scope `WRITE`; ADR 7). `ApiCustomerController` serves the
   customers through `CustomerService`, `ApiTemplateController` the templates as their `TemplateForm`, `ApiSettingsController`
-  the profile, the e-mail texts and, under `/api/v1/admin` for the admin only, tax notes and number pattern; `ApiExceptionHandler` answers problem details. "Mein Konto" lists, creates and
+  the profile, the e-mail texts and, under `/api/v1/admin` for the admin only, tax notes and number pattern;
+  `McpConfig` serves the MCP server under `/mcp` (stateless servlet transport of the MCP Java SDK, tools on the thread of
+  the request), `McpTools` its tools on those controllers, each checking scope and role itself; `ApiExceptionHandler` answers problem details. "Mein Konto" lists, creates and
   deletes the tokens. The API leaves out what cannot be undone: issuing, canceling, deleting, payments, the import
 - `audit`: the audit log (`AuditService.add`, joins the caller's transaction; with an invoice ID the entry joins its `history`; an `AuditNote` in the details of the login, such as the API token, goes into each detail); logins come from `user.LoginAudit`,
   new passkeys from `user.AuditedCredentialRepository`. A new change of data records an `AuditAction`

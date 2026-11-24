@@ -56,6 +56,12 @@ test('creates an API token, uses it for the customers and deletes it', async ({ 
   expect((await saved.json()).purchaseOrder).toBe('4500000001');
   expect((await api.get('/api/v1/mail-texts', { headers: auth })).status()).toBe(200);
   expect((await api.get('/api/v1/admin/tax-notes', { headers: auth })).status()).toBe(403);
+  const mcp = await api.post('/mcp', {
+    headers: { ...auth, Accept: 'application/json, text/event-stream' },
+    data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'get_customer', arguments: { id: customer.id } } },
+  });
+  expect(mcp.status()).toBe(200);
+  expect((await mcp.json()).result.content[0].text).toContain(`Sprachschule ${username}`);
 
   await user.goto('/customers');
   await expect(user.getByText(`Sprachschule ${username}`)).toBeVisible();
