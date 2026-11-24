@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- The REST API also sets up the templates of a customer and the settings: the profile of the seller by tab, the e-mail texts and, with a token of the admin, the default tax notes and the number pattern. A template reads as the form of its editor and goes back with its version, so a change made elsewhere meanwhile is refused. Deleting a template stays in the form.
 - A REST API under `/api/v1` for assistants such as Claude Code. It lists, reads, creates and changes the customers with the checks of the form. It takes a personal API token only, never the session. "Mein Konto" creates a token with a name, the rights "Nur lesen" or "Lesen und schreiben" and 30, 90 or 365 days, after a recent login as for a passkey. The page shows the token once, the database keeps its SHA-256. The list shows when a token was last used, and deleting it stops it at once. The audit log names the token of each change. Issuing, canceling and deleting stay in the forms. The backup leaves the tokens out; an import removes them.
 
 ## [0.1.15] - 2026-11-24

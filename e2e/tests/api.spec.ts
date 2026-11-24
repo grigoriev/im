@@ -46,6 +46,17 @@ test('creates an API token, uses it for the customers and deletes it', async ({ 
   expect(list.status()).toBe(200);
   expect((await list.json()).map((c: { id: number }) => c.id)).toContain(customer.id);
 
+  const templates = await api.post(`/api/v1/customers/${customer.id}/templates`, { headers: auth });
+  expect(templates.status()).toBe(201);
+  const form = await (await api.get(`/api/v1/customers/${customer.id}/templates/${(await templates.json()).id}`,
+    { headers: auth })).json();
+  const saved = await api.put(`/api/v1/customers/${customer.id}/templates/${(await templates.json()).id}`,
+    { headers: auth, data: { ...form, name: 'Tutorierung', purchaseOrder: '4500000001' } });
+  expect(saved.status()).toBe(200);
+  expect((await saved.json()).purchaseOrder).toBe('4500000001');
+  expect((await api.get('/api/v1/mail-texts', { headers: auth })).status()).toBe(200);
+  expect((await api.get('/api/v1/admin/tax-notes', { headers: auth })).status()).toBe(403);
+
   await user.goto('/customers');
   await expect(user.getByText(`Sprachschule ${username}`)).toBeVisible();
 

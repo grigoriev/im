@@ -1,6 +1,9 @@
 package io.github.grigoriev.im.api;
 
 import io.github.grigoriev.im.customer.CustomerException;
+import io.github.grigoriev.im.invoice.InvoiceException;
+import io.github.grigoriev.im.seller.SettingsException;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -27,8 +30,38 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(CustomerException.class)
     public ProblemDetail customer(CustomerException e) {
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
-        problem.setProperty("problems", e.problems());
+        return refused(e.getMessage(), e.problems());
+    }
+
+    /**
+     * Answers refused settings, with the problem of each field where the form marks them.
+     *
+     * @param e the problems
+     * @return 400 with the list {@code problems} and, if known, the map {@code fields}
+     */
+    @ExceptionHandler(SettingsException.class)
+    public ProblemDetail settings(SettingsException e) {
+        ProblemDetail problem = refused(e.getMessage(), e.problems());
+        if (!e.fields().isEmpty()) {
+            problem.setProperty("fields", e.fields());
+        }
+        return problem;
+    }
+
+    /**
+     * Answers a refused template.
+     *
+     * @param e the problems
+     * @return 400 with the list {@code problems}
+     */
+    @ExceptionHandler(InvoiceException.class)
+    public ProblemDetail invoice(InvoiceException e) {
+        return refused(e.getMessage(), e.problems());
+    }
+
+    private static ProblemDetail refused(String detail, List<String> problems) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+        problem.setProperty("problems", problems);
         return problem;
     }
 
