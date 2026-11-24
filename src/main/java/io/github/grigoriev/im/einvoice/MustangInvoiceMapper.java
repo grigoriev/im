@@ -74,7 +74,12 @@ public class MustangInvoiceMapper {
         }
         String exemptReason = exemptReason(document);
         for (InvoiceLine line : document.lines()) {
-            invoice.addItem(item(line, document, exemptReason));
+            Item item = item(line, document, exemptReason);
+            if (line.hasPeriod()) {
+                // The day or period of the service of this line (BG-26: BT-134, BT-135).
+                item.setDetailedDeliveryPeriod(date(line.serviceFrom()), date(line.serviceTo()));
+            }
+            invoice.addItem(item);
         }
         return invoice;
     }

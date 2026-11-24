@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -50,9 +51,9 @@ class InvoiceLineTest {
     @Test
     void rejectsALumpSumWithAnotherQuantity() {
         BigDecimal two = new BigDecimal("2");
-        assertThatIllegalArgumentException().isThrownBy(() -> new InvoiceLine("x", two, ONE, KU, true))
+        assertThatIllegalArgumentException().isThrownBy(() -> new InvoiceLine("x", two, ONE, KU, true, LineUnit.PIECE, null, null))
                 .withMessageContaining("quantity 1");
-        assertThat(new InvoiceLine("x", new BigDecimal("1.000"), ONE, KU, true).lumpSum()).isTrue();
+        assertThat(new InvoiceLine("x", new BigDecimal("1.000"), ONE, KU, true, LineUnit.PIECE, null, null).lumpSum()).isTrue();
     }
 
     @Test
@@ -76,5 +77,63 @@ class InvoiceLineTest {
         assertThatNullPointerException().isThrownBy(() -> InvoiceLine.counted("x", null, ONE, KU)).withMessage("quantity");
         assertThatNullPointerException().isThrownBy(() -> InvoiceLine.counted("x", ONE, null, KU)).withMessage("unitPrice");
         assertThatNullPointerException().isThrownBy(() -> InvoiceLine.counted("x", ONE, ONE, null)).withMessage("category");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"PIECE, C62", "HOUR, HUR", "TEACHING_UNIT, C62", "DAY, DAY"})
+    void givesACountedLineTheCodeOfItsUnit(LineUnit unit, String code) {
+        InvoiceLine line = InvoiceLine.counted("Deutschkurs B1", new BigDecimal("24"), unit, new BigDecimal("40"), KU);
+        assertThat(line.unit()).isEqualTo(unit);
+        assertThat(line.unitCode()).isEqualTo(code);
+        assertThat(line.netAmount()).isEqualByComparingTo("960.00");
+    }
+
+    @Test
+    void countsInPiecesByDefault() {
+        assertThat(InvoiceLine.counted("x", ONE, ONE, KU).unit()).isEqualTo(LineUnit.PIECE);
+        assertThat(InvoiceLine.lumpSum("x", ONE, KU).unit()).isEqualTo(LineUnit.PIECE);
+        assertThat(new InvoiceLine("x", ONE, ONE, KU, false, null, null, null).unit())
+                .as("a snapshot from before the units").isEqualTo(LineUnit.PIECE);
+    }
+
+    @Test
+    void keepsLsForALumpSum() {
+        InvoiceLine line = new InvoiceLine("x", ONE, ONE, KU, true, LineUnit.HOUR, null, null);
+        assertThat(line.unitCode()).isEqualTo("LS");
+        assertThat(line.unitLabel()).isEmpty();
+    }
+
+    @Test
+    void labelsTheQuantityWithItsUnit() {
+        assertThat(InvoiceLine.counted("x", new BigDecimal("3.5"), LineUnit.HOUR, ONE, KU).unitLabel()).isEqualTo("Std.");
+        assertThat(InvoiceLine.counted("x", ONE, LineUnit.DAY, ONE, KU).unitLabel()).isEqualTo("Tag");
+        assertThat(InvoiceLine.counted("x", ONE, ONE, KU).unitLabel()).isEmpty();
+    }
+
+    @Test
+    void carriesAServicePeriod() {
+        LocalDate start = LocalDate.of(2027, 3, 9);
+        LocalDate end = LocalDate.of(2027, 3, 20);
+        InvoiceLine line = InvoiceLine.lumpSum("Kurs", ONE, KU).withPeriod(start, end);
+        assertThat(line.serviceFrom()).isEqualTo(start);
+        assertThat(line.serviceTo()).isEqualTo(end);
+        assertThat(line.hasPeriod()).isTrue();
+        assertThat(line.lumpSum()).isTrue();
+        assertThat(line.withPeriod(null, null).hasPeriod()).isFalse();
+        assertThat(InvoiceLine.lumpSum("Kurs", ONE, KU).hasPeriod()).isFalse();
+        assertThat(InvoiceLine.lumpSum("Kurs", ONE, KU).withPeriod(start, start).serviceTo()).isEqualTo(start);
+    }
+
+    @Test
+    void rejectsAPeriodThatEndsBeforeItStartsOrMissesADay() {
+        LocalDate start = LocalDate.of(2027, 3, 9);
+        InvoiceLine line = InvoiceLine.lumpSum("Kurs", ONE, KU);
+        LocalDate before = start.minusDays(1);
+        assertThatIllegalArgumentException().isThrownBy(() -> line.withPeriod(start, before))
+                .withMessageContaining("ends before");
+        assertThatIllegalArgumentException().isThrownBy(() -> line.withPeriod(start, null))
+                .withMessageContaining("both days");
+        assertThatIllegalArgumentException().isThrownBy(() -> line.withPeriod(null, start))
+                .withMessageContaining("both days");
     }
 }

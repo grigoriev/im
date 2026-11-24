@@ -146,6 +146,31 @@ public final class SampleInvoices {
                 d.lines(), d.cancels(), d.phoneOnInvoice(), references);
     }
 
+    /** First day of the course of {@link #units}. */
+    static final LocalDate COURSE_START = LocalDate.of(2027, 3, 9);
+
+    /** Last day of the course of {@link #units}. */
+    static final LocalDate COURSE_END = LocalDate.of(2027, 3, 20);
+
+    /**
+     * Teaching in every unit, under §4 Nr. 21: 24 UE × 40,00 € from March 9 to 20, 3,5 Std. × 60,00 € on March 8,
+     * 1 Tag × 480,00 €, 2 workbooks × 12,50 € and a lump sum of 25,00 €. Total 1 700,00 €.
+     */
+    public static InvoiceDocument units(InvoiceFormat format) {
+        return new InvoiceDocument("2027-10", DAY, COURSE_START.minusDays(1), COURSE_END, DAY.plusDays(14), SELLER, SCHOOL,
+                format.followsXRechnung() ? "04011000-12345-67" : null, "DE02120300000000202051", "BYLADEM1001",
+                "vielen Dank für Ihren Auftrag.", "Mit freundlichen Grüßen", null, format, List.of(
+                        InvoiceLine.counted("Deutschkurs B1, Abendgruppe", new BigDecimal("24"), LineUnit.TEACHING_UNIT,
+                                new BigDecimal("40.00"), TaxCategory.EXEMPT_4_21).withPeriod(COURSE_START, COURSE_END),
+                        InvoiceLine.counted("Prüfungsvorbereitung, Einzelunterricht", new BigDecimal("3.5"), LineUnit.HOUR,
+                                new BigDecimal("60.00"), TaxCategory.EXEMPT_4_21)
+                                .withPeriod(COURSE_START.minusDays(1), COURSE_START.minusDays(1)),
+                        InvoiceLine.counted("Workshop Aussprache", BigDecimal.ONE, LineUnit.DAY, new BigDecimal("480.00"),
+                                TaxCategory.EXEMPT_4_21),
+                        line("Arbeitsheft B1", "2", "12.50", TaxCategory.EXEMPT_4_21),
+                        lump("Kursmaterial, Kopien", "25.00", TaxCategory.EXEMPT_4_21)));
+    }
+
     /** The Stornorechnung 2027-10 of the reading, invoice 2027-07 of March 8, with the same lines. */
     public static InvoiceDocument cancellation(InvoiceFormat format) {
         InvoiceDocument d = reading(format);

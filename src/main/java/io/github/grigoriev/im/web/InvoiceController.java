@@ -6,6 +6,7 @@ import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DocumentKind;
@@ -456,6 +457,7 @@ public class InvoiceController {
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("categories", CATEGORIES);
         model.addAttribute("categoryOrder", TaxCategory.values());
+        model.addAttribute("units", LineUnit.values());
         return EDIT;
     }
 

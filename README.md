@@ -16,6 +16,8 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
   postcode and city, a foreign country in capitals.
 - The references a customer asks for: the Geschäftspartnernummer of the customer, the Bestellnummer and the contract
   of an invoice or template. The PDF and the XML carry them (BT-29, BT-13, BT-12).
+- Lines as a lump sum or with a quantity in pieces, hours, teaching units (UE) or days, each with an optional day or
+  period of its service. The PDF and the XML carry both (BT-130, BG-26).
 - Kleinunternehmer rules (§19 UStG) with tax-exempt teaching (§4 Nr. 21 UStG), and threshold tracking.
 - Regular VAT at 19 % and 7 % for every other business, for example the sale of goods, with the VAT per rate.
 - Customer templates, immutable issued invoices, sending by e-mail (HTML and text, with a preview) or a manual dispatch

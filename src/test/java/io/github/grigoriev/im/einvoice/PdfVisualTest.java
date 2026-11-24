@@ -13,8 +13,10 @@ import io.github.grigoriev.im.seller.SellerProfile;
 import io.github.grigoriev.im.seller.SellerTestData;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +66,14 @@ class PdfVisualTest {
                 d.cancels(), true);
     }
 
+    /** The invoice with one more line. */
+    private static InvoiceDocument withLines(InvoiceDocument d, InvoiceLine more) {
+        List<InvoiceLine> lines = new ArrayList<>(d.lines());
+        lines.add(more);
+        return new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(), d.dueDate(), d.seller(),
+                d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(), d.closing(), d.taxNote(), d.format(), lines);
+    }
+
     static Stream<Arguments> layouts() {
         List<InvoiceLine> many = new ArrayList<>();
         IntStream.rangeClosed(1, 40).forEach(n -> many.add(
@@ -98,6 +108,12 @@ class PdfVisualTest {
                                 "45000123454500012345450001234545000123454500012345",
                                 "Rahmenvertrag vom 15.01.2027 über Sprachkurse Deutsch B1 und B2, online und in Präsenz, "
                                         + "Anlage 3, Leistungsschein 2.1"))),
+                Arguments.of("units", SampleInvoices.units(InvoiceFormat.ZUGFERD_EN16931)),
+                Arguments.of("units-tax-column", withLines(SampleInvoices.units(InvoiceFormat.ZUGFERD_EN16931),
+                        InvoiceLine.counted("Lesung mit Gespräch über das Schreiben in einer zweiten Sprache",
+                                new BigDecimal("2.25"), LineUnit.HOUR, new BigDecimal("1234.5678"),
+                                TaxCategory.KLEINUNTERNEHMER).withPeriod(LocalDate.of(2027, 2, 27),
+                                LocalDate.of(2027, 3, 1)))),
                 Arguments.of("reverse-charge", invoice(SELLER_EU, DUTCH, null, InvoiceFormat.ZUGFERD_EN16931,
                         line("Online-Workshop „Deutsch im Beruf“, 3 Std.", "1", "600.00",
                                 TaxCategory.REVERSE_CHARGE_EU))));

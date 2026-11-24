@@ -51,6 +51,7 @@ import io.github.grigoriev.im.einvoice.EInvoiceFacts;
 import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.expense.Expense;
@@ -1775,6 +1776,40 @@ class SecurityWebTest {
                 .containsExactly("Reise");
         assertThat(saved.getAllValues().get(3).getLines()).hasSize(1);
         assertThat(saved.getAllValues().get(4).getLines()).hasSize(1);
+    }
+
+    @Test
+    void editsTheUnitAndTheDayOfALineInDraftAndTemplate() throws Exception {
+        when(invoices.find(5)).thenReturn(Optional.of(invoice(5, InvoiceStatus.DRAFT)));
+        when(invoices.customerName(any())).thenReturn("Verlag am Fluss GmbH");
+        mvc.perform(get("/invoices/5").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"line-0-unit\"")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"HOUR\">Stunden</option>")))
+                .andExpect(content().string(Matchers.containsString("<option value=\"PIECE\" selected=\"selected\">Stück</option>")))
+                .andExpect(content().string(Matchers.containsString("id=\"line-0-from\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"line-0-to\"")));
+        var saved = ArgumentCaptor.forClass(DraftForm.class);
+        mvc.perform(post("/invoices/5").param("action", "save").param("format", "ZUGFERD_EN16931")
+                        .param("lines[0].text", "Kurs").param("lines[0].lumpSum", "false").param("lines[0].unit", "TEACHING_UNIT")
+                        .param("lines[0].serviceFrom", "2027-03-09").param("lines[0].serviceTo", "2027-03-20")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/5"));
+        verify(invoices).saveDraft(eq(5L), saved.capture());
+        LineForm line = saved.getValue().getLines().getFirst();
+        assertThat(line.getUnit()).isEqualTo(LineUnit.TEACHING_UNIT);
+        assertThat(line.getServiceFrom()).isEqualTo(LocalDate.of(2027, 3, 9));
+        assertThat(line.getServiceTo()).isEqualTo(LocalDate.of(2027, 3, 20));
+
+        when(invoices.find(8)).thenReturn(Optional.of(external(8, InvoiceStatus.DRAFT)));
+        mvc.perform(get("/invoices/8").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"line-0-unit\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"line-0-from\""))))
+                .andExpect(content().string(Matchers.containsString("name=\"lines[0].unit\" value=\"PIECE\"")));
+
+        when(templates.find(4, 7)).thenReturn(Optional.of(template()));
+        mvc.perform(get("/customers/4/templates/7").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("id=\"line-0-unit\"")))
+                .andExpect(content().string(Matchers.containsString("id=\"line-0-from\"")));
     }
 
     @Test

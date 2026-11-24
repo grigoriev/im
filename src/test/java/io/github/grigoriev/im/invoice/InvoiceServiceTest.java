@@ -23,6 +23,7 @@ import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
 import io.github.grigoriev.im.einvoice.ItSamples;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.Party;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.seller.Activity;
@@ -839,5 +840,42 @@ class InvoiceServiceTest {
                 .containsExactly("Mit Regelbesteuerung gibt es keine Positionen nach § 19 UStG.");
         when(repository.cancelsId(5L)).thenReturn(Optional.of(7L));
         assertThat(service.problems(storno)).as("the Stornorechnung of an older §19 invoice").isEmpty();
+    }
+
+    @Test
+    void savesTheUnitAndTheDayOrPeriodOfALine() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        LocalDate from = LocalDate.of(2027, 3, 9);
+        LocalDate to = LocalDate.of(2027, 3, 20);
+        LineForm period = row("Kurs", false, "24", "40", TaxCategory.EXEMPT_4_21);
+        period.setUnit(LineUnit.TEACHING_UNIT);
+        period.setServiceFrom(from);
+        period.setServiceTo(to);
+        LineForm start = row("Lesung", true, "1", "400", TaxCategory.EXEMPT_4_21);
+        start.setServiceFrom(from);
+        LineForm end = row("Reise", true, "1", "80", TaxCategory.EXEMPT_4_21);
+        end.setServiceTo(to);
+        LineForm none = row("Material", false, "2", "5", TaxCategory.EXEMPT_4_21);
+        none.setUnit(null);
+        Invoice saved = service.saveDraft(5, form(period, start, end, none));
+        assertThat(saved.lines()).containsExactly(
+                new DraftLine("Kurs", false, new BigDecimal("24"), new BigDecimal("40"), TaxCategory.EXEMPT_4_21,
+                        LineUnit.TEACHING_UNIT, from, to),
+                new DraftLine("Lesung", true, BigDecimal.ONE, new BigDecimal("400"), TaxCategory.EXEMPT_4_21,
+                        LineUnit.PIECE, from, from),
+                new DraftLine("Reise", true, BigDecimal.ONE, new BigDecimal("80"), TaxCategory.EXEMPT_4_21,
+                        LineUnit.PIECE, to, to),
+                new DraftLine("Material", false, new BigDecimal("2"), new BigDecimal("5"), TaxCategory.EXEMPT_4_21));
+    }
+
+    @Test
+    void refusesALinePeriodThatEndsBeforeItStarts() {
+        when(repository.findById(5L)).thenReturn(Optional.of(draft(List.of())));
+        LineForm line = row("Kurs", true, "1", "400", TaxCategory.EXEMPT_4_21);
+        line.setServiceFrom(LocalDate.of(2027, 3, 20));
+        line.setServiceTo(LocalDate.of(2027, 3, 9));
+        DraftForm form = form(row("Lesung", true, "1", "400", TaxCategory.EXEMPT_4_21), line);
+        InvoiceException e = catchThrowableOfType(InvoiceException.class, () -> service.saveDraft(5, form));
+        assertThat(e.problems()).containsExactly("Position 2: Die Leistung endet vor ihrem Beginn.");
     }
 }

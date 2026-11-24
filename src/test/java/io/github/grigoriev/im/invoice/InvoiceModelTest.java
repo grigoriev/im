@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoiceLine;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -106,5 +107,29 @@ class InvoiceModelTest {
         problems.clear();
         assertThat(exception.problems()).containsExactly("Eins.", "Zwei.");
         assertThat(exception.getMessage()).isEqualTo("Eins. Zwei.");
+    }
+
+    @Test
+    void aLineKeepsItsUnitAndItsPeriod() {
+        LocalDate from = LocalDate.of(2027, 3, 9);
+        LocalDate to = LocalDate.of(2027, 3, 20);
+        DraftLine line = new DraftLine("Kurs", false, new BigDecimal("24"), new BigDecimal("40"), TaxCategory.EXEMPT_4_21,
+                LineUnit.TEACHING_UNIT, from, to);
+        InvoiceLine counted = line.toInvoiceLine();
+        assertThat(counted.unit()).isEqualTo(LineUnit.TEACHING_UNIT);
+        assertThat(counted.serviceFrom()).isEqualTo(from);
+        assertThat(counted.serviceTo()).isEqualTo(to);
+        InvoiceLine lump = new DraftLine("Kurs", true, BigDecimal.ONE, new BigDecimal("960"), TaxCategory.EXEMPT_4_21,
+                LineUnit.HOUR, from, from).toInvoiceLine();
+        assertThat(lump.unitCode()).as("a lump sum keeps LS").isEqualTo("LS");
+        assertThat(lump.unit()).isEqualTo(LineUnit.PIECE);
+        assertThat(lump.serviceTo()).isEqualTo(from);
+        DraftLine older = new DraftLine("Kurs", true, BigDecimal.ONE, BigDecimal.ONE, TaxCategory.EXEMPT_4_21);
+        assertThat(older.unit()).isEqualTo(LineUnit.PIECE);
+        assertThat(older.serviceFrom()).isNull();
+        assertThat(older.serviceTo()).isNull();
+        assertThat(new DraftLine("Kurs", true, BigDecimal.ONE, BigDecimal.ONE, TaxCategory.EXEMPT_4_21, null, null, null))
+                .as("a row from before the units").isEqualTo(older);
+        assertThat(DraftLine.empty(TaxCategory.EXEMPT_4_21).unit()).isEqualTo(LineUnit.PIECE);
     }
 }

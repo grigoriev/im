@@ -397,6 +397,7 @@
                         <param>io.github.grigoriev.im.einvoice.TaxCategory</param>
                         <param>io.github.grigoriev.im.einvoice.InvoiceFormat</param>
                         <param>io.github.grigoriev.im.einvoice.InvoiceLine</param>
+                        <param>io.github.grigoriev.im.einvoice.LineUnit</param>
                         <param>io.github.grigoriev.im.einvoice.InvoiceDocument</param>
                         <param>io.github.grigoriev.im.einvoice.MustangInvoiceMapper</param>
                         <param>io.github.grigoriev.im.einvoice.AddressLayout</param>
@@ -416,6 +417,7 @@
                         <param>io.github.grigoriev.im.invoice.DraftForm</param>
                         <param>io.github.grigoriev.im.invoice.DraftLine</param>
                         <param>io.github.grigoriev.im.invoice.LineForm</param>
+                        <param>io.github.grigoriev.im.invoice.TemplateLine</param>
                         <param>io.github.grigoriev.im.invoice.TemplateService</param>
                         <param>io.github.grigoriev.im.invoice.Placeholders</param>
                         <param>io.github.grigoriev.im.invoice.IssueService</param>

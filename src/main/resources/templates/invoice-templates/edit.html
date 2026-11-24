@@ -62,7 +62,7 @@
         <label class="floating-label"><span>Einleitung</span>
           <textarea id="template-intro" th:field="*{intro}" class="textarea w-full h-20" maxlength="2000"></textarea>
         </label>
-        <th:block th:replace="~{fragments/lines :: lines(~{})}"></th:block>
+        <th:block th:replace="~{fragments/lines :: lines(~{}, true)}"></th:block>
         <label class="floating-label"><span>Steuerhinweis</span>
           <textarea id="template-tax-note" th:field="*{taxNote}" class="textarea w-full h-16" maxlength="1000"></textarea>
         </label>

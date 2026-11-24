@@ -35,7 +35,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toHaveText('Vorlage gespeichert.');
 
-  // A draft for this customer with a lump sum and a line with quantity, for the editor screenshots.
+  // A draft for this customer with a lump sum and a line in hours on one day, for the editor screenshots.
   await ensureProfile(page);
   await page.goto('/invoices');
   await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: LONG_NAME });
@@ -46,7 +46,9 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await page.locator('#line-1-text').fill('Signierstunde');
   await page.locator('#line-1-kind').selectOption('false');
   await page.locator('#line-1-quantity').fill('2');
+  await page.locator('#line-1-unit').selectOption('HOUR');
   await page.locator('#line-1-price').fill('12,50');
+  await page.locator('#line-1-from').fill('2027-03-16');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
   const draft = page.url();

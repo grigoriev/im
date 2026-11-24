@@ -36,6 +36,8 @@ async function externalDraft(page: Page, customer: string, date: string): Promis
   await page.getByRole('button', { name: 'Neue Rechnung' }).click();
   await expect(page.locator('#external-hint')).toBeVisible();
   await expect(page.locator('#invoice-intro'), 'the file has the texts').toHaveCount(0);
+  await expect(page.locator('#line-0-from'), 'the facts have no day per line').toHaveCount(0);
+  await expect(page.locator('#line-0-unit'), 'the facts have no unit').toHaveCount(0);
   await page.locator('#invoice-date').fill(date);
   await page.locator('#invoice-from').fill(date);
   await page.locator('#invoice-to').fill(date);

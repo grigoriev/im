@@ -38,6 +38,8 @@
     .num, .lines th.num { text-align: right; white-space: nowrap; }
     .sum td { border-bottom: 0; padding-top: 1mm; padding-bottom: 0; }
     .total td { border-bottom: 0; font-weight: 600; padding-top: 2.5mm; }
+    /* The day or period of the service of a line, below its text. */
+    .lines .period { font-size: 8pt; color: #616e7c; }
     .note { white-space: pre-line; margin-top: 4mm; }
     .strong { font-weight: 600; }
     /* The intro and the closing keep the lines the user typed. */
@@ -97,9 +99,9 @@
     </thead>
     <tbody>
       <tr th:each="line : ${invoice.lines}">
-        <td th:text="${line.text}">Leistung</td>
+        <td><th:block th:text="${line.text}">Leistung</th:block><div class="period" th:if="${line.hasPeriod()}" th:text="${fmt.period(line.serviceFrom, line.serviceTo)}">09.03.2027 bis 20.03.2027</div></td>
         <th:block th:if="${invoice.showsQuantities()}">
-          <td class="num" th:text="${line.lumpSum ? '' : fmt.quantity(line.quantity)}">1</td>
+          <td class="num" th:text="${line.lumpSum ? '' : fmt.quantity(line.quantity, line.unitLabel())}">1</td>
           <td class="num" th:text="${line.lumpSum ? '' : fmt.price(line.unitPrice)}">0,00 €</td>
         </th:block>
         <td class="num" th:if="${invoice.showsTaxColumn()}" th:text="${line.category.label()}">19 %</td>

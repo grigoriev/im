@@ -38,3 +38,29 @@ test('a template of a customer starts a draft that keeps its copy', async ({ pag
   await expect(page.getByRole('status')).toHaveText('Vorlage „Lesung mit Gespräch“ gelöscht.');
   await expect(page.locator('#customer-templates')).toContainText('Noch keine Vorlage.');
 });
+
+test('a template line keeps its unit and its period for the draft', async ({ page }) => {
+  await ensureProfile(page);
+  await newCustomer(page, `Kursvorlage ${randomUUID().slice(0, 8)}`);
+  const customerPage = page.url();
+  await page.getByRole('button', { name: 'Neue Vorlage' }).click();
+  await page.getByLabel('Name der Vorlage').fill('Kurs B1');
+  await page.locator('#line-0-text').fill('Deutschkurs B1');
+  await page.locator('#line-0-kind').selectOption('false');
+  await page.locator('#line-0-quantity').fill('24');
+  await page.locator('#line-0-unit').selectOption('TEACHING_UNIT');
+  await page.locator('#line-0-price').fill('40');
+  await page.locator('#line-0-from').fill('2027-03-09');
+  await page.locator('#line-0-to').fill('2027-03-20');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Vorlage gespeichert.');
+  await expect(page.locator('#line-0-unit')).toHaveValue('TEACHING_UNIT');
+
+  await page.goto(customerPage);
+  await page.locator('#customer-templates > div').filter({ hasText: 'Kurs B1' })
+    .getByRole('button', { name: 'Rechnung erstellen' }).click();
+  await expect(page.locator('#line-0-unit'), 'from the template').toHaveValue('TEACHING_UNIT');
+  await expect(page.locator('#line-0-from')).toHaveValue('2027-03-09');
+  await expect(page.locator('#line-0-to')).toHaveValue('2027-03-20');
+  await expect(page.locator('#invoice-totals')).toContainText('960,00 €');
+});

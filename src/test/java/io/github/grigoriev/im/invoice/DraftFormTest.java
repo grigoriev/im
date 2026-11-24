@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.seller.Activity;
 import java.math.BigDecimal;
@@ -94,5 +95,24 @@ class DraftFormTest {
         Assertions.assertThat(form.getActivity()).isEqualTo(Activity.TEACHING);
         form.setActivity(Activity.OTHER);
         Assertions.assertThat(form.getActivity()).isEqualTo(Activity.OTHER);
+    }
+
+    @Test
+    void fillsTheUnitAndThePeriodOfALine() {
+        LocalDate day = LocalDate.of(2027, 3, 18);
+        Invoice invoice = new Invoice(1L, InvoiceStatus.DRAFT, 2L, null, InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14,
+                null, null, null, null, List.of(new DraftLine("Kurs", false, new BigDecimal("24"), new BigDecimal("40"),
+                        TaxCategory.EXEMPT_4_21, LineUnit.TEACHING_UNIT, day.minusDays(9), day),
+                        new DraftLine("Lesung", true, BigDecimal.ONE, BigDecimal.TEN, TaxCategory.EXEMPT_4_21)),
+                Instant.EPOCH, Instant.EPOCH, 0L, null, null, null);
+        LineForm first = DraftForm.of(invoice).getLines().getFirst();
+        assertThat(first.getUnit()).isEqualTo(LineUnit.TEACHING_UNIT);
+        assertThat(first.getServiceFrom()).isEqualTo(day.minusDays(9));
+        assertThat(first.getServiceTo()).isEqualTo(day);
+        LineForm second = DraftForm.of(invoice).getLines().get(1);
+        assertThat(second.getUnit()).isEqualTo(LineUnit.PIECE);
+        assertThat(second.getServiceFrom()).isNull();
+        assertThat(second.getServiceTo()).isNull();
+        assertThat(new LineForm().getUnit()).as("a new line counts pieces").isEqualTo(LineUnit.PIECE);
     }
 }
