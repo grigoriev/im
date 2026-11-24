@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
@@ -181,6 +182,25 @@ class DocumentStoreTest {
         assertThat(older).doesNotContain("addressAddition");
         InvoiceDocument restored = store.restore(older);
         assertThat(restored.buyer().addressAddition()).isNull();
+        assertThat(restored).isEqualTo(reading);
+    }
+
+    @Test
+    void restoresTheReferencesTheCustomerAsksFor() {
+        InvoiceDocument document = SampleInvoices.referenced(InvoiceFormat.ZUGFERD_EN16931);
+        String json = store.snapshot(document);
+        assertThat(json).contains("\"purchaseOrder\":\"4500012345\"");
+        assertThat(store.restore(json)).isEqualTo(document);
+    }
+
+    @Test
+    void restoresASnapshotFromBeforeTheReferences() {
+        InvoiceDocument reading = SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931);
+        String json = store.snapshot(reading);
+        String older = json.replaceAll(",\"references\":\\{[^}]*}", "");
+        assertThat(older).doesNotContain("references").doesNotContain("purchaseOrder");
+        InvoiceDocument restored = store.restore(older);
+        assertThat(restored.references()).isEqualTo(CustomerReferences.NONE);
         assertThat(restored).isEqualTo(reading);
     }
 }

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.grigoriev.im.format.GermanFormat;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +113,65 @@ class InvoicePdfRendererTest {
         String text = text(renderer.render(dutch));
         assertThat(text).contains("NIEDERLANDE").contains("Ihre USt-IdNr. NL123456789B01")
                 .contains("Käuferreferenz REF-1").contains("USt-IdNr. DE123456789").contains("Steuernummer 143/123/45678");
+    }
+
+    @Test
+    void printsTheReferencesOfTheCustomerInTheInfoBox() throws IOException {
+        String text = text(renderer.render(SampleInvoices.withReferences(
+                SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931), new CustomerReferences("K-17", "4500012345",
+                        "V-2027-01"))));
+        assertThat(text).as("a short value keeps the label on one line").contains("Geschäftspartnernummer K-17\n")
+                .contains("Bestellnummer 4500012345\n").contains("Vertrag V-2027-01\n");
+        String fits = "123456789012345";
+        assertThat(text(renderer.render(SampleInvoices.withReferences(
+                SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931), new CustomerReferences(fits, null, null)))))
+                .as("the longest value beside the whole label").contains("Geschäftspartnernummer " + fits + "\n");
+        assertThat(text(renderer.render(SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931))))
+                .doesNotContain("Geschäftspartnernummer").doesNotContain("Bestellnummer").doesNotContain("Vertrag");
+    }
+
+    static Stream<Arguments> references() {
+        String longest = "Rahmenvertrag ".repeat(15).substring(0, 200);
+        String word = "4500012345".repeat(20);
+        return Stream.of(
+                Arguments.of("sample", SampleInvoices.REFERENCES),
+                Arguments.of("longest texts", new CustomerReferences(longest, longest, longest)),
+                Arguments.of("longest words", new CustomerReferences(word, word, word)));
+    }
+
+    /** Long references wrap inside the info box: right of the address field and inside the right page margin. */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("references")
+    void theReferencesWrapInsideTheInfoBox(String title, CustomerReferences references) throws IOException {
+        byte[] rendered = renderer.render(SampleInvoices.withReferences(
+                SampleInvoices.department(InvoiceFormat.ZUGFERD_EN16931), references));
+        float mm = 72 / 25.4f;
+        List<Float> rightEdges = new ArrayList<>();
+        Map<String, Float> labels = new HashMap<>();
+        try (PDDocument pdf = Loader.loadPDF(rendered)) {
+            PDFTextStripper stripper = new PDFTextStripper() {
+                @Override
+                protected void writeString(String line, List<TextPosition> positions) {
+                    positions.forEach(glyph -> rightEdges.add(glyph.getXDirAdj() + glyph.getWidthDirAdj()));
+                    for (String label : List.of("Geschäftspartner", "Bestellnummer", "Vertrag", "Rechnungsnummer")) {
+                        if (line.startsWith(label)) {
+                            labels.put(label, positions.getFirst().getXDirAdj());
+                        }
+                    }
+                }
+            };
+            stripper.setEndPage(1);
+            stripper.getText(pdf);
+        }
+        assertThat(labels).as("every row of the info box").containsKeys("Geschäftspartner", "Bestellnummer",
+                "Vertrag", "Rechnungsnummer");
+        assertThat(labels.values()).as("right of the address field").allMatch(x -> x >= 107 * mm);
+        assertThat(rightEdges).as("inside the right margin").allMatch(x -> x <= 190 * mm + 0.5f);
+        String text = text(rendered);
+        assertThat(text.replaceAll("\\s+", "")).as("the values in full")
+                .contains("Bestellnummer" + references.purchaseOrder().replace(" ", ""))
+                .contains("Vertrag" + references.contract().replace(" ", ""));
+        assertThat(text).as("the long label breaks at its hyphen").contains("Geschäftspartner-");
     }
 
     @Test

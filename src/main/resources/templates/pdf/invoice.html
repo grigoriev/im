@@ -27,7 +27,9 @@
     .recipient .one-line { white-space: nowrap; overflow: hidden; }
     .sender { font-size: 7pt; line-height: 3.9mm; color: #616e7c; white-space: nowrap; overflow: hidden; }
     .meta { text-align: right; font-size: 8.5pt; margin-left: auto; }
-    .meta td { padding: 0 0 0.6mm 4mm; white-space: nowrap; }
+    .meta td { padding: 0 0 0.6mm 4mm; white-space: nowrap; vertical-align: top; }
+    /* The references of the customer wrap inside the box, a long word too. InfoBox breaks the longest label. */
+    .meta td.wrap { white-space: normal; overflow-wrap: anywhere; word-wrap: break-word; }
     h1 { font-size: 14pt; font-weight: 600; margin: 0 0 5mm 0; }
     .lines { width: 100%; border-collapse: collapse; margin: 5mm 0; -fs-table-paginate: paginate; }
     .lines tr { page-break-inside: avoid; }
@@ -77,6 +79,9 @@
           <tr th:if="${invoice.seller.vatId != null}"><td>USt-IdNr.</td><td th:text="${invoice.seller.vatId}">DE000000000</td></tr>
           <tr th:if="${invoice.buyer.vatId != null}"><td>Ihre USt-IdNr.</td><td th:text="${invoice.buyer.vatId}">ATU00000000</td></tr>
           <tr th:if="${invoice.buyerReference != null}"><td>Käuferreferenz</td><td th:text="${invoice.buyerReference}">04011000-12345-67</td></tr>
+          <tr th:if="${invoice.references.sellerIdentifier != null}"><td th:unless="${partnerLabelBreaks}">Geschäftspartnernummer</td><td th:if="${partnerLabelBreaks}">Geschäftspartner-<br/>nummer</td><td class="wrap" th:text="${invoice.references.sellerIdentifier}">70001234</td></tr>
+          <tr th:if="${invoice.references.purchaseOrder != null}"><td>Bestellnummer</td><td class="wrap" th:text="${invoice.references.purchaseOrder}">4500012345</td></tr>
+          <tr th:if="${invoice.references.contract != null}"><td>Vertrag</td><td class="wrap" th:text="${invoice.references.contract}">Rahmenvertrag</td></tr>
         </table>
       </td>
     </tr>

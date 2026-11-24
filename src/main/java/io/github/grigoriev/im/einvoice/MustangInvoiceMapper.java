@@ -58,6 +58,13 @@ public class MustangInvoiceMapper {
         if (document.buyerReference() != null) {
             invoice.setReferenceNumber(document.buyerReference());
         }
+        CustomerReferences references = document.references();
+        if (references.purchaseOrder() != null) {
+            invoice.setBuyerOrderReferencedDocument(new ReferencedDocument(references.purchaseOrder()));
+        }
+        if (references.contract() != null) {
+            invoice.setContractReferencedDocument(new ReferencedDocument(references.contract()));
+        }
         if (document.cancellation()) {
             // A Stornorechnung is a credit note (381) that names the invoice it cancels (BT-25, BT-26).
             invoice.setCreditNote()
@@ -113,11 +120,16 @@ public class MustangInvoiceMapper {
                 .addBankDetails(new BankDetails(document.iban(), document.bic())
                         .setPaymentMeansCode(SEPA_CREDIT_TRANSFER));
         if (seller.taxNumber() != null) {
+            // The tax number is the seller tax registration (BT-32, scheme FC).
             party.addTaxID(seller.taxNumber());
-            if (seller.vatId() == null) {
-                // BR-CO-26 needs BT-29, BT-30 or BT-31. Without a VAT ID the tax number serves as BT-29.
-                party.setID(seller.taxNumber());
-            }
+        }
+        String identifier = document.references().sellerIdentifier();
+        if (identifier != null) {
+            // BT-29 "may be assigned by the buyer": the Geschäftspartnernummer.
+            party.setID(identifier);
+        } else if (seller.taxNumber() != null && seller.vatId() == null) {
+            // BR-CO-26 needs BT-29, BT-30 or BT-31. Without a VAT ID the tax number serves as BT-29.
+            party.setID(seller.taxNumber());
         }
         return party;
     }

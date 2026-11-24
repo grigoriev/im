@@ -49,7 +49,8 @@ public class InvoicePdfRenderer {
      */
     public byte[] render(InvoiceDocument document) {
         return render("pdf/invoice", Map.of("invoice", document, "fmt", new GermanFormat(), "address",
-                AddressLayout.of(document.buyer())));
+                AddressLayout.of(document.buyer()), "partnerLabelBreaks",
+                InfoBox.breaksPartnerLabel(document.references().sellerIdentifier())));
     }
 
     /**

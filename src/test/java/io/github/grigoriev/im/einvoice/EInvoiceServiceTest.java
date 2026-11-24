@@ -59,6 +59,7 @@ class EInvoiceServiceTest {
             cases.add(Arguments.of(format, "O", invoice(SWISS, ref, format, line("Lesung", "1", "350.00", NOT_TAXABLE_ABROAD))));
             cases.add(Arguments.of(format, "Stornorechnung", SampleInvoices.cancellation(format)));
             cases.add(Arguments.of(format, "department and contact", SampleInvoices.department(format)));
+            cases.add(Arguments.of(format, "references of the customer", SampleInvoices.referenced(format)));
         }
         return cases.stream();
     }
@@ -87,6 +88,17 @@ class EInvoiceServiceTest {
             assertThat(xml).as("BT-51 and BT-56 of the buyer")
                     .contains("<ram:LineTwo>KST 80441000, Bereich 44 DaF-Programme</ram:LineTwo>")
                     .containsPattern("<ram:DefinedTradeContact>\\s*<ram:PersonName>Frau Weber</ram:PersonName>");
+        }
+        if (document.references().purchaseOrder() != null) {
+            assertThat(xml).as("BT-29 of the seller, BT-32 keeps the tax number")
+                    .containsPattern("<ram:SellerTradeParty>\\s*<ram:ID>70001234, Sprachzentrum Musterstadt / 1024</ram:ID>")
+                    .containsPattern("<ram:ID schemeID=\"FC\">143/123/45678</ram:ID>")
+                    .as("BT-13").containsPattern("<ram:BuyerOrderReferencedDocument>\\s*"
+                            + "<ram:IssuerAssignedID>4500012345</ram:IssuerAssignedID>")
+                    .as("BT-12").containsPattern("<ram:ContractReferencedDocument>\\s*"
+                            + "<ram:IssuerAssignedID>Rahmenvertrag vom 15.01.2027, Kurs B1 Online</ram:IssuerAssignedID>");
+        } else {
+            assertThat(xml).doesNotContain("BuyerOrderReferencedDocument").doesNotContain("ContractReferencedDocument");
         }
         List<String> validators = issued.validations().stream().map(ValidationResult::validator).toList();
         switch (format) {

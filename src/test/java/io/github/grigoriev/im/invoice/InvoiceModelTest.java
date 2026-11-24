@@ -3,6 +3,7 @@ package io.github.grigoriev.im.invoice;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoiceLine;
 import io.github.grigoriev.im.einvoice.TaxCategory;
@@ -19,6 +20,16 @@ class InvoiceModelTest {
         LocalDate day = LocalDate.of(2027, 3, 18);
         return new Invoice(1L, status, 2L, status == InvoiceStatus.DRAFT ? null : "2027-01",
                 InvoiceFormat.ZUGFERD_EN16931, day, day, day, 14, null, null, null, null, lines, Instant.EPOCH, Instant.EPOCH, 0L, null, null, null);
+    }
+
+    @Test
+    void readsNoReferencesAsNone() {
+        Invoice i = invoice(InvoiceStatus.DRAFT, List.of());
+        assertThat(i.references()).isEqualTo(CustomerReferences.NONE);
+        assertThat(new Invoice(i.id(), i.status(), i.customerId(), i.number(), i.format(), i.issueDate(), i.serviceFrom(),
+                i.serviceTo(), i.paymentDays(), i.buyerReference(), i.intro(), i.closing(), i.taxNote(), i.lines(),
+                i.createdAt(), i.updatedAt(), i.version(), i.issuedAt(), i.snapshot(), i.activity(), null).references())
+                .as("the columns of a row without references").isEqualTo(CustomerReferences.NONE);
     }
 
     @Test

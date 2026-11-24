@@ -14,6 +14,8 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
   veraPDF, XRechnung with the official KoSIT validator.
 - The PDF puts the address into the window of DIN 5008, form B: name, department or addition, contact person, street,
   postcode and city, a foreign country in capitals.
+- The references a customer asks for: the Geschäftspartnernummer of the customer, the Bestellnummer and the contract
+  of an invoice or template. The PDF and the XML carry them (BT-29, BT-13, BT-12).
 - Kleinunternehmer rules (§19 UStG) with tax-exempt teaching (§4 Nr. 21 UStG), and threshold tracking.
 - Regular VAT at 19 % and 7 % for every other business, for example the sale of goods, with the VAT per rate.
 - Customer templates, immutable issued invoices, sending by e-mail (HTML and text, with a preview) or a manual dispatch

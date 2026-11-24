@@ -12,6 +12,7 @@ import io.github.grigoriev.im.audit.AuditService;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.EInvoiceException;
 import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
@@ -36,6 +37,8 @@ import io.github.grigoriev.im.invoice.ReminderChannel;
 import io.github.grigoriev.im.invoice.ReminderForm;
 import io.github.grigoriev.im.invoice.ReminderService;
 import io.github.grigoriev.im.invoice.StoredDocument;
+import io.github.grigoriev.im.invoice.TemplateForm;
+import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.numbering.ManualNumbers;
 import io.github.grigoriev.im.numbering.NumberService;
 import io.github.grigoriev.im.seller.Activity;
@@ -116,6 +119,9 @@ class IssueIT {
 
     @Autowired
     private ReminderService reminders;
+
+    @Autowired
+    private TemplateService templates;
 
     @MockitoSpyBean
     private EInvoiceService einvoices;
@@ -244,6 +250,53 @@ class IssueIT {
                 original.vatId(), original.iban(), original.bic(), original.taxStatus(), null, null, null, null, null, false));
         assertThat(documents.verifiedSnapshot(invoices.find(draft.id()).orElseThrow()).seller().name())
                 .as("the snapshot keeps the seller of the issue").isEqualTo(original.name());
+    }
+
+    @Test
+    void theReferencesOfCustomerAndTemplateGoIntoTheInvoiceAndItsStornorechnung() {
+        Customer school = customers.create(CustomerTestData.school());
+        TemplateForm template = TemplateForm.of(templates.create(school.id()));
+        template.setPurchaseOrder("4500012345");
+        template.setContract("Rahmenvertrag vom 15.01.2056, Kurs B1 Online");
+        long templateId = templates.save(school.id(), templates.list(school.id()).getFirst().id(), template).id();
+        CustomerReferences references = new CustomerReferences("70001234, Sprachzentrum Musterstadt / 1024",
+                "4500012345", "Rahmenvertrag vom 15.01.2056, Kurs B1 Online");
+
+        Invoice draft = invoices.createDraft(school.id(), templateId);
+        assertThat(draft.references()).as("stored with the draft").isEqualTo(references);
+        assertThat(invoices.find(draft.id()).orElseThrow().references()).isEqualTo(references);
+        DraftForm form = DraftForm.of(draft);
+        LocalDate day = LocalDate.of(2056, 3, 18);
+        form.setIssueDate(day);
+        form.setServiceFrom(day);
+        form.setServiceTo(day);
+        LineForm line = form.getLines().getFirst();
+        line.setText("Online-Sprachkurs Deutsch B1");
+        line.setAmount("984");
+        line.setCategory(TaxCategory.KLEINUNTERNEHMER);
+        draft = invoices.saveDraft(draft.id(), form);
+        Customer c = school;
+        customers.update(school.id(), new Customer(c.id(), c.name(), c.addressAddition(), c.street(), c.postcode(),
+                c.city(), c.countryCode(), c.contactName(), c.email(), c.vatId(), c.buyerReference(), "99999999",
+                c.format(), c.activity()));
+        issues.issue(draft.id(), draft.version());
+
+        Invoice issued = invoices.find(draft.id()).orElseThrow();
+        assertThat(documents.verifiedSnapshot(issued).references()).as("the draft keeps its copy")
+                .isEqualTo(references);
+        String xml = new String(documents.find(issued.id(), DocumentKind.XML).orElseThrow().content(),
+                StandardCharsets.UTF_8);
+        assertThat(xml).containsPattern("<ram:SellerTradeParty>\\s*<ram:ID>70001234, Sprachzentrum Musterstadt / 1024")
+                .containsPattern("<ram:BuyerOrderReferencedDocument>\\s*<ram:IssuerAssignedID>4500012345<")
+                .containsPattern("<ram:ContractReferencedDocument>\\s*<ram:IssuerAssignedID>Rahmenvertrag vom 15.01.2056");
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice SET purchase_order = 'x' WHERE id = ?", issued.id()))
+                .hasMessageContaining("immutable");
+
+        Invoice storno = invoices.createCancellation(issued.id());
+        assertThat(storno.references()).as("the Stornorechnung names what its invoice named").isEqualTo(references);
+        issues.issue(storno.id(), storno.version());
+        assertThat(documents.verifiedSnapshot(invoices.find(storno.id()).orElseThrow()).references())
+                .isEqualTo(references);
     }
 
     @Test

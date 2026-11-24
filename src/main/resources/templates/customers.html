@@ -114,6 +114,11 @@
             </div>
             <p class="text-xs text-base-content/75">Die XRechnung braucht Käuferreferenz und E-Mail. Die USt-IdNr. braucht
               eine Leistung mit Reverse Charge an einen Kunden in der EU.</p>
+            <label class="floating-label"><span>Geschäftspartnernummer</span>
+              <input id="customer-partner-number" th:field="*{sellerIdentifier}" class="input w-full" maxlength="200">
+            </label>
+            <p class="text-xs text-base-content/75 -mt-1">Ihre Nummer beim Kunden, falls er eine vergeben hat. Neue Rechnungen
+              übernehmen sie.</p>
           </fieldset>
 
           <div class="form-actions"><button type="submit" class="btn btn-primary"><i data-lucide="save" class="size-4"></i><span th:text="${customer.id == null ? 'Anlegen' : 'Speichern'}">Speichern</span></button></div>

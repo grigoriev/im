@@ -261,4 +261,13 @@ class InvoiceDocumentTest {
         assertThatThrownBy(() -> new InvoiceReference(null, DAY)).hasMessage("number");
         assertThatThrownBy(() -> new InvoiceReference("1", null)).hasMessage("issueDate");
     }
+
+    @Test
+    void hasNoReferencesUnlessGiven() {
+        assertThat(SampleInvoices.reading(ZUGFERD).references()).isEqualTo(CustomerReferences.NONE);
+        assertThat(SampleInvoices.withReferences(SampleInvoices.reading(ZUGFERD), null).references())
+                .as("an old snapshot has none").isEqualTo(CustomerReferences.NONE);
+        assertThat(new CustomerReferences(null, null, null)).isEqualTo(CustomerReferences.NONE);
+        assertThat(SampleInvoices.referenced(ZUGFERD).references()).isEqualTo(SampleInvoices.REFERENCES);
+    }
 }

@@ -45,6 +45,14 @@
             <input id="template-payment-days" th:field="*{paymentDays}" type="number" min="0" max="365" class="input w-full" required>
           </label>
         </div>
+        <div class="grid gap-3 @lg:grid-cols-2">
+          <label class="floating-label"><span>Bestellnummer</span>
+            <input id="template-purchase-order" th:field="*{purchaseOrder}" class="input w-full" maxlength="200">
+          </label>
+          <label class="floating-label"><span>Vertrag</span>
+            <input id="template-contract" th:field="*{contract}" class="input w-full" maxlength="200">
+          </label>
+        </div>
         <p class="text-xs text-base-content/75">Platzhalter in den Texten:
           <th:block th:each="placeholder, it : ${placeholders}"><code th:text="${placeholder}">{x}</code><span th:unless="${it.last}">, </span></th:block>.
           Sie werden beim Ausstellen ersetzt.</p>

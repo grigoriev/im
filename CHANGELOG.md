@@ -9,11 +9,13 @@ All notable changes to this project are documented in this file. The format foll
 ### Added
 
 - "Kunden" has the field "Abteilung / Zusatz" for a department or cost center below the name. A further contact person of the customer keeps it. The PDF prints it and the contact person on one line each, so the address always fits the window; the XML carries them in full.
+- The references a customer asks for. "Kunden" has the field "Geschäftspartnernummer", the number of the seller at the customer; a further contact person keeps it. A template has the fields "Bestellnummer" and "Vertrag". A new draft takes the Geschäftspartnernummer from the customer and the other two from its template, and the editor changes all three. The PDF prints them in the information block, where a long value wraps. The XML carries them as seller identifier (BT-29), purchase order (BT-13) and contract (BT-12). A Stornorechnung repeats the references of its invoice. Issued invoices stay as they are.
 
 ### Changed
 
 - The address of an invoice follows DIN 5008: name, "Abteilung / Zusatz", the contact person, street, postcode and city, country. The contact person was not printed before. Six lines fit the window of the envelope. A longer address, for example a name of two lines, gets a smaller text, so the full name stays and the address still fits. The XML carries the addition as address line 2 (BT-51) and the contact person as contact point of the buyer (BT-56). Issued invoices stay as they are.
 - On "Kunden" the contact person sits in "Anschrift", below the name, since it is now part of the address.
+- The XML carries the tax number as tax registration (BT-32) only, once a Geschäftspartnernummer takes the seller identifier (BT-29). Without one, and without a VAT ID, the tax number serves as BT-29 as before (BR-CO-26).
 
 ## [0.1.14] - 2026-11-23
 

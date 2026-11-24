@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
  * @param cancels the invoice this Stornorechnung cancels, {@code null} for an invoice; a Stornorechnung is a credit note
  *     (type 381) with the lines of the canceled invoice
  * @param phoneOnInvoice whether the PDF shows the phone number of the seller; the XML carries it anyway
+ * @param references the references the customer asks for; {@code null}, as in a snapshot from before them, means none
  */
 public record InvoiceDocument(
         String number,
@@ -51,7 +52,8 @@ public record InvoiceDocument(
         InvoiceFormat format,
         List<InvoiceLine> lines,
         InvoiceReference cancels,
-        boolean phoneOnInvoice) {
+        boolean phoneOnInvoice,
+        CustomerReferences references) {
 
     /** Checks the mandatory fields and the EN 16931 rules on the categories used. */
     public InvoiceDocument {
@@ -66,6 +68,7 @@ public record InvoiceDocument(
         Objects.requireNonNull(bic, "bic");
         Objects.requireNonNull(format, "format");
         lines = List.copyOf(lines);
+        references = references == null ? CustomerReferences.NONE : references;
         if (lines.isEmpty()) {
             throw new IllegalArgumentException("An invoice needs at least one line");
         }
@@ -140,6 +143,36 @@ public record InvoiceDocument(
             String closing, String taxNote, InvoiceFormat format, List<InvoiceLine> lines, InvoiceReference cancels) {
         this(number, issueDate, serviceFrom, serviceTo, dueDate, seller, buyer, buyerReference, iban, bic, intro, closing,
                 taxNote, format, lines, cancels, false);
+    }
+
+    /**
+     * Creates an invoice or a Stornorechnung without references.
+     *
+     * @param number invoice number
+     * @param issueDate invoice date
+     * @param serviceFrom first day of the service period
+     * @param serviceTo last day of the service period
+     * @param dueDate payment due date
+     * @param seller seller
+     * @param buyer buyer
+     * @param buyerReference buyer reference (BT-10), may be {@code null}
+     * @param iban IBAN of the seller
+     * @param bic BIC of the seller
+     * @param intro text above the lines
+     * @param closing text below the lines
+     * @param taxNote tax note, {@code null} for the default notes of the categories used
+     * @param format e-invoice format
+     * @param lines invoice lines, at least one
+     * @param cancels the invoice this Stornorechnung cancels, {@code null} for an invoice
+     * @param phoneOnInvoice whether the PDF shows the phone number of the seller
+     */
+    @SuppressWarnings("java:S107") // the fields of an invoice
+    public InvoiceDocument(String number, LocalDate issueDate, LocalDate serviceFrom, LocalDate serviceTo,
+            LocalDate dueDate, Party seller, Party buyer, String buyerReference, String iban, String bic, String intro,
+            String closing, String taxNote, InvoiceFormat format, List<InvoiceLine> lines, InvoiceReference cancels,
+            boolean phoneOnInvoice) {
+        this(number, issueDate, serviceFrom, serviceTo, dueDate, seller, buyer, buyerReference, iban, bic, intro, closing,
+                taxNote, format, lines, cancels, phoneOnInvoice, CustomerReferences.NONE);
     }
 
     /**

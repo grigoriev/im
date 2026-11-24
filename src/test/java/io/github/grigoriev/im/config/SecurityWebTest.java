@@ -48,6 +48,7 @@ import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.document.ProcedureForm;
 import io.github.grigoriev.im.document.ProcedureService;
 import io.github.grigoriev.im.einvoice.EInvoiceFacts;
+import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.InvoicePdfRenderer;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
@@ -320,7 +321,7 @@ class SecurityWebTest {
         return new InvoiceTemplate(7L, 4L, "Lesung mit Gespräch", InvoiceFormat.ZUGFERD_EN16931, 14, "Hallo", "Danke",
                 null, "Rechnung {Rechnungsnummer}", "Anbei", List.of(new TemplateLine("Lesung", true, BigDecimal.ONE,
                         new BigDecimal("400"), TaxCategory.KLEINUNTERNEHMER)), Instant.EPOCH,
-                Instant.EPOCH, 0L, null);
+                Instant.EPOCH, 0L, null, null, null);
     }
 
     private static Invoice invoice(long id, InvoiceStatus status) {
@@ -785,9 +786,9 @@ class SecurityWebTest {
     @Test
     void tellsTwoContactsOfOneOrganizationApartAndCopiesOne() throws Exception {
         Customer weber = new Customer(5L, "Sprachschule am See", null, "Seeweg 5", "86150", "Musterstadt", "DE",
-                "Frau Weber", "weber@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931, null);
+                "Frau Weber", "weber@sprachschule.example", null, null, null, InvoiceFormat.ZUGFERD_EN16931, null);
         Customer klein = new Customer(6L, "Sprachschule am See", null, "Seeweg 5", "86150", "Musterstadt", "DE",
-                "Herr Klein", "klein@sprachschule.example", null, null, InvoiceFormat.ZUGFERD_EN16931, null);
+                "Herr Klein", "klein@sprachschule.example", null, null, null, InvoiceFormat.ZUGFERD_EN16931, null);
         when(customers.list()).thenReturn(List.of(weber, klein));
         when(customers.find(5)).thenReturn(Optional.of(weber));
         mvc.perform(get("/customers/5").with(user("elena").roles("USER"))).andExpect(status().isOk())
@@ -817,6 +818,22 @@ class SecurityWebTest {
         mvc.perform(get("/customers/new").param("from", "3").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("value=\"Abrechnungen Online-Sprachkurse\"")))
                 .andExpect(content().string(Matchers.not(Matchers.containsString("value=\"Frau Weber\""))));
+    }
+
+    @Test
+    void bindsTheGeschaeftspartnernummerOfACustomer() throws Exception {
+        when(customers.create(any())).thenReturn(CustomerTestData.school().withId(3L));
+        mvc.perform(post("/customers").param("name", "Sprachschule am See")
+                        .param("sellerIdentifier", "70001234, Sprachzentrum Musterstadt / 1024")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/customers/3"));
+        verify(customers).create(argThat(customer ->
+                "70001234, Sprachzentrum Musterstadt / 1024".equals(customer.sellerIdentifier())));
+        when(customers.find(3)).thenReturn(Optional.of(CustomerTestData.school().withId(3L)));
+        mvc.perform(get("/customers/new").param("from", "3").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"customer-partner-number\" class=\"input w-full\" maxlength=\"200\" name=\"sellerIdentifier\" "
+                                + "value=\"70001234, Sprachzentrum Musterstadt / 1024\"")));
     }
 
     @Test
@@ -863,7 +880,7 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("<option value=\"DE\" selected=\"selected\">Deutschland</option>")));
         Customer kosovar = CustomerTestData.verlag();
         when(customers.find(7)).thenReturn(Optional.of(new Customer(7L, kosovar.name(), null, kosovar.street(),
-                kosovar.postcode(), kosovar.city(), "XK", "Frau Krasniqi", null, null, null, kosovar.format(), null)));
+                kosovar.postcode(), kosovar.city(), "XK", "Frau Krasniqi", null, null, null, null, kosovar.format(), null)));
         when(countries.options(null, "XK")).thenReturn(List.of(new Country("DE", "Deutschland"), new Country("XK", "XK")));
         mvc.perform(get("/customers/new").param("from", "7").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("<option value=\"XK\" selected=\"selected\">XK</option>")));
@@ -878,7 +895,7 @@ class SecurityWebTest {
 
         Customer swiss = CustomerTestData.verlag();
         swiss = new Customer(5L, swiss.name(), null, swiss.street(), swiss.postcode(), swiss.city(), "CH", null, null, null,
-                null, swiss.format(), null);
+                null, null, swiss.format(), null);
         when(customers.find(5)).thenReturn(Optional.of(swiss));
         when(countries.options("CH", null)).thenReturn(list);
         mvc.perform(get("/customers/5").with(user("elena").roles("USER")))
@@ -1105,6 +1122,68 @@ class SecurityWebTest {
                         .with(csrf()))
                 .andExpect(redirectedUrl("/invoices/6"))
                 .andExpect(flash().attribute("error", "Bitte gültige Daten eingeben, zum Beispiel ein Datum."));
+    }
+
+    @Test
+    void editsTheReferencesOfADraftAndATemplateAndShowsThemWhenIssued() throws Exception {
+        Invoice d = invoice(5, InvoiceStatus.DRAFT);
+        Invoice draft = new Invoice(d.id(), d.status(), d.customerId(), d.number(), d.format(), d.issueDate(),
+                d.serviceFrom(), d.serviceTo(), d.paymentDays(), d.buyerReference(), d.intro(), d.closing(), d.taxNote(),
+                d.lines(), d.createdAt(), d.updatedAt(), d.version(), d.issuedAt(), d.snapshot(), d.activity(),
+                new CustomerReferences("70001234", "4500012345", "Rahmenvertrag"));
+        when(invoices.find(5)).thenReturn(Optional.of(draft));
+        when(invoices.customerName(any())).thenReturn("Sprachschule am See");
+        mvc.perform(get("/invoices/5").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"invoice-partner-number\" class=\"input w-full\" maxlength=\"200\" name=\"sellerIdentifier\" value=\"70001234\"")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"invoice-purchase-order\" class=\"input w-full\" maxlength=\"200\" name=\"purchaseOrder\" value=\"4500012345\"")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"invoice-contract\" class=\"input w-full\" maxlength=\"200\" name=\"contract\" value=\"Rahmenvertrag\"")));
+        var saved = ArgumentCaptor.forClass(DraftForm.class);
+        mvc.perform(post("/invoices/5").param("action", "save").param("format", "ZUGFERD_EN16931")
+                        .param("sellerIdentifier", "K-17").param("purchaseOrder", "4500099999").param("contract", "V-1")
+                        .param("lines[0].text", "Kurs").param("lines[0].price", "300")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/invoices/5"));
+        verify(invoices).saveDraft(eq(5L), saved.capture());
+        assertThat(saved.getValue().getSellerIdentifier()).isEqualTo("K-17");
+        assertThat(saved.getValue().getPurchaseOrder()).isEqualTo("4500099999");
+        assertThat(saved.getValue().getContract()).isEqualTo("V-1");
+
+        InvoiceTemplate t = template();
+        when(templates.find(4, 7)).thenReturn(Optional.of(new InvoiceTemplate(t.id(), t.customerId(), t.name(),
+                t.format(), t.paymentDays(), t.intro(), t.closing(), t.taxNote(), t.emailSubject(), t.emailBody(),
+                t.lines(), t.createdAt(), t.updatedAt(), t.version(), t.activity(), "4500012345", "Rahmenvertrag")));
+        mvc.perform(get("/customers/4/templates/7").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"template-purchase-order\" class=\"input w-full\" maxlength=\"200\" name=\"purchaseOrder\" value=\"4500012345\"")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"template-contract\" class=\"input w-full\" maxlength=\"200\" name=\"contract\" value=\"Rahmenvertrag\"")));
+        var template = ArgumentCaptor.forClass(TemplateForm.class);
+        mvc.perform(post("/customers/4/templates/7").param("action", "save").param("name", "Kurs")
+                        .param("purchaseOrder", "4500099999").param("contract", "V-1").param("lines[0].text", "Kurs")
+                        .with(user("elena").roles("USER")).with(csrf()))
+                .andExpect(redirectedUrl("/customers/4/templates/7"));
+        verify(templates).save(eq(4L), eq(7L), template.capture());
+        assertThat(template.getValue().getPurchaseOrder()).isEqualTo("4500099999");
+        assertThat(template.getValue().getContract()).isEqualTo("V-1");
+
+        when(invoices.find(6)).thenReturn(Optional.of(invoice(6, InvoiceStatus.ISSUED)));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.referenced(InvoiceFormat.ZUGFERD_EN16931));
+        when(payments.summary(any())).thenReturn(new PaymentService.Payments(List.of(), BigDecimal.ZERO,
+                new BigDecimal("984.00")));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"issued-partner-number\">70001234, Sprachzentrum Musterstadt / 1024<")))
+                .andExpect(content().string(Matchers.containsString("id=\"issued-purchase-order\">4500012345<")))
+                .andExpect(content().string(Matchers.containsString(
+                        "id=\"issued-contract\">Rahmenvertrag vom 15.01.2027, Kurs B1 Online<")));
+        when(documents.verifiedSnapshot(any())).thenReturn(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
+        mvc.perform(get("/invoices/6").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Geschäftspartnernummer"))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"issued-purchase-order\""))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"issued-contract\""))));
     }
 
     @Test
@@ -1658,7 +1737,7 @@ class SecurityWebTest {
         assertThat(saved.getValue().getActivity()).isEqualTo(Activity.TEACHING);
 
         when(templates.find(4, 7)).thenReturn(Optional.of(new InvoiceTemplate(7L, 4L, "Kurs", InvoiceFormat.ZUGFERD_EN16931,
-                14, null, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 0L, Activity.TEACHING)));
+                14, null, null, null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH, 0L, Activity.TEACHING, null, null)));
         mvc.perform(get("/customers/4/templates/7").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("id=\"template-activity\"")))
                 .andExpect(content().string(Matchers.containsString("<option value=\"TEACHING\" selected=\"selected\">Unterricht</option>")));
@@ -1769,7 +1848,13 @@ class SecurityWebTest {
                 .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"intro\" name=\"intro\"")))
                 .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"closing\" name=\"closing\"")))
                 .andExpect(content().string(Matchers.containsString(
-                        "type=\"hidden\" id=\"buyerReference\" name=\"buyerReference\"")));
+                        "type=\"hidden\" id=\"buyerReference\" name=\"buyerReference\"")))
+                .andExpect(content().string(Matchers.containsString(
+                        "type=\"hidden\" id=\"sellerIdentifier\" name=\"sellerIdentifier\"")))
+                .andExpect(content().string(Matchers.containsString(
+                        "type=\"hidden\" id=\"purchaseOrder\" name=\"purchaseOrder\"")))
+                .andExpect(content().string(Matchers.containsString("type=\"hidden\" id=\"contract\" name=\"contract\"")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"invoice-purchase-order\""))));
         when(externals.nextNumber(any())).thenReturn(Optional.empty());
         mvc.perform(get("/invoices/8").with(user("elena").roles("USER")))
                 .andExpect(content().string(Matchers.containsString("id=\"register-by-hand\"")))

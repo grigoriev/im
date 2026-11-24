@@ -115,7 +115,8 @@ public class CustomerService {
     static Customer normalize(Customer input) {
         return new Customer(input.id(), text(input.name()), text(input.addressAddition()), text(input.street()),
                 text(input.postcode()), text(input.city()), upper(input.countryCode()), text(input.contactName()),
-                text(input.email()), compact(input.vatId()), text(input.buyerReference()), input.format(),
+                text(input.email()), compact(input.vatId()), text(input.buyerReference()),
+                text(input.sellerIdentifier()), input.format(),
                 input.activity());
     }
 
@@ -133,6 +134,7 @@ public class CustomerService {
         }
         checkVatId(problems, customer.vatId());
         optional(problems, customer.buyerReference(), "Käuferreferenz", 200);
+        optional(problems, customer.sellerIdentifier(), "Geschäftspartnernummer", 200);
         if (customer.format() == null) {
             problems.add("Bitte das E-Rechnungsformat wählen.");
         } else if (customer.format().followsXRechnung()) {

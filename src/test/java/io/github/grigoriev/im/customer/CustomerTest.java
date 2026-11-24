@@ -43,9 +43,9 @@ class CustomerTest {
 
     @Test
     void copiesWithAnotherId() {
-        Customer copy = CustomerTestData.verlag().withId(7L);
+        Customer copy = CustomerTestData.school().withId(7L);
         assertThat(copy.id()).isEqualTo(7L);
-        assertThat(copy.withId(null)).isEqualTo(CustomerTestData.verlag());
+        assertThat(copy.withId(null)).isEqualTo(CustomerTestData.school());
     }
 
     @Test
@@ -70,9 +70,9 @@ class CustomerTest {
     void copiesTheOrganizationForAnotherContact() {
         Customer original = new Customer(7L, "Sprachschule am See", "KST 80441000, Bereich 44 DaF-Programme", "Seeweg 5",
                 "86150", "Musterstadt", "DE", "Frau Weber", "weber@sprachschule.example", "DE123456789",
-                "04011000-12345-67", InvoiceFormat.XRECHNUNG, null);
+                "04011000-12345-67", "70001234", InvoiceFormat.XRECHNUNG, null);
         assertThat(original.forAnotherContact()).isEqualTo(new Customer(null, "Sprachschule am See",
                 "KST 80441000, Bereich 44 DaF-Programme", "Seeweg 5", "86150", "Musterstadt", "DE", null, null,
-                "DE123456789", "04011000-12345-67", InvoiceFormat.XRECHNUNG, null));
+                "DE123456789", "04011000-12345-67", "70001234", InvoiceFormat.XRECHNUNG, null));
     }
 }

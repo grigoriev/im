@@ -38,6 +38,10 @@ public final class SampleInvoices {
 
     static final LocalDate DAY = LocalDate.of(2027, 3, 18);
 
+    /** What a language school asks for: the number of the seller there, its purchase order and the contract. */
+    static final CustomerReferences REFERENCES = new CustomerReferences("70001234, Sprachzentrum Musterstadt / 1024",
+            "4500012345", "Rahmenvertrag vom 15.01.2027, Kurs B1 Online");
+
     private SampleInvoices() {
     }
 
@@ -128,6 +132,18 @@ public final class SampleInvoices {
                 b.contactName(), null, null);
         return invoice(buyer, null, InvoiceFormat.ZUGFERD_EN16931,
                 line("Online-Sprachkurs Deutsch B1, je 45 Min.", "24", "41.00", TaxCategory.NOT_TAXABLE_ABROAD));
+    }
+
+    /** Teaching for the department with the Geschäftspartnernummer, the Bestellnummer and the contract. */
+    public static InvoiceDocument referenced(InvoiceFormat format) {
+        return withReferences(department(format), REFERENCES);
+    }
+
+    /** The document with other references. */
+    static InvoiceDocument withReferences(InvoiceDocument d, CustomerReferences references) {
+        return new InvoiceDocument(d.number(), d.issueDate(), d.serviceFrom(), d.serviceTo(), d.dueDate(), d.seller(),
+                d.buyer(), d.buyerReference(), d.iban(), d.bic(), d.intro(), d.closing(), d.taxNote(), d.format(),
+                d.lines(), d.cancels(), d.phoneOnInvoice(), references);
     }
 
     /** The Stornorechnung 2027-10 of the reading, invoice 2027-07 of March 8, with the same lines. */

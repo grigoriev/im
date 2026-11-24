@@ -5,7 +5,7 @@ import { ensureProfile } from './seller';
 // elements, never a whole list. The viewports are tall: the element fits without scrolling, so the
 // sticky header never covers it. Update with scripts/e2e.sh --update.
 const VIEWPORTS = [
-  { name: 'phone', width: 390, height: 2000 },
+  { name: 'phone', width: 390, height: 2400 },
   { name: 'desktop', width: 1440, height: 2000 },
 ];
 const LONG_NAME = 'Gemeinnützige Gesellschaft für Sprachförderung und interkulturelle Bildung Musterstadt mbH';
@@ -22,6 +22,7 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await page.getByLabel('E-Mail für Rechnungen').fill('erechnung@gesellschaft.example');
   await page.getByLabel('E-Rechnungsformat').selectOption('ZUGFERD_XRECHNUNG');
   await page.getByLabel('Käuferreferenz (Leitweg-ID)').fill('09162000-GGSB1-42');
+  await page.getByLabel('Geschäftspartnernummer').fill('70001234, Sprachzentrum Musterstadt / 1024');
   await page.getByRole('button', { name: 'Anlegen' }).click();
   await expect(page.getByRole('status')).toContainText('angelegt');
   const url = page.url();
@@ -60,6 +61,8 @@ test('a saved customer with a long name', async ({ page, browser, adminState }) 
   await page.locator('#invoice-date').fill('2031-03-18');
   await page.locator('#invoice-from').fill('2031-03-02');
   await page.locator('#invoice-to').fill('2031-03-16');
+  await page.getByLabel('Bestellnummer').fill('4500012345');
+  await page.getByLabel('Vertrag').fill('Rahmenvertrag vom 15.01.2031, Kurs B1 Online');
   await page.getByRole('button', { name: 'Speichern' }).click();
   await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
   await page.getByText('Rechnung ausstellen…').click();

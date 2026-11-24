@@ -25,6 +25,9 @@ public class DraftForm {
     private LocalDate serviceTo;
     private int paymentDays;
     private String buyerReference;
+    private String sellerIdentifier;
+    private String purchaseOrder;
+    private String contract;
     private String intro;
     private String closing;
     private String taxNote;
@@ -46,6 +49,9 @@ public class DraftForm {
         form.serviceTo = invoice.serviceTo();
         form.paymentDays = invoice.paymentDays();
         form.buyerReference = invoice.buyerReference();
+        form.sellerIdentifier = invoice.references().sellerIdentifier();
+        form.purchaseOrder = invoice.references().purchaseOrder();
+        form.contract = invoice.references().contract();
         form.intro = invoice.intro();
         form.closing = invoice.closing();
         form.taxNote = invoice.taxNote();
@@ -167,6 +173,36 @@ public class DraftForm {
     /** @param buyerReference the buyer reference */
     public void setBuyerReference(String buyerReference) {
         this.buyerReference = buyerReference;
+    }
+
+    /** @return the Geschäftspartnernummer */
+    public String getSellerIdentifier() {
+        return sellerIdentifier;
+    }
+
+    /** @param sellerIdentifier the Geschäftspartnernummer */
+    public void setSellerIdentifier(String sellerIdentifier) {
+        this.sellerIdentifier = sellerIdentifier;
+    }
+
+    /** @return the Bestellnummer */
+    public String getPurchaseOrder() {
+        return purchaseOrder;
+    }
+
+    /** @param purchaseOrder the Bestellnummer */
+    public void setPurchaseOrder(String purchaseOrder) {
+        this.purchaseOrder = purchaseOrder;
+    }
+
+    /** @return the contract */
+    public String getContract() {
+        return contract;
+    }
+
+    /** @param contract the contract */
+    public void setContract(String contract) {
+        this.contract = contract;
     }
 
     /** @return the text above the lines */

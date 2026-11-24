@@ -290,6 +290,12 @@
             <div><dt class="text-xs text-base-content/75">Leistungszeitraum</dt><dd class="num" th:text="${#temporals.format(document.serviceFrom(), 'dd.MM.yyyy') + ' – ' + #temporals.format(document.serviceTo(), 'dd.MM.yyyy')}">01.03.2027 – 18.03.2027</dd></div>
             <div th:if="${document.buyerReference() != null}"><dt class="text-xs text-base-content/75">Käuferreferenz (Leitweg-ID)</dt>
               <dd class="num [overflow-wrap:anywhere]" th:text="${document.buyerReference()}">04011000-12345-34</dd></div>
+            <div th:if="${document.references().sellerIdentifier() != null}"><dt class="text-xs text-base-content/75">Geschäftspartnernummer</dt>
+              <dd class="num [overflow-wrap:anywhere]" id="issued-partner-number" th:text="${document.references().sellerIdentifier()}">70001234</dd></div>
+            <div th:if="${document.references().purchaseOrder() != null}"><dt class="text-xs text-base-content/75">Bestellnummer</dt>
+              <dd class="num [overflow-wrap:anywhere]" id="issued-purchase-order" th:text="${document.references().purchaseOrder()}">4500012345</dd></div>
+            <div th:if="${document.references().contract() != null}"><dt class="text-xs text-base-content/75">Vertrag</dt>
+              <dd class="[overflow-wrap:anywhere]" id="issued-contract" th:text="${document.references().contract()}">Rahmenvertrag</dd></div>
             <div><dt class="text-xs text-base-content/75">Gesamtbetrag</dt><dd class="num font-semibold" id="invoice-total" th:text="${#numbers.formatDecimal(document.total(), 1, 'POINT', 2, 'COMMA')} + ' €'">0,00 €</dd></div>
           </dl>
         </section>
