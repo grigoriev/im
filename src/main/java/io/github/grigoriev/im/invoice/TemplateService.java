@@ -121,6 +121,9 @@ public class TemplateService {
         if (form.getLines().size() > MAX_LINES) {
             throw new InvoiceException(List.of("Eine Vorlage hat höchstens " + MAX_LINES + " Zeilen."));
         }
+        if (form.getLines().contains(null)) {
+            throw new InvoiceException(List.of("Eine Zeile der Vorlage ist leer."));
+        }
         List<String> problems = new ArrayList<>();
         List<TemplateLine> lines = new ArrayList<>();
         for (int i = 0; i < form.getLines().size(); i++) {

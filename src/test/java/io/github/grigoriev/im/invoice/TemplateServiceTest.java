@@ -191,6 +191,11 @@ class TemplateServiceTest {
         form.setLines(new ArrayList<>(Collections.nCopies(101, line)));
         assertThat(catchThrowableOfType(InvoiceException.class, () -> service.save(2, 7, form)).problems())
                 .containsExactly("Eine Vorlage hat höchstens 100 Zeilen.");
+        List<LineForm> withEmpty = new ArrayList<>(List.of(line));
+        withEmpty.add(null);
+        form.setLines(withEmpty);
+        assertThat(catchThrowableOfType(InvoiceException.class, () -> service.save(2, 7, form)).problems())
+                .containsExactly("Eine Zeile der Vorlage ist leer.");
         form.setLines(null);
         assertThat(form.getLines()).isEmpty();
     }
