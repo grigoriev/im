@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /** Puts the logged-in user into every page model, for the name and the role in the app shell. */
-@ControllerAdvice
+@ControllerAdvice(basePackageClasses = CurrentUserAdvice.class)
 public class CurrentUserAdvice {
 
     private final UserService users;

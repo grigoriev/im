@@ -325,7 +325,7 @@ class BackupServiceTest {
 
         List<String> sql = writes.stream().map(write -> (String) write.get("sql")).toList();
         assertThat(sql.getFirst()).as("the tables are locked before the checks").isEqualTo("LOCK TABLE "
-                + String.join(", ", BackupService.TABLES) + ", persistent_logins IN EXCLUSIVE MODE");
+                + String.join(", ", BackupService.TABLES) + ", persistent_logins, api_token IN EXCLUSIVE MODE");
         assertThat(sql.subList(1, BackupService.SETUP.size() + 1)).containsExactlyElementsOf(
                 BackupService.SETUP.stream().map(table -> "DELETE FROM " + table).toList());
         assertThat(sql).contains("INSERT INTO customer (id, name) OVERRIDING SYSTEM VALUE VALUES (CAST(:id AS bigint), "

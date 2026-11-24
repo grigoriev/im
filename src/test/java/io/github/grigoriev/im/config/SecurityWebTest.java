@@ -2,6 +2,7 @@ package io.github.grigoriev.im.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -25,6 +26,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.github.grigoriev.im.api.ApiToken;
+import io.github.grigoriev.im.api.ApiTokenException;
+import io.github.grigoriev.im.api.ApiTokenScope;
+import io.github.grigoriev.im.api.ApiTokenService;
+import io.github.grigoriev.im.api.CreatedToken;
 import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.audit.AuditAction;
 import io.github.grigoriev.im.audit.AuditEvent;
@@ -280,6 +286,9 @@ class SecurityWebTest {
     private ReminderService reminders;
 
     @MockitoBean
+    private ApiTokenService apiTokens;
+
+    @MockitoBean
     private ThresholdService threshold;
 
     @MockitoBean
@@ -502,6 +511,66 @@ class SecurityWebTest {
                 .andExpect(redirectedUrl("/account"))
                 .andExpect(request().sessionAttribute(RecentLogin.CONFIRMED, Matchers.notNullValue()));
         verify(users).confirmPassword("elena", "richtig");
+    }
+
+    @Test
+    void listsTheTokensAndCreatesOneOnlyAfterARecentLogin() throws Exception {
+        knownUsers();
+        Instant now = Instant.now();
+        when(apiTokens.list("elena")).thenReturn(List.of(
+                new ApiToken(1L, 2L, "Claude Code", "h1", ApiTokenScope.WRITE, UserTestData.CREATED,
+                        now.plusSeconds(86_400), UserTestData.CREATED),
+                new ApiToken(2L, 2L, "Alt", "h2", ApiTokenScope.READ, Instant.parse("2026-01-02T09:00:00Z"),
+                        Instant.parse("2026-01-03T09:00:00Z"), null)));
+        mvc.perform(get("/account").with(user("elena").roles("USER"))).andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Claude Code")))
+                .andExpect(content().string(Matchers.containsString("Lesen und schreiben")))
+                .andExpect(content().string(Matchers.containsString("Angelegt am 02.01.2027 · gültig bis ")))
+                .andExpect(content().string(Matchers.containsString(" · zuletzt 02.01.2027")))
+                .andExpect(content().string(Matchers.containsString("Angelegt am 02.01.2026 · abgelaufen am 03.01.2026")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"token-create\""))));
+        when(apiTokens.list("admin")).thenReturn(List.of());
+        mvc.perform(get("/account").with(user("admin").roles("ADMIN")))
+                .andExpect(content().string(Matchers.containsString("Noch kein API-Token.")));
+
+        mvc.perform(post("/account/tokens").param("name", "Claude").param("scope", "WRITE").param("days", "90")
+                        .with(user("elena")).with(csrf()))
+                .andExpect(redirectedUrl("/account")).andExpect(flash().attribute("error", "Bestätigen Sie zuerst Ihr Passwort."));
+        verify(apiTokens, never()).create(any(), any(), any(), anyInt());
+
+        var recent = user("elena").authorities(new SimpleGrantedAuthority("ROLE_USER"),
+                FactorGrantedAuthority.withAuthority(FactorGrantedAuthority.PASSWORD_AUTHORITY).issuedAt(Instant.now()).build());
+        mvc.perform(get("/account").with(recent)).andExpect(content().string(Matchers.containsString("id=\"token-create\"")));
+        when(apiTokens.create("elena", "Claude", ApiTokenScope.WRITE, 90)).thenReturn(new CreatedToken(
+                new ApiToken(3L, 2L, "Claude", "h3", ApiTokenScope.WRITE, now, now, null), "im_geheim"));
+        mvc.perform(post("/account/tokens").param("name", "Claude").param("scope", "WRITE").param("days", "90")
+                        .with(recent).with(csrf()))
+                .andExpect(redirectedUrl("/account")).andExpect(flash().attribute("newToken", "im_geheim"))
+                .andExpect(flash().attribute("success", "API-Token „Claude“ angelegt."));
+        when(apiTokens.create("elena", "", ApiTokenScope.READ, 30)).thenThrow(new ApiTokenException("Name fehlt."));
+        mvc.perform(post("/account/tokens").param("name", "").param("scope", "READ").param("days", "30")
+                        .with(recent).with(csrf()))
+                .andExpect(flash().attribute("error", "Name fehlt.")).andExpect(flash().attribute("newToken", Matchers.nullValue()));
+    }
+
+    @Test
+    void showsANewTokenOnceAfterTheRedirect() throws Exception {
+        knownUsers();
+        mvc.perform(get("/account").flashAttr("newToken", "im_einmal").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.containsString("value=\"im_einmal\"")))
+                .andExpect(content().string(Matchers.containsString("nur dieses eine Mal")));
+        mvc.perform(get("/account").with(user("elena").roles("USER")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("id=\"new-token\""))));
+    }
+
+    @Test
+    void deletesAnOwnTokenAndReportsAProblem() throws Exception {
+        mvc.perform(post("/account/tokens/5/delete").with(user("elena")).with(csrf()))
+                .andExpect(redirectedUrl("/account")).andExpect(flash().attribute("success", "API-Token gelöscht."));
+        verify(apiTokens).delete("elena", 5L);
+        doThrow(new ApiTokenException("Diesen Token gibt es nicht.")).when(apiTokens).delete("elena", 6L);
+        mvc.perform(post("/account/tokens/6/delete").with(user("elena")).with(csrf()))
+                .andExpect(flash().attribute("error", "Diesen Token gibt es nicht."));
     }
 
     @Test

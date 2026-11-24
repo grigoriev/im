@@ -37,6 +37,7 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
   page says so.
 - The admin page shows the last nightly backup and restore test of the host, and warns when one is overdue.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
+- A REST API for assistants such as Claude Code, behind personal API tokens. It reads and writes the customers.
 - Business expenses with their receipts, summed by kind for the Anlage EÜR in WISO Steuer, with a CSV.
 - Seals every PDF, XML and document with a key outside the database, checks them every night and shows what a change
   in the database altered.
@@ -93,6 +94,25 @@ cookie: set a random value of at least 32 characters. The app does not start wit
 Passkeys need HTTPS, or `http://localhost`. `IM_WEBAUTHN_RP_ID` is the host name of the app, and
 `IM_WEBAUTHN_ALLOWED_ORIGINS` lists its origins, comma separated. A passkey works only on the host it
 was created for. Each user adds passkeys on the page "Mein Konto". The admin can remove them.
+
+The REST API lives under `/api/v1` and takes a personal API token only, never the session cookie
+([ADR 7](docs/adr/0007-api-tokens-and-mcp.md)):
+
+1. Create a token on "Mein Konto": a name, the rights ("Nur lesen" or "Lesen und schreiben") and 30 to 365 days.
+2. Copy it at once. The page shows it once; the database keeps its SHA-256 only.
+3. Send it as `Authorization: Bearer im_...`.
+
+| Method and URL | Does |
+|---|---|
+| `GET /api/v1/customers` | Lists the customers |
+| `GET /api/v1/customers/{id}` | Returns one customer |
+| `POST /api/v1/customers` | Creates a customer, 201 with its URL |
+| `PUT /api/v1/customers/{id}` | Changes every field of a customer |
+
+The JSON fields are those of the form: `name`, `addressAddition`, `street`, `postcode`, `city`, `countryCode`,
+`contactName`, `email`, `vatId`, `buyerReference`, `sellerIdentifier`, `format` (`ZUGFERD_EN16931`,
+`ZUGFERD_XRECHNUNG`, `XRECHNUNG`, `EXTERNAL` for invoices made elsewhere) and `activity` (`TEACHING`, `OTHER` or empty). A refused input answers 400 with
+the list `problems`. The audit log names the token of each change. Issuing, canceling and deleting stay in the forms.
 
 Sending invoices by e-mail needs an SMTP server: `IM_SMTP_HOST`, `IM_SMTP_PORT` (587), `IM_SMTP_USERNAME`,
 `IM_SMTP_PASSWORD`, `IM_SMTP_STARTTLS` (`true`), the sender `IM_MAIL_FROM` and an optional blind copy

@@ -44,7 +44,7 @@ public class AuditService {
      */
     @Transactional
     public void add(AuditAction action, String detail) {
-        save(currentUser(), action, detail, null);
+        save(currentUser(), action, noted(detail), null);
     }
 
     /**
@@ -56,7 +56,7 @@ public class AuditService {
      */
     @Transactional
     public void add(long invoiceId, AuditAction action, String detail) {
-        save(currentUser(), action, detail, invoiceId);
+        save(currentUser(), action, noted(detail), invoiceId);
     }
 
     /**
@@ -106,6 +106,20 @@ public class AuditService {
             return SYSTEM;
         }
         return authentication.getName();
+    }
+
+    /**
+     * Adds the note of the login to a detail, for example the API token a change came through.
+     *
+     * @param detail the detail
+     * @return the detail with the note, or the detail alone
+     */
+    static String noted(String detail) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getDetails() instanceof AuditNote note) {
+            return (detail == null || detail.isEmpty() ? "" : detail + " · ") + note.auditNote();
+        }
+        return detail;
     }
 
     static String cut(String text, int max) {

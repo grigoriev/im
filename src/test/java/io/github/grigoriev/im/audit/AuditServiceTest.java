@@ -36,6 +36,23 @@ class AuditServiceTest {
     }
 
     @Test
+    void namesTheApiTokenOfTheLogin() {
+        TestingAuthenticationToken login = new TestingAuthenticationToken("elena", "x", "ROLE_USER");
+        login.setDetails((AuditNote) () -> "API-Token „Claude“");
+        SecurityContextHolder.getContext().setAuthentication(login);
+        service.add(AuditAction.CUSTOMER_CREATED, "Verlag am Fluss GmbH");
+        verify(repository).save(new AuditEvent(null, NOW, "elena", AuditAction.CUSTOMER_CREATED,
+                "Verlag am Fluss GmbH · API-Token „Claude“", null));
+        service.add(5L, AuditAction.DRAFT_CREATED, "");
+        verify(repository).save(new AuditEvent(null, NOW, "elena", AuditAction.DRAFT_CREATED, "API-Token „Claude“", 5L));
+        assertThat(AuditService.noted(null)).isEqualTo("API-Token „Claude“");
+        login.setDetails("eine Web-Anmeldung");
+        assertThat(AuditService.noted("d")).isEqualTo("d");
+        SecurityContextHolder.clearContext();
+        assertThat(AuditService.noted("d")).isEqualTo("d");
+    }
+
+    @Test
     void recordsTheAppItselfWithoutALogin() {
         service.add(AuditAction.USER_CREATED, "admin (ADMIN)");
         verify(repository).save(new AuditEvent(null, NOW, "system", AuditAction.USER_CREATED, "admin (ADMIN)", null));

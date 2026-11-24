@@ -26,7 +26,7 @@ class BackupTablesIT {
      * The tables the export leaves out: remember-me logins end with the import, the Flyway history and the schema
      * marker belong to the installation, and the host scripts write the backup runs of this installation.
      */
-    private static final Set<String> LEFT_OUT = Set.of("persistent_logins", "flyway_schema_history", "app_info",
+    private static final Set<String> LEFT_OUT = Set.of("persistent_logins", "api_token", "flyway_schema_history", "app_info",
             "backup_run");
 
     /** The tables that hang on an invoice or a template: empty while their parents are. */

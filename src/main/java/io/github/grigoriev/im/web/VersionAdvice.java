@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 /** Puts the version of the app into every page model, for the line below the menu. */
-@ControllerAdvice
+@ControllerAdvice(basePackageClasses = VersionAdvice.class)
 public class VersionAdvice {
 
     private final SystemService system;
