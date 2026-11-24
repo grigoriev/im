@@ -386,3 +386,55 @@ test('the references of customer, template and draft reach the issued PDF and XM
       /<ram:ContractReferencedDocument>\s*<ram:IssuerAssignedID>Rahmenvertrag vom 15.01.2027, Kurs B1 Online</);
   }
 });
+
+test('the unit and the day of a line reach the issued PDF and XML', async ({ page }) => {
+  await ensureProfile(page);
+  const customer = await newCustomer(page, `Kurskunde ${randomUUID().slice(0, 8)}`);
+  await page.goto('/invoices');
+  await page.getByLabel('Kunde der neuen Rechnung').selectOption({ label: customer });
+  await page.getByRole('button', { name: 'Neue Rechnung' }).click();
+
+  await expect(page.locator('#line-0-unit'), 'a lump sum has no unit').toBeHidden();
+  await page.locator('#line-0-text').fill('Deutschkurs B1, Abendgruppe');
+  await page.locator('#line-0-kind').selectOption('false');
+  await expect(page.locator('#line-0-unit')).toBeVisible();
+  await expect(page.locator('#line-0-unit'), 'a new line counts pieces').toHaveValue('PIECE');
+  await page.locator('#line-0-quantity').fill('24');
+  await page.locator('#line-0-unit').selectOption('TEACHING_UNIT');
+  await page.locator('#line-0-price').fill('40');
+  await page.locator('#line-0-from').fill('2027-03-20');
+  await page.locator('#line-0-to').fill('2027-03-09');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('alert')).toContainText('Position 1: Die Leistung endet vor ihrem Beginn.');
+  await expect(page.locator('#line-0-unit'), 'the entered unit stays').toHaveValue('TEACHING_UNIT');
+
+  await page.locator('#line-0-from').fill('2027-03-09');
+  await page.locator('#line-0-to').fill('2027-03-20');
+  await page.getByRole('button', { name: 'Position hinzufügen' }).click();
+  await page.locator('#line-1-text').fill('Prüfungsvorbereitung');
+  await page.locator('#line-1-kind').selectOption('false');
+  await page.locator('#line-1-quantity').fill('3,5');
+  await page.locator('#line-1-unit').selectOption('HOUR');
+  await page.locator('#line-1-price').fill('60');
+  await page.locator('#line-1-from').fill('2027-03-08');
+  await page.getByRole('button', { name: 'Speichern' }).click();
+  await expect(page.getByRole('status')).toHaveText('Entwurf gespeichert.');
+  await expect(page.locator('#line-1-to'), 'one day is the first and the last').toHaveValue('2027-03-08');
+  await expect(page.locator('#invoice-totals')).toContainText('1.170,00 €');
+
+  await page.getByText('Rechnung ausstellen…').click();
+  await page.getByRole('button', { name: 'Jetzt ausstellen' }).click();
+  await expect(page.getByRole('status')).toHaveText(/^Rechnung .+ ausgestellt\.$/);
+  const xml = await (await page.request.get((await page.locator('#download-xml').getAttribute('href'))!)).text();
+  const pdf = await (await page.request.get((await page.locator('#download-pdf').getAttribute('href'))!)).body();
+  for (const [file, content] of [['XML', xml], ['PDF', embeddedXml(pdf)]]) {
+    expect(content, `${file}: a teaching unit as C62`).toMatch(/<ram:BilledQuantity unitCode="C62">24/);
+    expect(content, `${file}: hours as HUR`).toMatch(/<ram:BilledQuantity unitCode="HUR">3.5/);
+    expect(content, `${file}: the period of the course`).toMatch(new RegExp('<ram:BillingSpecifiedPeriod>\\s*'
+      + '<ram:StartDateTime>\\s*<udt:DateTimeString format="102">20270309</udt:DateTimeString>\\s*</ram:StartDateTime>\\s*'
+      + '<ram:EndDateTime>\\s*<udt:DateTimeString format="102">20270320</udt:DateTimeString>'));
+    expect(content, `${file}: the single day`).toMatch(new RegExp('<ram:BillingSpecifiedPeriod>\\s*'
+      + '<ram:StartDateTime>\\s*<udt:DateTimeString format="102">20270308</udt:DateTimeString>\\s*</ram:StartDateTime>\\s*'
+      + '<ram:EndDateTime>\\s*<udt:DateTimeString format="102">20270308</udt:DateTimeString>'));
+  }
+});

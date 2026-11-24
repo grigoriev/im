@@ -16,7 +16,9 @@ import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.EInvoiceException;
 import io.github.grigoriev.im.einvoice.EInvoiceService;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
+import io.github.grigoriev.im.einvoice.InvoiceLine;
 import io.github.grigoriev.im.einvoice.InvoiceReference;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.archive.ArchiveService;
 import io.github.grigoriev.im.invoice.DispatchChannel;
@@ -297,6 +299,59 @@ class IssueIT {
         issues.issue(storno.id(), storno.version());
         assertThat(documents.verifiedSnapshot(invoices.find(storno.id()).orElseThrow()).references())
                 .isEqualTo(references);
+    }
+
+    @Test
+    void theUnitAndTheDayOfALineGoIntoTheInvoiceAndItsStornorechnung() {
+        Customer school = customers.create(CustomerTestData.school());
+        Invoice draft = invoices.createDraft(school.id(), null);
+        DraftForm form = DraftForm.of(draft);
+        LocalDate day = LocalDate.of(2057, 3, 20);
+        form.setIssueDate(day);
+        form.setServiceFrom(day.minusDays(12));
+        form.setServiceTo(day);
+        form.setBuyerReference(school.buyerReference());
+        LineForm course = form.getLines().getFirst();
+        course.setText("Deutschkurs B1, Abendgruppe");
+        course.setLumpSum(false);
+        course.setQuantity("24");
+        course.setPrice("40");
+        course.setUnit(LineUnit.TEACHING_UNIT);
+        course.setServiceFrom(day.minusDays(11));
+        course.setServiceTo(day);
+        course.setCategory(TaxCategory.EXEMPT_4_21);
+        LineForm hours = new LineForm();
+        hours.setText("Prüfungsvorbereitung");
+        hours.setLumpSum(false);
+        hours.setQuantity("3,5");
+        hours.setPrice("60");
+        hours.setUnit(LineUnit.HOUR);
+        hours.setServiceFrom(day.minusDays(12));
+        hours.setCategory(TaxCategory.EXEMPT_4_21);
+        form.getLines().add(hours);
+        draft = invoices.saveDraft(draft.id(), form);
+        long draftId = draft.id();
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice_line SET service_to = service_from - 1 WHERE invoice_id = ?",
+                draftId)).as("the database keeps the order of the days").hasMessageContaining("invoice_line_period");
+        issues.issue(draft.id(), draft.version());
+
+        Invoice issued = invoices.find(draft.id()).orElseThrow();
+        List<InvoiceLine> lines = documents.verifiedSnapshot(issued).lines();
+        assertThat(lines).extracting(InvoiceLine::unit).containsExactly(LineUnit.TEACHING_UNIT, LineUnit.HOUR);
+        assertThat(lines.get(1).serviceFrom()).as("one day").isEqualTo(day.minusDays(12)).isEqualTo(lines.get(1).serviceTo());
+        String xml = new String(documents.find(issued.id(), DocumentKind.XML).orElseThrow().content(),
+                StandardCharsets.UTF_8);
+        assertThat(xml).containsPattern("<ram:BilledQuantity unitCode=\"C62\">24")
+                .containsPattern("<ram:BilledQuantity unitCode=\"HUR\">3.5")
+                .containsPattern("<ram:BillingSpecifiedPeriod>\\s*<ram:StartDateTime>\\s*"
+                        + "<udt:DateTimeString format=\"102\">20570309</udt:DateTimeString>");
+        assertThatThrownBy(() -> jdbc.update("UPDATE invoice_line SET unit = 'DAY' WHERE invoice_id = ?", issued.id()))
+                .hasMessageContaining("immutable");
+
+        Invoice storno = invoices.createCancellation(issued.id());
+        assertThat(storno.lines()).as("the Stornorechnung repeats unit and day").isEqualTo(issued.lines());
+        issues.issue(storno.id(), storno.version());
+        assertThat(documents.verifiedSnapshot(invoices.find(storno.id()).orElseThrow()).lines()).isEqualTo(lines);
     }
 
     @Test

@@ -148,7 +148,7 @@ Not chosen:
 | `Customer` | Address with an optional department or other addition and a contact person, country, e-mail, USt-IdNr, buyer reference (the Leitweg-ID for a public buyer), Geschäftspartnernummer (the number of the seller at the customer), format: ZUGFeRD EN16931 (default), ZUGFeRD XRECHNUNG or XRechnung |
 | `InvoiceTemplate` | Per customer: title, texts, tax note, lines, payment terms, format (default from the customer), Bestellnummer and contract, e-mail text |
 | `Invoice` | Number, status, format (`EXTERNAL` for an external invoice), title, dates, service period, texts, tax note, payment terms, the references the customer asks for, snapshot of the issued document with seller and buyer (JSON). The references: the Geschäftspartnernummer from the customer (BT-29), the Bestellnummer (BT-13) and the contract (BT-12) from the template; the draft editor changes all three, a Stornorechnung repeats those of its invoice. The PDF prints them in the information block, where a long value wraps. BT-29 takes the Geschäftspartnernummer; the tax number stays BT-32 (scheme FC) and serves as BT-29 only without a Geschäftspartnernummer and a VAT ID (BR-CO-26) |
-| `InvoiceLine` | Text, quantity, unit, price, tax category |
+| `InvoiceLine` | Text, lump sum or quantity, unit (piece, hour, teaching unit, day), price, tax category, optional day or period of the service |
 | `Document` | Generated PDF or XML: type, file name, content (in the database), SHA-256, size. Written once |
 | `InvoiceOriginal` | Original file of an external invoice: file name, type, content, SHA-256, seal. Written once |
 | `NumberGap` | Explained gap in the numbers of a year before the app: number, reason, user. Written once |
@@ -237,10 +237,17 @@ The admin edits the default tax notes. A template and an invoice can override th
 8. A line is a lump sum by default: the PDF shows the text and the amount only. The scope of the service goes into the text,
    for example "Lesung am 16.03.2027, 90 Min." (§14 Abs. 4 Nr. 5 UStG). A line can carry a quantity instead.
    Then the PDF shows quantity, unit price and amount. The quantity and unit price columns appear only if a line has a quantity.
-   The user never picks a unit: the XML carries `LS` for a lump sum and `C62` for a quantity, as EN 16931 needs one.
-   Switching a line from quantity to lump sum keeps its amount.
-9. Validation before issue: a VAT-exempt line needs a tax note. Both XRechnung formats need a buyer reference (BR-DE-15).
-   The validation of the format must pass.
+   A line with a quantity has a unit (decision 2026-11-24): piece (default), hour, teaching unit or day. The PDF prints
+   the label after the quantity ("24 UE", "3,5 Std.", "1 Tag", "2 Tage"); a piece prints the number only, as before.
+   The XML carries the UN/ECE Rec. 20 code as BT-130: `C62` for a piece, `HUR` for an hour, `DAY` for a day. A teaching
+   unit of 45 minutes has no code of its own: it goes as `C62`, and the PDF names it "UE". A lump sum carries `LS`.
+   Lines and snapshots from before the units count pieces. Switching a line from quantity to lump sum keeps its amount.
+9. A line may name the day or period of its service (BG-26: BT-134, BT-135). Both fields are optional; one day fills
+   one of them and serves as start and end. A period that ends before it starts is refused. The PDF prints it below
+   the text of the line, as the service period of the invoice. A time of day stays in the text. A Stornorechnung
+   repeats unit and day of its lines.
+10. Validation before issue: a VAT-exempt line needs a tax note. Both XRechnung formats need a buyer reference (BR-DE-15).
+    The validation of the format must pass.
 
 ### Invoice numbers
 

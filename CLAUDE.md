@@ -36,7 +36,7 @@ Maven installs Node and builds the CSS (`npm run build`) by itself. Java 25 is r
 
 Package `io.github.grigoriev.im`:
 
-- `einvoice`: the issued invoice (`InvoiceDocument`, `InvoiceLine`, `Party`, `TaxCategory`, `InvoiceFormat`),
+- `einvoice`: the issued invoice (`InvoiceDocument`, `InvoiceLine` with its `LineUnit` and optional period, `Party`, `TaxCategory`, `InvoiceFormat`),
   the PDF/A-3B layout (`InvoicePdfRenderer`, template `templates/pdf/invoice.html`), the Mustang mapping
   and export (`MustangInvoiceMapper`, `EInvoiceWriter`), the validators (`ZugferdValidator`: Mustang,
   `XRechnungValidator`: KoSIT) and `EInvoiceService`, which issues and validates per format

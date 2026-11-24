@@ -1,11 +1,14 @@
 package io.github.grigoriev.im.invoice;
 
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.validation.Amounts;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import org.springframework.format.annotation.DateTimeFormat;
 
 /** A line of a draft or template form, with quantity and price as typed. It reads and checks itself. */
 public class LineForm {
@@ -24,6 +27,11 @@ public class LineForm {
     private boolean shownAsLumpSum = true;
     private String shownAmount = "";
     private TaxCategory category;
+    private LineUnit unit = LineUnit.PIECE;
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    private LocalDate serviceFrom;
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    private LocalDate serviceTo;
 
     /**
      * Returns the service text.
@@ -171,6 +179,60 @@ public class LineForm {
     }
 
     /**
+     * Returns the unit of a line with quantity.
+     *
+     * @return the unit
+     */
+    public LineUnit getUnit() {
+        return unit;
+    }
+
+    /**
+     * Sets the unit of a line with quantity.
+     *
+     * @param unit the unit, a piece if {@code null}
+     */
+    public void setUnit(LineUnit unit) {
+        this.unit = unit;
+    }
+
+    /**
+     * Returns the first day of the service of the line, or its only day.
+     *
+     * @return the day, {@code null} without one
+     */
+    public LocalDate getServiceFrom() {
+        return serviceFrom;
+    }
+
+    /**
+     * Sets the first day of the service of the line.
+     *
+     * @param serviceFrom the day, {@code null} without one
+     */
+    public void setServiceFrom(LocalDate serviceFrom) {
+        this.serviceFrom = serviceFrom;
+    }
+
+    /**
+     * Returns the last day of the service of the line.
+     *
+     * @return the day, {@code null} for one day or none
+     */
+    public LocalDate getServiceTo() {
+        return serviceTo;
+    }
+
+    /**
+     * Sets the last day of the service of the line.
+     *
+     * @param serviceTo the day, {@code null} for one day or none
+     */
+    public void setServiceTo(LocalDate serviceTo) {
+        this.serviceTo = serviceTo;
+    }
+
+    /**
      * Returns the line as stored. A draft may be incomplete; only unreadable or too long values are problems.
      *
      * @param number the position, from 1, for the messages
@@ -184,6 +246,19 @@ public class LineForm {
         if (category == null) {
             problems.add(prefix + "Bitte die Steuer wählen.");
         }
+        // One day fills one of the two fields: it is the first and the last day.
+        LocalDate from = serviceFrom == null ? serviceTo : serviceFrom;
+        LocalDate to = serviceTo == null ? serviceFrom : serviceTo;
+        if (from != null && to.isBefore(from)) {
+            problems.add(prefix + "Die Leistung endet vor ihrem Beginn.");
+        }
+        DraftLine line = amounts(prefix, content, problems);
+        return new DraftLine(line.text(), line.lumpSum(), line.quantity(), line.unitPrice(), line.category(), unit, from,
+                to);
+    }
+
+    /** Reads quantity, price and amount into a line in pieces; {@link #toLine} adds unit and days. */
+    private DraftLine amounts(String prefix, String content, List<String> problems) {
         if (lumpSum && !switchedUntouched()) {
             return new DraftLine(content, true, BigDecimal.ONE, number(problems, amount, prefix + "Der Betrag"), category);
         }

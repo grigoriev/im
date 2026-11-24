@@ -107,6 +107,21 @@ class InvoicePdfRendererTest {
     }
 
     @Test
+    void printsTheUnitAfterTheQuantityAndTheDayOfALineBelowItsText() throws IOException {
+        String text = text(renderer.render(SampleInvoices.units(InvoiceFormat.ZUGFERD_EN16931)));
+        assertThat(text).contains("Leistung Menge Einzelpreis Betrag")
+                .as("the period below the text").contains("Deutschkurs B1, Abendgruppe\n09.03.2027 bis 20.03.2027\n")
+                .contains("24\u00a0UE 40,00\u00a0€ 960,00\u00a0€\n")
+                .as("one day").contains("Prüfungsvorbereitung, Einzelunterricht\n08.03.2027\n")
+                .contains("3,5\u00a0Std. 60,00\u00a0€ 210,00\u00a0€\n")
+                .contains("Workshop Aussprache 1\u00a0Tag 480,00\u00a0€ 480,00\u00a0€\nArbeitsheft")
+                .as("a piece without a label, as before").contains("Arbeitsheft B1 2 12,50\u00a0€ 25,00\u00a0€\n")
+                .contains("Kursmaterial, Kopien 25,00\u00a0€\n")
+                .contains("Leistungszeitraum 08.03.2027 bis 20.03.2027")
+                .contains("Gesamtbetrag 1.700,00\u00a0€");
+    }
+
+    @Test
     void printsForeignBuyerVatIdAndBuyerReference() throws IOException {
         InvoiceDocument dutch = SampleInvoices.invoice(SampleInvoices.SELLER_EU, SampleInvoices.DUTCH, "REF-1",
                 InvoiceFormat.XRECHNUNG, SampleInvoices.line("Workshop", "1", "600.00", TaxCategory.REVERSE_CHARGE_EU));

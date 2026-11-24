@@ -13,6 +13,7 @@ import io.github.grigoriev.im.document.DocumentCategory;
 import io.github.grigoriev.im.document.DocumentForm;
 import io.github.grigoriev.im.document.DocumentService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.expense.Expense;
 import io.github.grigoriev.im.expense.ExpenseCategory;
@@ -128,13 +129,19 @@ class BackupIT {
         return entries;
     }
 
-    /** A customer with an address addition and references, an issued, sent, paid and canceled invoice of 2013 with its Stornorechnung, a template and a baseline. */
+    /** A customer with an address addition and references, a line with its day and one in hours, an issued, sent, paid and canceled invoice of 2013 with its Stornorechnung, a template and a baseline. */
     private void someOfEverything() {
         SellerTestData.save(sellers, SellerTestData.profile());
         numbers.savePattern("{YYYY}-{NN}");
         Customer customer = customers.create(CustomerTestData.school());
         TemplateForm template = TemplateForm.of(templates.create(customer.id()));
         template.setContract("Rahmenvertrag vom 15.01.2013");
+        LineForm hours = template.getLines().getFirst();
+        hours.setText("Prüfungsvorbereitung");
+        hours.setLumpSum(false);
+        hours.setQuantity("3,5");
+        hours.setPrice("60");
+        hours.setUnit(LineUnit.HOUR);
         templates.save(customer.id(), templates.list(customer.id()).getFirst().id(), template);
         Invoice draft = invoices.createDraft(customer.id(), null);
         DraftForm form = DraftForm.of(draft);
@@ -149,6 +156,7 @@ class BackupIT {
         line.setText("Lesung „am Fluss“");
         line.setAmount("400");
         line.setCategory(TaxCategory.KLEINUNTERNEHMER);
+        line.setServiceFrom(day);
         Invoice saved = invoices.saveDraft(draft.id(), form);
         issues.issue(saved.id(), saved.version());
         DispatchForm sent = new DispatchForm();
@@ -352,6 +360,11 @@ class BackupIT {
                 .isEven().isPositive();
         assertThat(copyJdbc.queryForObject("SELECT count(*) FROM invoice_template WHERE contract = ?", Integer.class,
                 "Rahmenvertrag vom 15.01.2013")).as("the contract of the template").isPositive();
+        assertThat(copyJdbc.queryForObject("SELECT count(*) FROM invoice_line WHERE service_from = ? AND service_to = ?",
+                Integer.class, LocalDate.of(2013, 4, 2), LocalDate.of(2013, 4, 2)))
+                .as("the day of the line of the invoice and its Stornorechnung, of each run").isEven().isPositive();
+        assertThat(copyJdbc.queryForObject("SELECT count(*) FROM invoice_template_line WHERE unit = 'HOUR'",
+                Integer.class)).as("the unit of the template line").isPositive();
         Long next = copyJdbc.queryForObject("INSERT INTO customer (name, street, postcode, city, country_code, format) "
                 + "VALUES ('Neu', 'Weg 1', '12345', 'Ort', 'DE', 'ZUGFERD_EN16931') RETURNING id", Long.class);
         assertThat(next).as("the identity continues after the imported rows")

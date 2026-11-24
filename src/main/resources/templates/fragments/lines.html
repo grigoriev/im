@@ -4,8 +4,9 @@
   <title>Positionen</title>
 </head>
 <body>
-<!-- The lines of a draft or a template, inside a form with th:object. "totals" fills the space beside the button. -->
-<th:block th:fragment="lines(totals)">
+<!-- The lines of a draft or a template, inside a form with th:object. "totals" fills the space beside the button.
+     "details" shows the unit and the day of a line; the facts of an external invoice keep them hidden. -->
+<th:block th:fragment="lines(totals, details)">
         <h2 class="font-semibold">Positionen</h2>
         <p class="text-sm text-base-content/75" th:if="*{lines.isEmpty()}">Noch keine Position.</p>
         <!-- Each line is a fieldset named after its position: a screen reader tells the fields of two lines apart. The
@@ -30,6 +31,11 @@
               <input th:id="'line-' + ${row.index} + '-quantity'" th:field="*{lines[__${row.index}__].quantity}" class="input w-full num"
                      inputmode="decimal" maxlength="20">
             </label>
+            <label class="line-unit floating-label @xl:w-40" th:if="${details}"><span>Einheit</span>
+              <select th:id="'line-' + ${row.index} + '-unit'" th:field="*{lines[__${row.index}__].unit}" class="select w-full">
+                <option th:each="unit : ${units}" th:value="${unit}" th:text="${unit.choice()}">Stück</option>
+              </select>
+            </label>
             <label class="line-amount floating-label @xl:w-36"><span>Betrag €</span>
               <input th:id="'line-' + ${row.index} + '-amount'" th:field="*{lines[__${row.index}__].amount}" class="input w-full num"
                      inputmode="decimal" maxlength="20">
@@ -44,6 +50,20 @@
               </select>
             </label>
           </div>
+          <!-- One day fills "Datum / von"; a period fills both. -->
+          <div class="grid gap-3 grid-cols-2 @xl:flex" th:if="${details}">
+            <label class="floating-label @xl:w-48"><span>Datum / von</span>
+              <input th:id="'line-' + ${row.index} + '-from'" th:field="*{lines[__${row.index}__].serviceFrom}" type="date" class="input w-full">
+            </label>
+            <label class="floating-label @xl:w-48"><span>Datum bis</span>
+              <input th:id="'line-' + ${row.index} + '-to'" th:field="*{lines[__${row.index}__].serviceTo}" type="date" class="input w-full">
+            </label>
+          </div>
+          <th:block th:unless="${details}">
+            <input type="hidden" th:field="*{lines[__${row.index}__].unit}">
+            <input type="hidden" th:field="*{lines[__${row.index}__].serviceFrom}">
+            <input type="hidden" th:field="*{lines[__${row.index}__].serviceTo}">
+          </th:block>
           <div class="row-actions justify-end">
             <button type="submit" name="remove" th:value="${row.index}" class="btn btn-danger" formnovalidate
                     th:attr="aria-label='Position ' + ${row.count} + ' entfernen'"><i data-lucide="trash-2" class="size-4"></i>Entfernen</button>

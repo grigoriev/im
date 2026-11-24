@@ -60,6 +60,7 @@ class EInvoiceServiceTest {
             cases.add(Arguments.of(format, "Stornorechnung", SampleInvoices.cancellation(format)));
             cases.add(Arguments.of(format, "department and contact", SampleInvoices.department(format)));
             cases.add(Arguments.of(format, "references of the customer", SampleInvoices.referenced(format)));
+            cases.add(Arguments.of(format, "units and line periods", SampleInvoices.units(format)));
         }
         return cases.stream();
     }
@@ -99,6 +100,22 @@ class EInvoiceServiceTest {
                             + "<ram:IssuerAssignedID>Rahmenvertrag vom 15.01.2027, Kurs B1 Online</ram:IssuerAssignedID>");
         } else {
             assertThat(xml).doesNotContain("BuyerOrderReferencedDocument").doesNotContain("ContractReferencedDocument");
+        }
+        if (document.lines().stream().anyMatch(InvoiceLine::hasPeriod)) {
+            assertThat(xml).as("BT-130 per unit, a teaching unit as C62")
+                    .containsPattern("<ram:BilledQuantity unitCode=\"C62\">24")
+                    .containsPattern("<ram:BilledQuantity unitCode=\"HUR\">3.5")
+                    .containsPattern("<ram:BilledQuantity unitCode=\"DAY\">1")
+                    .containsPattern("<ram:BilledQuantity unitCode=\"LS\">1")
+                    .as("BG-26 of the course and of the single day")
+                    .containsPattern("<ram:BillingSpecifiedPeriod>\\s*<ram:StartDateTime>\\s*"
+                            + "<udt:DateTimeString format=\"102\">20270309</udt:DateTimeString>\\s*</ram:StartDateTime>\\s*"
+                            + "<ram:EndDateTime>\\s*<udt:DateTimeString format=\"102\">20270320</udt:DateTimeString>")
+                    .containsPattern("<ram:BillingSpecifiedPeriod>\\s*<ram:StartDateTime>\\s*"
+                            + "<udt:DateTimeString format=\"102\">20270308</udt:DateTimeString>\\s*</ram:StartDateTime>\\s*"
+                            + "<ram:EndDateTime>\\s*<udt:DateTimeString format=\"102\">20270308</udt:DateTimeString>");
+        } else {
+            assertThat(xml).doesNotContain("unitCode=\"HUR\"").doesNotContain("unitCode=\"DAY\"");
         }
         List<String> validators = issued.validations().stream().map(ValidationResult::validator).toList();
         switch (format) {

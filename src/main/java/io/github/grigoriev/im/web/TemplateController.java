@@ -3,6 +3,7 @@ package io.github.grigoriev.im.web;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.InvoiceException;
 import io.github.grigoriev.im.invoice.InvoiceService;
@@ -155,6 +156,7 @@ public class TemplateController {
         model.addAttribute("formatOrder", InvoiceFormat.values());
         model.addAttribute("categories", InvoiceController.CATEGORIES);
         model.addAttribute("categoryOrder", TaxCategory.values());
+        model.addAttribute("units", LineUnit.values());
         model.addAttribute("placeholders", List.of("{Rechnungsnummer}", "{Rechnungsdatum}", "{Leistungszeitraum}",
                 "{Zahlungsziel}"));
         return VIEW;

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.grigoriev.im.customer.Customer;
 import io.github.grigoriev.im.customer.CustomerService;
 import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import io.github.grigoriev.im.invoice.DraftLine;
 import io.github.grigoriev.im.invoice.Invoice;
@@ -16,6 +17,7 @@ import io.github.grigoriev.im.invoice.TemplateLine;
 import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.seller.SellerService;
 import io.github.grigoriev.im.seller.SellerTestData;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -77,5 +79,31 @@ class TemplateIT {
         customers.delete(customer.id());
         assertThat(jdbc.queryForObject("SELECT count(*) FROM invoice_template WHERE customer_id = ?", Integer.class,
                 customer.id())).as("the templates go with their customer").isZero();
+    }
+
+    @Test
+    void aDraftCopiesTheUnitAndTheDayOfATemplateLine() {
+        SellerTestData.save(sellers, SellerTestData.profile());
+        Customer customer = customers.create(CustomerTestData.verlag());
+        InvoiceTemplate template = templates.create(customer.id());
+        TemplateForm form = TemplateForm.of(template);
+        LineForm course = row("Deutschkurs B1", "0");
+        course.setLumpSum(false);
+        course.setQuantity("24");
+        course.setPrice("40");
+        course.setUnit(LineUnit.TEACHING_UNIT);
+        course.setServiceFrom(LocalDate.of(2027, 3, 9));
+        course.setServiceTo(LocalDate.of(2027, 3, 20));
+        form.getLines().clear();
+        form.getLines().add(course);
+        TemplateLine stored = templates.save(customer.id(), template.id(), form).lines().getFirst();
+        assertThat(templates.find(customer.id(), template.id()).orElseThrow().lines()).containsExactly(stored);
+        assertThat(stored.unit()).isEqualTo(LineUnit.TEACHING_UNIT);
+        assertThat(stored.serviceTo()).isEqualTo(LocalDate.of(2027, 3, 20));
+
+        Invoice draft = invoices.createDraft(customer.id(), template.id());
+        assertThat(invoices.find(draft.id()).orElseThrow().lines()).containsExactly(stored.toDraftLine());
+        invoices.deleteDraft(draft.id());
+        customers.delete(customer.id());
     }
 }

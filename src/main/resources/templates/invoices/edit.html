@@ -103,7 +103,7 @@
           </div>
         </div>
         <th:block th:if="${cancelled == null}">
-        <th:block th:replace="~{fragments/lines :: lines(~{::#invoice-totals})}">
+        <th:block th:replace="~{fragments/lines :: lines(~{::#invoice-totals}, ${!invoice.format.isExternal()})}">
           <div class="text-right" th:if="${document != null}" id="invoice-totals">
             <div class="text-sm num" th:if="${!document.vatAmounts().isEmpty()}"
                  th:text="'Netto ' + ${#numbers.formatDecimal(document.netTotal(), 1, 'POINT', 2, 'COMMA')} + ' €'">Netto</div>

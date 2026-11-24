@@ -132,9 +132,10 @@
   .tabs-folder > a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 }
 
-/* The invoice editor shows "Betrag" for a lump sum and "Menge" with "Preis" otherwise, without script. Each kind has
+/* The invoice editor shows "Betrag" for a lump sum and "Menge" with "Einheit" and "Preis" otherwise, without script. Each kind has
    its own fields, so the server never guesses. Outside the layers, so it wins over daisyUI's floating label. */
 .invoice-line:has(.line-kind option[value="true"]:checked) .line-quantity,
+.invoice-line:has(.line-kind option[value="true"]:checked) .line-unit,
 .invoice-line:has(.line-kind option[value="true"]:checked) .line-unit-price,
 .invoice-line:has(.line-kind option[value="false"]:checked) .line-amount { display: none; }
 

@@ -10,6 +10,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - "Kunden" has the field "Abteilung / Zusatz" for a department or cost center below the name. A further contact person of the customer keeps it. The PDF prints it and the contact person on one line each, so the address always fits the window; the XML carries them in full.
 - The references a customer asks for. "Kunden" has the field "Geschäftspartnernummer", the number of the seller at the customer; a further contact person keeps it. A template has the fields "Bestellnummer" and "Vertrag". A new draft takes the Geschäftspartnernummer from the customer and the other two from its template, and the editor changes all three. The PDF prints them in the information block, where a long value wraps. The XML carries them as seller identifier (BT-29), purchase order (BT-13) and contract (BT-12). A Stornorechnung repeats the references of its invoice. Issued invoices stay as they are.
+- The unit of a line with a quantity: "Stück", "Stunden", "UE (45 Min.)" or "Tage", in the draft and the template. The PDF prints it after the quantity, for example "24 UE" or "3,5 Std."; a piece shows the number only, as before. The XML carries its code (BT-130): `C62`, `HUR` or `DAY`. A teaching unit has no code of its own and goes as `C62`. A lump sum keeps `LS`.
+- The day or period of the service of a line, optional, in the draft and the template. The PDF prints it below the text of the line, the XML carries it as the period of the line (BT-134, BT-135). A single day fills one field. A period that ends before it starts is refused. A Stornorechnung repeats unit and day. Issued invoices stay as they are.
 
 ### Changed
 

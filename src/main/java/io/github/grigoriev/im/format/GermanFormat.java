@@ -65,6 +65,17 @@ public final class GermanFormat {
     }
 
     /**
+     * Formats a quantity with the label of its unit, joined by a no-break space, for example {@code 3,5 Std.}.
+     *
+     * @param quantity the quantity
+     * @param label the label of the unit, empty for none
+     * @return the formatted quantity
+     */
+    public String quantity(BigDecimal quantity, String label) {
+        return label.isEmpty() ? quantity(quantity) : quantity(quantity) + "\u00a0" + label;
+    }
+
+    /**
      * Formats a date, for example {@code 18.03.2027}.
      *
      * @param date the date

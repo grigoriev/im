@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.TaxCategory;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -60,5 +62,19 @@ class TemplateModelTest {
         assertThat(form.getLines()).singleElement().satisfies(row -> assertThat(row.getAmount()).isEqualTo("400,00"));
         form.setLines(new ArrayList<>());
         assertThat(form.getLines()).isEmpty();
+    }
+
+    @Test
+    void aTemplateLineKeepsTheUnitAndThePeriod() {
+        LocalDate day = LocalDate.of(2027, 7, 8);
+        DraftLine line = new DraftLine("Kurs", false, new BigDecimal("3.5"), new BigDecimal("60"), TaxCategory.EXEMPT_4_21,
+                LineUnit.HOUR, day, day);
+        TemplateLine template = TemplateLine.of(line);
+        assertThat(template.unit()).isEqualTo(LineUnit.HOUR);
+        assertThat(template.serviceFrom()).isEqualTo(day);
+        assertThat(template.serviceTo()).isEqualTo(day);
+        assertThat(template.toDraftLine()).isEqualTo(line);
+        assertThat(new TemplateLine("Kurs", true, BigDecimal.ONE, BigDecimal.ONE, TaxCategory.EXEMPT_4_21, null, null, null)
+                .unit()).as("a row from before the units").isEqualTo(LineUnit.PIECE);
     }
 }

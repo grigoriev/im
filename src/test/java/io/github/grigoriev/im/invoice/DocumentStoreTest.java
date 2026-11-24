@@ -11,6 +11,7 @@ import io.github.grigoriev.im.einvoice.CustomerReferences;
 import io.github.grigoriev.im.einvoice.InvoiceDocument;
 import io.github.grigoriev.im.einvoice.InvoiceFormat;
 import io.github.grigoriev.im.einvoice.IssuedEInvoice;
+import io.github.grigoriev.im.einvoice.LineUnit;
 import io.github.grigoriev.im.einvoice.SampleInvoices;
 import io.github.grigoriev.im.integrity.Seal;
 import java.nio.charset.StandardCharsets;
@@ -202,5 +203,26 @@ class DocumentStoreTest {
         InvoiceDocument restored = store.restore(older);
         assertThat(restored.references()).isEqualTo(CustomerReferences.NONE);
         assertThat(restored).isEqualTo(reading);
+    }
+
+    @Test
+    void restoresTheUnitsAndThePeriodsOfTheLines() {
+        InvoiceDocument document = SampleInvoices.units(InvoiceFormat.ZUGFERD_EN16931);
+        String json = store.snapshot(document);
+        assertThat(json).contains("\"unit\":\"TEACHING_UNIT\",\"serviceFrom\":\"2027-03-09\",\"serviceTo\":\"2027-03-20\"");
+        assertThat(store.restore(json)).isEqualTo(document);
+    }
+
+    @Test
+    void restoresASnapshotFromBeforeTheUnitsAndPeriodsOfTheLines() {
+        InvoiceDocument school = SampleInvoices.school(InvoiceFormat.ZUGFERD_EN16931);
+        String json = store.snapshot(school);
+        String older = json.replace(",\"unit\":\"PIECE\",\"serviceFrom\":null,\"serviceTo\":null", "");
+        assertThat(older).doesNotContain("unit\"").doesNotContain("serviceFrom\":null");
+        InvoiceDocument restored = store.restore(older);
+        assertThat(restored.lines().getFirst().unit()).isEqualTo(LineUnit.PIECE);
+        assertThat(restored.lines().getFirst().unitCode()).isEqualTo("C62");
+        assertThat(restored.lines().getFirst().hasPeriod()).isFalse();
+        assertThat(restored).isEqualTo(school);
     }
 }

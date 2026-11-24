@@ -80,6 +80,9 @@ public class DraftForm {
             row.setShownAsLumpSum(line.lumpSum());
             row.setShownAmount(row.getAmount());
             row.setCategory(line.category());
+            row.setUnit(line.unit());
+            row.setServiceFrom(line.serviceFrom());
+            row.setServiceTo(line.serviceTo());
             rows.add(row);
         }
         return rows;

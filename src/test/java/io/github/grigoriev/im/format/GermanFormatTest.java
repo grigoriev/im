@@ -32,6 +32,13 @@ class GermanFormatTest {
     }
 
     @Test
+    void writesTheUnitAfterTheQuantity() {
+        assertThat(fmt.quantity(new BigDecimal("3.50"), "Std.")).isEqualTo("3,5\u00a0Std.");
+        assertThat(fmt.quantity(new BigDecimal("24"), "UE")).isEqualTo("24\u00a0UE");
+        assertThat(fmt.quantity(new BigDecimal("2"), "")).as("a piece, as before the units").isEqualTo("2");
+    }
+
+    @Test
     void signsATextOnTheLineAfterItsLast() {
         assertThat(fmt.signed("Mit freundlichen Grüßen", "Elena Sommer"))
                 .isEqualTo("Mit freundlichen Grüßen\nElena Sommer");

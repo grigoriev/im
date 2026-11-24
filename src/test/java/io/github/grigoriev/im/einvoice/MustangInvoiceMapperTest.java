@@ -270,4 +270,20 @@ class MustangInvoiceMapperTest {
         Invoice invoice = new MustangInvoiceMapper().toMustang(SampleInvoices.reading(InvoiceFormat.ZUGFERD_EN16931));
         assertThat(invoice.getIssueDate()).isEqualTo(Date.from(DAY.atStartOfDay(ZoneId.systemDefault()).toInstant()));
     }
+
+    @Test
+    void mapsTheUnitAndThePeriodOfALine() {
+        Invoice invoice = mapper.toMustang(SampleInvoices.units(InvoiceFormat.ZUGFERD_EN16931));
+        assertThat(product(invoice, 0).getUnit()).as("a teaching unit has no code of its own").isEqualTo("C62");
+        assertThat(product(invoice, 1).getUnit()).isEqualTo("HUR");
+        assertThat(product(invoice, 2).getUnit()).isEqualTo("DAY");
+        assertThat(product(invoice, 3).getUnit()).isEqualTo("C62");
+        assertThat(product(invoice, 4).getUnit()).isEqualTo("LS");
+        Item course = (Item) invoice.getZFItems()[0];
+        assertThat(course.getDetailedDeliveryPeriodFrom()).isEqualTo(utc(SampleInvoices.COURSE_START));
+        assertThat(course.getDetailedDeliveryPeriodTo()).isEqualTo(utc(SampleInvoices.COURSE_END));
+        Item workshop = (Item) invoice.getZFItems()[2];
+        assertThat(workshop.getDetailedDeliveryPeriodFrom()).as("a line without period").isNull();
+        assertThat(workshop.getDetailedDeliveryPeriodTo()).isNull();
+    }
 }
