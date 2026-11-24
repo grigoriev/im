@@ -171,8 +171,8 @@ public class TemplateForm {
         return lines;
     }
 
-    /** @param lines the lines */
+    /** @param lines the lines, none for {@code null} */
     public void setLines(List<LineForm> lines) {
-        this.lines = lines;
+        this.lines = lines == null ? new ArrayList<>() : lines;
     }
 }

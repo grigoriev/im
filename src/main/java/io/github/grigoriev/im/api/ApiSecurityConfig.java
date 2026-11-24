@@ -1,12 +1,16 @@
 package io.github.grigoriev.im.api;
 
+import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasAuthority;
+import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasRole;
+import static org.springframework.security.authorization.AuthorizationManagers.allOf;
+
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Set;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -17,13 +21,17 @@ import org.springframework.security.web.csrf.CsrfFilter;
 
 /**
  * The access rules of the API (docs/adr/0007-api-tokens-and-mcp.md). It runs ahead of the rules of the pages: a bearer
- * token only, no session, no login page. Every token reads; a write needs the scope {@code WRITE}.
+ * token only, no session, no login page. Every token reads; a write needs the scope {@code WRITE}. The URLs under
+ * {@code /api/v1/admin} need a token of the admin, as the pages under {@code /admin}.
  */
 @Configuration(proxyBeanMethods = false)
 public class ApiSecurityConfig {
 
     /** The URLs of the API. */
     static final String[] PATHS = {"/api/**"};
+    /** The URLs of the admin, as {@code /admin} for the pages. */
+    static final String ADMIN = "/api/v1/admin/**";
+    private static final String ADMIN_ROLE = "ADMIN";
     /** The answer to a refused request: a token that only reads, or a browser without the CSRF token. */
     static final String FORBIDDEN =
             "Nicht erlaubt: Der API-Token darf nur lesen, oder eine Anfrage mit Cookies hat kein CSRF-Token.";
@@ -45,6 +53,12 @@ public class ApiSecurityConfig {
                 .securityMatcher(PATHS)
                 .addFilterBefore(new ApiTokenFilter(tokens), CsrfFilter.class)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, ADMIN).access(allOf(hasRole(ADMIN_ROLE),
+                                hasAuthority(ApiTokenScope.READ_AUTHORITY)))
+                        .requestMatchers(HttpMethod.HEAD, ADMIN).access(allOf(hasRole(ADMIN_ROLE),
+                                hasAuthority(ApiTokenScope.READ_AUTHORITY)))
+                        .requestMatchers(ADMIN).access(allOf(hasRole(ADMIN_ROLE),
+                                hasAuthority(ApiTokenScope.WRITE_AUTHORITY)))
                         .requestMatchers(HttpMethod.GET, PATHS).hasAuthority(ApiTokenScope.READ_AUTHORITY)
                         .requestMatchers(HttpMethod.HEAD, PATHS).hasAuthority(ApiTokenScope.READ_AUTHORITY)
                         .anyRequest().hasAuthority(ApiTokenScope.WRITE_AUTHORITY))

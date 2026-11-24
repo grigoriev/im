@@ -66,6 +66,19 @@ class AccessRulesIT {
             Map.entry("POST /api/v1/customers", Access.TOKEN),
             Map.entry("GET /api/v1/customers/{id}", Access.TOKEN),
             Map.entry("PUT /api/v1/customers/{id}", Access.TOKEN),
+            Map.entry("GET /api/v1/customers/{customerId}/templates", Access.TOKEN),
+            Map.entry("POST /api/v1/customers/{customerId}/templates", Access.TOKEN),
+            Map.entry("GET /api/v1/customers/{customerId}/templates/{id}", Access.TOKEN),
+            Map.entry("PUT /api/v1/customers/{customerId}/templates/{id}", Access.TOKEN),
+            Map.entry("GET /api/v1/profile", Access.TOKEN),
+            Map.entry("PUT /api/v1/profile/{part}", Access.TOKEN),
+            Map.entry("GET /api/v1/mail-texts", Access.TOKEN),
+            Map.entry("PUT /api/v1/mail-texts/invoice", Access.TOKEN),
+            Map.entry("PUT /api/v1/mail-texts/reminder", Access.TOKEN),
+            Map.entry("GET /api/v1/admin/tax-notes", Access.TOKEN),
+            Map.entry("PUT /api/v1/admin/tax-notes", Access.TOKEN),
+            Map.entry("GET /api/v1/admin/number-pattern", Access.TOKEN),
+            Map.entry("PUT /api/v1/admin/number-pattern", Access.TOKEN),
             Map.entry("GET /customers", Access.USER),
             Map.entry("GET /customers/new", Access.USER),
             Map.entry("GET /customers/{id}", Access.USER),
@@ -178,7 +191,7 @@ class AccessRulesIT {
     private static String url(String pattern) {
         return pattern.replace("{id}", "999999").replace("{customerId}", "999998").replace("{code}", "ZZ")
                 .replace("{kind}", "pdf").replace("{originalId}", "999997")
-                .replace("{year}", "2099");
+                .replace("{year}", "2099").replace("{part}", "address");
     }
 
     private static MockHttpServletRequestBuilder request(String rule) {

@@ -37,7 +37,8 @@ Invoice Manager: a small web app that creates German e-invoices (e-Rechnung) for
   page says so.
 - The admin page shows the last nightly backup and restore test of the host, and warns when one is overdue.
 - Login with passkeys (Touch ID, Face ID) and a password fallback.
-- A REST API for assistants such as Claude Code, behind personal API tokens. It reads and writes the customers.
+- A REST API for assistants such as Claude Code, behind personal API tokens. It reads and writes the customers, their
+  templates and the settings.
 - Business expenses with their receipts, summed by kind for the Anlage EÜR in WISO Steuer, with a CSV.
 - Seals every PDF, XML and document with a key outside the database, checks them every night and shows what a change
   in the database altered.
@@ -108,11 +109,23 @@ The REST API lives under `/api/v1` and takes a personal API token only, never th
 | `GET /api/v1/customers/{id}` | Returns one customer |
 | `POST /api/v1/customers` | Creates a customer, 201 with its URL |
 | `PUT /api/v1/customers/{id}` | Changes every field of a customer |
+| `GET /api/v1/customers/{id}/templates` | Lists the templates of a customer |
+| `POST /api/v1/customers/{id}/templates` | Creates a template with the defaults of the customer |
+| `GET /api/v1/customers/{id}/templates/{templateId}` | Returns a template as the form of its editor |
+| `PUT /api/v1/customers/{id}/templates/{templateId}` | Saves that form, with the `version` it was read with |
+| `GET /api/v1/profile` | Returns the profile of the seller |
+| `PUT /api/v1/profile/{part}` | Saves a tab of the profile: `address`, `contact`, `tax` or `bank` |
+| `GET /api/v1/mail-texts` | Returns the e-mail texts of an invoice and of a payment reminder |
+| `PUT /api/v1/mail-texts/invoice`, `.../reminder` | Saves one of them: `subject` and `body` |
+| `GET`, `PUT /api/v1/admin/tax-notes` | The default tax note per category, admin only |
+| `GET`, `PUT /api/v1/admin/number-pattern` | The number pattern and the next numbers, admin only |
 
 The JSON fields are those of the form: `name`, `addressAddition`, `street`, `postcode`, `city`, `countryCode`,
 `contactName`, `email`, `vatId`, `buyerReference`, `sellerIdentifier`, `format` (`ZUGFERD_EN16931`,
-`ZUGFERD_XRECHNUNG`, `XRECHNUNG`, `EXTERNAL` for invoices made elsewhere) and `activity` (`TEACHING`, `OTHER` or empty). A refused input answers 400 with
-the list `problems`. The audit log names the token of each change. Issuing, canceling and deleting stay in the forms.
+`ZUGFERD_XRECHNUNG`, `XRECHNUNG`, `EXTERNAL` for invoices made elsewhere) and `activity` (`TEACHING`, `OTHER` or
+empty). A refused input answers 400 with the list `problems`, settings also the map `fields`. A template keeps the
+amounts as Germans type them, for example `"1.234,56"`. The audit log names the token of each change. Issuing,
+canceling and deleting stay in the forms.
 
 Sending invoices by e-mail needs an SMTP server: `IM_SMTP_HOST`, `IM_SMTP_PORT` (587), `IM_SMTP_USERNAME`,
 `IM_SMTP_PASSWORD`, `IM_SMTP_STARTTLS` (`true`), the sender `IM_MAIL_FROM` and an optional blind copy

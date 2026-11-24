@@ -15,6 +15,8 @@ import io.github.grigoriev.im.api.ApiTokenScope;
 import io.github.grigoriev.im.api.ApiTokenService;
 import io.github.grigoriev.im.api.CreatedToken;
 import io.github.grigoriev.im.customer.CustomerService;
+import io.github.grigoriev.im.customer.CustomerTestData;
+import io.github.grigoriev.im.invoice.TemplateService;
 import io.github.grigoriev.im.user.AppUser;
 import io.github.grigoriev.im.user.Role;
 import io.github.grigoriev.im.user.UserService;
@@ -59,6 +61,9 @@ class ApiIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private TemplateService templates;
 
     @Autowired
     private JsonMapper json;
@@ -134,6 +139,52 @@ class ApiIT {
         customers.delete(id);
         users.delete(user.id());
         assertThat(repository.findById(later.token().id())).as("the tokens go with their user").isEmpty();
+    }
+
+    @Test
+    void editsATemplateAsItsFormAndKeepsTheSettingsOfTheAdminToTheAdmin() throws Exception {
+        String suffix = Long.toString(System.nanoTime() % 1_000_000);
+        AppUser user = users.create("vorlage" + suffix, "Vorlage", "lang-genug-123", Role.USER);
+        AppUser admin = users.create("chef" + suffix, "Chef", "lang-genug-123", Role.ADMIN);
+        CreatedToken writer = tokens.create(user.username(), "Claude", ApiTokenScope.WRITE, 30);
+        CreatedToken adminReader = tokens.create(admin.username(), "Claude", ApiTokenScope.READ, 30);
+        long customer = customers.create(CustomerTestData.vhs()).id();
+
+        MvcResult created = mvc.perform(post("/api/v1/customers/" + customer + "/templates")
+                .header("Authorization", bearer(writer))).andExpect(status().isCreated()).andReturn();
+        long id = json.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+        String form = mvc.perform(get("/api/v1/customers/" + customer + "/templates/" + id)
+                .header("Authorization", bearer(writer))).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString();
+        JsonNode node = json.readTree(form);
+        assertThat(node.get("version").asLong()).isZero();
+        String changed = form.replaceFirst("\"name\":\"[^\"]*\"", "\"name\":\"DOIN-Tutorierung\"")
+                .replaceFirst("\"purchaseOrder\":null", "\"purchaseOrder\":\"4500062996\"");
+        mvc.perform(put("/api/v1/customers/" + customer + "/templates/" + id).header("Authorization", bearer(writer))
+                        .contentType(MediaType.APPLICATION_JSON).content(changed))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("DOIN-Tutorierung"))
+                .andExpect(jsonPath("$.purchaseOrder").value("4500062996")).andExpect(jsonPath("$.version").value(1));
+        mvc.perform(put("/api/v1/customers/" + customer + "/templates/" + id).header("Authorization", bearer(writer))
+                        .contentType(MediaType.APPLICATION_JSON).content(changed))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.problems").isArray());
+
+        mvc.perform(get("/api/v1/mail-texts").header("Authorization", bearer(writer))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.invoice.subject").isString());
+        mvc.perform(get("/api/v1/admin/tax-notes").header("Authorization", bearer(writer)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/admin/tax-notes").header("Authorization", bearer(adminReader)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.KLEINUNTERNEHMER").isString());
+        mvc.perform(get("/api/v1/admin/number-pattern").header("Authorization", bearer(adminReader)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.pattern").isString());
+        mvc.perform(put("/api/v1/admin/number-pattern").header("Authorization", bearer(adminReader))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"pattern\": \"X-{YYYY}-{NN}\"}"))
+                .andExpect(status().isForbidden());
+
+        templates.delete(customer, id);
+        customers.delete(customer);
+        users.delete(user.id());
+        // The only admin of the test database: the service keeps the last one.
+        jdbc.update("DELETE FROM app_user WHERE id = ?", admin.id());
     }
 
     @Test

@@ -135,7 +135,8 @@ Currency: EUR only.
 11. A REST API under `/api/v1` lets an assistant such as Claude Code set up the app (decision 2026-11-24,
     [ADR 7](adr/0007-api-tokens-and-mcp.md)). It takes a personal API token only, never the session. A user creates
     the token on the profile page after a recent login; the page shows it once and the database keeps its SHA-256.
-    A token reads, or reads and writes, with the role of its user, for 1 to 365 days. The audit log names the token
+    A token reads, or reads and writes, with the role of its user, for 1 to 365 days. It covers the customers, their
+    templates and the settings; `/api/v1/admin` needs the admin, as `/admin`. The audit log names the token
     of each change. Issuing, canceling and deleting invoices, payments, the import and deleting customers stay in the
     forms. The backup leaves the tokens out.
 
