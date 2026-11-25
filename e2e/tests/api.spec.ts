@@ -29,9 +29,17 @@ test('creates an API token, uses it for the customers and deletes it', async ({ 
   await expect(user.getByRole('status')).toHaveText('API-Token „Claude Code“ angelegt.');
   const token = await user.locator('#new-token').inputValue();
   expect(token).toMatch(/^im_[A-Za-z0-9_-]{43}$/);
+  const box = user.locator('#new-token-box');
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await user.emulateMedia({ colorScheme });
+    await expect(box).toHaveScreenshot(`new-token-${colorScheme}.png`, { mask: [user.locator('#new-token')] });
+  }
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  await user.getByRole('button', { name: 'Kopieren' }).click();
-  await expect(user.locator('[data-copy="new-token"]')).toHaveText('Kopiert');
+  const copy = user.locator('[data-copy="new-token"]');
+  await copy.click();
+  await copy.click();
+  await expect(copy).toHaveText('Kopiert');
+  await expect(copy).toHaveText('Kopieren', { timeout: 5000 });
   expect(await user.evaluate(() => navigator.clipboard.readText())).toBe(token);
   await expect(user.locator('#token-list')).toContainText('Lesen und schreiben');
 

@@ -80,7 +80,7 @@
       </div>
       <div id="new-token-box" class="alert alert-warning alert-soft text-sm text-base-content block" th:if="${newToken}">
         <p>Kopieren Sie den Token jetzt. Er wird nur dieses eine Mal angezeigt.</p>
-        <div class="flex gap-2 mt-2">
+        <div class="flex gap-2 mt-2 w-full">
           <input id="new-token" class="input flex-1 min-w-0 font-mono" aria-label="Neuer API-Token" readonly th:value="${newToken}">
           <button type="button" class="btn" data-copy="new-token"><i data-lucide="copy" class="size-4"></i>Kopieren</button>
         </div>

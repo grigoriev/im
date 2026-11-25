@@ -234,7 +234,8 @@ document.addEventListener('click', async (event) => {
     document.execCommand('copy');
   }
   const label = button.lastChild;
-  const text = label.textContent;
+  button.dataset.label ??= label.textContent;
   label.textContent = 'Kopiert';
-  setTimeout(() => { label.textContent = text; }, 2000);
+  clearTimeout(button.copyTimer);
+  button.copyTimer = setTimeout(() => { label.textContent = button.dataset.label; }, 2000);
 });
