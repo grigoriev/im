@@ -78,9 +78,12 @@
           die Schnittstelle ein. Der Token handelt mit Ihren Rechten. Rechnungen ausstellen, stornieren und löschen
           kann er nicht. Ein neues Passwort löscht alle Ihre Token.</p>
       </div>
-      <div id="new-token-box" class="alert alert-warning text-sm grid gap-2" th:if="${newToken}">
+      <div id="new-token-box" class="alert alert-warning alert-soft text-sm text-base-content block" th:if="${newToken}">
         <p>Kopieren Sie den Token jetzt. Er wird nur dieses eine Mal angezeigt.</p>
-        <input id="new-token" class="input w-full font-mono" aria-label="Neuer API-Token" readonly th:value="${newToken}">
+        <div class="flex gap-2 mt-2">
+          <input id="new-token" class="input flex-1 min-w-0 font-mono" aria-label="Neuer API-Token" readonly th:value="${newToken}">
+          <button type="button" class="btn" data-copy="new-token"><i data-lucide="copy" class="size-4"></i>Kopieren</button>
+        </div>
       </div>
       <p class="text-sm text-base-content/75" th:if="${tokens.isEmpty()}">Noch kein API-Token.</p>
       <div id="token-list" class="grid gap-3" th:unless="${tokens.isEmpty()}">

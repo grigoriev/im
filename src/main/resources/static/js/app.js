@@ -220,3 +220,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!new URLSearchParams(location.search).has('new')) return;
   document.querySelector('#new-invoice select')?.focus();
 });
+
+// A button with data-copy="<id>" copies the value of that field to the clipboard and says so for two seconds.
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-copy]');
+  if (!button) return;
+  const field = document.getElementById(button.dataset.copy);
+  if (!field) return;
+  field.select();
+  try {
+    await navigator.clipboard.writeText(field.value);
+  } catch {
+    document.execCommand('copy');
+  }
+  const label = button.lastChild;
+  const text = label.textContent;
+  label.textContent = 'Kopiert';
+  setTimeout(() => { label.textContent = text; }, 2000);
+});
