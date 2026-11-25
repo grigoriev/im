@@ -220,3 +220,23 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!new URLSearchParams(location.search).has('new')) return;
   document.querySelector('#new-invoice select')?.focus();
 });
+
+// A button with data-copy="<id>" copies the value of that field to the clipboard and says so for two seconds.
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-copy]');
+  if (!button) return;
+  const field = document.getElementById(button.dataset.copy);
+  if (!field) return;
+  field.select();
+  try {
+    await navigator.clipboard.writeText(field.value);
+  } catch {
+    // Without the clipboard, for example over plain HTTP, the field stays selected for a copy by hand.
+    return;
+  }
+  const label = button.lastChild;
+  button.dataset.label ??= label.textContent;
+  label.textContent = 'Kopiert';
+  clearTimeout(button.copyTimer);
+  button.copyTimer = setTimeout(() => { label.textContent = button.dataset.label; }, 2000);
+});

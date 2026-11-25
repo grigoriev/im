@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Fixed
+
+- A new API token on "Mein Konto" shows in a readable field of full width, with the button "Kopieren" beside it.
+
 ## [0.1.16] - 2026-11-24
 
 ### Added
