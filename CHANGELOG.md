@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-11-25
+
 ### Fixed
 
 - A new API token on "Mein Konto" shows in a readable field of full width, with the button "Kopieren" beside it.
@@ -263,7 +265,8 @@ All notable changes to this project are documented in this file. The format foll
 
 - The start page no longer fails for a logged-in user without an account record.
 
-[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.16...HEAD
+[Unreleased]: https://github.com/grigoriev/im/compare/v0.1.17...HEAD
+[0.1.17]: https://github.com/grigoriev/im/compare/v0.1.16...v0.1.17
 [0.1.16]: https://github.com/grigoriev/im/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/grigoriev/im/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/grigoriev/im/compare/v0.1.13...v0.1.14
