@@ -231,7 +231,8 @@ document.addEventListener('click', async (event) => {
   try {
     await navigator.clipboard.writeText(field.value);
   } catch {
-    document.execCommand('copy');
+    // Without the clipboard, for example over plain HTTP, the field stays selected for a copy by hand.
+    return;
   }
   const label = button.lastChild;
   button.dataset.label ??= label.textContent;
