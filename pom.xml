@@ -41,7 +41,7 @@
         <testcontainers.version>2.0.5</testcontainers.version>
         <greenmail.version>2.1.15</greenmail.version>
         <bouncycastle.version>1.87</bouncycastle.version>
-        <mcp.version>2.1.0</mcp.version>
+        <mcp.version>2.2.0</mcp.version>
 
         <jacoco.version>0.8.16</jacoco.version>
         <pitest.version>1.30.2</pitest.version>
